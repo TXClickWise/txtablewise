@@ -198,7 +198,21 @@ const FloorPlanPage = () => {
           <Button variant="ghost" size="icon" onClick={() => refetch()} title="Vernieuwen">
             <RefreshCw className="h-4 w-4" />
           </Button>
-          <Button size="lg" className="h-12 px-5" onClick={() => setWalkInOpen(true)}>
+          <Button
+            variant="outline" size="lg" className="h-12 px-4 hidden sm:inline-flex"
+            onClick={() => setQuickSeatOpen(true)}
+            title="AI Quick Seat"
+          >
+            <Sparkles className="mr-2 h-5 w-5 text-primary" /> AI Quick Seat
+          </Button>
+          <Button
+            variant="outline" size="icon" className="h-12 w-12 sm:hidden"
+            onClick={() => setQuickSeatOpen(true)}
+            title="AI Quick Seat"
+          >
+            <Sparkles className="h-5 w-5 text-primary" />
+          </Button>
+          <Button size="lg" className="h-12 px-5" onClick={() => { setPrefilledTable(undefined); setWalkInOpen(true); }}>
             <UserPlus className="mr-2 h-5 w-5" /> Walk-in
           </Button>
         </div>
