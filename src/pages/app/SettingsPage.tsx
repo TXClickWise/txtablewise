@@ -1,33 +1,45 @@
-import { useRestaurant } from "@/hooks/useRestaurant";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { NavLink, Outlet, useLocation } from "react-router-dom";
+import { cn } from "@/lib/utils";
+
+const tabs = [
+  { to: "/app/instellingen", label: "Algemeen", end: true },
+  { to: "/app/instellingen/openingstijden", label: "Openingstijden" },
+  { to: "/app/instellingen/shifts", label: "Shifts" },
+  { to: "/app/instellingen/zones", label: "Zones & tafels" },
+  { to: "/app/instellingen/sluitingen", label: "Sluitingen" },
+];
 
 const SettingsPage = () => {
-  const { current } = useRestaurant();
-  const r = current?.restaurants;
-  const url = r ? `${window.location.origin}/r/${r.slug}` : "";
+  const location = useLocation();
   return (
-    <div className="p-6 max-w-3xl mx-auto space-y-6">
+    <div className="p-6 max-w-5xl mx-auto space-y-6">
       <div>
         <h1 className="font-display text-3xl">Instellingen</h1>
-        <p className="text-muted-foreground">Restaurant configuratie</p>
+        <p className="text-muted-foreground">Beheer je restaurant configuratie</p>
       </div>
-      <Card>
-        <CardHeader><CardTitle className="font-display text-lg">Restaurant</CardTitle></CardHeader>
-        <CardContent className="space-y-3 text-sm">
-          <div className="flex justify-between"><span className="text-muted-foreground">Naam</span><span className="font-medium">{r?.name}</span></div>
-          <div className="flex justify-between"><span className="text-muted-foreground">Tijdzone</span><span className="font-medium">{r?.timezone}</span></div>
-          <div className="flex justify-between items-center gap-3">
-            <span className="text-muted-foreground">Publieke reserveringspagina</span>
-            <a href={url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline truncate font-medium">{url}</a>
-          </div>
-        </CardContent>
-      </Card>
-      <Card>
-        <CardHeader><CardTitle className="font-display text-lg">Volgende stap</CardTitle></CardHeader>
-        <CardContent className="text-sm text-muted-foreground">
-          Beheer voor openingstijden, shifts, tafels en zones komt in de volgende stap (b).
-        </CardContent>
-      </Card>
+      <nav className="flex gap-1 border-b border-border overflow-x-auto -mx-2 px-2">
+        {tabs.map((t) => {
+          const active = t.end
+            ? location.pathname === t.to
+            : location.pathname.startsWith(t.to);
+          return (
+            <NavLink
+              key={t.to}
+              to={t.to}
+              end={t.end}
+              className={cn(
+                "px-4 py-2 text-sm font-medium whitespace-nowrap border-b-2 -mb-px transition-colors",
+                active
+                  ? "border-primary text-foreground"
+                  : "border-transparent text-muted-foreground hover:text-foreground"
+              )}
+            >
+              {t.label}
+            </NavLink>
+          );
+        })}
+      </nav>
+      <Outlet />
     </div>
   );
 };

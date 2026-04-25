@@ -16,6 +16,11 @@ import FloorPlanPage from "./pages/app/FloorPlanPage.tsx";
 import GuestsPage from "./pages/app/GuestsPage.tsx";
 import AgendaPage from "./pages/app/AgendaPage.tsx";
 import SettingsPage from "./pages/app/SettingsPage.tsx";
+import GeneralSettings from "./pages/app/settings/GeneralSettings.tsx";
+import OpeningHoursSettings from "./pages/app/settings/OpeningHoursSettings.tsx";
+import ShiftsSettings from "./pages/app/settings/ShiftsSettings.tsx";
+import ZonesTablesSettings from "./pages/app/settings/ZonesTablesSettings.tsx";
+import ClosuresSettings from "./pages/app/settings/ClosuresSettings.tsx";
 import NotFound from "./pages/NotFound.tsx";
 
 const queryClient = new QueryClient();
@@ -38,7 +43,13 @@ const App = () => (
               <Route path="tafelplan" element={<FloorPlanPage />} />
               <Route path="gasten" element={<GuestsPage />} />
               <Route path="agenda" element={<AgendaPage />} />
-              <Route path="instellingen" element={<SettingsPage />} />
+              <Route path="instellingen" element={<SettingsPage />}>
+                <Route index element={<GeneralSettings />} />
+                <Route path="openingstijden" element={<OpeningHoursSettings />} />
+                <Route path="shifts" element={<ShiftsSettings />} />
+                <Route path="zones" element={<ZonesTablesSettings />} />
+                <Route path="sluitingen" element={<ClosuresSettings />} />
+              </Route>
             </Route>
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
