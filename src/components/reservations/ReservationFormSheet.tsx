@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { useRestaurant } from "@/hooks/useRestaurant";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
@@ -43,6 +43,21 @@ export function ReservationFormSheet({ open, onOpenChange }: Props) {
   const [occasion, setOccasion] = useState("");
   const [preview, setPreview] = useState<Preview>(null);
   const [submitting, setSubmitting] = useState(false);
+
+  // Pull large-group thresholds so the operator sees a heads-up while booking.
+  const { data: lgConfig } = useQuery({
+    queryKey: ["lg-config-form", current?.restaurant_id],
+    enabled: !!current?.restaurant_id,
+    queryFn: async () => {
+      const { data } = await supabase.from("restaurants")
+        .select("large_group_threshold, large_group_manual_approval_from, large_group_extra_minutes, large_group_deposit_recommended_from")
+        .eq("id", current!.restaurant_id).maybeSingle();
+      return data;
+    },
+  });
+  const isLargeGroup = !!lgConfig && partySize >= (lgConfig.large_group_threshold ?? 8);
+  const needsApproval = !!lgConfig && partySize >= (lgConfig.large_group_manual_approval_from ?? 10);
+  const recommendDeposit = !!lgConfig && partySize >= (lgConfig.large_group_deposit_recommended_from ?? 8);
 
   const reset = () => {
     setFirstName(""); setLastName(""); setEmail(""); setPhone("");
