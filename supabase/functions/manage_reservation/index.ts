@@ -16,7 +16,13 @@ type Action =
   | "mark_completed"
   | "mark_no_show"
   | "approve_large_group"
-  | "decline_large_group";
+  | "decline_large_group"
+  | "mark_reconfirmed"
+  | "mark_reconfirmation_declined"
+  | "request_reconfirmation"
+  | "set_deposit_status";
+
+type DepositStatus = "not_required" | "recommended" | "required" | "pending" | "paid" | "waived" | "refunded" | "failed";
 
 type ManageRequest = {
   action: Action;
@@ -31,6 +37,10 @@ type ManageRequest = {
   // Status change
   new_status?: "pending" | "confirmed" | "seated" | "completed" | "cancelled" | "no_show";
   cancellation_reason?: string;
+  // Deposit
+  deposit_status?: DepositStatus;
+  deposit_amount_cents?: number;
+  deposit_policy_notes?: string;
 };
 
 // Allowed status transitions (MVP-safe)
