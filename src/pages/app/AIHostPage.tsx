@@ -3,12 +3,12 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Phone, MessageSquare, MessageCircle, Globe, UserCheck, ShieldCheck } from "lucide-react";
 
 const channels = [
-  { icon: Phone, t: "Voice AI", d: "Neemt op wanneer je kookt" },
-  { icon: MessageCircle, t: "WhatsApp AI", d: "Antwoordt direct, dag en nacht" },
-  { icon: MessageSquare, t: "SMS AI", d: "Korte heldere antwoorden" },
-  { icon: Globe, t: "Webchat AI", d: "Op je eigen website" },
-  { icon: UserCheck, t: "Doorverbinden naar medewerker", d: "Bij twijfel of klacht" },
-  { icon: ShieldCheck, t: "Veilige reserveringsacties", d: "Altijd via beschikbaarheidscheck" },
+  { Icon: Phone, t: "Voice AI", d: "Neemt op wanneer je kookt" },
+  { Icon: MessageCircle, t: "WhatsApp AI", d: "Antwoordt direct, dag en nacht" },
+  { Icon: MessageSquare, t: "SMS AI", d: "Korte heldere antwoorden" },
+  { Icon: Globe, t: "Webchat AI", d: "Op je eigen website" },
+  { Icon: UserCheck, t: "Doorverbinden naar medewerker", d: "Bij twijfel of klacht" },
+  { Icon: ShieldCheck, t: "Veilige reserveringsacties", d: "Altijd via beschikbaarheidscheck" },
 ];
 
 const AIHostPage = () => (
