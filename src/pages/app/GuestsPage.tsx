@@ -20,6 +20,7 @@ import { GuestNotesSection } from "@/components/guests/GuestNotesSection";
 import { GuestReservationHistory } from "@/components/guests/GuestReservationHistory";
 import { GuestNoShowSummary } from "@/components/guests/GuestNoShowSummary";
 import { GuestClickWisePreview } from "@/components/guests/GuestClickWisePreview";
+import { GuestPOSPanel } from "@/components/pos/GuestPOSPanel";
 import { ReservationDetailDialog } from "@/components/ReservationDetailDialog";
 import {
   getClickWiseGuestMappingPreview, getGuest, getGuestKpis, getReservationHistory,
@@ -320,6 +321,8 @@ function GuestDetailSheet({
             </Card>
 
             {preview && <GuestClickWisePreview preview={preview} />}
+
+            <GuestPOSPanel restaurantId={restaurantId} guestId={guest.id} />
           </div>
         )}
       </SheetContent>

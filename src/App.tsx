@@ -36,6 +36,7 @@ import ReviewsAftercarePage from "./pages/app/ReviewsAftercarePage.tsx";
 import AIHostPage from "./pages/app/AIHostPage.tsx";
 import IntegrationsPage from "./pages/app/IntegrationsPage.tsx";
 import ClickWiseIntegrationPage from "./pages/app/ClickWiseIntegrationPage.tsx";
+import POSIntegrationPage from "./pages/app/POSIntegrationPage.tsx";
 import ReportsPage from "./pages/app/ReportsPage.tsx";
 import OnboardingWizardPage from "./pages/app/OnboardingWizardPage.tsx";
 import NotFound from "./pages/NotFound.tsx";
@@ -75,6 +76,7 @@ const App = () => (
               <Route path="rapportages" element={<ReportsPage />} />
               <Route path="integraties" element={<IntegrationsPage />} />
               <Route path="integraties/clickwise" element={<ClickWiseIntegrationPage />} />
+              <Route path="integraties/pos" element={<POSIntegrationPage />} />
               <Route path="instellingen" element={<SettingsPage />}>
                 <Route index element={<GeneralSettings />} />
                 <Route path="openingstijden" element={<OpeningHoursSettings />} />

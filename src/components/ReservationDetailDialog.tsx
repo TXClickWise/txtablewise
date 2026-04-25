@@ -25,6 +25,7 @@ import { GuestPreviewInReservation } from "@/components/guests/GuestPreviewInRes
 import { announceLastMinuteOpportunity } from "@/services/waitlist";
 import { ReservationAftercareSection } from "@/components/reviews/ReservationAftercareSection";
 import { createReviewRequestForReservation } from "@/services/reviews";
+import { ReservationPOSSection } from "@/components/pos/ReservationPOSSection";
 
 type Props = {
   reservationId: string | null;
@@ -241,6 +242,12 @@ export function ReservationDetailDialog({ reservationId, open, onOpenChange }: P
               <ReservationAftercareSection
                 reservationId={data.id}
                 reservationStatus={data.status}
+              />
+
+              <ReservationPOSSection
+                restaurantId={data.restaurant_id}
+                reservationId={data.id}
+                partySize={data.party_size}
               />
 
               {(data.requires_manual_approval || data.large_group_status === "awaiting_approval") &&
