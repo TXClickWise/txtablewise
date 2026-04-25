@@ -612,6 +612,8 @@ export type Database = {
           slug: string
           timezone: string
           updated_at: string
+          webhook_secret: string | null
+          webhook_url: string | null
         }
         Insert: {
           address_line1?: string | null
@@ -637,6 +639,8 @@ export type Database = {
           slug: string
           timezone?: string
           updated_at?: string
+          webhook_secret?: string | null
+          webhook_url?: string | null
         }
         Update: {
           address_line1?: string | null
@@ -662,6 +666,8 @@ export type Database = {
           slug?: string
           timezone?: string
           updated_at?: string
+          webhook_secret?: string | null
+          webhook_url?: string | null
         }
         Relationships: []
       }

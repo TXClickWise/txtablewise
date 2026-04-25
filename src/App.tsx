@@ -21,6 +21,7 @@ import OpeningHoursSettings from "./pages/app/settings/OpeningHoursSettings.tsx"
 import ShiftsSettings from "./pages/app/settings/ShiftsSettings.tsx";
 import ZonesTablesSettings from "./pages/app/settings/ZonesTablesSettings.tsx";
 import ClosuresSettings from "./pages/app/settings/ClosuresSettings.tsx";
+import IntegrationsSettings from "./pages/app/settings/IntegrationsSettings.tsx";
 import NotFound from "./pages/NotFound.tsx";
 
 const queryClient = new QueryClient();
@@ -49,6 +50,7 @@ const App = () => (
                 <Route path="shifts" element={<ShiftsSettings />} />
                 <Route path="zones" element={<ZonesTablesSettings />} />
                 <Route path="sluitingen" element={<ClosuresSettings />} />
+                <Route path="integraties" element={<IntegrationsSettings />} />
               </Route>
             </Route>
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

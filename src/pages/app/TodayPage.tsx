@@ -11,6 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { WalkInDialog } from "@/components/WalkInDialog";
+import { ReservationDetailDialog } from "@/components/ReservationDetailDialog";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 type Reservation = {
@@ -32,6 +33,7 @@ const TodayPage = () => {
   const qc = useQueryClient();
   const [walkInOpen, setWalkInOpen] = useState(false);
   const [seeding, setSeeding] = useState(false);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
 
   const today = format(new Date(), "yyyy-MM-dd");
 
@@ -103,8 +105,17 @@ const TodayPage = () => {
 
   const updateStatus = async (id: string, status: "confirmed" | "seated" | "finished" | "no_show" | "cancelled") => {
     const { error } = await supabase.from("reservations").update({ status }).eq("id", id);
-    if (error) toast.error(error.message);
-    else qc.invalidateQueries({ queryKey: ["reservations-today", restaurantId, today] });
+    if (error) return toast.error(error.message);
+    // Emit integration event for downstream systems
+    if (restaurantId) {
+      await supabase.from("integration_events").insert({
+        restaurant_id: restaurantId,
+        event_type: `reservation.${status}`,
+        target: "clickwise",
+        payload: { reservation_id: id, status },
+      });
+    }
+    qc.invalidateQueries({ queryKey: ["reservations-today", restaurantId, today] });
   };
 
   return (
@@ -155,27 +166,29 @@ const TodayPage = () => {
             <div className="divide-y divide-border">
               {reservations.map((r) => (
                 <div key={r.id} className="py-4 flex items-center gap-4 flex-wrap">
-                  <div className="text-center min-w-[64px]">
-                    <div className="font-display text-xl">{format(new Date(r.start_time), "HH:mm")}</div>
-                    <div className="text-xs text-muted-foreground">{r.party_size}p</div>
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="font-medium truncate">
-                        {r.guests?.first_name} {r.guests?.last_name ?? ""}
-                      </span>
-                      {r.guests?.is_vip && <span className="text-xs bg-accent/30 text-accent-foreground px-1.5 py-0.5 rounded">VIP</span>}
-                      <StatusBadge status={r.status as never} />
-                      <ChannelBadge channel={r.channel as never} />
+                  <button onClick={() => setSelectedId(r.id)} className="flex-1 flex items-center gap-4 flex-wrap text-left hover:bg-muted/40 -mx-2 px-2 py-1 rounded-md transition-colors">
+                    <div className="text-center min-w-[64px]">
+                      <div className="font-display text-xl">{format(new Date(r.start_time), "HH:mm")}</div>
+                      <div className="text-xs text-muted-foreground">{r.party_size}p</div>
                     </div>
-                    <div className="text-sm text-muted-foreground truncate">
-                      {r.reservation_tables?.length > 0 && (
-                        <span>Tafel {r.reservation_tables.map((rt) => rt.tables?.label).join(", ")} · </span>
-                      )}
-                      {r.guests?.phone && <span>{r.guests.phone}</span>}
-                      {r.special_requests && <span> · {r.special_requests}</span>}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-medium truncate">
+                          {r.guests?.first_name} {r.guests?.last_name ?? ""}
+                        </span>
+                        {r.guests?.is_vip && <span className="text-xs bg-accent/30 text-accent-foreground px-1.5 py-0.5 rounded">VIP</span>}
+                        <StatusBadge status={r.status as never} />
+                        <ChannelBadge channel={r.channel as never} />
+                      </div>
+                      <div className="text-sm text-muted-foreground truncate">
+                        {r.reservation_tables?.length > 0 && (
+                          <span>Tafel {r.reservation_tables.map((rt) => rt.tables?.label).join(", ")} · </span>
+                        )}
+                        {r.guests?.phone && <span>{r.guests.phone}</span>}
+                        {r.special_requests && <span> · {r.special_requests}</span>}
+                      </div>
                     </div>
-                  </div>
+                  </button>
                   <div className="flex gap-1 flex-wrap">
                     {r.status === "confirmed" && (
                       <Button size="sm" variant="default" onClick={() => updateStatus(r.id, "seated")}>Aan tafel</Button>
@@ -195,6 +208,7 @@ const TodayPage = () => {
       </Card>
 
       <WalkInDialog open={walkInOpen} onOpenChange={setWalkInOpen} />
+      <ReservationDetailDialog reservationId={selectedId} open={!!selectedId} onOpenChange={(o) => !o && setSelectedId(null)} />
     </div>
   );
 };
