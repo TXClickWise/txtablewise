@@ -39,6 +39,7 @@ import ClickWiseIntegrationPage from "./pages/app/ClickWiseIntegrationPage.tsx";
 import POSIntegrationPage from "./pages/app/POSIntegrationPage.tsx";
 import ReportsPage from "./pages/app/ReportsPage.tsx";
 import OnboardingWizardPage from "./pages/app/OnboardingWizardPage.tsx";
+import PilotReadinessPage from "./pages/app/PilotReadinessPage.tsx";
 import NotFound from "./pages/NotFound.tsx";
 
 const queryClient = new QueryClient();
@@ -74,6 +75,7 @@ const App = () => (
               <Route path="reviews" element={<ReviewsAftercarePage />} />
               <Route path="ai-host" element={<AIHostPage />} />
               <Route path="rapportages" element={<ReportsPage />} />
+              <Route path="pilot-readiness" element={<PilotReadinessPage />} />
               <Route path="integraties" element={<IntegrationsPage />} />
               <Route path="integraties/clickwise" element={<ClickWiseIntegrationPage />} />
               <Route path="integraties/pos" element={<POSIntegrationPage />} />
