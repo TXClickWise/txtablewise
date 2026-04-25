@@ -53,10 +53,18 @@ const IntegrationsPage = () => (
     </div>
 
     <Section title="ClickWise / HighLevel" intro="CRM, communicatie en AI-laag voor reminders, reviews en gespreksautomatisering.">
-      <IntegrationCard title="Contact sync" description="Gasten automatisch synchroniseren met je CRM." />
-      <IntegrationCard title="Tags" description="Reserveringskanaal en gastsegmenten als tags." />
-      <IntegrationCard title="Custom fields" description="Voorkeuren, allergieën en bezoekhistorie." />
-      <IntegrationCard title="Workflows" description="Bevestigingen, reminders, reviews en winback." status="Klaar om te configureren" />
+      <Card className="border-primary/40 bg-primary/[0.03] md:col-span-2 lg:col-span-3">
+        <CardHeader className="space-y-1">
+          <CardTitle className="text-base">ClickWise integratielaag</CardTitle>
+          <CardDescription>
+            Beheer verbindingsstatus, contact sync, tags, custom fields, workflows, event queue en privacy op één plek.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="flex items-center justify-between">
+          <Badge variant="secondary" className="text-xs">Voorbereid · sandbox</Badge>
+          <Button size="sm" asChild><a href="/app/integraties/clickwise">Openen</a></Button>
+        </CardContent>
+      </Card>
       <IntegrationCard title="WhatsApp" description="Bevestigingen en reminders via WhatsApp Business." />
       <IntegrationCard title="SMS" description="Reminders waar WhatsApp niet beschikbaar is." />
       <IntegrationCard title="E-mail" description="Premium e-mailbevestiging met huisstijl." status="Klaar om te configureren" />
