@@ -35,6 +35,7 @@ import PreOrderDrinksPage from "./pages/app/PreOrderDrinksPage.tsx";
 import ReviewsAftercarePage from "./pages/app/ReviewsAftercarePage.tsx";
 import AIHostPage from "./pages/app/AIHostPage.tsx";
 import IntegrationsPage from "./pages/app/IntegrationsPage.tsx";
+import ClickWiseIntegrationPage from "./pages/app/ClickWiseIntegrationPage.tsx";
 import ReportsPage from "./pages/app/ReportsPage.tsx";
 import OnboardingWizardPage from "./pages/app/OnboardingWizardPage.tsx";
 import NotFound from "./pages/NotFound.tsx";
