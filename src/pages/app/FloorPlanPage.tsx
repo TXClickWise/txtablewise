@@ -13,7 +13,7 @@ import { toast } from "sonner";
 import {
   UserPlus, Check, LogOut, UserX, Move, RefreshCw, Clock, Users, Crown, Sparkles,
 } from "lucide-react";
-import { WalkInDialog } from "@/components/WalkInDialog";
+import { WalkInQuickSheet } from "@/components/walk-in/WalkInQuickSheet";
 import { StatusBadge } from "@/components/StatusBadge";
 import { AIQuickSeatSheet } from "@/components/floor-plan/AIQuickSeatSheet";
 

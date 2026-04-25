@@ -19,7 +19,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import { WalkInDialog } from "@/components/WalkInDialog";
+import { WalkInQuickSheet } from "@/components/walk-in/WalkInQuickSheet";
 import { StatusBadge } from "@/components/StatusBadge";
 import { ReservationBadges } from "@/components/reservations/ReservationBadges";
 import { PacingIndicator, pacingLevelFromCovers } from "@/components/reservations/PacingIndicator";
@@ -522,10 +522,10 @@ const FloorModePage = () => {
         </SheetContent>
       </Sheet>
 
-      <WalkInDialog
+      <WalkInQuickSheet
         open={walkInOpen}
         onOpenChange={(o) => { setWalkInOpen(o); if (!o) setPrefilledTable(undefined); }}
-        prefilledTable={prefilledTable}
+        prefill={prefilledTable ? { tableId: prefilledTable.id } : undefined}
       />
 
       <AIQuickSeatSheet
