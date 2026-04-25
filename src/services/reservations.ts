@@ -98,6 +98,14 @@ export const reservations = {
     manageReservation({ action: "approve_large_group", reservation_id: id }),
   declineLargeGroup: (id: string, reason?: string) =>
     manageReservation({ action: "decline_large_group", reservation_id: id, cancellation_reason: reason }),
+  markReconfirmed: (id: string) =>
+    manageReservation({ action: "mark_reconfirmed", reservation_id: id }),
+  markReconfirmationDeclined: (id: string, reason?: string) =>
+    manageReservation({ action: "mark_reconfirmation_declined", reservation_id: id, cancellation_reason: reason }),
+  requestReconfirmation: (id: string) =>
+    manageReservation({ action: "request_reconfirmation", reservation_id: id }),
+  setDepositStatus: (id: string, deposit_status: DepositStatus, fields?: { deposit_amount_cents?: number; deposit_policy_notes?: string }) =>
+    manageReservation({ action: "set_deposit_status", reservation_id: id, deposit_status, ...fields }),
   update: (
     id: string,
     fields: Partial<Pick<ManagePayload,
