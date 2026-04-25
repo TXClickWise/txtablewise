@@ -40,8 +40,4 @@ export const useMyRestaurants = () => {
     },
   });
 };
-      if (error) throw error;
-      return (data ?? []) as unknown as MembershipRow[];
-    },
-  });
-};
+
