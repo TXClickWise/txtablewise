@@ -14,7 +14,9 @@ type Action =
   | "change_status"
   | "mark_seated"
   | "mark_completed"
-  | "mark_no_show";
+  | "mark_no_show"
+  | "approve_large_group"
+  | "decline_large_group";
 
 type ManageRequest = {
   action: Action;
@@ -98,6 +100,10 @@ Deno.serve(async (req) => {
         return await doStatusChange(admin, current, body.new_status, user.id, body.cancellation_reason);
       case "update":
         return await doUpdate(admin, current, restaurant, body, tz, user.id);
+      case "approve_large_group":
+        return await doLargeGroupDecision(admin, current, "approve", user.id, body.cancellation_reason);
+      case "decline_large_group":
+        return await doLargeGroupDecision(admin, current, "decline", user.id, body.cancellation_reason);
       default:
         return json({ error: "Onbekende actie" }, 400);
     }
