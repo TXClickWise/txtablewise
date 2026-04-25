@@ -171,7 +171,7 @@ export default function VoiceAgentPage() {
     return <p className="text-muted-foreground p-6">Laden…</p>;
   }
 
-  const promptTemplate = `Je bent de gastvrouw van ${current?.restaurant?.name ?? "[restaurant]"}.
+  const promptTemplate = `Je bent de gastvrouw van ${current?.restaurants?.name ?? "[restaurant]"}.
 Je neemt telefonisch reserveringen aan in vriendelijke, natuurlijke Nederlandse taal.
 - Vraag naam, datum, tijd, aantal personen, telefoonnummer, en eventuele allergieën.
 - Gebruik de tool check_availability voor je een tijd bevestigt.
