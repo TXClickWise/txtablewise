@@ -8,6 +8,7 @@ const tabs = [
   { to: "/app/instellingen/capaciteit", label: "Capaciteit" },
   { to: "/app/instellingen/zones", label: "Zones & tafels" },
   { to: "/app/instellingen/sluitingen", label: "Sluitingen" },
+  { to: "/app/instellingen/grote-groepen", label: "Grote groepen" },
   { to: "/app/instellingen/integraties", label: "Integraties" },
 ];
 

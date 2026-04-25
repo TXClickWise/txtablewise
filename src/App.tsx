@@ -24,6 +24,7 @@ import ZonesTablesSettings from "./pages/app/settings/ZonesTablesSettings.tsx";
 import ClosuresSettings from "./pages/app/settings/ClosuresSettings.tsx";
 import IntegrationsSettings from "./pages/app/settings/IntegrationsSettings.tsx";
 import CapacitySettings from "./pages/app/settings/CapacitySettings.tsx";
+import LargeGroupSettings from "./pages/app/settings/LargeGroupSettings.tsx";
 import FloorModePage from "./pages/app/FloorModePage.tsx";
 import WalkInsPage from "./pages/app/WalkInsPage.tsx";
 import WaitlistPage from "./pages/app/WaitlistPage.tsx";
@@ -77,6 +78,7 @@ const App = () => (
                 <Route path="zones" element={<ZonesTablesSettings />} />
                 <Route path="sluitingen" element={<ClosuresSettings />} />
                 <Route path="integraties" element={<IntegrationsSettings />} />
+                <Route path="grote-groepen" element={<LargeGroupSettings />} />
               </Route>
             </Route>
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

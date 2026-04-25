@@ -14,7 +14,9 @@ export type ManageAction =
   | "change_status"
   | "mark_seated"
   | "mark_completed"
-  | "mark_no_show";
+  | "mark_no_show"
+  | "approve_large_group"
+  | "decline_large_group";
 
 export type ReservationStatus =
   | "hold" | "pending" | "confirmed" | "seated"
@@ -81,6 +83,10 @@ export const reservations = {
     manageReservation({ action: "mark_no_show", reservation_id: id }),
   changeStatus: (id: string, newStatus: ReservationStatus) =>
     manageReservation({ action: "change_status", reservation_id: id, new_status: newStatus }),
+  approveLargeGroup: (id: string) =>
+    manageReservation({ action: "approve_large_group", reservation_id: id }),
+  declineLargeGroup: (id: string, reason?: string) =>
+    manageReservation({ action: "decline_large_group", reservation_id: id, cancellation_reason: reason }),
   update: (
     id: string,
     fields: Partial<Pick<ManagePayload,

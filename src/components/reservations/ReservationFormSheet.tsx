@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { useRestaurant } from "@/hooks/useRestaurant";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
@@ -43,6 +43,21 @@ export function ReservationFormSheet({ open, onOpenChange }: Props) {
   const [occasion, setOccasion] = useState("");
   const [preview, setPreview] = useState<Preview>(null);
   const [submitting, setSubmitting] = useState(false);
+
+  // Pull large-group thresholds so the operator sees a heads-up while booking.
+  const { data: lgConfig } = useQuery({
+    queryKey: ["lg-config-form", current?.restaurant_id],
+    enabled: !!current?.restaurant_id,
+    queryFn: async () => {
+      const { data } = await supabase.from("restaurants")
+        .select("large_group_threshold, large_group_manual_approval_from, large_group_extra_minutes, large_group_deposit_recommended_from")
+        .eq("id", current!.restaurant_id).maybeSingle();
+      return data;
+    },
+  });
+  const isLargeGroup = !!lgConfig && partySize >= (lgConfig.large_group_threshold ?? 8);
+  const needsApproval = !!lgConfig && partySize >= (lgConfig.large_group_manual_approval_from ?? 10);
+  const recommendDeposit = !!lgConfig && partySize >= (lgConfig.large_group_deposit_recommended_from ?? 8);
 
   const reset = () => {
     setFirstName(""); setLastName(""); setEmail(""); setPhone("");
@@ -136,6 +151,17 @@ export function ReservationFormSheet({ open, onOpenChange }: Props) {
               />
             </div>
           </div>
+
+          {isLargeGroup && (
+            <div className="rounded-md border border-warning/30 bg-warning/10 px-3 py-2 text-sm space-y-1">
+              <div className="font-medium text-warning">Grote groep ({partySize} personen)</div>
+              <ul className="text-xs text-muted-foreground list-disc pl-4 space-y-0.5">
+                <li>Verblijfsduur is automatisch +{lgConfig?.large_group_extra_minutes ?? 30} minuten.</li>
+                {needsApproval && <li>Wordt aangemaakt als <strong>in afwachting</strong> — beoordeel daarna in 'Grote groepen'.</li>}
+                {recommendDeposit && <li>Aanbetaling aanbevolen voor deze groepsgrootte (manueel afspreken).</li>}
+              </ul>
+            </div>
+          )}
 
           <Button variant="outline" className="w-full h-11 gap-2" onClick={checkAvailability} disabled={preview?.loading}>
             {preview?.loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}

@@ -18,7 +18,7 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { ChannelBadge } from "@/components/ChannelBadge";
 import { toast } from "sonner";
 import { reservations as resService, type ReservationStatus } from "@/services/reservations";
-import { CheckCircle2, UserCheck, XCircle, AlertOctagon } from "lucide-react";
+import { CheckCircle2, UserCheck, XCircle, AlertOctagon, ShieldCheck, ShieldX } from "lucide-react";
 
 type Props = {
   reservationId: string | null;
@@ -116,6 +116,21 @@ export function ReservationDetailDialog({ reservationId, open, onOpenChange }: P
     onOpenChange(false);
   };
 
+  const runLargeGroupDecision = async (kind: "approve" | "decline") => {
+    if (!reservationId) return;
+    setBusy(true);
+    const result = kind === "approve"
+      ? await resService.approveLargeGroup(reservationId)
+      : await resService.declineLargeGroup(reservationId);
+    setBusy(false);
+    if (!result.ok) return toast.error(result.error || "Actie mislukt.");
+    toast.success(kind === "approve"
+      ? "Groepsreservering goedgekeurd."
+      : "Groepsaanvraag afgewezen.");
+    refresh();
+    onOpenChange(false);
+  };
+
   const askConfirm = (kind: "cancel" | "no_show") => {
     if (kind === "cancel") {
       setConfirm({
@@ -172,6 +187,27 @@ export function ReservationDetailDialog({ reservationId, open, onOpenChange }: P
                   </div>
                 )}
               </div>
+
+              {(data.requires_manual_approval || data.large_group_status === "awaiting_approval") &&
+                !["cancelled", "no_show", "completed"].includes(data.status) && (
+                <div className="rounded-lg border border-warning/30 bg-warning/10 p-3 space-y-2">
+                  <div className="text-sm font-medium text-warning flex items-center gap-1.5">
+                    <ShieldX className="h-4 w-4" />
+                    Groepsreservering wacht op jouw beoordeling
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {data.party_size} personen · Goedkeuren bevestigt de reservering, afwijzen annuleert hem.
+                  </p>
+                  <div className="flex items-center gap-2 pt-1">
+                    <Button size="sm" variant="outline" disabled={busy} onClick={() => runLargeGroupDecision("decline")}>
+                      <ShieldX className="h-4 w-4 mr-1" /> Afwijzen
+                    </Button>
+                    <Button size="sm" disabled={busy} onClick={() => runLargeGroupDecision("approve")}>
+                      <ShieldCheck className="h-4 w-4 mr-1" /> Goedkeuren
+                    </Button>
+                  </div>
+                </div>
+              )}
 
               {/* Operator quick-actions */}
               <div className="grid grid-cols-2 gap-2">
