@@ -4,7 +4,8 @@ import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
 import { RestaurantProvider, useRestaurant } from "@/hooks/useRestaurant";
 import { useMyRestaurants } from "@/hooks/useCurrentRestaurant";
-import { Navigate } from "react-router-dom";
+import { Navigate, useLocation } from "react-router-dom";
+import { OnboardingBanner } from "./onboarding/OnboardingBanner";
 
 const AppShellInner = ({ children }: { children?: ReactNode }) => {
   const { current, loading } = useRestaurant();
