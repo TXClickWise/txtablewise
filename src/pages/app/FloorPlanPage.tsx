@@ -40,6 +40,8 @@ const FloorPlanPage = () => {
   const [zoneId, setZoneId] = useState<string | null>(null);
   const [selectedTableId, setSelectedTableId] = useState<string | null>(null);
   const [walkInOpen, setWalkInOpen] = useState(false);
+  const [quickSeatOpen, setQuickSeatOpen] = useState(false);
+  const [prefilledTable, setPrefilledTable] = useState<{ id: string; label: string } | undefined>();
   const [now, setNow] = useState(() => new Date());
   const today = format(now, "yyyy-MM-dd");
 
