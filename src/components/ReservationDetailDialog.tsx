@@ -20,6 +20,7 @@ import { toast } from "sonner";
 import { reservations as resService, type ReservationStatus } from "@/services/reservations";
 import { CheckCircle2, UserCheck, XCircle, AlertOctagon, ShieldCheck, ShieldX } from "lucide-react";
 import { ReservationNoShowSection } from "@/components/no-show/ReservationNoShowSection";
+import { ReservationPreOrderSection } from "@/components/pre-orders/ReservationPreOrderSection";
 import { announceLastMinuteOpportunity } from "@/services/waitlist";
 
 type Props = {
@@ -215,6 +216,15 @@ export function ReservationDetailDialog({ reservationId, open, onOpenChange }: P
                 largeGroupThreshold={restaurantCfg?.large_group_threshold}
                 depositDefaultAmountCents={restaurantCfg?.deposit_default_amount_cents}
                 onChanged={refresh}
+              />
+
+              <ReservationPreOrderSection
+                reservationId={data.id}
+                restaurantId={data.restaurant_id}
+                partySize={data.party_size}
+                occasion={data.occasion}
+                largeGroupThreshold={restaurantCfg?.large_group_threshold}
+                isVip={!!data.guests?.is_vip}
               />
 
               {(data.requires_manual_approval || data.large_group_status === "awaiting_approval") &&

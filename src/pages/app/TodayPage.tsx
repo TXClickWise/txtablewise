@@ -14,6 +14,7 @@ import { ReservationCard, type CardReservation } from "@/components/reservations
 import { ReservationFormSheet } from "@/components/reservations/ReservationFormSheet";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { LastMinuteFillPanel } from "@/components/waitlist/LastMinuteFillPanel";
+import { PreOrderReadyList } from "@/components/pre-orders/PreOrderReadyList";
 
 const TodayPage = () => {
   const { current } = useRestaurant();
@@ -138,7 +139,17 @@ const TodayPage = () => {
         <KpiCard label="No-shows" value={kpis.noShows} icon={<TrendingUp className="h-5 w-5" />} />
       </div>
 
-      {restaurantId && <LastMinuteFillPanel restaurantId={restaurantId} />}
+      <div className="grid lg:grid-cols-2 gap-4">
+        {restaurantId && <LastMinuteFillPanel restaurantId={restaurantId} />}
+        {restaurantId && (
+          <PreOrderReadyList
+            restaurantId={restaurantId}
+            windowMinutes={180}
+            onOpenReservation={(id) => setSelectedId(id)}
+            compact
+          />
+        )}
+      </div>
 
       <Card>
         <CardHeader>

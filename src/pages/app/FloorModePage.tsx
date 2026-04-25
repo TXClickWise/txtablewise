@@ -25,6 +25,7 @@ import { ReservationBadges } from "@/components/reservations/ReservationBadges";
 import { PacingIndicator, pacingLevelFromCovers } from "@/components/reservations/PacingIndicator";
 import { AIQuickSeatSheet } from "@/components/floor-plan/AIQuickSeatSheet";
 import { LastMinuteFillPanel } from "@/components/waitlist/LastMinuteFillPanel";
+import { PreOrderReadyList } from "@/components/pre-orders/PreOrderReadyList";
 import { useNavigate } from "react-router-dom";
 
 type Zone = { id: string; name: string };
@@ -405,6 +406,13 @@ const FloorModePage = () => {
         <main className="flex-1 overflow-auto">
           <div className="p-4 sm:p-6 space-y-6">
             {restaurantId && <LastMinuteFillPanel restaurantId={restaurantId} />}
+            {restaurantId && (
+              <PreOrderReadyList
+                restaurantId={restaurantId}
+                windowMinutes={60}
+                compact
+              />
+            )}
             {zones.length === 0 ? (
               <ZoneBlock
                 zoneName="Zonder zone"
