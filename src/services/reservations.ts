@@ -16,7 +16,15 @@ export type ManageAction =
   | "mark_completed"
   | "mark_no_show"
   | "approve_large_group"
-  | "decline_large_group";
+  | "decline_large_group"
+  | "mark_reconfirmed"
+  | "mark_reconfirmation_declined"
+  | "request_reconfirmation"
+  | "set_deposit_status";
+
+export type DepositStatus =
+  | "not_required" | "recommended" | "required" | "pending"
+  | "paid" | "waived" | "refunded" | "failed";
 
 export type ReservationStatus =
   | "hold" | "pending" | "confirmed" | "seated"
