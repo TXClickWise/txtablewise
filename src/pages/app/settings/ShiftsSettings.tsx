@@ -62,7 +62,7 @@ export default function ShiftsSettings() {
     if (!rid) return;
     const s = shifts[i];
     if (!s.name) return toast.error("Naam vereist");
-    const payload = { ...s, restaurant_id: rid };
+    const payload: any = { ...s, restaurant_id: rid };
     if (s.id) {
       const { error } = await supabase.from("shifts").update(payload).eq("id", s.id);
       if (error) return toast.error(error.message);
