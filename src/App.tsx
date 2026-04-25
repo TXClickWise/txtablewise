@@ -24,6 +24,16 @@ import ZonesTablesSettings from "./pages/app/settings/ZonesTablesSettings.tsx";
 import ClosuresSettings from "./pages/app/settings/ClosuresSettings.tsx";
 import IntegrationsSettings from "./pages/app/settings/IntegrationsSettings.tsx";
 import CapacitySettings from "./pages/app/settings/CapacitySettings.tsx";
+import FloorModePage from "./pages/app/FloorModePage.tsx";
+import WalkInsPage from "./pages/app/WalkInsPage.tsx";
+import WaitlistPage from "./pages/app/WaitlistPage.tsx";
+import LargeGroupsPage from "./pages/app/LargeGroupsPage.tsx";
+import NoShowPreventionPage from "./pages/app/NoShowPreventionPage.tsx";
+import PreOrderDrinksPage from "./pages/app/PreOrderDrinksPage.tsx";
+import ReviewsAftercarePage from "./pages/app/ReviewsAftercarePage.tsx";
+import AIHostPage from "./pages/app/AIHostPage.tsx";
+import IntegrationsPage from "./pages/app/IntegrationsPage.tsx";
+import ReportsPage from "./pages/app/ReportsPage.tsx";
 import NotFound from "./pages/NotFound.tsx";
 
 const queryClient = new QueryClient();
@@ -45,8 +55,18 @@ const App = () => (
               <Route index element={<TodayPage />} />
               <Route path="reserveringen" element={<ReservationsPage />} />
               <Route path="tafelplan" element={<FloorPlanPage />} />
+              <Route path="floor" element={<FloorModePage />} />
+              <Route path="walk-ins" element={<WalkInsPage />} />
+              <Route path="wachtlijst" element={<WaitlistPage />} />
               <Route path="gasten" element={<GuestsPage />} />
+              <Route path="grote-groepen" element={<LargeGroupsPage />} />
               <Route path="agenda" element={<AgendaPage />} />
+              <Route path="no-show" element={<NoShowPreventionPage />} />
+              <Route path="drankjes" element={<PreOrderDrinksPage />} />
+              <Route path="reviews" element={<ReviewsAftercarePage />} />
+              <Route path="ai-host" element={<AIHostPage />} />
+              <Route path="rapportages" element={<ReportsPage />} />
+              <Route path="integraties" element={<IntegrationsPage />} />
               <Route path="instellingen" element={<SettingsPage />}>
                 <Route index element={<GeneralSettings />} />
                 <Route path="openingstijden" element={<OpeningHoursSettings />} />

@@ -99,12 +99,12 @@ const Index = () => {
             </Badge>
 
             <h1 className="font-display text-5xl font-semibold leading-[1.05] text-primary-foreground md:text-6xl lg:text-7xl">
-              Het reserveringssysteem dat aanvoelt als <em className="not-italic text-accent">extra personeel</em>.
+              Het reserveringssysteem dat <em className="not-italic text-accent">lege tafels voorkomt</em>, gasten terugbrengt en de bediening rust geeft.
             </h1>
 
             <p className="mt-6 max-w-2xl text-lg leading-relaxed text-primary-foreground/85 md:text-xl">
-              Premium tafelbeheer voor Nederlandse horeca. Minder no-shows, snellere walk-ins,
-              betere gastbeleving — en een AI-host die je telefoon ontlast zonder ooit dubbel te boeken.
+              TableWise brengt reserveringen, tafelbeheer, walk-ins, wachtlijst, no-show preventie, gastdata,
+              ClickWise-communicatie en toekomstige POS-inzichten samen in één premium tablet-first systeem voor moderne horeca.
             </p>
 
             <div className="mt-10 flex flex-col gap-3 sm:flex-row">
@@ -213,6 +213,36 @@ const Index = () => {
               <div key={s.label} className="rounded-2xl border bg-gradient-card p-6 shadow-soft">
                 <div className="font-display text-4xl font-semibold text-primary">{s.value}</div>
                 <div className="mt-2 text-sm text-muted-foreground">{s.label}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Differentiators */}
+      <section className="bg-muted/30 py-20 md:py-28">
+        <div className="container">
+          <div className="mx-auto max-w-2xl text-center mb-12">
+            <span className="text-sm font-medium uppercase tracking-[0.2em] text-primary">Waarom TableWise</span>
+            <h2 className="mt-3 font-display text-4xl font-semibold leading-tight md:text-5xl">
+              Niet zomaar reserveringen — een hospitality operating system.
+            </h2>
+          </div>
+          <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
+            {[
+              { t: "No-shows verminderen", b: "Bevestiging, reminders en herbevestiging via magic link. Plus wachtlijst-match bij annulering." },
+              { t: "Tablet-first floor mode", b: "Grote knoppen, één tik per actie. Gemaakt voor de drukte van service." },
+              { t: "Commissievrij", b: "Geen commissie per couvert. Je eigen kanaal, je eigen gastdata." },
+              { t: "Alle kanalen samen", b: "Website, WhatsApp, QR, Google en Instagram in één dashboard." },
+              { t: "Wachtlijst & last-minute opvulling", b: "Vrijgekomen tafel? Direct match met wachtende gast." },
+              { t: "ClickWise CRM & workflows", b: "Bevestigingen, reviews en winback via je bestaande CRM." },
+              { t: "AI-ready", b: "Voice, WhatsApp en webchat — altijd binnen jouw beschikbaarheidsregels." },
+              { t: "Loyverse als starter-POS", b: "Begin gratis met Loyverse, koppel later omzet aan reserveringen." },
+              { t: "Reviews & terugkomflows", b: "Tevreden gasten naar Google, ontevreden gasten naar de manager." },
+            ].map((f) => (
+              <div key={f.t} className="rounded-2xl border bg-card p-6 shadow-soft">
+                <h3 className="font-display text-lg font-semibold">{f.t}</h3>
+                <p className="mt-2 text-sm text-muted-foreground">{f.b}</p>
               </div>
             ))}
           </div>

@@ -147,6 +147,21 @@ const TodayPage = () => {
         <KpiCard label="No-shows" value={kpis.noShows} icon={<TrendingUp className="h-5 w-5" />} />
       </div>
 
+      <Card className="border-primary/30 bg-gradient-to-br from-primary/[0.04] to-transparent">
+        <CardContent className="p-5 flex items-start gap-4">
+          <div className="h-10 w-10 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
+            <Sparkles className="h-5 w-5" />
+          </div>
+          <div className="space-y-1">
+            <div className="font-medium">Eigen reserveringskanaal, zonder commissie per couvert</div>
+            <p className="text-sm text-muted-foreground">
+              Verzamel reserveringen via je website, WhatsApp, QR, Google-link en Instagram — centraal in één dashboard,
+              met behoud van je eigen gastdata.
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+
       <Card>
         <CardHeader>
           <CardTitle className="font-display text-xl">Reserveringen vandaag</CardTitle>

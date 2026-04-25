@@ -1,4 +1,7 @@
-import { LayoutDashboard, CalendarDays, Map, Users, Settings, BookOpen } from "lucide-react";
+import {
+  LayoutDashboard, CalendarDays, Map, Users, Settings, BookOpen,
+  Hand, ListChecks, UsersRound, BellOff, Wine, Star, Bot, BarChart3, Plug, Tablet,
+} from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import {
   Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel,
@@ -9,14 +12,60 @@ import { useRestaurant } from "@/hooks/useRestaurant";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
-const items = [
+type Item = { title: string; url: string; icon: typeof LayoutDashboard; end?: boolean };
+
+const operatie: Item[] = [
   { title: "Vandaag", url: "/app", icon: LayoutDashboard, end: true },
   { title: "Reserveringen", url: "/app/reserveringen", icon: BookOpen },
-  { title: "Tafelplan", url: "/app/tafelplan", icon: Map },
-  { title: "Gasten", url: "/app/gasten", icon: Users },
   { title: "Agenda", url: "/app/agenda", icon: CalendarDays },
+  { title: "Tafelplan", url: "/app/tafelplan", icon: Map },
+  { title: "Floor Mode", url: "/app/floor", icon: Tablet },
+  { title: "Walk-ins", url: "/app/walk-ins", icon: Hand },
+  { title: "Wachtlijst", url: "/app/wachtlijst", icon: ListChecks },
+];
+
+const gasten: Item[] = [
+  { title: "Gasten", url: "/app/gasten", icon: Users },
+  { title: "Grote groepen", url: "/app/grote-groepen", icon: UsersRound },
+];
+
+const hospitality: Item[] = [
+  { title: "No-show preventie", url: "/app/no-show", icon: BellOff },
+  { title: "Drankjes vooraf", url: "/app/drankjes", icon: Wine },
+  { title: "Reviews & aftercare", url: "/app/reviews", icon: Star },
+  { title: "AI Host", url: "/app/ai-host", icon: Bot },
+];
+
+const beheer: Item[] = [
+  { title: "Rapportages", url: "/app/rapportages", icon: BarChart3 },
+  { title: "Integraties", url: "/app/integraties", icon: Plug },
   { title: "Instellingen", url: "/app/instellingen", icon: Settings },
 ];
+
+function Group({ label, items, collapsed, pathname }: { label: string; items: Item[]; collapsed: boolean; pathname: string }) {
+  return (
+    <SidebarGroup>
+      <SidebarGroupLabel>{label}</SidebarGroupLabel>
+      <SidebarGroupContent>
+        <SidebarMenu>
+          {items.map((item) => {
+            const active = item.end ? pathname === item.url : pathname.startsWith(item.url);
+            return (
+              <SidebarMenuItem key={item.url}>
+                <SidebarMenuButton asChild isActive={active}>
+                  <NavLink to={item.url} end={item.end}>
+                    <item.icon className="h-4 w-4 shrink-0" />
+                    {!collapsed && <span>{item.title}</span>}
+                  </NavLink>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            );
+          })}
+        </SidebarMenu>
+      </SidebarGroupContent>
+    </SidebarGroup>
+  );
+}
 
 export function AppSidebar() {
   const { state } = useSidebar();
@@ -39,28 +88,10 @@ export function AppSidebar() {
       </SidebarHeader>
 
       <SidebarContent>
-        <SidebarGroup>
-          <SidebarGroupLabel>Operatie</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {items.map((item) => {
-                const active = item.end
-                  ? location.pathname === item.url
-                  : location.pathname.startsWith(item.url);
-                return (
-                  <SidebarMenuItem key={item.url}>
-                    <SidebarMenuButton asChild isActive={active}>
-                      <NavLink to={item.url} end={item.end}>
-                        <item.icon className="h-4 w-4 shrink-0" />
-                        {!collapsed && <span>{item.title}</span>}
-                      </NavLink>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                );
-              })}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+        <Group label="Operatie" items={operatie} collapsed={collapsed} pathname={location.pathname} />
+        <Group label="Gasten" items={gasten} collapsed={collapsed} pathname={location.pathname} />
+        <Group label="Hospitality" items={hospitality} collapsed={collapsed} pathname={location.pathname} />
+        <Group label="Beheer" items={beheer} collapsed={collapsed} pathname={location.pathname} />
       </SidebarContent>
 
       <SidebarFooter className="border-t border-sidebar-border">
