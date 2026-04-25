@@ -1,109 +1,59 @@
-## Korte status: zit er al een AI voice-agent keuze in TableWise?
+# Voice Agent Help / Knowledge Base pagina
 
-**Nee, nog niet.** Wat er nu wél is:
-- `AIHostPage` kent een **caller-type** `voice_ai` (alleen labels — geen echte voice provider gekoppeld).
-- `ClickWiseIntegrationPage` noemt "AI-agents" als use-case in de uitleg, maar er is geen UI om een specifieke voice-agent (bv. een Vapi/Retell/ElevenLabs/HighLevel-agent) te kiezen of te koppelen.
-- De edge function `clickwise_process_event` stuurt events naar ClickWise/HighLevel-workflows, maar bevat **geen voice-provider configuratie**, geen agent-id, geen telefoonnummer-routing.
-- De `book_reservation` / `guest_reservation` edge functions zijn klaar om door **een externe agent** aangeroepen te worden, maar er is nog geen publiek "agent API"-endpoint met API-key auth.
+Doel: de complete copy-paste handleiding voor het koppelen van de ClickWise Voice AI Agent aan TableWise beschikbaar maken als doorzoekbare help-pagina ín de app, zodat de gebruiker hem altijd bij de hand heeft. Alle vermeldingen van "HighLevel" / "GoHighLevel" worden vervangen door **ClickWise** (white-label).
 
-Kortom: **TableWise is voorbereid, maar je moet de voice-agent zelf bouwen in ClickWise/HighLevel (of een voice-platform), en TableWise nog uitbreiden met een veilig agent-endpoint en een UI om je gekozen agent te koppelen.**
+## Wat ik ga maken
 
----
+### 1. Nieuwe pagina: `src/pages/app/help/VoiceAgentHelp.tsx`
+Tablet-vriendelijke kennisbank-pagina met:
 
-## Hoe de integratie werkt — stap voor stap
+- **Sticky inhoudsopgave** links (anchors naar elke sectie)
+- **Zoekbalk** bovenin (filtert secties op tekst)
+- **Per sectie een Card** met titel, korte intro en de inhoud
+- **Copy-knop** op elk codeblok, JSON-blok en lange tekst (prompt, body, headers, custom-value waarden) — gebruikt `navigator.clipboard` + `sonner` toast (zelfde patroon als `VoiceAgentPage`)
+- **Tabellen** voor custom fields, custom values en tool-parameters
+- **Callout-blokken** voor tips en troubleshooting
+- Print-vriendelijk (eenvoudige `@media print` styling)
 
-### Architectuur
+Secties (in deze volgorde):
+1. Vaste TableWise-waarden (URL's, headers, datum/tijd-formaten)
+2. Stappen in TableWise (sleutel aanmaken)
+3. ClickWise — Custom Fields (8 velden met type)
+4. ClickWise — Custom Values (6 waarden, copy-paste)
+5. ClickWise — Voice AI Agent aanmaken (general / prompt / tools / settings)
+6. ClickWise — Telefoonnummer koppelen
+7. ClickWise — Inbound Webhook Workflow
+8. **System Prompt** (groot copy-paste blok)
+9. **Tool definities** — 4 tools (`check_availability`, `book_reservation`, `cancel_reservation`, `log_call`) elk met URL, headers, body JSON en parameters
+10. Eerste test (5 min) + foutmeldingen
 
-```text
-Gast belt restaurant
-       │
-       ▼
-Twilio nummer  ──►  Voice Agent (Vapi / Retell / HighLevel Voice AI)
-                          │
-                          │  function calls: check_availability, book, cancel
-                          ▼
-                  TableWise Agent API  (nieuwe edge function, API-key auth)
-                          │
-                          ▼
-                  book_reservation / availability  (bestaand)
-                          │
-                          ▼
-                  Reservering in DB  ──►  webhook event  ──►  ClickWise workflow
-                                                                 (bevestiging SMS/WhatsApp, reminder, review)
-```
+### 2. Routing & navigatie
+- Route toevoegen in `src/App.tsx`: `/app/help/voice-agent` → `VoiceAgentHelp`
+- Een **"Help & koppeling"** knop (icon `BookOpen` of `HelpCircle`) bovenaan `VoiceAgentPage.tsx` die linkt naar deze pagina
+- (Optioneel) extra menu-item in `AppSidebar.tsx` "Hospitality" sectie — of bewust **niet** in sidebar zetten en alleen via de Voice Agent pagina ontsluiten, zodat de sidebar niet overvol raakt. **Voorstel: alleen via knop op Voice Agent pagina + via een algemene `/app/help` index later.**
 
-ClickWise/HighLevel doet dus de **opvolging** (CRM, WhatsApp, reminders). De **voice-agent** doet het gesprek + de boeking via TableWise's API. Dit zijn twee aparte rollen.
+### 3. White-label tekst-policy (strikt toegepast)
+- Alle teksten zeggen **"ClickWise"** — nooit "HighLevel", "GoHighLevel" of "GHL"
+- Voorbeelden van gewijzigde formuleringen:
+  - "in HighLevel logs" → "in de ClickWise call logs"
+  - "Sub-account → Settings → Custom Fields" → "ClickWise → Instellingen → Custom Fields"
+  - "Voice AI" / "AI Employee" → "ClickWise Voice Agent"
+  - "Twilio-nummer in HighLevel" → "telefoonnummer in ClickWise"
+- De provider-keuze in `VoiceAgentPage` heet nu nog "HighLevel Voice AI (ClickWise)" — die label pas ik aan naar **"ClickWise Voice Agent"**.
 
----
+### 4. Geen backend-wijzigingen
+Geen migrations, geen edge functions, geen secrets. Puur een nieuwe React-pagina + 1 routing-regel + 1 knop + 1 label-aanpassing.
 
-### Stap 1 — Kies een voice-platform
-Drie realistische opties (kies één):
-1. **HighLevel Voice AI** (zit in ClickWise/HighLevel zelf) — minste setup, werkt native met je workflows.
-2. **Vapi** — meest flexibel, beste latency, gemakkelijk function calling. Aanbevolen voor reservering-use-case.
-3. **Retell AI** — vergelijkbaar met Vapi, sterk in NL.
+## Bestanden die aangeraakt worden
 
-ElevenLabs Agents kan ook, maar telefonie eromheen vraagt extra setup (Twilio).
+| Bestand | Wijziging |
+|---|---|
+| `src/pages/app/help/VoiceAgentHelp.tsx` | **nieuw** — de kennisbank-pagina |
+| `src/App.tsx` | route toevoegen `/app/help/voice-agent` |
+| `src/pages/app/VoiceAgentPage.tsx` | knop "Help & koppeling" bovenaan + provider-label "ClickWise Voice Agent" |
 
-### Stap 2 — Bouw in TableWise een "Agent API" endpoint (nieuwe code)
-Eén nieuwe edge function `agent_api` met API-key auth, die de voice-agent kan aanroepen. Drie functies:
-- `POST /agent_api/check_availability` → wrapt bestaande `availability` functie
-- `POST /agent_api/book_reservation` → wrapt bestaande `book_reservation`
-- `POST /agent_api/cancel_reservation` → wrapt `manage_reservation`
+## Wat NIET in scope zit (voor later)
 
-Beveiliging: `X-Agent-Api-Key` header, key per restaurant in nieuwe tabel `agent_api_keys`. Rate limiting + audit log in `integration_events`.
-
-### Stap 3 — Voeg UI toe in TableWise om de agent te koppelen
-Nieuwe sectie op `ClickWiseIntegrationPage` (of nieuwe `AI Voice Agent`-pagina):
-- **Provider kiezen**: HighLevel / Vapi / Retell / Anders.
-- **Agent-ID** invullen (bv. Vapi assistant ID).
-- **Telefoonnummer** dat doorschakelt naar de agent.
-- **API-key** (genereren-knop) die de voice-agent moet gebruiken om TableWise te bereiken.
-- **Webhook URL** + **System prompt template** (NL, restaurant-specifiek: openingstijden, max party-size, beleid).
-- **Test-knop**: stuurt een test-call event en toont resultaat.
-
-### Stap 4 — Configureer de voice-agent (buiten TableWise)
-In Vapi (voorbeeld):
-1. Maak een assistant aan, taal NL, voice naar keuze (ElevenLabs voice via Vapi).
-2. System prompt: rol = "host van {restaurant}", taken = reserveringen aannemen, vragen om naam/datum/tijd/aantal/telefoon, allergieën, bevestigen.
-3. Functions definiëren die naar jouw `agent_api` endpoints wijzen (URL + API-key header).
-4. Koppel een Twilio-nummer aan de assistant.
-
-In HighLevel: gebruik Voice AI-employee, voeg "Custom Webhook"-actions toe naar dezelfde TableWise endpoints.
-
-### Stap 5 — Koppel ClickWise voor opvolging
-Dit gebruikt de **bestaande** ClickWise-integratie:
-- Webhook van TableWise vuurt `reservation.created`.
-- ClickWise workflow: stuur WhatsApp-bevestiging → 24u-reminder → no-show preventie → na bezoek aftercare/review.
-- Niets nieuws nodig hier — werkt al.
-
-### Stap 6 — Test- en pilot-modus
-- **Sandbox-mode**: agent-API draait in test, schrijft naar DB met `source_channel = 'voice_ai_test'`, geen ClickWise-events.
-- **Live-mode**: alleen na pilot-readiness checks en als alle secrets staan.
-- Toon op `PilotReadinessPage` of voice-agent verbonden + getest is.
-
----
-
-## Wat moet er concreet gebouwd worden in TableWise
-
-1. **Migratie**: tabel `agent_api_keys` (restaurant_id, key_hash, label, last_used_at, revoked_at) + tabel `agent_call_logs` (call_id, restaurant_id, transcript_url, outcome, reservation_id).
-2. **Edge function `agent_api`**: 3 endpoints met API-key auth, rate limit, validatie, audit log.
-3. **UI**: nieuwe pagina `/app/voice-agent` of sectie binnen ClickWise-pagina:
-   - Provider-keuze, agent-id, telefoonnummer, API-key beheer (rotate/revoke), test-knop, log van laatste calls.
-4. **Source channel uitbreiden**: `voice_ai` als first-class kanaal in rapportage (waarschijnlijk al deels aanwezig).
-5. **Documentatie-snippet** in UI: copy-paste system prompt + function specs voor Vapi/HighLevel/Retell.
-
----
-
-## Wat je zelf moet regelen (buiten TableWise)
-- Account bij gekozen voice-provider (Vapi/Retell/HighLevel Voice AI).
-- Twilio-nummer (of via provider).
-- Eventueel ElevenLabs voice-id voor stem.
-- Doorschakeling van restaurant-vastnummer naar het Twilio-nummer.
-
----
-
-## Wat ik nodig heb om verder te gaan
-Beantwoord deze 3 dingen, dan kan ik de bouw starten:
-1. **Welke voice-provider** wil je primair ondersteunen? (HighLevel Voice AI / Vapi / Retell / alle drie generiek)
-2. **Bouw ik nu alleen het TableWise-deel** (agent API + UI + koppeling-flow), of moet ik ook een **kant-en-klare Vapi-config** genereren die je in Vapi importeert?
-3. **MVP-scope**: alleen *nieuwe reservering aannemen*, of ook *wijzigen/annuleren* en *wachtlijst*?
+- Algemene `/app/help` index met meerdere onderwerpen (POS, ClickWise, No-show, etc.)
+- Meertalige (EN) versie van de help-pagina
+- Inline interactieve "test deze endpoint"-knop (kan in v2)
