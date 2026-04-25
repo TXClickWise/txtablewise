@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { format, addDays, startOfDay, endOfDay } from "date-fns";
-import { nl } from "date-fns/locale";
+import { format, addDays } from "date-fns";
 import { Plus, Search } from "lucide-react";
 
 import { useRestaurant } from "@/hooks/useRestaurant";
