@@ -570,7 +570,7 @@ export default function OnboardingWizard() {
     if (!restaurantId) return;
     const { error } = await supabase
       .from("restaurants")
-      .update(values)
+      .update(values as any)
       .eq("id", restaurantId);
     if (error) {
       toast.error("Opslaan mislukt: " + error.message);
