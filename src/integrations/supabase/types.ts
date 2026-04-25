@@ -811,11 +811,15 @@ export type Database = {
           email: string | null
           hold_minutes: number
           id: string
+          large_group_minutes: number
           large_group_threshold: number
           locale: string
           logo_url: string | null
+          max_covers_per_slot: number | null
+          max_new_reservations_per_15min: number | null
           max_party_size_online: number
           name: string
+          peak_warning_threshold_pct: number
           phone: string | null
           postal_code: string | null
           slot_duration_minutes: number
@@ -838,11 +842,15 @@ export type Database = {
           email?: string | null
           hold_minutes?: number
           id?: string
+          large_group_minutes?: number
           large_group_threshold?: number
           locale?: string
           logo_url?: string | null
+          max_covers_per_slot?: number | null
+          max_new_reservations_per_15min?: number | null
           max_party_size_online?: number
           name: string
+          peak_warning_threshold_pct?: number
           phone?: string | null
           postal_code?: string | null
           slot_duration_minutes?: number
@@ -865,11 +873,15 @@ export type Database = {
           email?: string | null
           hold_minutes?: number
           id?: string
+          large_group_minutes?: number
           large_group_threshold?: number
           locale?: string
           logo_url?: string | null
+          max_covers_per_slot?: number | null
+          max_new_reservations_per_15min?: number | null
           max_party_size_online?: number
           name?: string
+          peak_warning_threshold_pct?: number
           phone?: string | null
           postal_code?: string | null
           slot_duration_minutes?: number
@@ -938,6 +950,7 @@ export type Database = {
           end_time: string
           id: string
           is_active: boolean
+          max_covers_override: number | null
           max_guests: number | null
           name: string
           restaurant_id: string
@@ -950,6 +963,7 @@ export type Database = {
           end_time: string
           id?: string
           is_active?: boolean
+          max_covers_override?: number | null
           max_guests?: number | null
           name: string
           restaurant_id: string
@@ -962,6 +976,7 @@ export type Database = {
           end_time?: string
           id?: string
           is_active?: boolean
+          max_covers_override?: number | null
           max_guests?: number | null
           name?: string
           restaurant_id?: string

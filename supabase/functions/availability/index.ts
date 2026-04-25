@@ -6,6 +6,7 @@ import {
   WEEKDAY_KEYS, getWeekdayKey, zonedDateTimeToUtcIso, addMinutesIso,
   intervalsOverlap, ACTIVE_STATUSES,
 } from "../_shared/reservation-utils.ts";
+import { evaluatePacing, durationFor, type PacingReservation } from "../_shared/pacing.ts";
 
 type AvailabilityRequest = {
   restaurant_id?: string;
@@ -20,6 +21,8 @@ type Slot = {
   end_iso: string;    // UTC ISO
   available: boolean;
   available_table_count: number;
+  peak_warning?: boolean;
+  reason?: "covers_full" | "rate_full" | "no_table";
 };
 
 Deno.serve(async (req) => {
@@ -59,7 +62,18 @@ Deno.serve(async (req) => {
 
     const tz: string = restaurant.timezone || "Europe/Amsterdam";
     const slotMinutes: number = restaurant.slot_duration_minutes || 15;
-    const durationMinutes: number = restaurant.default_reservation_minutes || 105;
+    const defaultMinutes: number = restaurant.default_reservation_minutes || 105;
+    const largeGroupMinutes: number = restaurant.large_group_minutes || 150;
+    const largeGroupThreshold: number = restaurant.large_group_threshold || 9;
+    const durationMinutes: number =
+      body.party_size >= largeGroupThreshold ? largeGroupMinutes : defaultMinutes;
+
+    const pacingConfig = {
+      max_covers_per_slot: restaurant.max_covers_per_slot ?? null,
+      max_new_reservations_per_15min: restaurant.max_new_reservations_per_15min ?? null,
+      peak_warning_threshold_pct: restaurant.peak_warning_threshold_pct ?? 85,
+    };
+
 
     // Determine weekday in restaurant tz for the requested date (use noon to avoid DST edge)
     const noonUtc = new Date(zonedDateTimeToUtcIso(body.date, "12:00", tz));
@@ -146,7 +160,7 @@ Deno.serve(async (req) => {
     const dayEndIso = addMinutesIso(dayStartIso, 24 * 60 + durationMinutes);
     const { data: existingRes } = await supabase
       .from("reservations")
-      .select("id, start_time, end_time, status, hold_expires_at, reservation_tables(table_id)")
+      .select("id, start_time, end_time, party_size, status, hold_expires_at, reservation_tables(table_id)")
       .eq("restaurant_id", restaurant.id)
       .gte("start_time", dayStartIso).lt("start_time", dayEndIso)
       .in("status", ACTIVE_STATUSES as unknown as string[]);
@@ -156,7 +170,16 @@ Deno.serve(async (req) => {
       r.status !== "hold" || (r.hold_expires_at && new Date(r.hold_expires_at) > now)
     );
 
-    // For each slot determine free fitting tables
+    const pacingRows: PacingReservation[] = liveRes.map((r) => ({
+      id: r.id,
+      start_time: r.start_time,
+      end_time: r.end_time,
+      party_size: r.party_size ?? 0,
+      status: r.status,
+      hold_expires_at: r.hold_expires_at,
+    }));
+
+    // For each slot determine free fitting tables AND pacing
     const slots: Slot[] = slotCandidates.map((slot) => {
       const conflicting = new Set<string>();
       for (const r of liveRes) {
@@ -165,14 +188,24 @@ Deno.serve(async (req) => {
         }
       }
       const free = fittingTableIds.filter((id) => !conflicting.has(id));
+      const pacing = evaluatePacing(
+        { start_iso: slot.start_iso, end_iso: slot.end_iso, party_size: body.party_size },
+        pacingRows,
+        pacingConfig,
+      );
+      const tableAvailable = free.length > 0;
+      const available = tableAvailable && pacing.ok;
       return {
         time: slot.time,
         start_iso: slot.start_iso,
         end_iso: slot.end_iso,
-        available: free.length > 0,
+        available,
         available_table_count: free.length,
+        peak_warning: pacing.peak_warning,
+        reason: !tableAvailable ? "no_table" : (!pacing.ok ? pacing.reason : undefined),
       };
     });
+
 
     return json({
       slots,

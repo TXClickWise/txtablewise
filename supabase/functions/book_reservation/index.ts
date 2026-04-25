@@ -5,6 +5,7 @@ import { corsHeaders } from "../_shared/cors.ts";
 import {
   zonedDateTimeToUtcIso, addMinutesIso, intervalsOverlap, ACTIVE_STATUSES,
 } from "../_shared/reservation-utils.ts";
+import { evaluatePacing, type PacingReservation } from "../_shared/pacing.ts";
 
 type BookRequest = {
   restaurant_id?: string;
@@ -58,7 +59,11 @@ Deno.serve(async (req) => {
     }
 
     const tz: string = restaurant.timezone;
-    const durationMinutes: number = restaurant.default_reservation_minutes || 105;
+    const defaultMinutes: number = restaurant.default_reservation_minutes || 105;
+    const largeGroupMinutes: number = restaurant.large_group_minutes || 150;
+    const largeGroupThreshold: number = restaurant.large_group_threshold || 9;
+    const durationMinutes: number =
+      body.party_size >= largeGroupThreshold ? largeGroupMinutes : defaultMinutes;
     const start_iso = zonedDateTimeToUtcIso(body.date, body.time, tz);
     const end_iso = addMinutesIso(start_iso, durationMinutes);
 
@@ -80,7 +85,7 @@ Deno.serve(async (req) => {
     // Existing active reservations overlapping window
     const { data: existing } = await supabase
       .from("reservations")
-      .select("id, start_time, end_time, status, hold_expires_at, reservation_tables(table_id)")
+      .select("id, start_time, end_time, party_size, status, hold_expires_at, reservation_tables(table_id)")
       .eq("restaurant_id", restaurant.id)
       .gte("start_time", addMinutesIso(start_iso, -durationMinutes))
       .lte("start_time", addMinutesIso(end_iso, durationMinutes))
@@ -98,6 +103,36 @@ Deno.serve(async (req) => {
     }
     const candidate = tables.find((t) => !occupied.has(t.id));
     if (!candidate) return json({ error: "Geen tafel meer beschikbaar voor dit moment", retry: true }, 409);
+
+    // Pacing check (skip for operator-driven walk-ins / manager bookings)
+    const channelForPacing = body.channel ?? "online";
+    const skipPacing = channelForPacing === "walk_in" || channelForPacing === "manager";
+    if (!skipPacing) {
+      const pacingRows: PacingReservation[] = live.map((r) => ({
+        id: r.id,
+        start_time: r.start_time,
+        end_time: r.end_time,
+        party_size: (r as { party_size?: number }).party_size ?? 0,
+        status: r.status,
+        hold_expires_at: r.hold_expires_at,
+      }));
+      const pacing = evaluatePacing(
+        { start_iso, end_iso, party_size: body.party_size },
+        pacingRows,
+        {
+          max_covers_per_slot: restaurant.max_covers_per_slot ?? null,
+          max_new_reservations_per_15min: restaurant.max_new_reservations_per_15min ?? null,
+          peak_warning_threshold_pct: restaurant.peak_warning_threshold_pct ?? 85,
+        },
+      );
+      if (!pacing.ok) {
+        return json({
+          error: "Dit tijdslot is operationeel vol. Kies een ander tijdstip of plaats de gast op de wachtlijst.",
+          reason: pacing.reason,
+          pacing_full: true,
+        }, 409);
+      }
+    }
 
     // Upsert guest by (restaurant_id, email)
     let guestId: string | null = null;

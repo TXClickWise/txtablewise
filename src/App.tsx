@@ -10,6 +10,7 @@ import Index from "./pages/Index.tsx";
 import Auth from "./pages/Auth.tsx";
 import Onboarding from "./pages/Onboarding.tsx";
 import ReserveWidget from "./pages/ReserveWidget.tsx";
+import GuestManageReservation from "./pages/GuestManageReservation.tsx";
 import TodayPage from "./pages/app/TodayPage.tsx";
 import ReservationsPage from "./pages/app/ReservationsPage.tsx";
 import FloorPlanPage from "./pages/app/FloorPlanPage.tsx";
@@ -22,6 +23,7 @@ import ShiftsSettings from "./pages/app/settings/ShiftsSettings.tsx";
 import ZonesTablesSettings from "./pages/app/settings/ZonesTablesSettings.tsx";
 import ClosuresSettings from "./pages/app/settings/ClosuresSettings.tsx";
 import IntegrationsSettings from "./pages/app/settings/IntegrationsSettings.tsx";
+import CapacitySettings from "./pages/app/settings/CapacitySettings.tsx";
 import NotFound from "./pages/NotFound.tsx";
 
 const queryClient = new QueryClient();
@@ -37,6 +39,7 @@ const App = () => (
             <Route path="/" element={<Index />} />
             <Route path="/auth" element={<Auth />} />
             <Route path="/r/:slug" element={<ReserveWidget />} />
+            <Route path="/r/manage/:token" element={<GuestManageReservation />} />
             <Route path="/onboarding" element={<RequireAuth><Onboarding /></RequireAuth>} />
             <Route path="/app" element={<RequireAuth><AppShell /></RequireAuth>}>
               <Route index element={<TodayPage />} />
@@ -48,6 +51,7 @@ const App = () => (
                 <Route index element={<GeneralSettings />} />
                 <Route path="openingstijden" element={<OpeningHoursSettings />} />
                 <Route path="shifts" element={<ShiftsSettings />} />
+                <Route path="capaciteit" element={<CapacitySettings />} />
                 <Route path="zones" element={<ZonesTablesSettings />} />
                 <Route path="sluitingen" element={<ClosuresSettings />} />
                 <Route path="integraties" element={<IntegrationsSettings />} />
