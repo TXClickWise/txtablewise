@@ -114,6 +114,10 @@ const ClickWiseIntegrationPage = () => {
   };
 
   useEffect(() => { refresh(); /* eslint-disable-next-line */ }, [restaurantId, filter]);
+  useEffect(() => {
+    if (!restaurantId) return;
+    checkClickWiseReadiness(restaurantId).then(setReadiness).catch(() => setReadiness(null));
+  }, [restaurantId, settings?.connection_mode, settings?.contact_sync_enabled, settings?.workflow_mapping]);
 
   const sampleEventTypes = useMemo(() => {
     const set = new Set<string>();
