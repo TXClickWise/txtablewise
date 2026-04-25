@@ -34,6 +34,7 @@ import ReviewsAftercarePage from "./pages/app/ReviewsAftercarePage.tsx";
 import AIHostPage from "./pages/app/AIHostPage.tsx";
 import IntegrationsPage from "./pages/app/IntegrationsPage.tsx";
 import ReportsPage from "./pages/app/ReportsPage.tsx";
+import OnboardingWizardPage from "./pages/app/OnboardingWizardPage.tsx";
 import NotFound from "./pages/NotFound.tsx";
 
 const queryClient = new QueryClient();
