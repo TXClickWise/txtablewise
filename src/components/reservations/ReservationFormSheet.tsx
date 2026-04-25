@@ -152,6 +152,17 @@ export function ReservationFormSheet({ open, onOpenChange }: Props) {
             </div>
           </div>
 
+          {isLargeGroup && (
+            <div className="rounded-md border border-warning/30 bg-warning/10 px-3 py-2 text-sm space-y-1">
+              <div className="font-medium text-warning">Grote groep ({partySize} personen)</div>
+              <ul className="text-xs text-muted-foreground list-disc pl-4 space-y-0.5">
+                <li>Verblijfsduur is automatisch +{lgConfig?.large_group_extra_minutes ?? 30} minuten.</li>
+                {needsApproval && <li>Wordt aangemaakt als <strong>in afwachting</strong> — beoordeel daarna in 'Grote groepen'.</li>}
+                {recommendDeposit && <li>Aanbetaling aanbevolen voor deze groepsgrootte (manueel afspreken).</li>}
+              </ul>
+            </div>
+          )}
+
           <Button variant="outline" className="w-full h-11 gap-2" onClick={checkAvailability} disabled={preview?.loading}>
             {preview?.loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
             Beschikbaarheid controleren
