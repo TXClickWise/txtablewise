@@ -184,6 +184,7 @@ export default function ZonesTablesSettings() {
           </div>
         </CardContent>
       </Card>
-    </div>
+      </TabsContent>
+    </Tabs>
   );
 }
