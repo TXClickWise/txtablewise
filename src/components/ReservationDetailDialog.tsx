@@ -123,6 +123,10 @@ export function ReservationDetailDialog({ reservationId, open, onOpenChange }: P
       no_show:   "Gemarkeerd als no-show.",
     };
     toast.success(messages[kind]);
+    // Auto-prepare aftercare review request after completed visit
+    if (kind === "completed") {
+      createReviewRequestForReservation(reservationId).catch(() => {});
+    }
     // Surface a waitlist opportunity for freed slots
     if ((kind === "cancel" || kind === "no_show") && data) {
       announceLastMinuteOpportunity({
