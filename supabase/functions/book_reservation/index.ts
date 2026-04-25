@@ -104,6 +104,36 @@ Deno.serve(async (req) => {
     const candidate = tables.find((t) => !occupied.has(t.id));
     if (!candidate) return json({ error: "Geen tafel meer beschikbaar voor dit moment", retry: true }, 409);
 
+    // Pacing check (skip for operator-driven walk-ins / manager bookings)
+    const channelForPacing = body.channel ?? "online";
+    const skipPacing = channelForPacing === "walk_in" || channelForPacing === "manager";
+    if (!skipPacing) {
+      const pacingRows: PacingReservation[] = live.map((r) => ({
+        id: r.id,
+        start_time: r.start_time,
+        end_time: r.end_time,
+        party_size: (r as { party_size?: number }).party_size ?? 0,
+        status: r.status,
+        hold_expires_at: r.hold_expires_at,
+      }));
+      const pacing = evaluatePacing(
+        { start_iso, end_iso, party_size: body.party_size },
+        pacingRows,
+        {
+          max_covers_per_slot: restaurant.max_covers_per_slot ?? null,
+          max_new_reservations_per_15min: restaurant.max_new_reservations_per_15min ?? null,
+          peak_warning_threshold_pct: restaurant.peak_warning_threshold_pct ?? 85,
+        },
+      );
+      if (!pacing.ok) {
+        return json({
+          error: "Dit tijdslot is operationeel vol. Kies een ander tijdstip of plaats de gast op de wachtlijst.",
+          reason: pacing.reason,
+          pacing_full: true,
+        }, 409);
+      }
+    }
+
     // Upsert guest by (restaurant_id, email)
     let guestId: string | null = null;
     const { data: existingGuest } = await supabase
