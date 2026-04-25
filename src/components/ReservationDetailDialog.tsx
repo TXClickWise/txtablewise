@@ -21,6 +21,7 @@ import { reservations as resService, type ReservationStatus } from "@/services/r
 import { CheckCircle2, UserCheck, XCircle, AlertOctagon, ShieldCheck, ShieldX } from "lucide-react";
 import { ReservationNoShowSection } from "@/components/no-show/ReservationNoShowSection";
 import { ReservationPreOrderSection } from "@/components/pre-orders/ReservationPreOrderSection";
+import { GuestPreviewInReservation } from "@/components/guests/GuestPreviewInReservation";
 import { announceLastMinuteOpportunity } from "@/services/waitlist";
 
 type Props = {
