@@ -197,63 +197,129 @@ export type Database = {
         }
         Relationships: []
       }
+      guest_notes: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          guest_id: string
+          id: string
+          metadata: Json
+          note: string
+          note_type: string | null
+          restaurant_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          guest_id: string
+          id?: string
+          metadata?: Json
+          note: string
+          note_type?: string | null
+          restaurant_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          guest_id?: string
+          id?: string
+          metadata?: Json
+          note?: string
+          note_type?: string | null
+          restaurant_id?: string
+        }
+        Relationships: []
+      }
       guests: {
         Row: {
           allergies: string | null
+          clickwise_contact_id: string | null
           created_at: string
+          deleted_at: string | null
+          dietary_preferences: string | null
           email: string | null
           first_name: string | null
+          full_name: string | null
+          hospitality_notes: string | null
           id: string
           is_blacklisted: boolean
           is_vip: boolean
           language: string
           last_name: string | null
+          last_visit_at: string | null
           marketing_consent: boolean
+          metadata: Json
           no_show_count: number
           notes: string | null
           phone: string | null
+          preferred_channel: string | null
           restaurant_id: string
+          seating_preferences: string | null
+          source_channel: string | null
           tags: string[]
           total_visits: number
           updated_at: string
+          visit_count: number
         }
         Insert: {
           allergies?: string | null
+          clickwise_contact_id?: string | null
           created_at?: string
+          deleted_at?: string | null
+          dietary_preferences?: string | null
           email?: string | null
           first_name?: string | null
+          full_name?: string | null
+          hospitality_notes?: string | null
           id?: string
           is_blacklisted?: boolean
           is_vip?: boolean
           language?: string
           last_name?: string | null
+          last_visit_at?: string | null
           marketing_consent?: boolean
+          metadata?: Json
           no_show_count?: number
           notes?: string | null
           phone?: string | null
+          preferred_channel?: string | null
           restaurant_id: string
+          seating_preferences?: string | null
+          source_channel?: string | null
           tags?: string[]
           total_visits?: number
           updated_at?: string
+          visit_count?: number
         }
         Update: {
           allergies?: string | null
+          clickwise_contact_id?: string | null
           created_at?: string
+          deleted_at?: string | null
+          dietary_preferences?: string | null
           email?: string | null
           first_name?: string | null
+          full_name?: string | null
+          hospitality_notes?: string | null
           id?: string
           is_blacklisted?: boolean
           is_vip?: boolean
           language?: string
           last_name?: string | null
+          last_visit_at?: string | null
           marketing_consent?: boolean
+          metadata?: Json
           no_show_count?: number
           notes?: string | null
           phone?: string | null
+          preferred_channel?: string | null
           restaurant_id?: string
+          seating_preferences?: string | null
+          source_channel?: string | null
           tags?: string[]
           total_visits?: number
           updated_at?: string
+          visit_count?: number
         }
         Relationships: [
           {
@@ -520,14 +586,64 @@ export type Database = {
         }
         Relationships: []
       }
+      pre_order_items: {
+        Row: {
+          category: string | null
+          created_at: string
+          deleted_at: string | null
+          description: string | null
+          id: string
+          is_active: boolean
+          metadata: Json
+          name: string
+          price_cents: number | null
+          requires_payment: boolean
+          restaurant_id: string
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          category?: string | null
+          created_at?: string
+          deleted_at?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          metadata?: Json
+          name: string
+          price_cents?: number | null
+          requires_payment?: boolean
+          restaurant_id: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          category?: string | null
+          created_at?: string
+          deleted_at?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          metadata?: Json
+          name?: string
+          price_cents?: number | null
+          requires_payment?: boolean
+          restaurant_id?: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       pre_orders: {
         Row: {
           created_at: string
           id: string
           item_name: string
           note: string | null
+          pre_order_item_id: string | null
           quantity: number
           reservation_id: string
+          status: string
           unit_price_cents: number
           updated_at: string
         }
@@ -536,8 +652,10 @@ export type Database = {
           id?: string
           item_name: string
           note?: string | null
+          pre_order_item_id?: string | null
           quantity?: number
           reservation_id: string
+          status?: string
           unit_price_cents?: number
           updated_at?: string
         }
@@ -546,8 +664,10 @@ export type Database = {
           id?: string
           item_name?: string
           note?: string | null
+          pre_order_item_id?: string | null
           quantity?: number
           reservation_id?: string
+          status?: string
           unit_price_cents?: number
           updated_at?: string
         }
@@ -591,6 +711,45 @@ export type Database = {
         }
         Relationships: []
       }
+      reservation_status_history: {
+        Row: {
+          changed_by: string | null
+          changed_by_type: string
+          created_at: string
+          id: string
+          metadata: Json
+          new_status: string
+          old_status: string | null
+          reason: string | null
+          reservation_id: string
+          restaurant_id: string
+        }
+        Insert: {
+          changed_by?: string | null
+          changed_by_type?: string
+          created_at?: string
+          id?: string
+          metadata?: Json
+          new_status: string
+          old_status?: string | null
+          reason?: string | null
+          reservation_id: string
+          restaurant_id: string
+        }
+        Update: {
+          changed_by?: string | null
+          changed_by_type?: string
+          created_at?: string
+          id?: string
+          metadata?: Json
+          new_status?: string
+          old_status?: string | null
+          reason?: string | null
+          reservation_id?: string
+          restaurant_id?: string
+        }
+        Relationships: []
+      }
       reservation_tables: {
         Row: {
           created_at: string
@@ -630,7 +789,11 @@ export type Database = {
       reservations: {
         Row: {
           cancel_token: string | null
+          cancellation_reason: string | null
+          cancelled_at: string | null
           channel: Database["public"]["Enums"]["reservation_channel"]
+          clickwise_contact_id: string | null
+          clickwise_workflow_status: string | null
           confirmation_code: string | null
           created_at: string
           created_by: string | null
@@ -639,16 +802,25 @@ export type Database = {
           deposit_status: Database["public"]["Enums"]["deposit_status"]
           dietary_notes: string | null
           end_time: string
+          external_reference: string | null
           guest_id: string | null
           hold_expires_at: string | null
           id: string
           internal_notes: string | null
+          large_group_status: string | null
           manage_token: string | null
           no_show_marked_at: string | null
           occasion: string | null
           party_size: number
+          payment_status: string | null
+          pos_order_id: string | null
+          pos_provider: string | null
+          pos_receipt_id: string | null
+          receipt_total: number | null
+          reconfirmed_at: string | null
           reminder_confirmed_at: string | null
           reminder_sent_at: string | null
+          requires_manual_approval: boolean
           reservation_date: string
           restaurant_id: string
           source_label: string | null
@@ -660,7 +832,11 @@ export type Database = {
         }
         Insert: {
           cancel_token?: string | null
+          cancellation_reason?: string | null
+          cancelled_at?: string | null
           channel?: Database["public"]["Enums"]["reservation_channel"]
+          clickwise_contact_id?: string | null
+          clickwise_workflow_status?: string | null
           confirmation_code?: string | null
           created_at?: string
           created_by?: string | null
@@ -669,16 +845,25 @@ export type Database = {
           deposit_status?: Database["public"]["Enums"]["deposit_status"]
           dietary_notes?: string | null
           end_time: string
+          external_reference?: string | null
           guest_id?: string | null
           hold_expires_at?: string | null
           id?: string
           internal_notes?: string | null
+          large_group_status?: string | null
           manage_token?: string | null
           no_show_marked_at?: string | null
           occasion?: string | null
           party_size: number
+          payment_status?: string | null
+          pos_order_id?: string | null
+          pos_provider?: string | null
+          pos_receipt_id?: string | null
+          receipt_total?: number | null
+          reconfirmed_at?: string | null
           reminder_confirmed_at?: string | null
           reminder_sent_at?: string | null
+          requires_manual_approval?: boolean
           reservation_date: string
           restaurant_id: string
           source_label?: string | null
@@ -690,7 +875,11 @@ export type Database = {
         }
         Update: {
           cancel_token?: string | null
+          cancellation_reason?: string | null
+          cancelled_at?: string | null
           channel?: Database["public"]["Enums"]["reservation_channel"]
+          clickwise_contact_id?: string | null
+          clickwise_workflow_status?: string | null
           confirmation_code?: string | null
           created_at?: string
           created_by?: string | null
@@ -699,16 +888,25 @@ export type Database = {
           deposit_status?: Database["public"]["Enums"]["deposit_status"]
           dietary_notes?: string | null
           end_time?: string
+          external_reference?: string | null
           guest_id?: string | null
           hold_expires_at?: string | null
           id?: string
           internal_notes?: string | null
+          large_group_status?: string | null
           manage_token?: string | null
           no_show_marked_at?: string | null
           occasion?: string | null
           party_size?: number
+          payment_status?: string | null
+          pos_order_id?: string | null
+          pos_provider?: string | null
+          pos_receipt_id?: string | null
+          receipt_total?: number | null
+          reconfirmed_at?: string | null
           reminder_confirmed_at?: string | null
           reminder_sent_at?: string | null
+          requires_manual_approval?: boolean
           reservation_date?: string
           restaurant_id?: string
           source_label?: string | null
@@ -807,20 +1005,26 @@ export type Database = {
           city: string | null
           country: string
           created_at: string
+          default_language: string
           default_reservation_minutes: number
+          deleted_at: string | null
           email: string | null
           hold_minutes: number
           id: string
+          is_active: boolean
           large_group_minutes: number
           large_group_threshold: number
+          legal_name: string | null
           locale: string
           logo_url: string | null
           max_covers_per_slot: number | null
           max_new_reservations_per_15min: number | null
           max_party_size_online: number
+          metadata: Json
           name: string
           peak_warning_threshold_pct: number
           phone: string | null
+          plan_type: string | null
           postal_code: string | null
           slot_duration_minutes: number
           slug: string
@@ -838,20 +1042,26 @@ export type Database = {
           city?: string | null
           country?: string
           created_at?: string
+          default_language?: string
           default_reservation_minutes?: number
+          deleted_at?: string | null
           email?: string | null
           hold_minutes?: number
           id?: string
+          is_active?: boolean
           large_group_minutes?: number
           large_group_threshold?: number
+          legal_name?: string | null
           locale?: string
           logo_url?: string | null
           max_covers_per_slot?: number | null
           max_new_reservations_per_15min?: number | null
           max_party_size_online?: number
+          metadata?: Json
           name: string
           peak_warning_threshold_pct?: number
           phone?: string | null
+          plan_type?: string | null
           postal_code?: string | null
           slot_duration_minutes?: number
           slug: string
@@ -869,20 +1079,26 @@ export type Database = {
           city?: string | null
           country?: string
           created_at?: string
+          default_language?: string
           default_reservation_minutes?: number
+          deleted_at?: string | null
           email?: string | null
           hold_minutes?: number
           id?: string
+          is_active?: boolean
           large_group_minutes?: number
           large_group_threshold?: number
+          legal_name?: string | null
           locale?: string
           logo_url?: string | null
           max_covers_per_slot?: number | null
           max_new_reservations_per_15min?: number | null
           max_party_size_online?: number
+          metadata?: Json
           name?: string
           peak_warning_threshold_pct?: number
           phone?: string | null
+          plan_type?: string | null
           postal_code?: string | null
           slot_duration_minutes?: number
           slug?: string
@@ -993,6 +1209,48 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      special_days: {
+        Row: {
+          closes_at: string | null
+          created_at: string
+          date: string
+          id: string
+          is_closed: boolean
+          metadata: Json
+          name: string
+          notes: string | null
+          opens_at: string | null
+          restaurant_id: string
+          updated_at: string
+        }
+        Insert: {
+          closes_at?: string | null
+          created_at?: string
+          date: string
+          id?: string
+          is_closed?: boolean
+          metadata?: Json
+          name: string
+          notes?: string | null
+          opens_at?: string | null
+          restaurant_id: string
+          updated_at?: string
+        }
+        Update: {
+          closes_at?: string | null
+          created_at?: string
+          date?: string
+          id?: string
+          is_closed?: boolean
+          metadata?: Json
+          name?: string
+          notes?: string | null
+          opens_at?: string | null
+          restaurant_id?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       table_combinations: {
         Row: {
