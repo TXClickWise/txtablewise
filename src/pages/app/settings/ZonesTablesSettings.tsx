@@ -87,7 +87,17 @@ export default function ZonesTablesSettings() {
   if (loading) return <p className="text-muted-foreground text-sm">Laden…</p>;
 
   return (
-    <div className="space-y-6">
+    <Tabs defaultValue="list" className="space-y-4">
+      <TabsList>
+        <TabsTrigger value="list">Lijst</TabsTrigger>
+        <TabsTrigger value="plan">Plattegrond</TabsTrigger>
+      </TabsList>
+
+      <TabsContent value="plan" className="space-y-4">
+        {rid && <FloorPlanEditor restaurantId={rid} />}
+      </TabsContent>
+
+      <TabsContent value="list" className="space-y-6">
       <Card>
         <CardHeader><CardTitle className="font-display text-lg">Zones</CardTitle></CardHeader>
         <CardContent className="space-y-3">
