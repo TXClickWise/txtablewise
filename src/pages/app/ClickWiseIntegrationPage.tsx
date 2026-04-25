@@ -26,8 +26,16 @@ import {
   markEventProcessed, markEventSkipped, prepareRetry,
   buildSamplePayload, CONTACT_MAPPING,
   DEFAULT_TAG_MAPPING, DEFAULT_CUSTOM_FIELDS, DEFAULT_WORKFLOWS,
+  checkClickWiseReadiness, enableClickWiseLiveMode, disableClickWiseLiveMode,
+  processIntegrationEvent, processPendingClickWiseEvents,
   type ClickWiseSettings, type IntegrationEventRow, type EventFilter,
+  type ClickWiseReadiness,
 } from "@/services/clickwise";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 const MODE_META: Record<string, { label: string; cls: string }> = {
   prepared: { label: "Voorbereid",     cls: "bg-amber-500/15 text-amber-700 dark:text-amber-300" },
