@@ -23,6 +23,8 @@ import { ReservationNoShowSection } from "@/components/no-show/ReservationNoShow
 import { ReservationPreOrderSection } from "@/components/pre-orders/ReservationPreOrderSection";
 import { GuestPreviewInReservation } from "@/components/guests/GuestPreviewInReservation";
 import { announceLastMinuteOpportunity } from "@/services/waitlist";
+import { ReservationAftercareSection } from "@/components/reviews/ReservationAftercareSection";
+import { createReviewRequestForReservation } from "@/services/reviews";
 
 type Props = {
   reservationId: string | null;
