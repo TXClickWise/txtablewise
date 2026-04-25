@@ -7,9 +7,11 @@ const statusBadgeVariants = cva(
   {
     variants: {
       status: {
+        hold: "bg-muted text-muted-foreground border-border",
         pending: "bg-status-pending/10 text-status-pending border-status-pending/30",
         confirmed: "bg-status-confirmed/10 text-status-confirmed border-status-confirmed/30",
         seated: "bg-status-seated/10 text-status-seated border-status-seated/30",
+        finished: "bg-status-completed/10 text-status-completed border-status-completed/30",
         completed: "bg-status-completed/10 text-status-completed border-status-completed/30",
         cancelled: "bg-status-cancelled/10 text-status-cancelled border-status-cancelled/30",
         no_show: "bg-status-noshow/10 text-status-noshow border-status-noshow/30",
@@ -25,9 +27,11 @@ const statusBadgeVariants = cva(
 );
 
 const STATUS_LABELS: Record<string, string> = {
+  hold: "Tijdelijk vast",
   pending: "In afwachting",
   confirmed: "Bevestigd",
   seated: "Aan tafel",
+  finished: "Afgerekend",
   completed: "Voltooid",
   cancelled: "Geannuleerd",
   no_show: "No-show",
@@ -39,9 +43,11 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 const STATUS_DOTS: Record<string, string> = {
+  hold: "bg-muted-foreground",
   pending: "bg-status-pending",
   confirmed: "bg-status-confirmed",
   seated: "bg-status-seated",
+  finished: "bg-status-completed",
   completed: "bg-status-completed",
   cancelled: "bg-status-cancelled",
   no_show: "bg-status-noshow",
