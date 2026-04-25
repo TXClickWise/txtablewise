@@ -641,8 +641,20 @@ const ClickWiseIntegrationPage = () => {
                 </pre>
               </div>
               <div className="flex flex-wrap gap-2">
+                {openEvent.status !== "sent" && (
+                  <Button onClick={() => handleProcessNow(openEvent.id)} disabled={processing}>
+                    <Send className="h-4 w-4 mr-1" />
+                    {mode === "live" ? "Nu verwerken (live)" : "Nu verwerken (testmodus)"}
+                  </Button>
+                )}
+                {openEvent.status === "sent" && (
+                  <p className="text-xs text-muted-foreground w-full">
+                    Dit event is al verwerkt. Opnieuw versturen kan dubbele communicatie
+                    veroorzaken — gebruik retry alleen bij vastgestelde fout.
+                  </p>
+                )}
                 {openEvent.status === "failed" && (
-                  <Button onClick={() => handleRetry(openEvent.id)}>
+                  <Button variant="outline" onClick={() => handleRetry(openEvent.id)}>
                     <RefreshCw className="h-4 w-4 mr-1" /> Retry voorbereiden
                   </Button>
                 )}
