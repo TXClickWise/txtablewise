@@ -114,6 +114,14 @@ Deno.serve(async (req) => {
         return await doLargeGroupDecision(admin, current, "approve", user.id, body.cancellation_reason);
       case "decline_large_group":
         return await doLargeGroupDecision(admin, current, "decline", user.id, body.cancellation_reason);
+      case "mark_reconfirmed":
+        return await doReconfirmation(admin, current, "confirmed", user.id);
+      case "mark_reconfirmation_declined":
+        return await doReconfirmation(admin, current, "declined", user.id, body.cancellation_reason);
+      case "request_reconfirmation":
+        return await doReconfirmation(admin, current, "requested", user.id);
+      case "set_deposit_status":
+        return await doSetDepositStatus(admin, current, body, user.id);
       default:
         return json({ error: "Onbekende actie" }, 400);
     }
