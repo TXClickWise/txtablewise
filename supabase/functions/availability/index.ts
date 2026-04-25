@@ -160,7 +160,7 @@ Deno.serve(async (req) => {
     const dayEndIso = addMinutesIso(dayStartIso, 24 * 60 + durationMinutes);
     const { data: existingRes } = await supabase
       .from("reservations")
-      .select("id, start_time, end_time, status, hold_expires_at, reservation_tables(table_id)")
+      .select("id, start_time, end_time, party_size, status, hold_expires_at, reservation_tables(table_id)")
       .eq("restaurant_id", restaurant.id)
       .gte("start_time", dayStartIso).lt("start_time", dayEndIso)
       .in("status", ACTIVE_STATUSES as unknown as string[]);
@@ -170,7 +170,16 @@ Deno.serve(async (req) => {
       r.status !== "hold" || (r.hold_expires_at && new Date(r.hold_expires_at) > now)
     );
 
-    // For each slot determine free fitting tables
+    const pacingRows: PacingReservation[] = liveRes.map((r) => ({
+      id: r.id,
+      start_time: r.start_time,
+      end_time: r.end_time,
+      party_size: r.party_size ?? 0,
+      status: r.status,
+      hold_expires_at: r.hold_expires_at,
+    }));
+
+    // For each slot determine free fitting tables AND pacing
     const slots: Slot[] = slotCandidates.map((slot) => {
       const conflicting = new Set<string>();
       for (const r of liveRes) {
@@ -179,14 +188,24 @@ Deno.serve(async (req) => {
         }
       }
       const free = fittingTableIds.filter((id) => !conflicting.has(id));
+      const pacing = evaluatePacing(
+        { start_iso: slot.start_iso, end_iso: slot.end_iso, party_size: body.party_size },
+        pacingRows,
+        pacingConfig,
+      );
+      const tableAvailable = free.length > 0;
+      const available = tableAvailable && pacing.ok;
       return {
         time: slot.time,
         start_iso: slot.start_iso,
         end_iso: slot.end_iso,
-        available: free.length > 0,
+        available,
         available_table_count: free.length,
+        peak_warning: pacing.peak_warning,
+        reason: !tableAvailable ? "no_table" : (!pacing.ok ? pacing.reason : undefined),
       };
     });
+
 
     return json({
       slots,
