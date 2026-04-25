@@ -259,6 +259,72 @@ const ClickWiseIntegrationPage = () => {
         </CardContent>
       </Card>
 
+      {/* Live readiness & live mode */}
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base flex items-center gap-2">
+            <ShieldAlert className="h-4 w-4" /> Live readiness
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <p className="text-xs text-muted-foreground">
+            Live mode verstuurt echte events naar ClickWise. Activeer dit alleen nadat mapping,
+            privacyinstellingen en workflows getest zijn.
+          </p>
+          <div className="grid gap-2 sm:grid-cols-2">
+            <ReadinessRow ok={!!readiness?.secrets_present} label="Server-side API-secrets aanwezig" />
+            <ReadinessRow ok={!!readiness?.location_configured} label="Location ID geconfigureerd" />
+            <ReadinessRow ok={!!settings.contact_sync_enabled} label="Contact sync ingeschakeld" />
+            <ReadinessRow ok={!!readiness?.can_go_live} label="Klaar voor live mode" />
+          </div>
+          {readiness && readiness.issues.length > 0 && (
+            <ul className="rounded-lg border bg-muted/30 p-3 text-xs space-y-1">
+              {readiness.issues.map((i) => (
+                <li key={i} className="text-muted-foreground">• {i}</li>
+              ))}
+            </ul>
+          )}
+          <div className="flex flex-wrap gap-2">
+            {mode === "live" ? (
+              <Button variant="outline" onClick={handleDisableLive}>
+                Live mode uitschakelen
+              </Button>
+            ) : (
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button disabled={!readiness?.can_go_live}>
+                    Live mode activeren
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Live mode activeren?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Live mode kan echte ClickWise-workflows starten en berichten naar gasten
+                      laten verzenden. Weet je zeker dat je dit wilt activeren?
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Annuleren</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleEnableLive}>Live mode activeren</AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            )}
+            <Button variant="outline" onClick={handleProcessPending} disabled={processing}>
+              <RefreshCw className={`h-4 w-4 mr-1 ${processing ? "animate-spin" : ""}`} />
+              Verwerk pending events
+            </Button>
+          </div>
+          {!readiness?.secrets_present && (
+            <p className="text-xs text-muted-foreground">
+              ClickWise live koppeling kan pas worden geactiveerd nadat API-secrets veilig
+              server-side zijn ingesteld.
+            </p>
+          )}
+        </CardContent>
+      </Card>
+
       <Tabs defaultValue="contact">
         <TabsList className="flex flex-wrap h-auto">
           <TabsTrigger value="contact"><Database className="h-4 w-4 mr-1" /> Contact sync</TabsTrigger>
