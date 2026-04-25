@@ -86,6 +86,21 @@ const IntegrationsPage = () => (
     </Section>
 
     <Section title="POS-systemen" intro="Het systeem blijft waardevol zonder POS-koppeling, maar is voorbereid op omzetinzichten per reservering, tafel en gast.">
+      <Card className="border-primary/40 bg-primary/[0.03] md:col-span-2 lg:col-span-3">
+        <CardHeader className="space-y-1">
+          <div className="flex items-start justify-between gap-2">
+            <CardTitle className="text-base">POS-integratielaag</CardTitle>
+            <Badge variant="secondary" className="text-xs"><Sparkles className="mr-1 h-3 w-3" /> Loyverse aanbevolen</Badge>
+          </div>
+          <CardDescription>
+            Beheer providers, mapping, demo-bonnen, matching, sync-logs en POS-ready rapportages op één plek.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="flex items-center justify-between">
+          <Badge variant="outline" className="text-xs">Demo-ready · POS-provider-agnostic</Badge>
+          <Button size="sm" asChild><a href="/app/integraties/pos">Openen</a></Button>
+        </CardContent>
+      </Card>
       <IntegrationCard
         title="Loyverse POS"
         description="Gratis POS-basis voor kleine horeca. Ideaal om te starten en later omzetdata aan reserveringen te koppelen. Geavanceerde Loyverse-functies kunnen betaalde add-ons vereisen."
