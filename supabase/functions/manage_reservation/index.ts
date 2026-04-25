@@ -165,6 +165,19 @@ async function doStatusChange(
     .from("reservations").update(patch).eq("id", current.id).select("*").single();
   if (error) return json({ error: error.message }, 500);
 
+  // Bump guest.no_show_count once per reservation (only if not already marked).
+  if (newStatus === "no_show" && !current.no_show_marked_at && current.guest_id) {
+    try {
+      const { data: g } = await admin
+        .from("guests").select("no_show_count").eq("id", current.guest_id).maybeSingle();
+      if (g) {
+        await admin.from("guests")
+          .update({ no_show_count: (g.no_show_count ?? 0) + 1 })
+          .eq("id", current.guest_id);
+      }
+    } catch (e) { console.error("guest no_show_count bump failed", e); }
+  }
+
   await logAudit(admin, current.restaurant_id, userId, `reservation.${newStatus}`, current.id, current, updated);
   await emitEvent(admin, current.restaurant_id, `reservation.${newStatus}`, {
     reservation_id: current.id,
