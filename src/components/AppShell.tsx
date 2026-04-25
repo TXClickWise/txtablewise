@@ -6,6 +6,7 @@ import { RestaurantProvider, useRestaurant } from "@/hooks/useRestaurant";
 import { useMyRestaurants } from "@/hooks/useCurrentRestaurant";
 import { Navigate, useLocation } from "react-router-dom";
 import { OnboardingBanner } from "./onboarding/OnboardingBanner";
+import { ConnectionStatusNotice } from "./touch";
 
 const AppShellInner = ({ children }: { children?: ReactNode }) => {
   const { current, loading } = useRestaurant();
@@ -29,6 +30,7 @@ const AppShellInner = ({ children }: { children?: ReactNode }) => {
             <SidebarTrigger />
             <div className="flex-1" />
           </header>
+          <ConnectionStatusNotice />
           {!isWizard && <OnboardingBanner />}
           <main className="flex-1 overflow-auto">
             {children ?? <Outlet />}
