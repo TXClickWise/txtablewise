@@ -99,12 +99,12 @@ const Index = () => {
             </Badge>
 
             <h1 className="font-display text-5xl font-semibold leading-[1.05] text-primary-foreground md:text-6xl lg:text-7xl">
-              Het reserveringssysteem dat aanvoelt als <em className="not-italic text-accent">extra personeel</em>.
+              Het reserveringssysteem dat <em className="not-italic text-accent">lege tafels voorkomt</em>, gasten terugbrengt en de bediening rust geeft.
             </h1>
 
             <p className="mt-6 max-w-2xl text-lg leading-relaxed text-primary-foreground/85 md:text-xl">
-              Premium tafelbeheer voor Nederlandse horeca. Minder no-shows, snellere walk-ins,
-              betere gastbeleving — en een AI-host die je telefoon ontlast zonder ooit dubbel te boeken.
+              TableWise brengt reserveringen, tafelbeheer, walk-ins, wachtlijst, no-show preventie, gastdata,
+              ClickWise-communicatie en toekomstige POS-inzichten samen in één premium tablet-first systeem voor moderne horeca.
             </p>
 
             <div className="mt-10 flex flex-col gap-3 sm:flex-row">
