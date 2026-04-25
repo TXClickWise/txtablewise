@@ -19,6 +19,7 @@ import { ChannelBadge } from "@/components/ChannelBadge";
 import { toast } from "sonner";
 import { reservations as resService, type ReservationStatus } from "@/services/reservations";
 import { CheckCircle2, UserCheck, XCircle, AlertOctagon, ShieldCheck, ShieldX } from "lucide-react";
+import { ReservationNoShowSection } from "@/components/no-show/ReservationNoShowSection";
 
 type Props = {
   reservationId: string | null;
