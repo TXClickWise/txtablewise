@@ -54,25 +54,25 @@ const RESERVATION_SELECT =
 
 async function createAuditLog(restaurantId: string, action: string, entityId: string, after: Record<string, unknown> = {}) {
   const { data: { user } } = await supabase.auth.getUser();
-  await supabase.from("audit_log").insert({
+  await supabase.from("audit_log").insert([{
     restaurant_id: restaurantId,
     entity: "review_request",
     entity_id: entityId,
     action,
     actor_user_id: user?.id ?? null,
     actor_label: user?.email ?? "system",
-    after_data: after,
-  });
+    after_data: after as never,
+  }]);
 }
 
 async function createIntegrationEvent(restaurantId: string, eventType: string, payload: Record<string, unknown>) {
-  await supabase.from("integration_events").insert({
+  await supabase.from("integration_events").insert([{
     restaurant_id: restaurantId,
     event_type: eventType,
-    payload,
+    payload: payload as never,
     status: "pending",
     target: "clickwise",
-  });
+  }]);
 }
 
 // ---------- Trigger after completed reservation ----------
