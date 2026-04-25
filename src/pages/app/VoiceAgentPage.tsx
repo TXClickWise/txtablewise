@@ -10,7 +10,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { Copy, Trash2, Plus, Phone, Bot } from "lucide-react";
+import { Copy, Trash2, Plus, Phone, Bot, BookOpen } from "lucide-react";
+import { Link } from "react-router-dom";
 import { format } from "date-fns";
 import { nl } from "date-fns/locale";
 
@@ -48,7 +49,7 @@ type CallLog = {
 const PROVIDERS = [
   { value: "vapi", label: "Vapi (aanbevolen)" },
   { value: "retell", label: "Retell AI" },
-  { value: "highlevel", label: "HighLevel Voice AI (ClickWise)" },
+  { value: "highlevel", label: "ClickWise Voice Agent" },
   { value: "elevenlabs", label: "ElevenLabs Agents" },
   { value: "other", label: "Anders" },
 ];
@@ -181,14 +182,21 @@ Je neemt telefonisch reserveringen aan in vriendelijke, natuurlijke Nederlandse 
 
   return (
     <div className="p-6 space-y-6 max-w-5xl">
-      <div className="flex items-center gap-3">
-        <Bot className="h-7 w-7 text-primary" />
-        <div>
-          <h1 className="font-display text-2xl">AI Voice Agent</h1>
-          <p className="text-sm text-muted-foreground">
-            Koppel een externe AI voice-agent (Vapi, Retell, HighLevel) aan TableWise voor telefonische reserveringen.
-          </p>
+      <div className="flex items-start justify-between gap-3 flex-wrap">
+        <div className="flex items-center gap-3">
+          <Bot className="h-7 w-7 text-primary" />
+          <div>
+            <h1 className="font-display text-2xl">AI Voice Agent</h1>
+            <p className="text-sm text-muted-foreground">
+              Koppel een externe AI voice-agent (ClickWise, Vapi, Retell) aan TableWise voor telefonische reserveringen.
+            </p>
+          </div>
         </div>
+        <Button asChild variant="outline" size="sm">
+          <Link to="/app/help/voice-agent">
+            <BookOpen className="h-4 w-4 mr-1" /> Help & koppeling
+          </Link>
+        </Button>
       </div>
 
       <Tabs defaultValue="setup">

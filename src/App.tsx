@@ -35,6 +35,7 @@ import PreOrderDrinksPage from "./pages/app/PreOrderDrinksPage.tsx";
 import ReviewsAftercarePage from "./pages/app/ReviewsAftercarePage.tsx";
 import AIHostPage from "./pages/app/AIHostPage.tsx";
 import VoiceAgentPage from "./pages/app/VoiceAgentPage.tsx";
+import VoiceAgentHelp from "./pages/app/help/VoiceAgentHelp.tsx";
 import IntegrationsPage from "./pages/app/IntegrationsPage.tsx";
 import ClickWiseIntegrationPage from "./pages/app/ClickWiseIntegrationPage.tsx";
 import POSIntegrationPage from "./pages/app/POSIntegrationPage.tsx";
@@ -76,6 +77,7 @@ const App = () => (
               <Route path="reviews" element={<ReviewsAftercarePage />} />
               <Route path="ai-host" element={<AIHostPage />} />
               <Route path="voice-agent" element={<VoiceAgentPage />} />
+              <Route path="help/voice-agent" element={<VoiceAgentHelp />} />
               <Route path="rapportages" element={<ReportsPage />} />
               <Route path="pilot-readiness" element={<PilotReadinessPage />} />
               <Route path="integraties" element={<IntegrationsPage />} />
