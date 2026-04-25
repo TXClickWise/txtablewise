@@ -620,16 +620,32 @@ export type Database = {
           closed_at: string | null
           created_at: string
           currency: string
+          discount_total_cents: number
           external_order_id: string | null
+          external_table_id: string | null
           guest_count: number | null
+          guest_id: string | null
           id: string
+          imported_at: string | null
+          match_score: string | null
+          matched_at: string | null
+          matched_by_user_id: string | null
+          matching_status: string
+          metadata: Json
           opened_at: string | null
+          payment_status: string
           pos_connection_id: string | null
+          provider: string
           raw_payload: Json
+          receipt_created_at: string | null
           reservation_id: string | null
           restaurant_id: string
+          source_type: string
           subtotal_cents: number
+          sync_error: string | null
+          sync_status: string | null
           table_id: string | null
+          tax_total_cents: number
           tip_cents: number
           total_cents: number
           updated_at: string
@@ -638,16 +654,32 @@ export type Database = {
           closed_at?: string | null
           created_at?: string
           currency?: string
+          discount_total_cents?: number
           external_order_id?: string | null
+          external_table_id?: string | null
           guest_count?: number | null
+          guest_id?: string | null
           id?: string
+          imported_at?: string | null
+          match_score?: string | null
+          matched_at?: string | null
+          matched_by_user_id?: string | null
+          matching_status?: string
+          metadata?: Json
           opened_at?: string | null
+          payment_status?: string
           pos_connection_id?: string | null
+          provider?: string
           raw_payload?: Json
+          receipt_created_at?: string | null
           reservation_id?: string | null
           restaurant_id: string
+          source_type?: string
           subtotal_cents?: number
+          sync_error?: string | null
+          sync_status?: string | null
           table_id?: string | null
+          tax_total_cents?: number
           tip_cents?: number
           total_cents?: number
           updated_at?: string
@@ -656,16 +688,32 @@ export type Database = {
           closed_at?: string | null
           created_at?: string
           currency?: string
+          discount_total_cents?: number
           external_order_id?: string | null
+          external_table_id?: string | null
           guest_count?: number | null
+          guest_id?: string | null
           id?: string
+          imported_at?: string | null
+          match_score?: string | null
+          matched_at?: string | null
+          matched_by_user_id?: string | null
+          matching_status?: string
+          metadata?: Json
           opened_at?: string | null
+          payment_status?: string
           pos_connection_id?: string | null
+          provider?: string
           raw_payload?: Json
+          receipt_created_at?: string | null
           reservation_id?: string | null
           restaurant_id?: string
+          source_type?: string
           subtotal_cents?: number
+          sync_error?: string | null
+          sync_status?: string | null
           table_id?: string | null
+          tax_total_cents?: number
           tip_cents?: number
           total_cents?: number
           updated_at?: string
@@ -678,10 +726,12 @@ export type Database = {
           created_at: string
           deleted_at: string | null
           description: string | null
+          external_product_id: string | null
           id: string
           is_active: boolean
           metadata: Json
           name: string
+          pos_provider: string | null
           price_cents: number | null
           requires_payment: boolean
           restaurant_id: string
@@ -693,10 +743,12 @@ export type Database = {
           created_at?: string
           deleted_at?: string | null
           description?: string | null
+          external_product_id?: string | null
           id?: string
           is_active?: boolean
           metadata?: Json
           name: string
+          pos_provider?: string | null
           price_cents?: number | null
           requires_payment?: boolean
           restaurant_id: string
@@ -708,10 +760,12 @@ export type Database = {
           created_at?: string
           deleted_at?: string | null
           description?: string | null
+          external_product_id?: string | null
           id?: string
           is_active?: boolean
           metadata?: Json
           name?: string
+          pos_provider?: string | null
           price_cents?: number | null
           requires_payment?: boolean
           restaurant_id?: string
@@ -1868,7 +1922,25 @@ export type Database = {
         | "skipped"
       large_group_status: "new" | "in_progress" | "confirmed" | "declined"
       pos_connection_status: "pending" | "connected" | "error" | "disconnected"
-      pos_provider: "loyverse" | "lightspeed" | "square" | "untill" | "other"
+      pos_provider:
+        | "loyverse"
+        | "lightspeed"
+        | "square"
+        | "untill"
+        | "other"
+        | "loyverse_demo"
+        | "manual_demo"
+        | "manual"
+        | "csv_import"
+        | "webhook"
+        | "vectron"
+        | "booq"
+        | "twelve"
+        | "mpluskassa"
+        | "eijsink"
+        | "winston"
+        | "tebi"
+        | "custom_api"
       reservation_channel:
         | "online"
         | "phone"
@@ -2059,7 +2131,26 @@ export const Constants = {
       ],
       large_group_status: ["new", "in_progress", "confirmed", "declined"],
       pos_connection_status: ["pending", "connected", "error", "disconnected"],
-      pos_provider: ["loyverse", "lightspeed", "square", "untill", "other"],
+      pos_provider: [
+        "loyverse",
+        "lightspeed",
+        "square",
+        "untill",
+        "other",
+        "loyverse_demo",
+        "manual_demo",
+        "manual",
+        "csv_import",
+        "webhook",
+        "vectron",
+        "booq",
+        "twelve",
+        "mpluskassa",
+        "eijsink",
+        "winston",
+        "tebi",
+        "custom_api",
+      ],
       reservation_channel: [
         "online",
         "phone",
