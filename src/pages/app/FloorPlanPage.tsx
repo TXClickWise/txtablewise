@@ -398,7 +398,26 @@ const FloorPlanPage = () => {
         </SheetContent>
       </Sheet>
 
-      <WalkInDialog open={walkInOpen} onOpenChange={setWalkInOpen} />
+      <WalkInDialog
+        open={walkInOpen}
+        onOpenChange={(o) => { setWalkInOpen(o); if (!o) setPrefilledTable(undefined); }}
+        prefilledTable={prefilledTable}
+      />
+
+      <AIQuickSeatSheet
+        open={quickSeatOpen}
+        onOpenChange={setQuickSeatOpen}
+        zones={zones}
+        tables={tables}
+        reservations={reservations}
+        defaultDurationMinutes={current?.restaurants?.default_reservation_minutes ?? 105}
+        largeGroupThreshold={current?.restaurants?.large_group_threshold ?? 9}
+        largeGroupMinutes={current?.restaurants?.large_group_minutes ?? 150}
+        onPick={(table) => {
+          setPrefilledTable({ id: table.id, label: table.label });
+          setWalkInOpen(true);
+        }}
+      />
     </div>
   );
 };
