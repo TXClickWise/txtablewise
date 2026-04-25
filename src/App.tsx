@@ -50,6 +50,7 @@ const App = () => (
                 <Route path="shifts" element={<ShiftsSettings />} />
                 <Route path="zones" element={<ZonesTablesSettings />} />
                 <Route path="sluitingen" element={<ClosuresSettings />} />
+                <Route path="integraties" element={<IntegrationsSettings />} />
               </Route>
             </Route>
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
