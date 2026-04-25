@@ -2,95 +2,149 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
-All colors MUST be HSL.
+/*
+  TableWise design system — premium hospitality.
+  Warm off-white canvas, deep ink text, terracotta-burgundy accent,
+  subtle brass for premium gevoel. Alle kleuren in HSL.
 */
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    /* Surfaces */
+    --background: 38 30% 97%;            /* warm off-white */
+    --foreground: 20 14% 14%;            /* deep ink */
 
     --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card-foreground: 20 14% 14%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
+    --popover-foreground: 20 14% 14%;
 
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
+    /* Brand — terracotta/burgundy */
+    --primary: 8 55% 38%;                /* burgundy-terracotta */
+    --primary-foreground: 38 40% 98%;
+    --primary-glow: 14 70% 52%;          /* warmer terracotta */
 
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
+    /* Brass accent (premium) */
+    --accent: 36 45% 52%;                /* antique brass */
+    --accent-foreground: 20 20% 12%;
 
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    /* Neutrals */
+    --secondary: 32 18% 92%;             /* soft sand */
+    --secondary-foreground: 20 14% 18%;
 
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    --muted: 32 18% 94%;
+    --muted-foreground: 20 8% 42%;
 
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive: 0 70% 45%;
+    --destructive-foreground: 38 40% 98%;
 
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
+    --success: 152 45% 32%;
+    --success-foreground: 38 40% 98%;
 
-    --radius: 0.5rem;
+    --warning: 32 85% 48%;
+    --warning-foreground: 20 20% 12%;
 
-    --sidebar-background: 0 0% 98%;
+    --info: 210 55% 42%;
+    --info-foreground: 38 40% 98%;
 
-    --sidebar-foreground: 240 5.3% 26.1%;
+    --border: 30 15% 88%;
+    --input: 30 15% 88%;
+    --ring: 8 55% 38%;
 
-    --sidebar-primary: 240 5.9% 10%;
+    --radius: 0.875rem;                  /* iets ruimer, premium */
 
-    --sidebar-primary-foreground: 0 0% 98%;
+    /* Status tokens (reserveringen) */
+    --status-pending: 36 80% 45%;
+    --status-confirmed: 152 45% 32%;
+    --status-seated: 210 55% 42%;
+    --status-completed: 20 8% 42%;
+    --status-cancelled: 20 12% 55%;
+    --status-noshow: 0 70% 45%;
 
-    --sidebar-accent: 240 4.8% 95.9%;
+    /* Channel tokens */
+    --channel-online: 210 55% 42%;
+    --channel-walkin: 8 55% 38%;
+    --channel-phone: 270 35% 45%;
+    --channel-ai: 36 45% 42%;
 
-    --sidebar-accent-foreground: 240 5.9% 10%;
+    /* Premium gradients & shadows */
+    --gradient-hero: linear-gradient(135deg, hsl(8 55% 38%) 0%, hsl(14 70% 52%) 60%, hsl(36 60% 55%) 100%);
+    --gradient-warm: linear-gradient(180deg, hsl(38 30% 97%) 0%, hsl(32 25% 93%) 100%);
+    --gradient-card: linear-gradient(180deg, hsl(0 0% 100%) 0%, hsl(38 25% 98%) 100%);
 
-    --sidebar-border: 220 13% 91%;
+    --shadow-soft: 0 1px 2px hsl(20 14% 14% / 0.04), 0 4px 14px -6px hsl(20 14% 14% / 0.08);
+    --shadow-elegant: 0 8px 30px -12px hsl(8 55% 38% / 0.25);
+    --shadow-lifted: 0 20px 50px -20px hsl(20 14% 14% / 0.18);
 
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --transition-smooth: cubic-bezier(0.22, 1, 0.36, 1);
+
+    /* Sidebar */
+    --sidebar-background: 32 22% 96%;
+    --sidebar-foreground: 20 14% 18%;
+    --sidebar-primary: 8 55% 38%;
+    --sidebar-primary-foreground: 38 40% 98%;
+    --sidebar-accent: 32 18% 90%;
+    --sidebar-accent-foreground: 20 14% 14%;
+    --sidebar-border: 30 15% 86%;
+    --sidebar-ring: 8 55% 38%;
   }
 
   .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
+    --background: 20 14% 9%;
+    --foreground: 38 30% 95%;
 
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
+    --card: 20 14% 12%;
+    --card-foreground: 38 30% 95%;
 
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
+    --popover: 20 14% 12%;
+    --popover-foreground: 38 30% 95%;
 
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
+    --primary: 14 70% 56%;
+    --primary-foreground: 20 14% 9%;
+    --primary-glow: 18 80% 62%;
 
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
+    --accent: 36 55% 58%;
+    --accent-foreground: 20 14% 9%;
 
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
+    --secondary: 20 10% 18%;
+    --secondary-foreground: 38 30% 95%;
 
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
+    --muted: 20 10% 16%;
+    --muted-foreground: 32 12% 65%;
 
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive: 0 65% 52%;
+    --destructive-foreground: 38 30% 95%;
 
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --success: 152 45% 48%;
+    --success-foreground: 20 14% 9%;
+
+    --warning: 36 85% 58%;
+    --warning-foreground: 20 14% 9%;
+
+    --info: 210 65% 58%;
+    --info-foreground: 20 14% 9%;
+
+    --border: 20 10% 20%;
+    --input: 20 10% 20%;
+    --ring: 14 70% 56%;
+
+    --gradient-hero: linear-gradient(135deg, hsl(8 55% 32%) 0%, hsl(14 65% 45%) 60%, hsl(36 50% 48%) 100%);
+    --gradient-warm: linear-gradient(180deg, hsl(20 14% 9%) 0%, hsl(20 14% 12%) 100%);
+    --gradient-card: linear-gradient(180deg, hsl(20 14% 12%) 0%, hsl(20 14% 10%) 100%);
+
+    --shadow-soft: 0 1px 2px hsl(0 0% 0% / 0.4), 0 4px 14px -6px hsl(0 0% 0% / 0.5);
+    --shadow-elegant: 0 8px 30px -12px hsl(14 70% 40% / 0.4);
+    --shadow-lifted: 0 20px 50px -20px hsl(0 0% 0% / 0.6);
+
+    --sidebar-background: 20 14% 11%;
+    --sidebar-foreground: 38 30% 92%;
+    --sidebar-primary: 14 70% 56%;
+    --sidebar-primary-foreground: 20 14% 9%;
+    --sidebar-accent: 20 10% 16%;
+    --sidebar-accent-foreground: 38 30% 92%;
+    --sidebar-border: 20 10% 18%;
+    --sidebar-ring: 14 70% 56%;
   }
 }
 
@@ -99,7 +153,37 @@ All colors MUST be HSL.
     @apply border-border;
   }
 
+  html {
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
   body {
     @apply bg-background text-foreground;
+    font-feature-settings: "ss01", "cv11";
   }
+
+  h1, h2, h3, h4, .font-display {
+    font-family: 'Fraunces', 'Times New Roman', serif;
+    font-optical-sizing: auto;
+    letter-spacing: -0.01em;
+  }
+
+  /* Touch targets — tablet-first hospitality */
+  @media (pointer: coarse) {
+    button, [role="button"], a.btn {
+      min-height: 48px;
+    }
+  }
+}
+
+@layer utilities {
+  .bg-gradient-hero { background: var(--gradient-hero); }
+  .bg-gradient-warm { background: var(--gradient-warm); }
+  .bg-gradient-card { background: var(--gradient-card); }
+  .shadow-soft { box-shadow: var(--shadow-soft); }
+  .shadow-elegant { box-shadow: var(--shadow-elegant); }
+  .shadow-lifted { box-shadow: var(--shadow-lifted); }
+  .transition-smooth { transition: all 0.4s var(--transition-smooth); }
 }
