@@ -215,22 +215,20 @@ export async function recordGuestFeedback(reviewId: string, input: RecordFeedbac
   const status: ReviewStatus = cls === "positive" ? "positive" : cls === "neutral" ? "neutral" : "negative";
   const followUp = input.followUpRequired || cls === "negative";
 
-  const update: Record<string, unknown> = {
-    satisfaction: input.rating,
-    feedback_text: input.feedbackText ?? null,
-    feedback_type: input.feedbackType ?? cls,
-    internal_note: input.internalNote ?? null,
-    responded_at: new Date().toISOString(),
-    status,
-    manager_follow_up_required: followUp,
-    follow_up_status: followUp ? "open" : null,
-    follow_up_owner_id: input.followUpOwnerId ?? null,
-    follow_up_due_at: input.followUpDueAt ?? null,
-  };
-
   const { data, error } = await supabase
     .from("review_requests")
-    .update(update)
+    .update({
+      satisfaction: input.rating,
+      feedback_text: input.feedbackText ?? null,
+      feedback_type: input.feedbackType ?? cls,
+      internal_note: input.internalNote ?? null,
+      responded_at: new Date().toISOString(),
+      status,
+      manager_follow_up_required: followUp,
+      follow_up_status: followUp ? "open" : null,
+      follow_up_owner_id: input.followUpOwnerId ?? null,
+      follow_up_due_at: input.followUpDueAt ?? null,
+    })
     .eq("id", reviewId)
     .select("id, restaurant_id, reservation_id")
     .single();
