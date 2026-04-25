@@ -5,11 +5,17 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/hooks/useAuth";
 import { RequireAuth } from "@/components/RequireAuth";
+import { AppShell } from "@/components/AppShell";
 import Index from "./pages/Index.tsx";
 import Auth from "./pages/Auth.tsx";
 import Onboarding from "./pages/Onboarding.tsx";
-import AppHome from "./pages/AppHome.tsx";
 import ReserveWidget from "./pages/ReserveWidget.tsx";
+import TodayPage from "./pages/app/TodayPage.tsx";
+import ReservationsPage from "./pages/app/ReservationsPage.tsx";
+import FloorPlanPage from "./pages/app/FloorPlanPage.tsx";
+import GuestsPage from "./pages/app/GuestsPage.tsx";
+import AgendaPage from "./pages/app/AgendaPage.tsx";
+import SettingsPage from "./pages/app/SettingsPage.tsx";
 import NotFound from "./pages/NotFound.tsx";
 
 const queryClient = new QueryClient();
@@ -26,7 +32,14 @@ const App = () => (
             <Route path="/auth" element={<Auth />} />
             <Route path="/r/:slug" element={<ReserveWidget />} />
             <Route path="/onboarding" element={<RequireAuth><Onboarding /></RequireAuth>} />
-            <Route path="/app" element={<RequireAuth><AppHome /></RequireAuth>} />
+            <Route path="/app" element={<RequireAuth><AppShell /></RequireAuth>}>
+              <Route index element={<TodayPage />} />
+              <Route path="reserveringen" element={<ReservationsPage />} />
+              <Route path="tafelplan" element={<FloorPlanPage />} />
+              <Route path="gasten" element={<GuestsPage />} />
+              <Route path="agenda" element={<AgendaPage />} />
+              <Route path="instellingen" element={<SettingsPage />} />
+            </Route>
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
