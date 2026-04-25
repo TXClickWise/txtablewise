@@ -138,6 +138,8 @@ const TodayPage = () => {
         <KpiCard label="No-shows" value={kpis.noShows} icon={<TrendingUp className="h-5 w-5" />} />
       </div>
 
+      {restaurantId && <LastMinuteFillPanel restaurantId={restaurantId} />}
+
       <Card>
         <CardHeader>
           <CardTitle className="font-display text-xl">Reserveringen vandaag</CardTitle>
