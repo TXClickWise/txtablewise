@@ -70,12 +70,12 @@ export const formatPrice = (cents: number | null | undefined) => {
 
 async function logEvent(restaurantId: string, eventType: string, payload: Record<string, unknown>) {
   try {
-    await supabase.from("integration_events").insert({
+    await supabase.from("integration_events").insert([{
       restaurant_id: restaurantId,
       event_type: eventType,
-      payload,
-      status: "pending",
-    });
+      payload: payload as never,
+      status: "pending" as const,
+    }]);
   } catch { /* non-fatal */ }
 }
 
@@ -87,14 +87,14 @@ async function logAudit(
   data?: { before?: unknown; after?: unknown },
 ) {
   try {
-    await supabase.from("audit_log").insert({
+    await supabase.from("audit_log").insert([{
       restaurant_id: restaurantId,
       action,
       entity,
       entity_id: entityId,
       before_data: (data?.before ?? null) as never,
       after_data: (data?.after ?? null) as never,
-    });
+    }]);
   } catch { /* non-fatal */ }
 }
 
