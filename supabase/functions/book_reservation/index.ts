@@ -59,7 +59,11 @@ Deno.serve(async (req) => {
     }
 
     const tz: string = restaurant.timezone;
-    const durationMinutes: number = restaurant.default_reservation_minutes || 105;
+    const defaultMinutes: number = restaurant.default_reservation_minutes || 105;
+    const largeGroupMinutes: number = restaurant.large_group_minutes || 150;
+    const largeGroupThreshold: number = restaurant.large_group_threshold || 9;
+    const durationMinutes: number =
+      body.party_size >= largeGroupThreshold ? largeGroupMinutes : defaultMinutes;
     const start_iso = zonedDateTimeToUtcIso(body.date, body.time, tz);
     const end_iso = addMinutesIso(start_iso, durationMinutes);
 
