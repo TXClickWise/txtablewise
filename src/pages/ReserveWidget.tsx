@@ -413,7 +413,7 @@ const ReserveWidget = () => {
 
 const LargeGroupForm = ({ restaurant, onBack }: { restaurant: RestaurantInfo; onBack: () => void }) => {
   const [name, setName] = useState("");
-  const [emailV, setEmailV) = useState("");
+  const [emailV, setEmailV] = useState("");
   const [phone, setPhone] = useState("");
   const [partySize, setPartySize] = useState(restaurant.large_group_threshold);
   const [date, setDate] = useState<Date | undefined>();
