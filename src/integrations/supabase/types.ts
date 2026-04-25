@@ -105,6 +105,71 @@ export type Database = {
           },
         ]
       }
+      clickwise_settings: {
+        Row: {
+          api_base_url: string | null
+          connection_mode: string
+          contact_sync_enabled: boolean
+          contact_sync_rules: Json
+          created_at: string
+          custom_field_mapping: Json
+          id: string
+          last_error: string | null
+          last_test_at: string | null
+          location_id: string | null
+          privacy_options: Json
+          restaurant_id: string
+          sandbox_mode: boolean
+          tag_mapping: Json
+          updated_at: string
+          workflow_mapping: Json
+        }
+        Insert: {
+          api_base_url?: string | null
+          connection_mode?: string
+          contact_sync_enabled?: boolean
+          contact_sync_rules?: Json
+          created_at?: string
+          custom_field_mapping?: Json
+          id?: string
+          last_error?: string | null
+          last_test_at?: string | null
+          location_id?: string | null
+          privacy_options?: Json
+          restaurant_id: string
+          sandbox_mode?: boolean
+          tag_mapping?: Json
+          updated_at?: string
+          workflow_mapping?: Json
+        }
+        Update: {
+          api_base_url?: string | null
+          connection_mode?: string
+          contact_sync_enabled?: boolean
+          contact_sync_rules?: Json
+          created_at?: string
+          custom_field_mapping?: Json
+          id?: string
+          last_error?: string | null
+          last_test_at?: string | null
+          location_id?: string | null
+          privacy_options?: Json
+          restaurant_id?: string
+          sandbox_mode?: boolean
+          tag_mapping?: Json
+          updated_at?: string
+          workflow_mapping?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "clickwise_settings_restaurant_id_fkey"
+            columns: ["restaurant_id"]
+            isOneToOne: true
+            referencedRelation: "restaurants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       closures: {
         Row: {
           created_at: string
@@ -334,36 +399,57 @@ export type Database = {
       integration_events: {
         Row: {
           attempts: number
+          clickwise_workflow_id: string | null
           created_at: string
+          entity_id: string | null
+          entity_type: string | null
           event_type: string
           id: string
           last_error: string | null
+          metadata: Json
+          next_retry_at: string | null
           payload: Json
+          processed_at: string | null
           restaurant_id: string
+          retry_count: number
           status: Database["public"]["Enums"]["integration_event_status"]
           target: string | null
           updated_at: string
         }
         Insert: {
           attempts?: number
+          clickwise_workflow_id?: string | null
           created_at?: string
+          entity_id?: string | null
+          entity_type?: string | null
           event_type: string
           id?: string
           last_error?: string | null
+          metadata?: Json
+          next_retry_at?: string | null
           payload?: Json
+          processed_at?: string | null
           restaurant_id: string
+          retry_count?: number
           status?: Database["public"]["Enums"]["integration_event_status"]
           target?: string | null
           updated_at?: string
         }
         Update: {
           attempts?: number
+          clickwise_workflow_id?: string | null
           created_at?: string
+          entity_id?: string | null
+          entity_type?: string | null
           event_type?: string
           id?: string
           last_error?: string | null
+          metadata?: Json
+          next_retry_at?: string | null
           payload?: Json
+          processed_at?: string | null
           restaurant_id?: string
+          retry_count?: number
           status?: Database["public"]["Enums"]["integration_event_status"]
           target?: string | null
           updated_at?: string
@@ -1774,7 +1860,12 @@ export type Database = {
         | "released"
         | "forfeited"
         | "refunded"
-      integration_event_status: "pending" | "sent" | "failed"
+      integration_event_status:
+        | "pending"
+        | "sent"
+        | "failed"
+        | "processing"
+        | "skipped"
       large_group_status: "new" | "in_progress" | "confirmed" | "declined"
       pos_connection_status: "pending" | "connected" | "error" | "disconnected"
       pos_provider: "loyverse" | "lightspeed" | "square" | "untill" | "other"
@@ -1959,7 +2050,13 @@ export const Constants = {
         "forfeited",
         "refunded",
       ],
-      integration_event_status: ["pending", "sent", "failed"],
+      integration_event_status: [
+        "pending",
+        "sent",
+        "failed",
+        "processing",
+        "skipped",
+      ],
       large_group_status: ["new", "in_progress", "confirmed", "declined"],
       pos_connection_status: ["pending", "connected", "error", "disconnected"],
       pos_provider: ["loyverse", "lightspeed", "square", "untill", "other"],
