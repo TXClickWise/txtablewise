@@ -194,6 +194,13 @@ export function ReservationDetailDialog({ reservationId, open, onOpenChange }: P
                 )}
               </div>
 
+              <ReservationNoShowSection
+                reservation={data}
+                largeGroupThreshold={restaurantCfg?.large_group_threshold}
+                depositDefaultAmountCents={restaurantCfg?.deposit_default_amount_cents}
+                onChanged={refresh}
+              />
+
               {(data.requires_manual_approval || data.large_group_status === "awaiting_approval") &&
                 !["cancelled", "no_show", "completed"].includes(data.status) && (
                 <div className="rounded-lg border border-warning/30 bg-warning/10 p-3 space-y-2">
