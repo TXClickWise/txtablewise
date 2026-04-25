@@ -172,6 +172,43 @@ const ClickWiseIntegrationPage = () => {
     toast.success("Retry voorbereid."); refresh();
   };
 
+  // ---------- Live processor actions ----------
+  const handleProcessNow = async (id: string) => {
+    setProcessing(true);
+    try {
+      const r = await processIntegrationEvent(id);
+      toast.success(r.live_mode ? "Event verwerkt via ClickWise." : "Event verwerkt in testmodus.");
+      refresh();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Kon event niet verwerken.");
+    } finally { setProcessing(false); }
+  };
+  const handleProcessPending = async () => {
+    if (!restaurantId) return;
+    setProcessing(true);
+    try {
+      const r = await processPendingClickWiseEvents(restaurantId, 10);
+      toast.success(`${r.processed} events verwerkt (${r.live_mode ? "live" : "testmodus"}).`);
+      refresh();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Kon batch niet verwerken.");
+    } finally { setProcessing(false); }
+  };
+  const handleEnableLive = async () => {
+    if (!restaurantId) return;
+    const r = await enableClickWiseLiveMode(restaurantId);
+    if (!r.ok) return toast.error(r.error);
+    toast.success("Live mode geactiveerd.");
+    refresh();
+  };
+  const handleDisableLive = async () => {
+    if (!restaurantId) return;
+    const r = await disableClickWiseLiveMode(restaurantId);
+    if (!r.ok) return toast.error(r.error || "Kon live mode niet uitschakelen.");
+    toast.success("Live mode uitgeschakeld — terug in testmodus.");
+    refresh();
+  };
+
   return (
     <div className="p-4 md:p-6 space-y-6 max-w-7xl">
       <header className="space-y-1">
