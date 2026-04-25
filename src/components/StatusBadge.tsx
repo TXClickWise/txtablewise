@@ -27,9 +27,11 @@ const statusBadgeVariants = cva(
 );
 
 const STATUS_LABELS: Record<string, string> = {
+  hold: "Tijdelijk vast",
   pending: "In afwachting",
   confirmed: "Bevestigd",
   seated: "Aan tafel",
+  finished: "Afgerekend",
   completed: "Voltooid",
   cancelled: "Geannuleerd",
   no_show: "No-show",
@@ -41,9 +43,11 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 const STATUS_DOTS: Record<string, string> = {
+  hold: "bg-muted-foreground",
   pending: "bg-status-pending",
   confirmed: "bg-status-confirmed",
   seated: "bg-status-seated",
+  finished: "bg-status-completed",
   completed: "bg-status-completed",
   cancelled: "bg-status-cancelled",
   no_show: "bg-status-noshow",
