@@ -1,89 +1,78 @@
+// Walk-ins pagina — gebruikt de snelle quick-sheet en AI Quick Seat input.
 import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { useRestaurant } from "@/hooks/useRestaurant";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Bot, Users } from "lucide-react";
-
-const sizes = [1, 2, 3, 4, 5, 6];
-const zones = ["Binnen", "Terras", "Bar", "Serre"];
+import { UserPlus, Sparkles } from "lucide-react";
+import { WalkInQuickSheet, type WalkInQuickPrefill } from "@/components/walk-in/WalkInQuickSheet";
+import { AIQuickSeatInput } from "@/components/walk-in/AIQuickSeatInput";
 
 const WalkInsPage = () => {
-  const [size, setSize] = useState<number | null>(null);
-  const [zone, setZone] = useState<string | null>(null);
+  const { current } = useRestaurant();
+  const [open, setOpen] = useState(false);
+  const [prefill, setPrefill] = useState<WalkInQuickPrefill | undefined>();
+
+  const { data: zones = [] } = useQuery({
+    queryKey: ["zones", current?.restaurant_id],
+    enabled: !!current?.restaurant_id,
+    queryFn: async () => {
+      const { data } = await supabase.from("zones")
+        .select("id, name")
+        .eq("restaurant_id", current!.restaurant_id)
+        .eq("is_active", true)
+        .order("sort_order");
+      return (data ?? []) as { id: string; name: string }[];
+    },
+  });
+
+  const startQuick = (p?: WalkInQuickPrefill) => { setPrefill(p); setOpen(true); };
 
   return (
-    <div className="p-6 max-w-5xl mx-auto space-y-6">
-      <div>
+    <div className="p-6 max-w-4xl mx-auto space-y-6">
+      <header>
         <h1 className="font-display text-3xl">Walk-ins</h1>
-        <p className="text-muted-foreground">Spontane gast aan de deur? Drie tikken en geplaatst.</p>
-      </div>
+        <p className="text-muted-foreground">
+          Spontane gast aan de deur? Drie tikken en geplaatst.
+        </p>
+      </header>
 
       <Card>
         <CardHeader>
-          <CardTitle>Stap 1 — Aantal personen</CardTitle>
-          <CardDescription>Tik op het juiste aantal</CardDescription>
-        </CardHeader>
-        <CardContent className="grid grid-cols-3 sm:grid-cols-6 gap-3">
-          {sizes.map((n) => (
-            <Button
-              key={n}
-              variant={size === n ? "default" : "outline"}
-              className="h-16 text-2xl font-display"
-              onClick={() => setSize(n)}
-            >
-              {n === 6 ? "6+" : n}
-            </Button>
-          ))}
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Stap 2 — Zone</CardTitle>
-        </CardHeader>
-        <CardContent className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          {zones.map((z) => (
-            <Button
-              key={z}
-              variant={zone === z ? "default" : "outline"}
-              className="h-14"
-              onClick={() => setZone(z)}
-            >
-              {z}
-            </Button>
-          ))}
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Stap 3 — Plaatsen</CardTitle>
+          <CardTitle className="flex items-center gap-2 font-display">
+            <UserPlus className="h-5 w-5 text-primary" /> Walk-in snel plaatsen
+          </CardTitle>
           <CardDescription>
-            {size && zone ? `${size} ${size === 1 ? "persoon" : "personen"} op ${zone.toLowerCase()}` : "Kies eerst aantal en zone"}
+            Open de snelle plaatsing-sheet. Voor een snelle walk-in heb je geen gastgegevens nodig.
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <Button size="lg" className="h-14 w-full text-lg" disabled={!size || !zone}>
-            <Users className="mr-2 h-5 w-5" /> Plaats nu
+          <Button size="lg" className="h-14 w-full text-base" onClick={() => startQuick()}>
+            <UserPlus className="mr-2 h-5 w-5" /> Nieuwe walk-in
           </Button>
         </CardContent>
       </Card>
 
-      <Card className="border-primary/30">
+      <AIQuickSeatInput zones={zones} onConfirm={(p) => startQuick(p)} />
+
+      <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle className="flex items-center gap-2">
-              <Bot className="h-5 w-5 text-primary" /> AI Quick Seat
-            </CardTitle>
-            <Badge variant="secondary">Binnenkort</Badge>
-          </div>
-          <CardDescription>Beschrijf in één zin, AI stelt een tafel voor.</CardDescription>
+          <CardTitle className="flex items-center gap-2 font-display text-lg">
+            <Sparkles className="h-4 w-4 text-primary" /> Tip
+          </CardTitle>
         </CardHeader>
-        <CardContent>
-          <Input placeholder="Bijv. 2 personen op terras nu" disabled className="h-12" />
+        <CardContent className="text-sm text-muted-foreground">
+          Floor Mode en Tafelplan hebben dezelfde walk-in flow ingebouwd. Tik op een vrije
+          tafel om die direct voor te selecteren.
         </CardContent>
       </Card>
+
+      <WalkInQuickSheet
+        open={open}
+        onOpenChange={(o) => { setOpen(o); if (!o) setPrefill(undefined); }}
+        prefill={prefill}
+      />
     </div>
   );
 };
