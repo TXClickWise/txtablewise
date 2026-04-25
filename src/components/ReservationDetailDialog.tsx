@@ -23,6 +23,8 @@ import { ReservationNoShowSection } from "@/components/no-show/ReservationNoShow
 import { ReservationPreOrderSection } from "@/components/pre-orders/ReservationPreOrderSection";
 import { GuestPreviewInReservation } from "@/components/guests/GuestPreviewInReservation";
 import { announceLastMinuteOpportunity } from "@/services/waitlist";
+import { ReservationAftercareSection } from "@/components/reviews/ReservationAftercareSection";
+import { createReviewRequestForReservation } from "@/services/reviews";
 
 type Props = {
   reservationId: string | null;
@@ -121,6 +123,10 @@ export function ReservationDetailDialog({ reservationId, open, onOpenChange }: P
       no_show:   "Gemarkeerd als no-show.",
     };
     toast.success(messages[kind]);
+    // Auto-prepare aftercare review request after completed visit
+    if (kind === "completed") {
+      createReviewRequestForReservation(reservationId).catch(() => {});
+    }
     // Surface a waitlist opportunity for freed slots
     if ((kind === "cancel" || kind === "no_show") && data) {
       announceLastMinuteOpportunity({
@@ -230,6 +236,11 @@ export function ReservationDetailDialog({ reservationId, open, onOpenChange }: P
                 occasion={data.occasion}
                 largeGroupThreshold={restaurantCfg?.large_group_threshold}
                 isVip={!!data.guests?.is_vip}
+              />
+
+              <ReservationAftercareSection
+                reservationId={data.id}
+                reservationStatus={data.status}
               />
 
               {(data.requires_manual_approval || data.large_group_status === "awaiting_approval") &&

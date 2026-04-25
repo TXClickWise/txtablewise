@@ -1076,6 +1076,7 @@ export type Database = {
       restaurants: {
         Row: {
           address_line1: string | null
+          aftercare_enabled: boolean
           allow_guest_notes: boolean
           allow_zone_preference: boolean
           auto_confirm: boolean
@@ -1095,6 +1096,7 @@ export type Database = {
           deposit_guest_message: string | null
           deposit_voucher_credit_possible: boolean
           email: string | null
+          google_review_url: string | null
           hold_minutes: number
           id: string
           is_active: boolean
@@ -1154,6 +1156,7 @@ export type Database = {
         }
         Insert: {
           address_line1?: string | null
+          aftercare_enabled?: boolean
           allow_guest_notes?: boolean
           allow_zone_preference?: boolean
           auto_confirm?: boolean
@@ -1173,6 +1176,7 @@ export type Database = {
           deposit_guest_message?: string | null
           deposit_voucher_credit_possible?: boolean
           email?: string | null
+          google_review_url?: string | null
           hold_minutes?: number
           id?: string
           is_active?: boolean
@@ -1232,6 +1236,7 @@ export type Database = {
         }
         Update: {
           address_line1?: string | null
+          aftercare_enabled?: boolean
           allow_guest_notes?: boolean
           allow_zone_preference?: boolean
           auto_confirm?: boolean
@@ -1251,6 +1256,7 @@ export type Database = {
           deposit_guest_message?: string | null
           deposit_voucher_credit_possible?: boolean
           email?: string | null
+          google_review_url?: string | null
           hold_minutes?: number
           id?: string
           is_active?: boolean
@@ -1312,10 +1318,20 @@ export type Database = {
       }
       review_requests: {
         Row: {
+          clickwise_workflow_id: string | null
           created_at: string
           feedback_text: string | null
+          feedback_type: string | null
+          follow_up_due_at: string | null
+          follow_up_owner_id: string | null
+          follow_up_status: string | null
+          google_review_requested: boolean
           guest_id: string | null
           id: string
+          internal_note: string | null
+          manager_follow_up_required: boolean
+          metadata: Json
+          public_review_url: string | null
           reservation_id: string
           responded_at: string | null
           restaurant_id: string
@@ -1323,15 +1339,26 @@ export type Database = {
           satisfaction: number | null
           scheduled_for: string
           sent_at: string | null
+          source_channel: string | null
           status: Database["public"]["Enums"]["review_request_status"]
           token: string
           updated_at: string
         }
         Insert: {
+          clickwise_workflow_id?: string | null
           created_at?: string
           feedback_text?: string | null
+          feedback_type?: string | null
+          follow_up_due_at?: string | null
+          follow_up_owner_id?: string | null
+          follow_up_status?: string | null
+          google_review_requested?: boolean
           guest_id?: string | null
           id?: string
+          internal_note?: string | null
+          manager_follow_up_required?: boolean
+          metadata?: Json
+          public_review_url?: string | null
           reservation_id: string
           responded_at?: string | null
           restaurant_id: string
@@ -1339,15 +1366,26 @@ export type Database = {
           satisfaction?: number | null
           scheduled_for: string
           sent_at?: string | null
+          source_channel?: string | null
           status?: Database["public"]["Enums"]["review_request_status"]
           token?: string
           updated_at?: string
         }
         Update: {
+          clickwise_workflow_id?: string | null
           created_at?: string
           feedback_text?: string | null
+          feedback_type?: string | null
+          follow_up_due_at?: string | null
+          follow_up_owner_id?: string | null
+          follow_up_status?: string | null
+          google_review_requested?: boolean
           guest_id?: string | null
           id?: string
+          internal_note?: string | null
+          manager_follow_up_required?: boolean
+          metadata?: Json
+          public_review_url?: string | null
           reservation_id?: string
           responded_at?: string | null
           restaurant_id?: string
@@ -1355,6 +1393,7 @@ export type Database = {
           satisfaction?: number | null
           scheduled_for?: string
           sent_at?: string | null
+          source_channel?: string | null
           status?: Database["public"]["Enums"]["review_request_status"]
           token?: string
           updated_at?: string
@@ -1768,6 +1807,12 @@ export type Database = {
         | "responded"
         | "skipped"
         | "failed"
+        | "ready_to_send"
+        | "positive"
+        | "neutral"
+        | "negative"
+        | "follow_up_required"
+        | "google_review_invited"
       waitlist_status:
         | "waiting"
         | "matched"
@@ -1949,6 +1994,12 @@ export const Constants = {
         "responded",
         "skipped",
         "failed",
+        "ready_to_send",
+        "positive",
+        "neutral",
+        "negative",
+        "follow_up_required",
+        "google_review_invited",
       ],
       waitlist_status: [
         "waiting",
