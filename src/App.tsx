@@ -52,6 +52,8 @@ const App = () => (
             <Route path="/" element={<Index />} />
             <Route path="/auth" element={<Auth />} />
             <Route path="/r/:slug" element={<ReserveWidget />} />
+            <Route path="/reserveer/:slug" element={<ReserveWidget />} />
+            <Route path="/book/:slug" element={<ReserveWidget />} />
             <Route path="/r/manage/:token" element={<GuestManageReservation />} />
             <Route path="/onboarding" element={<RequireAuth><Onboarding /></RequireAuth>} />
             <Route path="/app" element={<RequireAuth><AppShell /></RequireAuth>}>
