@@ -11,16 +11,18 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import {
-  UserPlus, Check, LogOut, UserX, Move, RefreshCw, Clock, Users, Crown,
+  UserPlus, Check, LogOut, UserX, Move, RefreshCw, Clock, Users, Crown, Sparkles,
 } from "lucide-react";
 import { WalkInDialog } from "@/components/WalkInDialog";
 import { StatusBadge } from "@/components/StatusBadge";
+import { AIQuickSeatSheet } from "@/components/floor-plan/AIQuickSeatSheet";
 
 type Zone = { id: string; name: string };
 type Table = {
   id: string; label: string; zone_id: string | null;
   capacity_min: number; capacity_max: number;
   pos_x: number; pos_y: number; width: number; height: number; shape: string;
+  combinable: boolean;
 };
 type Res = {
   id: string; start_time: string; end_time: string; status: string; party_size: number;
@@ -38,6 +40,8 @@ const FloorPlanPage = () => {
   const [zoneId, setZoneId] = useState<string | null>(null);
   const [selectedTableId, setSelectedTableId] = useState<string | null>(null);
   const [walkInOpen, setWalkInOpen] = useState(false);
+  const [quickSeatOpen, setQuickSeatOpen] = useState(false);
+  const [prefilledTable, setPrefilledTable] = useState<{ id: string; label: string } | undefined>();
   const [now, setNow] = useState(() => new Date());
   const today = format(now, "yyyy-MM-dd");
 
@@ -194,7 +198,21 @@ const FloorPlanPage = () => {
           <Button variant="ghost" size="icon" onClick={() => refetch()} title="Vernieuwen">
             <RefreshCw className="h-4 w-4" />
           </Button>
-          <Button size="lg" className="h-12 px-5" onClick={() => setWalkInOpen(true)}>
+          <Button
+            variant="outline" size="lg" className="h-12 px-4 hidden sm:inline-flex"
+            onClick={() => setQuickSeatOpen(true)}
+            title="AI Quick Seat"
+          >
+            <Sparkles className="mr-2 h-5 w-5 text-primary" /> AI Quick Seat
+          </Button>
+          <Button
+            variant="outline" size="icon" className="h-12 w-12 sm:hidden"
+            onClick={() => setQuickSeatOpen(true)}
+            title="AI Quick Seat"
+          >
+            <Sparkles className="h-5 w-5 text-primary" />
+          </Button>
+          <Button size="lg" className="h-12 px-5" onClick={() => { setPrefilledTable(undefined); setWalkInOpen(true); }}>
             <UserPlus className="mr-2 h-5 w-5" /> Walk-in
           </Button>
         </div>
@@ -363,7 +381,11 @@ const FloorPlanPage = () => {
                 />
               ) : (
                 <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <Button size="lg" className="h-14" onClick={() => { setSelectedTableId(null); setWalkInOpen(true); }}>
+                  <Button size="lg" className="h-14" onClick={() => {
+                    setPrefilledTable({ id: selectedTable.id, label: selectedTable.label });
+                    setSelectedTableId(null);
+                    setWalkInOpen(true);
+                  }}>
                     <UserPlus className="mr-2 h-5 w-5" /> Walk-in op deze tafel
                   </Button>
                   <Button size="lg" variant="outline" className="h-14" onClick={() => setSelectedTableId(null)} disabled>
@@ -376,7 +398,26 @@ const FloorPlanPage = () => {
         </SheetContent>
       </Sheet>
 
-      <WalkInDialog open={walkInOpen} onOpenChange={setWalkInOpen} />
+      <WalkInDialog
+        open={walkInOpen}
+        onOpenChange={(o) => { setWalkInOpen(o); if (!o) setPrefilledTable(undefined); }}
+        prefilledTable={prefilledTable}
+      />
+
+      <AIQuickSeatSheet
+        open={quickSeatOpen}
+        onOpenChange={setQuickSeatOpen}
+        zones={zones}
+        tables={tables}
+        reservations={reservations}
+        defaultDurationMinutes={(current?.restaurants as any)?.default_reservation_minutes ?? 105}
+        largeGroupThreshold={(current?.restaurants as any)?.large_group_threshold ?? 9}
+        largeGroupMinutes={(current?.restaurants as any)?.large_group_minutes ?? 150}
+        onPick={(table) => {
+          setPrefilledTable({ id: table.id, label: table.label });
+          setWalkInOpen(true);
+        }}
+      />
     </div>
   );
 };
