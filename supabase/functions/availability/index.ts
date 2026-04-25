@@ -62,7 +62,18 @@ Deno.serve(async (req) => {
 
     const tz: string = restaurant.timezone || "Europe/Amsterdam";
     const slotMinutes: number = restaurant.slot_duration_minutes || 15;
-    const durationMinutes: number = restaurant.default_reservation_minutes || 105;
+    const defaultMinutes: number = restaurant.default_reservation_minutes || 105;
+    const largeGroupMinutes: number = restaurant.large_group_minutes || 150;
+    const largeGroupThreshold: number = restaurant.large_group_threshold || 9;
+    const durationMinutes: number =
+      body.party_size >= largeGroupThreshold ? largeGroupMinutes : defaultMinutes;
+
+    const pacingConfig = {
+      max_covers_per_slot: restaurant.max_covers_per_slot ?? null,
+      max_new_reservations_per_15min: restaurant.max_new_reservations_per_15min ?? null,
+      peak_warning_threshold_pct: restaurant.peak_warning_threshold_pct ?? 85,
+    };
+
 
     // Determine weekday in restaurant tz for the requested date (use noon to avoid DST edge)
     const noonUtc = new Date(zonedDateTimeToUtcIso(body.date, "12:00", tz));
