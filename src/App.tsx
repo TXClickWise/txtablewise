@@ -34,6 +34,7 @@ import ReviewsAftercarePage from "./pages/app/ReviewsAftercarePage.tsx";
 import AIHostPage from "./pages/app/AIHostPage.tsx";
 import IntegrationsPage from "./pages/app/IntegrationsPage.tsx";
 import ReportsPage from "./pages/app/ReportsPage.tsx";
+import OnboardingWizardPage from "./pages/app/OnboardingWizardPage.tsx";
 import NotFound from "./pages/NotFound.tsx";
 
 const queryClient = new QueryClient();
@@ -53,6 +54,7 @@ const App = () => (
             <Route path="/onboarding" element={<RequireAuth><Onboarding /></RequireAuth>} />
             <Route path="/app" element={<RequireAuth><AppShell /></RequireAuth>}>
               <Route index element={<TodayPage />} />
+              <Route path="onboarding" element={<OnboardingWizardPage />} />
               <Route path="reserveringen" element={<ReservationsPage />} />
               <Route path="tafelplan" element={<FloorPlanPage />} />
               <Route path="floor" element={<FloorModePage />} />

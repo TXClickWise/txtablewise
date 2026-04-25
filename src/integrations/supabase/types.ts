@@ -998,6 +998,9 @@ export type Database = {
       restaurants: {
         Row: {
           address_line1: string | null
+          allow_guest_notes: boolean
+          allow_zone_preference: boolean
+          auto_confirm: boolean
           booking_horizon_days: number
           booking_lead_time_minutes: number
           brand_accent: string | null
@@ -1012,29 +1015,62 @@ export type Database = {
           hold_minutes: number
           id: string
           is_active: boolean
+          large_group_auto_book_max: number
+          large_group_cancellation_terms: string | null
+          large_group_confirmation_text: string | null
+          large_group_default_status: string
+          large_group_deposit_recommended_from: number
+          large_group_extra_minutes: number
+          large_group_manual_approval_from: number
           large_group_minutes: number
           large_group_threshold: number
           legal_name: string | null
           locale: string
           logo_url: string | null
+          manual_approval_from_party_size: number | null
           max_covers_per_slot: number | null
           max_new_reservations_per_15min: number | null
           max_party_size_online: number
           metadata: Json
           name: string
+          noshow_cancel_message: string | null
+          noshow_confirmation_enabled: boolean
+          noshow_deposit_rules_prepared: boolean
+          noshow_exempt_regulars_prepared: boolean
+          noshow_guest_cancel_link_enabled: boolean
+          noshow_reconfirm_enabled: boolean
+          noshow_reminder_24h_enabled: boolean
+          noshow_reminder_2h_enabled: boolean
           peak_warning_threshold_pct: number
           phone: string | null
           plan_type: string | null
           postal_code: string | null
+          preorders_allow_free_text: boolean
+          preorders_enabled: boolean
+          preorders_payment_required: boolean
           slot_duration_minutes: number
           slug: string
           timezone: string
           updated_at: string
+          waitlist_allow_preferred_times: boolean
+          waitlist_auto_offer_on_full: boolean
+          waitlist_clickwise_message_prepared: boolean
+          waitlist_enabled: boolean
+          waitlist_response_window_minutes: number
+          walkin_ai_quick_seat: boolean
+          walkin_default_minutes: number
+          walkin_default_zone_id: string | null
+          walkin_quick_buttons: boolean
+          walkins_enabled: boolean
           webhook_secret: string | null
           webhook_url: string | null
+          website: string | null
         }
         Insert: {
           address_line1?: string | null
+          allow_guest_notes?: boolean
+          allow_zone_preference?: boolean
+          auto_confirm?: boolean
           booking_horizon_days?: number
           booking_lead_time_minutes?: number
           brand_accent?: string | null
@@ -1049,29 +1085,62 @@ export type Database = {
           hold_minutes?: number
           id?: string
           is_active?: boolean
+          large_group_auto_book_max?: number
+          large_group_cancellation_terms?: string | null
+          large_group_confirmation_text?: string | null
+          large_group_default_status?: string
+          large_group_deposit_recommended_from?: number
+          large_group_extra_minutes?: number
+          large_group_manual_approval_from?: number
           large_group_minutes?: number
           large_group_threshold?: number
           legal_name?: string | null
           locale?: string
           logo_url?: string | null
+          manual_approval_from_party_size?: number | null
           max_covers_per_slot?: number | null
           max_new_reservations_per_15min?: number | null
           max_party_size_online?: number
           metadata?: Json
           name: string
+          noshow_cancel_message?: string | null
+          noshow_confirmation_enabled?: boolean
+          noshow_deposit_rules_prepared?: boolean
+          noshow_exempt_regulars_prepared?: boolean
+          noshow_guest_cancel_link_enabled?: boolean
+          noshow_reconfirm_enabled?: boolean
+          noshow_reminder_24h_enabled?: boolean
+          noshow_reminder_2h_enabled?: boolean
           peak_warning_threshold_pct?: number
           phone?: string | null
           plan_type?: string | null
           postal_code?: string | null
+          preorders_allow_free_text?: boolean
+          preorders_enabled?: boolean
+          preorders_payment_required?: boolean
           slot_duration_minutes?: number
           slug: string
           timezone?: string
           updated_at?: string
+          waitlist_allow_preferred_times?: boolean
+          waitlist_auto_offer_on_full?: boolean
+          waitlist_clickwise_message_prepared?: boolean
+          waitlist_enabled?: boolean
+          waitlist_response_window_minutes?: number
+          walkin_ai_quick_seat?: boolean
+          walkin_default_minutes?: number
+          walkin_default_zone_id?: string | null
+          walkin_quick_buttons?: boolean
+          walkins_enabled?: boolean
           webhook_secret?: string | null
           webhook_url?: string | null
+          website?: string | null
         }
         Update: {
           address_line1?: string | null
+          allow_guest_notes?: boolean
+          allow_zone_preference?: boolean
+          auto_confirm?: boolean
           booking_horizon_days?: number
           booking_lead_time_minutes?: number
           brand_accent?: string | null
@@ -1086,26 +1155,56 @@ export type Database = {
           hold_minutes?: number
           id?: string
           is_active?: boolean
+          large_group_auto_book_max?: number
+          large_group_cancellation_terms?: string | null
+          large_group_confirmation_text?: string | null
+          large_group_default_status?: string
+          large_group_deposit_recommended_from?: number
+          large_group_extra_minutes?: number
+          large_group_manual_approval_from?: number
           large_group_minutes?: number
           large_group_threshold?: number
           legal_name?: string | null
           locale?: string
           logo_url?: string | null
+          manual_approval_from_party_size?: number | null
           max_covers_per_slot?: number | null
           max_new_reservations_per_15min?: number | null
           max_party_size_online?: number
           metadata?: Json
           name?: string
+          noshow_cancel_message?: string | null
+          noshow_confirmation_enabled?: boolean
+          noshow_deposit_rules_prepared?: boolean
+          noshow_exempt_regulars_prepared?: boolean
+          noshow_guest_cancel_link_enabled?: boolean
+          noshow_reconfirm_enabled?: boolean
+          noshow_reminder_24h_enabled?: boolean
+          noshow_reminder_2h_enabled?: boolean
           peak_warning_threshold_pct?: number
           phone?: string | null
           plan_type?: string | null
           postal_code?: string | null
+          preorders_allow_free_text?: boolean
+          preorders_enabled?: boolean
+          preorders_payment_required?: boolean
           slot_duration_minutes?: number
           slug?: string
           timezone?: string
           updated_at?: string
+          waitlist_allow_preferred_times?: boolean
+          waitlist_auto_offer_on_full?: boolean
+          waitlist_clickwise_message_prepared?: boolean
+          waitlist_enabled?: boolean
+          waitlist_response_window_minutes?: number
+          walkin_ai_quick_seat?: boolean
+          walkin_default_minutes?: number
+          walkin_default_zone_id?: string | null
+          walkin_quick_buttons?: boolean
+          walkins_enabled?: boolean
           webhook_secret?: string | null
           webhook_url?: string | null
+          website?: string | null
         }
         Relationships: []
       }
