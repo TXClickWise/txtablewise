@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ReservationDetailDialog } from "@/components/ReservationDetailDialog";
 
 type Zone = { id: string; name: string };
 type Table = {
@@ -26,6 +27,7 @@ const FloorPlanPage = () => {
   const restaurantId = current?.restaurant_id;
   const qc = useQueryClient();
   const [zoneId, setZoneId] = useState<string | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const today = format(new Date(), "yyyy-MM-dd");
 
   const { data: zones = [] } = useQuery({
@@ -156,13 +158,19 @@ const FloorPlanPage = () => {
               {visibleTables.map((t) => {
                 const st = tableState.get(t.id) ?? { status: "free" as const };
                 const isRound = t.shape === "round";
+                const clickable = !!st.res;
                 return (
-                  <div
+                  <button
                     key={t.id}
+                    type="button"
+                    disabled={!clickable}
+                    onClick={() => st.res && setSelectedId(st.res.id)}
                     className={cn(
                       "absolute flex flex-col items-center justify-center text-xs font-medium border-2 transition-colors shadow-sm select-none",
                       isRound ? "rounded-full" : "rounded-md",
                       colorFor(st.status),
+                      clickable && "cursor-pointer hover:brightness-110",
+                      !clickable && "cursor-default",
                     )}
                     style={{ left: t.pos_x, top: t.pos_y, width: t.width, height: t.height }}
                     title={st.res ? `${st.res.guests?.first_name ?? ""} · ${st.res.party_size}p` : `Vrij · ${t.capacity_min}-${t.capacity_max}p`}
@@ -176,13 +184,14 @@ const FloorPlanPage = () => {
                     ) : (
                       <div className="text-[10px] opacity-70">{t.capacity_min}-{t.capacity_max}p</div>
                     )}
-                  </div>
+                  </button>
                 );
               })}
             </div>
           </div>
         </CardContent>
       </Card>
+      <ReservationDetailDialog reservationId={selectedId} open={!!selectedId} onOpenChange={(o) => !o && setSelectedId(null)} />
     </div>
   );
 };
