@@ -22,6 +22,7 @@ import ShiftsSettings from "./pages/app/settings/ShiftsSettings.tsx";
 import ZonesTablesSettings from "./pages/app/settings/ZonesTablesSettings.tsx";
 import ClosuresSettings from "./pages/app/settings/ClosuresSettings.tsx";
 import IntegrationsSettings from "./pages/app/settings/IntegrationsSettings.tsx";
+import CapacitySettings from "./pages/app/settings/CapacitySettings.tsx";
 import NotFound from "./pages/NotFound.tsx";
 
 const queryClient = new QueryClient();
