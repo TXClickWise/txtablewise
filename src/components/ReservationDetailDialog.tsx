@@ -188,6 +188,27 @@ export function ReservationDetailDialog({ reservationId, open, onOpenChange }: P
                 )}
               </div>
 
+              {(data.requires_manual_approval || data.large_group_status === "awaiting_approval") &&
+                !["cancelled", "no_show", "completed"].includes(data.status) && (
+                <div className="rounded-lg border border-warning/30 bg-warning/10 p-3 space-y-2">
+                  <div className="text-sm font-medium text-warning flex items-center gap-1.5">
+                    <ShieldX className="h-4 w-4" />
+                    Groepsreservering wacht op jouw beoordeling
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {data.party_size} personen · Goedkeuren bevestigt de reservering, afwijzen annuleert hem.
+                  </p>
+                  <div className="flex items-center gap-2 pt-1">
+                    <Button size="sm" variant="outline" disabled={busy} onClick={() => runLargeGroupDecision("decline")}>
+                      <ShieldX className="h-4 w-4 mr-1" /> Afwijzen
+                    </Button>
+                    <Button size="sm" disabled={busy} onClick={() => runLargeGroupDecision("approve")}>
+                      <ShieldCheck className="h-4 w-4 mr-1" /> Goedkeuren
+                    </Button>
+                  </div>
+                </div>
+              )}
+
               {/* Operator quick-actions */}
               <div className="grid grid-cols-2 gap-2">
                 <Button
