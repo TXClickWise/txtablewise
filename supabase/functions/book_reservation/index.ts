@@ -113,8 +113,7 @@ Deno.serve(async (req) => {
     if (!candidate) return json({ error: "Geen tafel meer beschikbaar voor dit moment", retry: true }, 409);
 
     // Pacing check (skip for operator-driven walk-ins / manager bookings)
-    const channelForPacing = body.channel ?? "online";
-    const skipPacing = channelForPacing === "walk_in" || channelForPacing === "manager";
+    const skipPacing = channel === "walk_in" || channel === "manager";
     if (!skipPacing) {
       const pacingRows: PacingReservation[] = live.map((r) => ({
         id: r.id,
