@@ -170,7 +170,7 @@ export type AftercareStats = {
 export async function getAftercareDashboardStats(restaurantId: string): Promise<AftercareStats> {
   const { data } = await supabase
     .from("review_requests")
-    .select("status, satisfaction, manager_follow_up_required, google_review_requested, responded_at")
+    .select("status, satisfaction, manager_follow_up_required, google_review_requested, responded_at, follow_up_status")
     .eq("restaurant_id", restaurantId)
     .limit(1000);
   const rows = data ?? [];
