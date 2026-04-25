@@ -85,7 +85,9 @@ export async function createReviewRequestForReservation(reservationId: string): 
     .maybeSingle();
   if (rErr || !r) return { ok: false, created: false, error: rErr?.message ?? "Reservering niet gevonden." };
 
-  if (r.status !== "completed") {
+  // "completed" mapped to enum "finished" in db; accept both for safety
+  const completedStatuses = ["finished", "completed"] as const;
+  if (!completedStatuses.includes(r.status as typeof completedStatuses[number])) {
     return { ok: false, created: false, error: "Aftercare start nadat het bezoek is afgerond." };
   }
 
