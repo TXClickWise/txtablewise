@@ -26,8 +26,16 @@ import {
   markEventProcessed, markEventSkipped, prepareRetry,
   buildSamplePayload, CONTACT_MAPPING,
   DEFAULT_TAG_MAPPING, DEFAULT_CUSTOM_FIELDS, DEFAULT_WORKFLOWS,
+  checkClickWiseReadiness, enableClickWiseLiveMode, disableClickWiseLiveMode,
+  processIntegrationEvent, processPendingClickWiseEvents,
   type ClickWiseSettings, type IntegrationEventRow, type EventFilter,
+  type ClickWiseReadiness,
 } from "@/services/clickwise";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 const MODE_META: Record<string, { label: string; cls: string }> = {
   prepared: { label: "Voorbereid",     cls: "bg-amber-500/15 text-amber-700 dark:text-amber-300" },
@@ -67,6 +75,8 @@ const ClickWiseIntegrationPage = () => {
   const [tagMap, setTagMap] = useState(DEFAULT_TAG_MAPPING);
   const [fields, setFields] = useState(DEFAULT_CUSTOM_FIELDS);
   const [workflows, setWorkflows] = useState(DEFAULT_WORKFLOWS);
+  const [readiness, setReadiness] = useState<ClickWiseReadiness | null>(null);
+  const [processing, setProcessing] = useState(false);
 
   const refresh = async () => {
     if (!restaurantId) return;
@@ -104,6 +114,10 @@ const ClickWiseIntegrationPage = () => {
   };
 
   useEffect(() => { refresh(); /* eslint-disable-next-line */ }, [restaurantId, filter]);
+  useEffect(() => {
+    if (!restaurantId) return;
+    checkClickWiseReadiness(restaurantId).then(setReadiness).catch(() => setReadiness(null));
+  }, [restaurantId, settings?.connection_mode, settings?.contact_sync_enabled, settings?.workflow_mapping]);
 
   const sampleEventTypes = useMemo(() => {
     const set = new Set<string>();
@@ -158,6 +172,43 @@ const ClickWiseIntegrationPage = () => {
     toast.success("Retry voorbereid."); refresh();
   };
 
+  // ---------- Live processor actions ----------
+  const handleProcessNow = async (id: string) => {
+    setProcessing(true);
+    try {
+      const r = await processIntegrationEvent(id);
+      toast.success(r.live_mode ? "Event verwerkt via ClickWise." : "Event verwerkt in testmodus.");
+      refresh();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Kon event niet verwerken.");
+    } finally { setProcessing(false); }
+  };
+  const handleProcessPending = async () => {
+    if (!restaurantId) return;
+    setProcessing(true);
+    try {
+      const r = await processPendingClickWiseEvents(restaurantId, 10);
+      toast.success(`${r.processed} events verwerkt (${r.live_mode ? "live" : "testmodus"}).`);
+      refresh();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Kon batch niet verwerken.");
+    } finally { setProcessing(false); }
+  };
+  const handleEnableLive = async () => {
+    if (!restaurantId) return;
+    const r = await enableClickWiseLiveMode(restaurantId);
+    if (!r.ok) return toast.error(r.error);
+    toast.success("Live mode geactiveerd.");
+    refresh();
+  };
+  const handleDisableLive = async () => {
+    if (!restaurantId) return;
+    const r = await disableClickWiseLiveMode(restaurantId);
+    if (!r.ok) return toast.error(r.error || "Kon live mode niet uitschakelen.");
+    toast.success("Live mode uitgeschakeld — terug in testmodus.");
+    refresh();
+  };
+
   return (
     <div className="p-4 md:p-6 space-y-6 max-w-7xl">
       <header className="space-y-1">
@@ -205,6 +256,72 @@ const ClickWiseIntegrationPage = () => {
               <Switch checked={settings.sandbox_mode} onCheckedChange={(v) => saveSettings({ sandbox_mode: v })} />
             </div>
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Live readiness & live mode */}
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base flex items-center gap-2">
+            <ShieldAlert className="h-4 w-4" /> Live readiness
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <p className="text-xs text-muted-foreground">
+            Live mode verstuurt echte events naar ClickWise. Activeer dit alleen nadat mapping,
+            privacyinstellingen en workflows getest zijn.
+          </p>
+          <div className="grid gap-2 sm:grid-cols-2">
+            <ReadinessRow ok={!!readiness?.secrets_present} label="Server-side API-secrets aanwezig" />
+            <ReadinessRow ok={!!readiness?.location_configured} label="Location ID geconfigureerd" />
+            <ReadinessRow ok={!!settings.contact_sync_enabled} label="Contact sync ingeschakeld" />
+            <ReadinessRow ok={!!readiness?.can_go_live} label="Klaar voor live mode" />
+          </div>
+          {readiness && readiness.issues.length > 0 && (
+            <ul className="rounded-lg border bg-muted/30 p-3 text-xs space-y-1">
+              {readiness.issues.map((i) => (
+                <li key={i} className="text-muted-foreground">• {i}</li>
+              ))}
+            </ul>
+          )}
+          <div className="flex flex-wrap gap-2">
+            {mode === "live" ? (
+              <Button variant="outline" onClick={handleDisableLive}>
+                Live mode uitschakelen
+              </Button>
+            ) : (
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button disabled={!readiness?.can_go_live}>
+                    Live mode activeren
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Live mode activeren?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Live mode kan echte ClickWise-workflows starten en berichten naar gasten
+                      laten verzenden. Weet je zeker dat je dit wilt activeren?
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Annuleren</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleEnableLive}>Live mode activeren</AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            )}
+            <Button variant="outline" onClick={handleProcessPending} disabled={processing}>
+              <RefreshCw className={`h-4 w-4 mr-1 ${processing ? "animate-spin" : ""}`} />
+              Verwerk pending events
+            </Button>
+          </div>
+          {!readiness?.secrets_present && (
+            <p className="text-xs text-muted-foreground">
+              ClickWise live koppeling kan pas worden geactiveerd nadat API-secrets veilig
+              server-side zijn ingesteld.
+            </p>
+          )}
         </CardContent>
       </Card>
 
@@ -524,8 +641,20 @@ const ClickWiseIntegrationPage = () => {
                 </pre>
               </div>
               <div className="flex flex-wrap gap-2">
+                {openEvent.status !== "sent" && (
+                  <Button onClick={() => handleProcessNow(openEvent.id)} disabled={processing}>
+                    <Send className="h-4 w-4 mr-1" />
+                    {mode === "live" ? "Nu verwerken (live)" : "Nu verwerken (testmodus)"}
+                  </Button>
+                )}
+                {openEvent.status === "sent" && (
+                  <p className="text-xs text-muted-foreground w-full">
+                    Dit event is al verwerkt. Opnieuw versturen kan dubbele communicatie
+                    veroorzaken — gebruik retry alleen bij vastgestelde fout.
+                  </p>
+                )}
                 {openEvent.status === "failed" && (
-                  <Button onClick={() => handleRetry(openEvent.id)}>
+                  <Button variant="outline" onClick={() => handleRetry(openEvent.id)}>
                     <RefreshCw className="h-4 w-4 mr-1" /> Retry voorbereiden
                   </Button>
                 )}
@@ -566,6 +695,18 @@ const ClickWiseIntegrationPage = () => {
     </div>
   );
 };
+
+function ReadinessRow({ ok, label }: { ok: boolean; label: string }) {
+  return (
+    <div className="flex items-center gap-2 rounded-lg border p-2 text-sm">
+      <span
+        className={`inline-block h-2 w-2 rounded-full ${ok ? "bg-emerald-500" : "bg-amber-500"}`}
+        aria-hidden
+      />
+      <span className={ok ? "" : "text-muted-foreground"}>{label}</span>
+    </div>
+  );
+}
 
 function Info({ l, v }: { l: string; v: string }) {
   return (
