@@ -85,7 +85,7 @@ Deno.serve(async (req) => {
     // Existing active reservations overlapping window
     const { data: existing } = await supabase
       .from("reservations")
-      .select("id, start_time, end_time, status, hold_expires_at, reservation_tables(table_id)")
+      .select("id, start_time, end_time, party_size, status, hold_expires_at, reservation_tables(table_id)")
       .eq("restaurant_id", restaurant.id)
       .gte("start_time", addMinutesIso(start_iso, -durationMinutes))
       .lte("start_time", addMinutesIso(end_iso, durationMinutes))
