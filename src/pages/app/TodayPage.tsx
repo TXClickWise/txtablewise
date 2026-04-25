@@ -13,6 +13,7 @@ import { ReservationDetailDialog } from "@/components/ReservationDetailDialog";
 import { ReservationCard, type CardReservation } from "@/components/reservations/ReservationCard";
 import { ReservationFormSheet } from "@/components/reservations/ReservationFormSheet";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { LastMinuteFillPanel } from "@/components/waitlist/LastMinuteFillPanel";
 
 const TodayPage = () => {
   const { current } = useRestaurant();
@@ -136,6 +137,8 @@ const TodayPage = () => {
         <KpiCard label="Aan tafel" value={kpis.seated} icon={<Clock className="h-5 w-5" />} />
         <KpiCard label="No-shows" value={kpis.noShows} icon={<TrendingUp className="h-5 w-5" />} />
       </div>
+
+      {restaurantId && <LastMinuteFillPanel restaurantId={restaurantId} />}
 
       <Card>
         <CardHeader>

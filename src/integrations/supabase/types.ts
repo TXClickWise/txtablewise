@@ -1575,6 +1575,7 @@ export type Database = {
           desired_time_from: string
           desired_time_to: string
           email: string | null
+          expires_at: string | null
           first_name: string
           flexible_minutes: number
           guest_id: string | null
@@ -1582,6 +1583,10 @@ export type Database = {
           language: string
           last_name: string | null
           marketing_consent: boolean
+          matched_at: string | null
+          matched_reservation_id: string | null
+          matched_start_time: string | null
+          matched_table_id: string | null
           notes: string | null
           notified_at: string | null
           party_size: number
@@ -1590,6 +1595,7 @@ export type Database = {
           source_metadata: Json
           status: Database["public"]["Enums"]["waitlist_status"]
           updated_at: string
+          zone_preference: string | null
         }
         Insert: {
           channel?: Database["public"]["Enums"]["reservation_channel"]
@@ -1599,6 +1605,7 @@ export type Database = {
           desired_time_from: string
           desired_time_to: string
           email?: string | null
+          expires_at?: string | null
           first_name: string
           flexible_minutes?: number
           guest_id?: string | null
@@ -1606,6 +1613,10 @@ export type Database = {
           language?: string
           last_name?: string | null
           marketing_consent?: boolean
+          matched_at?: string | null
+          matched_reservation_id?: string | null
+          matched_start_time?: string | null
+          matched_table_id?: string | null
           notes?: string | null
           notified_at?: string | null
           party_size: number
@@ -1614,6 +1625,7 @@ export type Database = {
           source_metadata?: Json
           status?: Database["public"]["Enums"]["waitlist_status"]
           updated_at?: string
+          zone_preference?: string | null
         }
         Update: {
           channel?: Database["public"]["Enums"]["reservation_channel"]
@@ -1623,6 +1635,7 @@ export type Database = {
           desired_time_from?: string
           desired_time_to?: string
           email?: string | null
+          expires_at?: string | null
           first_name?: string
           flexible_minutes?: number
           guest_id?: string | null
@@ -1630,6 +1643,10 @@ export type Database = {
           language?: string
           last_name?: string | null
           marketing_consent?: boolean
+          matched_at?: string | null
+          matched_reservation_id?: string | null
+          matched_start_time?: string | null
+          matched_table_id?: string | null
           notes?: string | null
           notified_at?: string | null
           party_size?: number
@@ -1638,6 +1655,7 @@ export type Database = {
           source_metadata?: Json
           status?: Database["public"]["Enums"]["waitlist_status"]
           updated_at?: string
+          zone_preference?: string | null
         }
         Relationships: []
       }
@@ -1752,7 +1770,9 @@ export type Database = {
         | "failed"
       waitlist_status:
         | "waiting"
+        | "matched"
         | "notified"
+        | "confirmed"
         | "converted"
         | "expired"
         | "cancelled"
@@ -1932,7 +1952,9 @@ export const Constants = {
       ],
       waitlist_status: [
         "waiting",
+        "matched",
         "notified",
+        "confirmed",
         "converted",
         "expired",
         "cancelled",

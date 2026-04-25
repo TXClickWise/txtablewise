@@ -24,6 +24,7 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { ReservationBadges } from "@/components/reservations/ReservationBadges";
 import { PacingIndicator, pacingLevelFromCovers } from "@/components/reservations/PacingIndicator";
 import { AIQuickSeatSheet } from "@/components/floor-plan/AIQuickSeatSheet";
+import { LastMinuteFillPanel } from "@/components/waitlist/LastMinuteFillPanel";
 import { useNavigate } from "react-router-dom";
 
 type Zone = { id: string; name: string };
@@ -403,6 +404,7 @@ const FloorModePage = () => {
         {/* CENTER: Tables grouped by zone */}
         <main className="flex-1 overflow-auto">
           <div className="p-4 sm:p-6 space-y-6">
+            {restaurantId && <LastMinuteFillPanel restaurantId={restaurantId} />}
             {zones.length === 0 ? (
               <ZoneBlock
                 zoneName="Zonder zone"
