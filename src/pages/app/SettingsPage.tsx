@@ -7,6 +7,7 @@ const tabs = [
   { to: "/app/instellingen/shifts", label: "Shifts" },
   { to: "/app/instellingen/zones", label: "Zones & tafels" },
   { to: "/app/instellingen/sluitingen", label: "Sluitingen" },
+  { to: "/app/instellingen/integraties", label: "Integraties" },
 ];
 
 const SettingsPage = () => {
