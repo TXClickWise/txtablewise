@@ -49,6 +49,7 @@ const App = () => (
                 <Route index element={<GeneralSettings />} />
                 <Route path="openingstijden" element={<OpeningHoursSettings />} />
                 <Route path="shifts" element={<ShiftsSettings />} />
+                <Route path="capaciteit" element={<CapacitySettings />} />
                 <Route path="zones" element={<ZonesTablesSettings />} />
                 <Route path="sluitingen" element={<ClosuresSettings />} />
                 <Route path="integraties" element={<IntegrationsSettings />} />
