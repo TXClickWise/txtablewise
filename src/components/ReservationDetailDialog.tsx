@@ -238,6 +238,11 @@ export function ReservationDetailDialog({ reservationId, open, onOpenChange }: P
                 isVip={!!data.guests?.is_vip}
               />
 
+              <ReservationAftercareSection
+                reservationId={data.id}
+                reservationStatus={data.status}
+              />
+
               {(data.requires_manual_approval || data.large_group_status === "awaiting_approval") &&
                 !["cancelled", "no_show", "completed"].includes(data.status) && (
                 <div className="rounded-lg border border-warning/30 bg-warning/10 p-3 space-y-2">
