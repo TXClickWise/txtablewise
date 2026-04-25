@@ -410,7 +410,6 @@ const FloorModePage = () => {
               <PreOrderReadyList
                 restaurantId={restaurantId}
                 windowMinutes={60}
-                onOpenReservation={(id) => setSelectedReservationId(id)}
                 compact
               />
             )}
