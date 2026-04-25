@@ -67,6 +67,10 @@ export function ReservationDetailDialog({ reservationId, open, onOpenChange }: P
           reservation_date: r.reservation_date,
           start_time_local: format(start, "HH:mm"),
         });
+        const { data: cfg } = await supabase.from("restaurants")
+          .select("large_group_threshold, deposit_default_amount_cents")
+          .eq("id", r.restaurant_id).maybeSingle();
+        setRestaurantCfg(cfg);
       }
       setLoading(false);
     })();
