@@ -41,6 +41,9 @@ export type ManagePayload = {
   special_requests?: string | null;
   new_status?: ReservationStatus;
   cancellation_reason?: string;
+  deposit_status?: DepositStatus;
+  deposit_amount_cents?: number;
+  deposit_policy_notes?: string;
 };
 
 export type ManageResult = {
