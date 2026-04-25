@@ -20,6 +20,7 @@ import { toast } from "sonner";
 import { reservations as resService, type ReservationStatus } from "@/services/reservations";
 import { CheckCircle2, UserCheck, XCircle, AlertOctagon, ShieldCheck, ShieldX } from "lucide-react";
 import { ReservationNoShowSection } from "@/components/no-show/ReservationNoShowSection";
+import { announceLastMinuteOpportunity } from "@/services/waitlist";
 
 type Props = {
   reservationId: string | null;
@@ -118,6 +119,21 @@ export function ReservationDetailDialog({ reservationId, open, onOpenChange }: P
       no_show:   "Gemarkeerd als no-show.",
     };
     toast.success(messages[kind]);
+    // Surface a waitlist opportunity for freed slots
+    if ((kind === "cancel" || kind === "no_show") && data) {
+      announceLastMinuteOpportunity({
+        restaurantId: data.restaurant_id,
+        reservationId: reservationId,
+        date: data.reservation_date,
+        startTime: format(new Date(data.start_time), "HH:mm"),
+        partySize: data.party_size,
+        zoneId: data?.reservation_tables?.[0]?.tables?.zone_id ?? null,
+        trigger: kind === "cancel" ? "cancellation" : "no_show",
+      }).catch(() => { /* non-fatal */ });
+      toast.info("Er zijn mogelijk wachtlijstgasten voor deze plek. Bekijk de wachtlijst.", {
+        duration: 6000,
+      });
+    }
     refresh();
     onOpenChange(false);
   };
