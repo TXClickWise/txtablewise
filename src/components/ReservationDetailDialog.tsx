@@ -25,6 +25,7 @@ import { GuestPreviewInReservation } from "@/components/guests/GuestPreviewInRes
 import { announceLastMinuteOpportunity } from "@/services/waitlist";
 import { ReservationAftercareSection } from "@/components/reviews/ReservationAftercareSection";
 import { createReviewRequestForReservation } from "@/services/reviews";
+import { ReservationPOSSection } from "@/components/pos/ReservationPOSSection";
 
 type Props = {
   reservationId: string | null;
