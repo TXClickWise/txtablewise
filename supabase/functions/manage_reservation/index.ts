@@ -16,7 +16,13 @@ type Action =
   | "mark_completed"
   | "mark_no_show"
   | "approve_large_group"
-  | "decline_large_group";
+  | "decline_large_group"
+  | "mark_reconfirmed"
+  | "mark_reconfirmation_declined"
+  | "request_reconfirmation"
+  | "set_deposit_status";
+
+type DepositStatus = "not_required" | "recommended" | "required" | "pending" | "paid" | "waived" | "refunded" | "failed";
 
 type ManageRequest = {
   action: Action;
@@ -31,6 +37,10 @@ type ManageRequest = {
   // Status change
   new_status?: "pending" | "confirmed" | "seated" | "completed" | "cancelled" | "no_show";
   cancellation_reason?: string;
+  // Deposit
+  deposit_status?: DepositStatus;
+  deposit_amount_cents?: number;
+  deposit_policy_notes?: string;
 };
 
 // Allowed status transitions (MVP-safe)
@@ -104,6 +114,14 @@ Deno.serve(async (req) => {
         return await doLargeGroupDecision(admin, current, "approve", user.id, body.cancellation_reason);
       case "decline_large_group":
         return await doLargeGroupDecision(admin, current, "decline", user.id, body.cancellation_reason);
+      case "mark_reconfirmed":
+        return await doReconfirmation(admin, current, "confirmed", user.id);
+      case "mark_reconfirmation_declined":
+        return await doReconfirmation(admin, current, "declined", user.id, body.cancellation_reason);
+      case "request_reconfirmation":
+        return await doReconfirmation(admin, current, "requested", user.id);
+      case "set_deposit_status":
+        return await doSetDepositStatus(admin, current, body, user.id);
       default:
         return json({ error: "Onbekende actie" }, 400);
     }
@@ -146,6 +164,19 @@ async function doStatusChange(
   const { data: updated, error } = await admin
     .from("reservations").update(patch).eq("id", current.id).select("*").single();
   if (error) return json({ error: error.message }, 500);
+
+  // Bump guest.no_show_count once per reservation (only if not already marked).
+  if (newStatus === "no_show" && !current.no_show_marked_at && current.guest_id) {
+    try {
+      const { data: g } = await admin
+        .from("guests").select("no_show_count").eq("id", current.guest_id).maybeSingle();
+      if (g) {
+        await admin.from("guests")
+          .update({ no_show_count: (g.no_show_count ?? 0) + 1 })
+          .eq("id", current.guest_id);
+      }
+    } catch (e) { console.error("guest no_show_count bump failed", e); }
+  }
 
   await logAudit(admin, current.restaurant_id, userId, `reservation.${newStatus}`, current.id, current, updated);
   await emitEvent(admin, current.restaurant_id, `reservation.${newStatus}`, {
@@ -435,6 +466,121 @@ async function doLargeGroupDecision(
   await emitEvent(admin, current.restaurant_id, "reservation.large_group_declined", {
     reservation_id: current.id, party_size: current.party_size, start_time: current.start_time,
     reason: reason ?? null,
+  });
+  return json({ ok: true, reservation: updated });
+}
+
+// ----- No-show prevention: reconfirmation flow -----
+// state machine: not_required → pending → requested → confirmed | declined | expired
+async function doReconfirmation(
+  // deno-lint-ignore no-explicit-any
+  admin: any,
+  // deno-lint-ignore no-explicit-any
+  current: any,
+  decision: "requested" | "confirmed" | "declined",
+  userId: string,
+  reason?: string,
+) {
+  if (["completed", "cancelled", "no_show"].includes(current.status)) {
+    return json({
+      error: "Deze reservering kan niet meer herbevestigd worden.",
+      reason_code: "final_status",
+    }, 409);
+  }
+
+  // deno-lint-ignore no-explicit-any
+  const patch: Record<string, any> = { reconfirmation_status: decision };
+  let auditAction = `reservation.reconfirmation_${decision}`;
+  let eventType = `reservation.reconfirmation_${decision}`;
+
+  if (decision === "requested") {
+    patch.reconfirmation_requested_at = new Date().toISOString();
+    eventType = "reservation.reconfirmation_requested";
+    auditAction = "reservation.reconfirmation_requested";
+  } else if (decision === "confirmed") {
+    patch.reconfirmed_at = new Date().toISOString();
+    eventType = "reservation.reconfirmed";
+    auditAction = "reservation.reconfirmed";
+  } else if (decision === "declined") {
+    // Guest can't come anymore — cancel the reservation as a side-effect.
+    patch.reconfirmation_declined_at = new Date().toISOString();
+    patch.status = "cancelled";
+    patch.cancelled_at = new Date().toISOString();
+    patch.cancellation_reason = reason ?? "guest_declined_reconfirmation";
+    eventType = "reservation.reconfirmation_declined";
+    auditAction = "reservation.reconfirmation_declined";
+  }
+
+  const { data: updated, error } = await admin
+    .from("reservations").update(patch).eq("id", current.id).select("*").single();
+  if (error) return json({ error: error.message }, 500);
+
+  await logAudit(admin, current.restaurant_id, userId, auditAction, current.id, current, updated);
+  await emitEvent(admin, current.restaurant_id, eventType, {
+    reservation_id: current.id,
+    party_size: current.party_size,
+    start_time: current.start_time,
+    reason: reason ?? null,
+  });
+
+  if (decision === "declined") {
+    // Surface waitlist-fill opportunity downstream.
+    await emitEvent(admin, current.restaurant_id, "reservation.cancelled_by_guest", {
+      reservation_id: current.id,
+      party_size: current.party_size,
+      start_time: current.start_time,
+    });
+  }
+
+  return json({ ok: true, reservation: updated });
+}
+
+// ----- Deposits / reserveringsgarantie -----
+// MVP: operator sets the status manually — no payment provider yet.
+async function doSetDepositStatus(
+  // deno-lint-ignore no-explicit-any
+  admin: any,
+  // deno-lint-ignore no-explicit-any
+  current: any,
+  body: ManageRequest,
+  userId: string,
+) {
+  const next = body.deposit_status;
+  if (!next) return json({ error: "deposit_status vereist", reason_code: "invalid_input" }, 400);
+  const allowed = ["not_required","recommended","required","pending","paid","waived","refunded","failed"];
+  if (!allowed.includes(next)) {
+    return json({ error: "Onbekende deposit status", reason_code: "invalid_input" }, 400);
+  }
+  if (body.deposit_amount_cents !== undefined && body.deposit_amount_cents < 0) {
+    return json({ error: "Bedrag mag niet negatief zijn", reason_code: "invalid_input" }, 400);
+  }
+
+  // deno-lint-ignore no-explicit-any
+  const patch: Record<string, any> = {
+    deposit_status: next,
+    deposit_required: next === "required" || next === "pending",
+  };
+  if (body.deposit_amount_cents !== undefined) patch.deposit_amount_cents = body.deposit_amount_cents;
+  if (body.deposit_policy_notes !== undefined) patch.deposit_policy_notes = body.deposit_policy_notes;
+
+  const { data: updated, error } = await admin
+    .from("reservations").update(patch).eq("id", current.id).select("*").single();
+  if (error) return json({ error: error.message }, 500);
+
+  const eventMap: Record<string, string> = {
+    recommended: "reservation.deposit_recommended",
+    required: "reservation.deposit_required",
+    waived: "reservation.deposit_waived",
+    paid: "reservation.deposit_paid",
+    refunded: "reservation.deposit_refunded",
+  };
+  const eventType = eventMap[next] ?? "reservation.deposit_updated";
+
+  await logAudit(admin, current.restaurant_id, userId, eventType, current.id, current, updated);
+  await emitEvent(admin, current.restaurant_id, eventType, {
+    reservation_id: current.id,
+    deposit_status: next,
+    amount_cents: updated.deposit_amount_cents ?? null,
   });
   return json({ ok: true, reservation: updated });
 }

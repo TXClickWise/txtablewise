@@ -19,6 +19,7 @@ import { ChannelBadge } from "@/components/ChannelBadge";
 import { toast } from "sonner";
 import { reservations as resService, type ReservationStatus } from "@/services/reservations";
 import { CheckCircle2, UserCheck, XCircle, AlertOctagon, ShieldCheck, ShieldX } from "lucide-react";
+import { ReservationNoShowSection } from "@/components/no-show/ReservationNoShowSection";
 
 type Props = {
   reservationId: string | null;
@@ -40,6 +41,7 @@ export function ReservationDetailDialog({ reservationId, open, onOpenChange }: P
   const [loading, setLoading] = useState(false);
   const [busy, setBusy] = useState(false);
   const [confirm, setConfirm] = useState<ConfirmAction>(null);
+  const [restaurantCfg, setRestaurantCfg] = useState<{ large_group_threshold?: number; deposit_default_amount_cents?: number } | null>(null);
   const [form, setForm] = useState({
     party_size: 2,
     internal_notes: "",
@@ -65,6 +67,10 @@ export function ReservationDetailDialog({ reservationId, open, onOpenChange }: P
           reservation_date: r.reservation_date,
           start_time_local: format(start, "HH:mm"),
         });
+        const { data: cfg } = await supabase.from("restaurants")
+          .select("large_group_threshold, deposit_default_amount_cents")
+          .eq("id", r.restaurant_id).maybeSingle();
+        setRestaurantCfg(cfg);
       }
       setLoading(false);
     })();
@@ -187,6 +193,13 @@ export function ReservationDetailDialog({ reservationId, open, onOpenChange }: P
                   </div>
                 )}
               </div>
+
+              <ReservationNoShowSection
+                reservation={data}
+                largeGroupThreshold={restaurantCfg?.large_group_threshold}
+                depositDefaultAmountCents={restaurantCfg?.deposit_default_amount_cents}
+                onChanged={refresh}
+              />
 
               {(data.requires_manual_approval || data.large_group_status === "awaiting_approval") &&
                 !["cancelled", "no_show", "completed"].includes(data.status) && (

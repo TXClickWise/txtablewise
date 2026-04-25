@@ -16,7 +16,15 @@ export type ManageAction =
   | "mark_completed"
   | "mark_no_show"
   | "approve_large_group"
-  | "decline_large_group";
+  | "decline_large_group"
+  | "mark_reconfirmed"
+  | "mark_reconfirmation_declined"
+  | "request_reconfirmation"
+  | "set_deposit_status";
+
+export type DepositStatus =
+  | "not_required" | "recommended" | "required" | "pending"
+  | "paid" | "waived" | "refunded" | "failed";
 
 export type ReservationStatus =
   | "hold" | "pending" | "confirmed" | "seated"
@@ -33,6 +41,9 @@ export type ManagePayload = {
   special_requests?: string | null;
   new_status?: ReservationStatus;
   cancellation_reason?: string;
+  deposit_status?: DepositStatus;
+  deposit_amount_cents?: number;
+  deposit_policy_notes?: string;
 };
 
 export type ManageResult = {
@@ -87,6 +98,14 @@ export const reservations = {
     manageReservation({ action: "approve_large_group", reservation_id: id }),
   declineLargeGroup: (id: string, reason?: string) =>
     manageReservation({ action: "decline_large_group", reservation_id: id, cancellation_reason: reason }),
+  markReconfirmed: (id: string) =>
+    manageReservation({ action: "mark_reconfirmed", reservation_id: id }),
+  markReconfirmationDeclined: (id: string, reason?: string) =>
+    manageReservation({ action: "mark_reconfirmation_declined", reservation_id: id, cancellation_reason: reason }),
+  requestReconfirmation: (id: string) =>
+    manageReservation({ action: "request_reconfirmation", reservation_id: id }),
+  setDepositStatus: (id: string, deposit_status: DepositStatus, fields?: { deposit_amount_cents?: number; deposit_policy_notes?: string }) =>
+    manageReservation({ action: "set_deposit_status", reservation_id: id, deposit_status, ...fields }),
   update: (
     id: string,
     fields: Partial<Pick<ManagePayload,

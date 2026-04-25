@@ -711,6 +711,57 @@ export type Database = {
         }
         Relationships: []
       }
+      reservation_reminders: {
+        Row: {
+          channel: string
+          clickwise_workflow_id: string | null
+          created_at: string
+          error_message: string | null
+          failed_at: string | null
+          id: string
+          metadata: Json
+          reminder_type: string
+          reservation_id: string
+          restaurant_id: string
+          scheduled_for: string
+          sent_at: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          channel?: string
+          clickwise_workflow_id?: string | null
+          created_at?: string
+          error_message?: string | null
+          failed_at?: string | null
+          id?: string
+          metadata?: Json
+          reminder_type: string
+          reservation_id: string
+          restaurant_id: string
+          scheduled_for: string
+          sent_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          channel?: string
+          clickwise_workflow_id?: string | null
+          created_at?: string
+          error_message?: string | null
+          failed_at?: string | null
+          id?: string
+          metadata?: Json
+          reminder_type?: string
+          reservation_id?: string
+          restaurant_id?: string
+          scheduled_for?: string
+          sent_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       reservation_status_history: {
         Row: {
           changed_by: string | null
@@ -795,9 +846,12 @@ export type Database = {
           clickwise_contact_id: string | null
           clickwise_workflow_status: string | null
           confirmation_code: string | null
+          confirmation_status: string
           created_at: string
           created_by: string | null
           deposit_amount_cents: number
+          deposit_currency: string
+          deposit_policy_notes: string | null
           deposit_required: boolean
           deposit_status: Database["public"]["Enums"]["deposit_status"]
           dietary_notes: string | null
@@ -808,8 +862,11 @@ export type Database = {
           id: string
           internal_notes: string | null
           large_group_status: string | null
+          magic_token_expires_at: string | null
           manage_token: string | null
           no_show_marked_at: string | null
+          no_show_risk: string | null
+          no_show_risk_factors: Json
           occasion: string | null
           party_size: number
           payment_status: string | null
@@ -817,6 +874,9 @@ export type Database = {
           pos_provider: string | null
           pos_receipt_id: string | null
           receipt_total: number | null
+          reconfirmation_declined_at: string | null
+          reconfirmation_requested_at: string | null
+          reconfirmation_status: string
           reconfirmed_at: string | null
           reminder_confirmed_at: string | null
           reminder_sent_at: string | null
@@ -838,9 +898,12 @@ export type Database = {
           clickwise_contact_id?: string | null
           clickwise_workflow_status?: string | null
           confirmation_code?: string | null
+          confirmation_status?: string
           created_at?: string
           created_by?: string | null
           deposit_amount_cents?: number
+          deposit_currency?: string
+          deposit_policy_notes?: string | null
           deposit_required?: boolean
           deposit_status?: Database["public"]["Enums"]["deposit_status"]
           dietary_notes?: string | null
@@ -851,8 +914,11 @@ export type Database = {
           id?: string
           internal_notes?: string | null
           large_group_status?: string | null
+          magic_token_expires_at?: string | null
           manage_token?: string | null
           no_show_marked_at?: string | null
+          no_show_risk?: string | null
+          no_show_risk_factors?: Json
           occasion?: string | null
           party_size: number
           payment_status?: string | null
@@ -860,6 +926,9 @@ export type Database = {
           pos_provider?: string | null
           pos_receipt_id?: string | null
           receipt_total?: number | null
+          reconfirmation_declined_at?: string | null
+          reconfirmation_requested_at?: string | null
+          reconfirmation_status?: string
           reconfirmed_at?: string | null
           reminder_confirmed_at?: string | null
           reminder_sent_at?: string | null
@@ -881,9 +950,12 @@ export type Database = {
           clickwise_contact_id?: string | null
           clickwise_workflow_status?: string | null
           confirmation_code?: string | null
+          confirmation_status?: string
           created_at?: string
           created_by?: string | null
           deposit_amount_cents?: number
+          deposit_currency?: string
+          deposit_policy_notes?: string | null
           deposit_required?: boolean
           deposit_status?: Database["public"]["Enums"]["deposit_status"]
           dietary_notes?: string | null
@@ -894,8 +966,11 @@ export type Database = {
           id?: string
           internal_notes?: string | null
           large_group_status?: string | null
+          magic_token_expires_at?: string | null
           manage_token?: string | null
           no_show_marked_at?: string | null
+          no_show_risk?: string | null
+          no_show_risk_factors?: Json
           occasion?: string | null
           party_size?: number
           payment_status?: string | null
@@ -903,6 +978,9 @@ export type Database = {
           pos_provider?: string | null
           pos_receipt_id?: string | null
           receipt_total?: number | null
+          reconfirmation_declined_at?: string | null
+          reconfirmation_requested_at?: string | null
+          reconfirmation_status?: string
           reconfirmed_at?: string | null
           reminder_confirmed_at?: string | null
           reminder_sent_at?: string | null
@@ -1011,6 +1089,11 @@ export type Database = {
           default_language: string
           default_reservation_minutes: number
           deleted_at: string | null
+          deposit_default_amount_cents: number
+          deposit_exempt_regulars: boolean
+          deposit_exempt_vip: boolean
+          deposit_guest_message: string | null
+          deposit_voucher_credit_possible: boolean
           email: string | null
           hold_minutes: number
           id: string
@@ -1034,13 +1117,16 @@ export type Database = {
           metadata: Json
           name: string
           noshow_cancel_message: string | null
+          noshow_cancellation_cutoff_minutes: number
           noshow_confirmation_enabled: boolean
           noshow_deposit_rules_prepared: boolean
           noshow_exempt_regulars_prepared: boolean
           noshow_guest_cancel_link_enabled: boolean
           noshow_reconfirm_enabled: boolean
+          noshow_reconfirmation_hours_before: number
           noshow_reminder_24h_enabled: boolean
           noshow_reminder_2h_enabled: boolean
+          noshow_risk_signal_enabled: boolean
           peak_warning_threshold_pct: number
           phone: string | null
           plan_type: string | null
@@ -1081,6 +1167,11 @@ export type Database = {
           default_language?: string
           default_reservation_minutes?: number
           deleted_at?: string | null
+          deposit_default_amount_cents?: number
+          deposit_exempt_regulars?: boolean
+          deposit_exempt_vip?: boolean
+          deposit_guest_message?: string | null
+          deposit_voucher_credit_possible?: boolean
           email?: string | null
           hold_minutes?: number
           id?: string
@@ -1104,13 +1195,16 @@ export type Database = {
           metadata?: Json
           name: string
           noshow_cancel_message?: string | null
+          noshow_cancellation_cutoff_minutes?: number
           noshow_confirmation_enabled?: boolean
           noshow_deposit_rules_prepared?: boolean
           noshow_exempt_regulars_prepared?: boolean
           noshow_guest_cancel_link_enabled?: boolean
           noshow_reconfirm_enabled?: boolean
+          noshow_reconfirmation_hours_before?: number
           noshow_reminder_24h_enabled?: boolean
           noshow_reminder_2h_enabled?: boolean
+          noshow_risk_signal_enabled?: boolean
           peak_warning_threshold_pct?: number
           phone?: string | null
           plan_type?: string | null
@@ -1151,6 +1245,11 @@ export type Database = {
           default_language?: string
           default_reservation_minutes?: number
           deleted_at?: string | null
+          deposit_default_amount_cents?: number
+          deposit_exempt_regulars?: boolean
+          deposit_exempt_vip?: boolean
+          deposit_guest_message?: string | null
+          deposit_voucher_credit_possible?: boolean
           email?: string | null
           hold_minutes?: number
           id?: string
@@ -1174,13 +1273,16 @@ export type Database = {
           metadata?: Json
           name?: string
           noshow_cancel_message?: string | null
+          noshow_cancellation_cutoff_minutes?: number
           noshow_confirmation_enabled?: boolean
           noshow_deposit_rules_prepared?: boolean
           noshow_exempt_regulars_prepared?: boolean
           noshow_guest_cancel_link_enabled?: boolean
           noshow_reconfirm_enabled?: boolean
+          noshow_reconfirmation_hours_before?: number
           noshow_reminder_24h_enabled?: boolean
           noshow_reminder_2h_enabled?: boolean
+          noshow_risk_signal_enabled?: boolean
           peak_warning_threshold_pct?: number
           phone?: string | null
           plan_type?: string | null
