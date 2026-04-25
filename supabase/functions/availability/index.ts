@@ -6,6 +6,7 @@ import {
   WEEKDAY_KEYS, getWeekdayKey, zonedDateTimeToUtcIso, addMinutesIso,
   intervalsOverlap, ACTIVE_STATUSES,
 } from "../_shared/reservation-utils.ts";
+import { evaluatePacing, durationFor, type PacingReservation } from "../_shared/pacing.ts";
 
 type AvailabilityRequest = {
   restaurant_id?: string;
