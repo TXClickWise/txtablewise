@@ -445,8 +445,8 @@ async function logIntegrationEvent(
     await supabase.from("integration_events").insert({
       restaurant_id: restaurantId,
       event_type: eventType,
-      payload,
-    });
+      payload: payload as never,
+    } as never);
   } catch (e) {
     console.warn("integration_events insert failed", eventType, e);
   }
