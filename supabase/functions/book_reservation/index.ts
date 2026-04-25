@@ -5,6 +5,7 @@ import { corsHeaders } from "../_shared/cors.ts";
 import {
   zonedDateTimeToUtcIso, addMinutesIso, intervalsOverlap, ACTIVE_STATUSES,
 } from "../_shared/reservation-utils.ts";
+import { evaluatePacing, type PacingReservation } from "../_shared/pacing.ts";
 
 type BookRequest = {
   restaurant_id?: string;
