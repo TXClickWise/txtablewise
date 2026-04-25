@@ -116,6 +116,21 @@ export function ReservationDetailDialog({ reservationId, open, onOpenChange }: P
     onOpenChange(false);
   };
 
+  const runLargeGroupDecision = async (kind: "approve" | "decline") => {
+    if (!reservationId) return;
+    setBusy(true);
+    const result = kind === "approve"
+      ? await resService.approveLargeGroup(reservationId)
+      : await resService.declineLargeGroup(reservationId);
+    setBusy(false);
+    if (!result.ok) return toast.error(result.error || "Actie mislukt.");
+    toast.success(kind === "approve"
+      ? "Groepsreservering goedgekeurd."
+      : "Groepsaanvraag afgewezen.");
+    refresh();
+    onOpenChange(false);
+  };
+
   const askConfirm = (kind: "cancel" | "no_show") => {
     if (kind === "cancel") {
       setConfirm({
