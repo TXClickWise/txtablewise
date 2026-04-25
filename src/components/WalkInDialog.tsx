@@ -88,6 +88,12 @@ export const WalkInDialog = ({
             <TabsTrigger value="manager">Reservering</TabsTrigger>
           </TabsList>
 
+          {prefilledTable && (
+            <div className="mb-4 rounded-md bg-primary/10 border border-primary/30 px-3 py-2 text-sm">
+              Wordt geplaatst aan <strong>tafel {prefilledTable.label}</strong>
+            </div>
+          )}
+
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
