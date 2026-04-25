@@ -152,6 +152,51 @@ export type Database = {
           },
         ]
       }
+      deposit_policies: {
+        Row: {
+          amount_cents_per_guest: number
+          applies_friday_saturday_only: boolean
+          applies_to_special_dates: boolean
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean
+          min_party_size: number
+          name: string
+          refundable_until_hours_before: number
+          restaurant_id: string
+          updated_at: string
+        }
+        Insert: {
+          amount_cents_per_guest?: number
+          applies_friday_saturday_only?: boolean
+          applies_to_special_dates?: boolean
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          min_party_size?: number
+          name: string
+          refundable_until_hours_before?: number
+          restaurant_id: string
+          updated_at?: string
+        }
+        Update: {
+          amount_cents_per_guest?: number
+          applies_friday_saturday_only?: boolean
+          applies_to_special_dates?: boolean
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          min_party_size?: number
+          name?: string
+          refundable_until_hours_before?: number
+          restaurant_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       guests: {
         Row: {
           allergies: string | null
@@ -367,6 +412,114 @@ export type Database = {
           },
         ]
       }
+      pos_connections: {
+        Row: {
+          access_token_encrypted: string | null
+          config: Json
+          created_at: string
+          display_name: string | null
+          external_account_id: string | null
+          id: string
+          last_error: string | null
+          last_synced_at: string | null
+          provider: Database["public"]["Enums"]["pos_provider"]
+          refresh_token_encrypted: string | null
+          restaurant_id: string
+          status: Database["public"]["Enums"]["pos_connection_status"]
+          token_expires_at: string | null
+          updated_at: string
+        }
+        Insert: {
+          access_token_encrypted?: string | null
+          config?: Json
+          created_at?: string
+          display_name?: string | null
+          external_account_id?: string | null
+          id?: string
+          last_error?: string | null
+          last_synced_at?: string | null
+          provider: Database["public"]["Enums"]["pos_provider"]
+          refresh_token_encrypted?: string | null
+          restaurant_id: string
+          status?: Database["public"]["Enums"]["pos_connection_status"]
+          token_expires_at?: string | null
+          updated_at?: string
+        }
+        Update: {
+          access_token_encrypted?: string | null
+          config?: Json
+          created_at?: string
+          display_name?: string | null
+          external_account_id?: string | null
+          id?: string
+          last_error?: string | null
+          last_synced_at?: string | null
+          provider?: Database["public"]["Enums"]["pos_provider"]
+          refresh_token_encrypted?: string | null
+          restaurant_id?: string
+          status?: Database["public"]["Enums"]["pos_connection_status"]
+          token_expires_at?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      pos_orders: {
+        Row: {
+          closed_at: string | null
+          created_at: string
+          currency: string
+          external_order_id: string | null
+          guest_count: number | null
+          id: string
+          opened_at: string | null
+          pos_connection_id: string | null
+          raw_payload: Json
+          reservation_id: string | null
+          restaurant_id: string
+          subtotal_cents: number
+          table_id: string | null
+          tip_cents: number
+          total_cents: number
+          updated_at: string
+        }
+        Insert: {
+          closed_at?: string | null
+          created_at?: string
+          currency?: string
+          external_order_id?: string | null
+          guest_count?: number | null
+          id?: string
+          opened_at?: string | null
+          pos_connection_id?: string | null
+          raw_payload?: Json
+          reservation_id?: string | null
+          restaurant_id: string
+          subtotal_cents?: number
+          table_id?: string | null
+          tip_cents?: number
+          total_cents?: number
+          updated_at?: string
+        }
+        Update: {
+          closed_at?: string | null
+          created_at?: string
+          currency?: string
+          external_order_id?: string | null
+          guest_count?: number | null
+          id?: string
+          opened_at?: string | null
+          pos_connection_id?: string | null
+          raw_payload?: Json
+          reservation_id?: string | null
+          restaurant_id?: string
+          subtotal_cents?: number
+          table_id?: string | null
+          tip_cents?: number
+          total_cents?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       pre_orders: {
         Row: {
           created_at: string
@@ -476,20 +629,29 @@ export type Database = {
       }
       reservations: {
         Row: {
+          cancel_token: string | null
           channel: Database["public"]["Enums"]["reservation_channel"]
           confirmation_code: string | null
           created_at: string
           created_by: string | null
+          deposit_amount_cents: number
+          deposit_required: boolean
+          deposit_status: Database["public"]["Enums"]["deposit_status"]
           dietary_notes: string | null
           end_time: string
           guest_id: string | null
           hold_expires_at: string | null
           id: string
           internal_notes: string | null
+          manage_token: string | null
+          no_show_marked_at: string | null
           occasion: string | null
           party_size: number
+          reminder_confirmed_at: string | null
+          reminder_sent_at: string | null
           reservation_date: string
           restaurant_id: string
+          source_label: string | null
           source_metadata: Json
           special_requests: string | null
           start_time: string
@@ -497,20 +659,29 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          cancel_token?: string | null
           channel?: Database["public"]["Enums"]["reservation_channel"]
           confirmation_code?: string | null
           created_at?: string
           created_by?: string | null
+          deposit_amount_cents?: number
+          deposit_required?: boolean
+          deposit_status?: Database["public"]["Enums"]["deposit_status"]
           dietary_notes?: string | null
           end_time: string
           guest_id?: string | null
           hold_expires_at?: string | null
           id?: string
           internal_notes?: string | null
+          manage_token?: string | null
+          no_show_marked_at?: string | null
           occasion?: string | null
           party_size: number
+          reminder_confirmed_at?: string | null
+          reminder_sent_at?: string | null
           reservation_date: string
           restaurant_id: string
+          source_label?: string | null
           source_metadata?: Json
           special_requests?: string | null
           start_time: string
@@ -518,20 +689,29 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          cancel_token?: string | null
           channel?: Database["public"]["Enums"]["reservation_channel"]
           confirmation_code?: string | null
           created_at?: string
           created_by?: string | null
+          deposit_amount_cents?: number
+          deposit_required?: boolean
+          deposit_status?: Database["public"]["Enums"]["deposit_status"]
           dietary_notes?: string | null
           end_time?: string
           guest_id?: string | null
           hold_expires_at?: string | null
           id?: string
           internal_notes?: string | null
+          manage_token?: string | null
+          no_show_marked_at?: string | null
           occasion?: string | null
           party_size?: number
+          reminder_confirmed_at?: string | null
+          reminder_sent_at?: string | null
           reservation_date?: string
           restaurant_id?: string
+          source_label?: string | null
           source_metadata?: Json
           special_requests?: string | null
           start_time?: string
@@ -586,6 +766,36 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      restaurant_modules: {
+        Row: {
+          config: Json
+          created_at: string
+          id: string
+          is_enabled: boolean
+          module_key: string
+          restaurant_id: string
+          updated_at: string
+        }
+        Insert: {
+          config?: Json
+          created_at?: string
+          id?: string
+          is_enabled?: boolean
+          module_key: string
+          restaurant_id: string
+          updated_at?: string
+        }
+        Update: {
+          config?: Json
+          created_at?: string
+          id?: string
+          is_enabled?: boolean
+          module_key?: string
+          restaurant_id?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       restaurants: {
         Row: {
@@ -668,6 +878,57 @@ export type Database = {
           updated_at?: string
           webhook_secret?: string | null
           webhook_url?: string | null
+        }
+        Relationships: []
+      }
+      review_requests: {
+        Row: {
+          created_at: string
+          feedback_text: string | null
+          guest_id: string | null
+          id: string
+          reservation_id: string
+          responded_at: string | null
+          restaurant_id: string
+          routed_to: string | null
+          satisfaction: number | null
+          scheduled_for: string
+          sent_at: string | null
+          status: Database["public"]["Enums"]["review_request_status"]
+          token: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          feedback_text?: string | null
+          guest_id?: string | null
+          id?: string
+          reservation_id: string
+          responded_at?: string | null
+          restaurant_id: string
+          routed_to?: string | null
+          satisfaction?: number | null
+          scheduled_for: string
+          sent_at?: string | null
+          status?: Database["public"]["Enums"]["review_request_status"]
+          token?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          feedback_text?: string | null
+          guest_id?: string | null
+          id?: string
+          reservation_id?: string
+          responded_at?: string | null
+          restaurant_id?: string
+          routed_to?: string | null
+          satisfaction?: number | null
+          scheduled_for?: string
+          sent_at?: string | null
+          status?: Database["public"]["Enums"]["review_request_status"]
+          token?: string
+          updated_at?: string
         }
         Relationships: []
       }
@@ -831,6 +1092,81 @@ export type Database = {
           },
         ]
       }
+      waitlist_entries: {
+        Row: {
+          channel: Database["public"]["Enums"]["reservation_channel"]
+          converted_reservation_id: string | null
+          created_at: string
+          desired_date: string
+          desired_time_from: string
+          desired_time_to: string
+          email: string | null
+          first_name: string
+          flexible_minutes: number
+          guest_id: string | null
+          id: string
+          language: string
+          last_name: string | null
+          marketing_consent: boolean
+          notes: string | null
+          notified_at: string | null
+          party_size: number
+          phone: string | null
+          restaurant_id: string
+          source_metadata: Json
+          status: Database["public"]["Enums"]["waitlist_status"]
+          updated_at: string
+        }
+        Insert: {
+          channel?: Database["public"]["Enums"]["reservation_channel"]
+          converted_reservation_id?: string | null
+          created_at?: string
+          desired_date: string
+          desired_time_from: string
+          desired_time_to: string
+          email?: string | null
+          first_name: string
+          flexible_minutes?: number
+          guest_id?: string | null
+          id?: string
+          language?: string
+          last_name?: string | null
+          marketing_consent?: boolean
+          notes?: string | null
+          notified_at?: string | null
+          party_size: number
+          phone?: string | null
+          restaurant_id: string
+          source_metadata?: Json
+          status?: Database["public"]["Enums"]["waitlist_status"]
+          updated_at?: string
+        }
+        Update: {
+          channel?: Database["public"]["Enums"]["reservation_channel"]
+          converted_reservation_id?: string | null
+          created_at?: string
+          desired_date?: string
+          desired_time_from?: string
+          desired_time_to?: string
+          email?: string | null
+          first_name?: string
+          flexible_minutes?: number
+          guest_id?: string | null
+          id?: string
+          language?: string
+          last_name?: string | null
+          marketing_consent?: boolean
+          notes?: string | null
+          notified_at?: string | null
+          party_size?: number
+          phone?: string | null
+          restaurant_id?: string
+          source_metadata?: Json
+          status?: Database["public"]["Enums"]["waitlist_status"]
+          updated_at?: string
+        }
+        Relationships: []
+      }
       zones: {
         Row: {
           created_at: string
@@ -899,8 +1235,18 @@ export type Database = {
     }
     Enums: {
       app_role: "owner" | "manager" | "host" | "staff"
+      deposit_status:
+        | "not_required"
+        | "pending"
+        | "authorized"
+        | "captured"
+        | "released"
+        | "forfeited"
+        | "refunded"
       integration_event_status: "pending" | "sent" | "failed"
       large_group_status: "new" | "in_progress" | "confirmed" | "declined"
+      pos_connection_status: "pending" | "connected" | "error" | "disconnected"
+      pos_provider: "loyverse" | "lightspeed" | "square" | "untill" | "other"
       reservation_channel:
         | "online"
         | "phone"
@@ -909,6 +1255,13 @@ export type Database = {
         | "manager"
         | "clickwise"
         | "import"
+        | "whatsapp"
+        | "instagram"
+        | "google"
+        | "qr_table"
+        | "walkin_qr"
+        | "partner"
+        | "returning_guest"
       reservation_status:
         | "hold"
         | "pending"
@@ -916,6 +1269,18 @@ export type Database = {
         | "seated"
         | "finished"
         | "no_show"
+        | "cancelled"
+      review_request_status:
+        | "pending"
+        | "sent"
+        | "responded"
+        | "skipped"
+        | "failed"
+      waitlist_status:
+        | "waiting"
+        | "notified"
+        | "converted"
+        | "expired"
         | "cancelled"
       weekday: "mon" | "tue" | "wed" | "thu" | "fri" | "sat" | "sun"
     }
@@ -1046,8 +1411,19 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["owner", "manager", "host", "staff"],
+      deposit_status: [
+        "not_required",
+        "pending",
+        "authorized",
+        "captured",
+        "released",
+        "forfeited",
+        "refunded",
+      ],
       integration_event_status: ["pending", "sent", "failed"],
       large_group_status: ["new", "in_progress", "confirmed", "declined"],
+      pos_connection_status: ["pending", "connected", "error", "disconnected"],
+      pos_provider: ["loyverse", "lightspeed", "square", "untill", "other"],
       reservation_channel: [
         "online",
         "phone",
@@ -1056,6 +1432,13 @@ export const Constants = {
         "manager",
         "clickwise",
         "import",
+        "whatsapp",
+        "instagram",
+        "google",
+        "qr_table",
+        "walkin_qr",
+        "partner",
+        "returning_guest",
       ],
       reservation_status: [
         "hold",
@@ -1064,6 +1447,20 @@ export const Constants = {
         "seated",
         "finished",
         "no_show",
+        "cancelled",
+      ],
+      review_request_status: [
+        "pending",
+        "sent",
+        "responded",
+        "skipped",
+        "failed",
+      ],
+      waitlist_status: [
+        "waiting",
+        "notified",
+        "converted",
+        "expired",
         "cancelled",
       ],
       weekday: ["mon", "tue", "wed", "thu", "fri", "sat", "sun"],

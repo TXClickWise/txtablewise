@@ -1,7 +1,7 @@
 // Book reservation — atomic, with table assignment + conflict re-check.
 // Public endpoint (used by guest widget). Channel defaults to 'online'.
-import { createClient } from "jsr:@supabase/supabase-js@2";
-import { corsHeaders } from "jsr:@supabase/supabase-js@2/cors";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { corsHeaders } from "../_shared/cors.ts";
 import {
   zonedDateTimeToUtcIso, addMinutesIso, intervalsOverlap, ACTIVE_STATUSES,
 } from "../_shared/reservation-utils.ts";

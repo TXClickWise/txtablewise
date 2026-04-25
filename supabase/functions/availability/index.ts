@@ -1,7 +1,7 @@
 // Availability edge function — returns available time slots for a date + party size.
 // Public endpoint (used by guest widget). No auth required.
-import { createClient } from "jsr:@supabase/supabase-js@2";
-import { corsHeaders } from "jsr:@supabase/supabase-js@2/cors";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { corsHeaders } from "../_shared/cors.ts";
 import {
   WEEKDAY_KEYS, getWeekdayKey, zonedDateTimeToUtcIso, addMinutesIso,
   intervalsOverlap, ACTIVE_STATUSES,
