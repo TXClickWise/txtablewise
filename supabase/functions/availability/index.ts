@@ -21,6 +21,8 @@ type Slot = {
   end_iso: string;    // UTC ISO
   available: boolean;
   available_table_count: number;
+  peak_warning?: boolean;
+  reason?: "covers_full" | "rate_full" | "no_table";
 };
 
 Deno.serve(async (req) => {
