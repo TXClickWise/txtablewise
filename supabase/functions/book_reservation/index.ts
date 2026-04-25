@@ -62,8 +62,16 @@ Deno.serve(async (req) => {
     const defaultMinutes: number = restaurant.default_reservation_minutes || 105;
     const largeGroupMinutes: number = restaurant.large_group_minutes || 150;
     const largeGroupThreshold: number = restaurant.large_group_threshold || 9;
-    const durationMinutes: number =
-      body.party_size >= largeGroupThreshold ? largeGroupMinutes : defaultMinutes;
+    const channel = body.channel ?? "online";
+    // Walk-ins use the operator-configured walk-in duration
+    const isWalkIn = channel === "walk_in";
+    const baseDuration = isWalkIn
+      ? (restaurant.walkin_default_minutes ?? 75)
+      : (body.party_size >= largeGroupThreshold ? largeGroupMinutes : defaultMinutes);
+    const isLargeGroup = body.party_size >= largeGroupThreshold;
+    const durationMinutes: number = isLargeGroup && !isWalkIn
+      ? baseDuration + (restaurant.large_group_extra_minutes ?? 0)
+      : baseDuration;
     const start_iso = zonedDateTimeToUtcIso(body.date, body.time, tz);
     const end_iso = addMinutesIso(start_iso, durationMinutes);
 
@@ -162,8 +170,38 @@ Deno.serve(async (req) => {
       guestId = newGuest.id;
     }
 
-    const channel = body.channel ?? "online";
-    const status = body.hold_only ? "hold" : "confirmed";
+    // Determine status using onboarding rules.
+    // Operator-driven walk-ins are seated immediately; manager flow auto-confirms.
+    // For online/AI/phone bookings: respect auto_confirm and manual_approval_from_party_size.
+    const manualApprovalSize: number | null = restaurant.manual_approval_from_party_size ?? null;
+    const largeGroupManualFrom: number = restaurant.large_group_manual_approval_from ?? 10;
+    const largeGroupAutoBookMax: number = restaurant.large_group_auto_book_max ?? 12;
+
+    let requiresManualApproval = false;
+    let largeGroupStatus: string | null = null;
+
+    if (isLargeGroup) {
+      if (body.party_size >= largeGroupManualFrom || body.party_size > largeGroupAutoBookMax) {
+        requiresManualApproval = true;
+        largeGroupStatus = "awaiting_approval";
+      } else {
+        largeGroupStatus = "auto_booked";
+      }
+    }
+    if (manualApprovalSize !== null && body.party_size >= manualApprovalSize) {
+      requiresManualApproval = true;
+    }
+    if (channel === "online" && restaurant.auto_confirm === false) {
+      requiresManualApproval = true;
+    }
+
+    let status: string;
+    if (body.hold_only) status = "hold";
+    else if (isWalkIn) status = "seated";
+    else if (channel === "manager") status = "confirmed";
+    else if (requiresManualApproval) status = "pending";
+    else status = "confirmed";
+
     const holdExpires = body.hold_only
       ? new Date(Date.now() + (restaurant.hold_minutes ?? 10) * 60_000).toISOString()
       : null;
@@ -185,6 +223,8 @@ Deno.serve(async (req) => {
       hold_expires_at: holdExpires,
       confirmation_code: confirmationCode,
       source_metadata: body.source_metadata ?? {},
+      requires_manual_approval: requiresManualApproval,
+      large_group_status: largeGroupStatus,
     }).select("*").single();
 
     if (resErr) return json({ error: resErr.message }, 500);
