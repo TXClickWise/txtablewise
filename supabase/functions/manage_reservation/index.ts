@@ -387,3 +387,54 @@ function json(payload: unknown, status = 200) {
     status, headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
 }
+
+// Approve / decline a large-group reservation. Approval moves pending → confirmed
+// and clears requires_manual_approval; decline cancels with a friendly reason.
+async function doLargeGroupDecision(
+  // deno-lint-ignore no-explicit-any
+  admin: any,
+  // deno-lint-ignore no-explicit-any
+  current: any,
+  decision: "approve" | "decline",
+  userId: string,
+  reason?: string,
+) {
+  if (["completed", "cancelled", "no_show"].includes(current.status)) {
+    return json({
+      error: "Deze groepsreservering kan niet meer beoordeeld worden.",
+      reason_code: "final_status",
+    }, 409);
+  }
+  if (decision === "approve") {
+    const patch = {
+      status: current.status === "pending" ? "confirmed" : current.status,
+      requires_manual_approval: false,
+      large_group_status: "approved",
+    };
+    const { data: updated, error } = await admin
+      .from("reservations").update(patch).eq("id", current.id).select("*").single();
+    if (error) return json({ error: error.message }, 500);
+    await logAudit(admin, current.restaurant_id, userId, "reservation.large_group_approved", current.id, current, updated);
+    await emitEvent(admin, current.restaurant_id, "reservation.large_group_approved", {
+      reservation_id: current.id, party_size: current.party_size, start_time: current.start_time,
+    });
+    return json({ ok: true, reservation: updated });
+  }
+  // decline → cancel
+  const patch = {
+    status: "cancelled",
+    cancelled_at: new Date().toISOString(),
+    cancellation_reason: reason ?? "Groepsaanvraag afgewezen",
+    large_group_status: "declined",
+    requires_manual_approval: false,
+  };
+  const { data: updated, error } = await admin
+    .from("reservations").update(patch).eq("id", current.id).select("*").single();
+  if (error) return json({ error: error.message }, 500);
+  await logAudit(admin, current.restaurant_id, userId, "reservation.large_group_declined", current.id, current, updated);
+  await emitEvent(admin, current.restaurant_id, "reservation.large_group_declined", {
+    reservation_id: current.id, party_size: current.party_size, start_time: current.start_time,
+    reason: reason ?? null,
+  });
+  return json({ ok: true, reservation: updated });
+}
