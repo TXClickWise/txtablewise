@@ -10,6 +10,7 @@ import Index from "./pages/Index.tsx";
 import Auth from "./pages/Auth.tsx";
 import Onboarding from "./pages/Onboarding.tsx";
 import ReserveWidget from "./pages/ReserveWidget.tsx";
+import GuestManageReservation from "./pages/GuestManageReservation.tsx";
 import TodayPage from "./pages/app/TodayPage.tsx";
 import ReservationsPage from "./pages/app/ReservationsPage.tsx";
 import FloorPlanPage from "./pages/app/FloorPlanPage.tsx";
