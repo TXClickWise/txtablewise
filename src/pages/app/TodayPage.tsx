@@ -101,7 +101,7 @@ const TodayPage = () => {
     qc.invalidateQueries();
   };
 
-  const updateStatus = async (id: string, status: string) => {
+  const updateStatus = async (id: string, status: "confirmed" | "seated" | "finished" | "no_show" | "cancelled") => {
     const { error } = await supabase.from("reservations").update({ status }).eq("id", id);
     if (error) toast.error(error.message);
     else qc.invalidateQueries({ queryKey: ["reservations-today", restaurantId, today] });
