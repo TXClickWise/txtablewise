@@ -74,6 +74,7 @@ const App = () => (
               <Route path="ai-host" element={<AIHostPage />} />
               <Route path="rapportages" element={<ReportsPage />} />
               <Route path="integraties" element={<IntegrationsPage />} />
+              <Route path="integraties/clickwise" element={<ClickWiseIntegrationPage />} />
               <Route path="instellingen" element={<SettingsPage />}>
                 <Route index element={<GeneralSettings />} />
                 <Route path="openingstijden" element={<OpeningHoursSettings />} />
