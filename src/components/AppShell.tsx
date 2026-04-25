@@ -9,6 +9,7 @@ import { OnboardingBanner } from "./onboarding/OnboardingBanner";
 
 const AppShellInner = ({ children }: { children?: ReactNode }) => {
   const { current, loading } = useRestaurant();
+  const location = useLocation();
 
   if (loading) {
     return <div className="min-h-screen flex items-center justify-center text-muted-foreground">Laden…</div>;
@@ -16,6 +17,8 @@ const AppShellInner = ({ children }: { children?: ReactNode }) => {
   if (!current) {
     return <Navigate to="/onboarding" replace />;
   }
+
+  const isWizard = location.pathname.startsWith("/app/onboarding");
 
   return (
     <SidebarProvider>
@@ -26,6 +29,7 @@ const AppShellInner = ({ children }: { children?: ReactNode }) => {
             <SidebarTrigger />
             <div className="flex-1" />
           </header>
+          {!isWizard && <OnboardingBanner />}
           <main className="flex-1 overflow-auto">
             {children ?? <Outlet />}
           </main>
