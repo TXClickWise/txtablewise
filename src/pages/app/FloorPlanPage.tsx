@@ -398,10 +398,10 @@ const FloorPlanPage = () => {
         </SheetContent>
       </Sheet>
 
-      <WalkInDialog
+      <WalkInQuickSheet
         open={walkInOpen}
         onOpenChange={(o) => { setWalkInOpen(o); if (!o) setPrefilledTable(undefined); }}
-        prefilledTable={prefilledTable}
+        prefill={prefilledTable ? { tableId: prefilledTable.id } : undefined}
       />
 
       <AIQuickSeatSheet
