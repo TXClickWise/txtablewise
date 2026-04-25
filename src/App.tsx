@@ -54,6 +54,7 @@ const App = () => (
             <Route path="/onboarding" element={<RequireAuth><Onboarding /></RequireAuth>} />
             <Route path="/app" element={<RequireAuth><AppShell /></RequireAuth>}>
               <Route index element={<TodayPage />} />
+              <Route path="onboarding" element={<OnboardingWizardPage />} />
               <Route path="reserveringen" element={<ReservationsPage />} />
               <Route path="tafelplan" element={<FloorPlanPage />} />
               <Route path="floor" element={<FloorModePage />} />
