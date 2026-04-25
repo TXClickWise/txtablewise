@@ -10,6 +10,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { ReservationDetailDialog } from "@/components/ReservationDetailDialog";
+import { PacingIndicator, pacingLevelFromCovers } from "@/components/reservations/PacingIndicator";
 import { cn } from "@/lib/utils";
 
 // time grid 11:00 → 23:30 every 30 min
