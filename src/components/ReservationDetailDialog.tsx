@@ -212,6 +212,10 @@ export function ReservationDetailDialog({ reservationId, open, onOpenChange }: P
                 )}
               </div>
 
+              {data.guest_id && (
+                <GuestPreviewInReservation guestId={data.guest_id} />
+              )}
+
               <ReservationNoShowSection
                 reservation={data}
                 largeGroupThreshold={restaurantCfg?.large_group_threshold}
