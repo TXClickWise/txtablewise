@@ -684,6 +684,18 @@ const ClickWiseIntegrationPage = () => {
   );
 };
 
+function ReadinessRow({ ok, label }: { ok: boolean; label: string }) {
+  return (
+    <div className="flex items-center gap-2 rounded-lg border p-2 text-sm">
+      <span
+        className={`inline-block h-2 w-2 rounded-full ${ok ? "bg-emerald-500" : "bg-amber-500"}`}
+        aria-hidden
+      />
+      <span className={ok ? "" : "text-muted-foreground"}>{label}</span>
+    </div>
+  );
+}
+
 function Info({ l, v }: { l: string; v: string }) {
   return (
     <div className="rounded bg-muted/40 p-2">
