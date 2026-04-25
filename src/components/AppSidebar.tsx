@@ -1,6 +1,6 @@
 import {
   LayoutDashboard, CalendarDays, Map, Users, Settings, BookOpen,
-  Hand, ListChecks, UsersRound, BellOff, Wine, Star, Bot, BarChart3, Plug, Tablet,
+  Hand, ListChecks, UsersRound, BellOff, Wine, Star, Bot, BarChart3, Plug, Tablet, ShieldCheck,
 } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import {
@@ -39,6 +39,7 @@ const hospitality: Item[] = [
 const beheer: Item[] = [
   { title: "Rapportages", url: "/app/rapportages", icon: BarChart3 },
   { title: "Integraties", url: "/app/integraties", icon: Plug },
+  { title: "Pilot readiness", url: "/app/pilot-readiness", icon: ShieldCheck },
   { title: "Instellingen", url: "/app/instellingen", icon: Settings },
 ];
 
