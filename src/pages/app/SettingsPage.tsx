@@ -5,6 +5,7 @@ const tabs = [
   { to: "/app/instellingen", label: "Algemeen", end: true },
   { to: "/app/instellingen/openingstijden", label: "Openingstijden" },
   { to: "/app/instellingen/shifts", label: "Shifts" },
+  { to: "/app/instellingen/capaciteit", label: "Capaciteit" },
   { to: "/app/instellingen/zones", label: "Zones & tafels" },
   { to: "/app/instellingen/sluitingen", label: "Sluitingen" },
   { to: "/app/instellingen/integraties", label: "Integraties" },
