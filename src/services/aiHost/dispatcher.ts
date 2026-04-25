@@ -243,7 +243,9 @@ async function runAction(name: string, input: DispatchInput): Promise<AIActionRe
 const dateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Datum is verplicht (YYYY-MM-DD).");
 const timeSchema = z.string().regex(/^\d{2}:\d{2}(:\d{2})?$/, "Tijd is verplicht (HH:mm).");
 
-function v<T>(schema: z.ZodSchema<T>, payload: unknown, action: string): { ok: true; data: T } | { ok: false; res: AIActionResponse } {
+type Validated<T> = { ok: true; data: T; res?: undefined } | { ok: false; data?: undefined; res: AIActionResponse };
+
+function v<T>(schema: z.ZodSchema<T>, payload: unknown, action: string): Validated<T> {
   const parsed = schema.safeParse(payload);
   if (!parsed.success) {
     return {
