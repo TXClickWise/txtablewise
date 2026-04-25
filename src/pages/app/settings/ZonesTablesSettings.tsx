@@ -11,6 +11,8 @@ import { Plus, Trash2 } from "lucide-react";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { FloorPlanEditor } from "@/components/floor-plan/FloorPlanEditor";
 
 type Zone = { id: string; name: string; sort_order: number; is_active: boolean };
 type TableRow = {
