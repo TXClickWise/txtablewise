@@ -1,0 +1,383 @@
+// manage_reservation — authenticated operator endpoint to update / cancel / change status.
+// Re-runs availability + table conflict checks when date/time/party_size/table changes.
+// Logs audit_log + integration_event. Status history is logged automatically by DB trigger.
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { corsHeaders } from "../_shared/cors.ts";
+import {
+  zonedDateTimeToUtcIso, addMinutesIso, intervalsOverlap, ACTIVE_STATUSES,
+} from "../_shared/reservation-utils.ts";
+import { evaluatePacing, durationFor, type PacingReservation } from "../_shared/pacing.ts";
+
+type Action =
+  | "update"
+  | "cancel"
+  | "change_status"
+  | "mark_seated"
+  | "mark_completed"
+  | "mark_no_show";
+
+type ManageRequest = {
+  action: Action;
+  reservation_id: string;
+  // Update payload
+  reservation_date?: string;       // YYYY-MM-DD
+  start_time_local?: string;       // HH:MM
+  party_size?: number;
+  table_id?: string | null;        // assign / reassign / clear
+  internal_notes?: string | null;
+  special_requests?: string | null;
+  // Status change
+  new_status?: "pending" | "confirmed" | "seated" | "completed" | "cancelled" | "no_show";
+  cancellation_reason?: string;
+};
+
+// Allowed status transitions (MVP-safe)
+const ALLOWED_TRANSITIONS: Record<string, string[]> = {
+  hold:      ["pending", "confirmed", "cancelled"],
+  pending:   ["confirmed", "cancelled", "no_show"],
+  confirmed: ["seated", "cancelled", "no_show"],
+  seated:    ["completed", "cancelled"],
+  completed: [],
+  cancelled: [],
+  no_show:   [],
+};
+
+Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+
+  try {
+    const body = (await req.json()) as ManageRequest;
+    if (!body?.action || !body?.reservation_id) {
+      return json({ error: "Missing action or reservation_id" }, 400);
+    }
+
+    // Use auth token to enforce RLS (operator must be member of restaurant)
+    const authHeader = req.headers.get("Authorization") ?? "";
+    const supabase = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_ANON_KEY")!,
+      { global: { headers: { Authorization: authHeader } } },
+    );
+    // Service-role client for writes that bypass RLS where needed (audit/integration logs).
+    const admin = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+    );
+
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return json({ error: "Niet ingelogd" }, 401);
+
+    // Load current reservation (RLS ensures membership)
+    const { data: current, error: cErr } = await supabase
+      .from("reservations")
+      .select("*, reservation_tables(table_id)")
+      .eq("id", body.reservation_id)
+      .maybeSingle();
+    if (cErr) return json({ error: cErr.message }, 500);
+    if (!current) return json({ error: "Reservering niet gevonden" }, 404);
+
+    // Load restaurant settings
+    const { data: restaurant } = await admin
+      .from("restaurants").select("*").eq("id", current.restaurant_id).maybeSingle();
+    if (!restaurant) return json({ error: "Restaurant niet gevonden" }, 404);
+
+    const tz: string = restaurant.timezone || "Europe/Amsterdam";
+
+    // Branch by action
+    switch (body.action) {
+      case "cancel":
+        return await doCancel(admin, current, body, user.id);
+      case "mark_no_show":
+        return await doStatusChange(admin, current, "no_show", user.id, body.cancellation_reason);
+      case "mark_completed":
+        return await doStatusChange(admin, current, "completed", user.id);
+      case "mark_seated":
+        return await doStatusChange(admin, current, "seated", user.id);
+      case "change_status":
+        if (!body.new_status) return json({ error: "new_status vereist" }, 400);
+        return await doStatusChange(admin, current, body.new_status, user.id, body.cancellation_reason);
+      case "update":
+        return await doUpdate(admin, current, restaurant, body, tz, user.id);
+      default:
+        return json({ error: "Onbekende actie" }, 400);
+    }
+  } catch (e) {
+    console.error("manage_reservation error", e);
+    return json({ error: e instanceof Error ? e.message : "Onbekende fout" }, 500);
+  }
+});
+
+async function doStatusChange(
+  // deno-lint-ignore no-explicit-any
+  admin: any,
+  // deno-lint-ignore no-explicit-any
+  current: any,
+  newStatus: string,
+  userId: string,
+  reason?: string,
+) {
+  if (current.status === newStatus) {
+    return json({ ok: true, reservation: current, unchanged: true });
+  }
+  const allowed = ALLOWED_TRANSITIONS[current.status] ?? [];
+  if (!allowed.includes(newStatus)) {
+    return json({
+      error: `Status '${current.status}' kan niet naar '${newStatus}' worden gewijzigd.`,
+      reason_code: "invalid_transition",
+    }, 409);
+  }
+
+  // deno-lint-ignore no-explicit-any
+  const patch: Record<string, any> = { status: newStatus };
+  if (newStatus === "cancelled") {
+    patch.cancelled_at = new Date().toISOString();
+    if (reason) patch.cancellation_reason = reason;
+  }
+  if (newStatus === "no_show") {
+    patch.no_show_marked_at = new Date().toISOString();
+  }
+
+  const { data: updated, error } = await admin
+    .from("reservations").update(patch).eq("id", current.id).select("*").single();
+  if (error) return json({ error: error.message }, 500);
+
+  await logAudit(admin, current.restaurant_id, userId, `reservation.${newStatus}`, current.id, current, updated);
+  await emitEvent(admin, current.restaurant_id, `reservation.${newStatus}`, {
+    reservation_id: current.id,
+    party_size: current.party_size,
+    start_time: current.start_time,
+    reason: reason ?? null,
+  });
+  return json({ ok: true, reservation: updated });
+}
+
+async function doCancel(
+  // deno-lint-ignore no-explicit-any
+  admin: any,
+  // deno-lint-ignore no-explicit-any
+  current: any,
+  body: ManageRequest,
+  userId: string,
+) {
+  return doStatusChange(admin, current, "cancelled", userId, body.cancellation_reason);
+}
+
+async function doUpdate(
+  // deno-lint-ignore no-explicit-any
+  admin: any,
+  // deno-lint-ignore no-explicit-any
+  current: any,
+  // deno-lint-ignore no-explicit-any
+  restaurant: any,
+  body: ManageRequest,
+  tz: string,
+  userId: string,
+) {
+  // Only allow updates on non-final statuses
+  if (["completed", "cancelled", "no_show"].includes(current.status)) {
+    return json({
+      error: "Deze reservering kan niet worden gewijzigd omdat de status definitief is.",
+      reason_code: "final_status",
+    }, 409);
+  }
+
+  const newPartySize = body.party_size ?? current.party_size;
+  if (newPartySize < 1) return json({ error: "Controleer het aantal personen.", reason_code: "invalid_input" }, 400);
+
+  const newDate = body.reservation_date ?? current.reservation_date;
+  // Compute new start_iso
+  let start_iso = current.start_time;
+  let end_iso = current.end_time;
+  const timeOrPartyOrDateChanged =
+    !!body.start_time_local || !!body.reservation_date || (body.party_size !== undefined && body.party_size !== current.party_size);
+
+  if (timeOrPartyOrDateChanged) {
+    const localTime = body.start_time_local
+      ?? new Date(current.start_time).toLocaleTimeString("nl-NL", { hour: "2-digit", minute: "2-digit", timeZone: tz, hour12: false });
+    start_iso = zonedDateTimeToUtcIso(newDate, localTime, tz);
+    const duration = durationFor(newPartySize, {
+      default_minutes: restaurant.default_reservation_minutes ?? 105,
+      large_group_minutes: restaurant.large_group_minutes ?? 150,
+      large_group_threshold: restaurant.large_group_threshold ?? 9,
+    });
+    end_iso = addMinutesIso(start_iso, duration);
+  }
+
+  // Determine candidate table
+  const currentTableId = current.reservation_tables?.[0]?.table_id ?? null;
+  const targetTableId = body.table_id !== undefined ? body.table_id : currentTableId;
+
+  // Re-check conflicts if anything time/party/table-related changed
+  if (timeOrPartyOrDateChanged || body.table_id !== undefined) {
+    // fetch tables fitting party size
+    const { data: tables } = await admin
+      .from("tables").select("id, capacity_min, capacity_max")
+      .eq("restaurant_id", current.restaurant_id).eq("is_active", true)
+      .lte("capacity_min", newPartySize).gte("capacity_max", newPartySize)
+      .order("capacity_max", { ascending: true });
+
+    if (!tables || tables.length === 0) {
+      return json({
+        error: "Er is geen passende tafel vrij voor dit gezelschap.",
+        reason_code: "no_table_available",
+      }, 409);
+    }
+
+    // overlapping reservations
+    const { data: existing } = await admin
+      .from("reservations")
+      .select("id, start_time, end_time, party_size, status, hold_expires_at, reservation_tables(table_id)")
+      .eq("restaurant_id", current.restaurant_id)
+      .neq("id", current.id)
+      .gte("start_time", addMinutesIso(start_iso, -240))
+      .lte("start_time", addMinutesIso(end_iso, 240))
+      .in("status", ACTIVE_STATUSES as unknown as string[]);
+
+    const now = new Date();
+    // deno-lint-ignore no-explicit-any
+    const live = (existing ?? []).filter((r: any) =>
+      r.status !== "hold" || (r.hold_expires_at && new Date(r.hold_expires_at) > now)
+    );
+    const occupied = new Set<string>();
+    for (const r of live) {
+      if (intervalsOverlap(start_iso, end_iso, r.start_time, r.end_time)) {
+        for (const rt of (r.reservation_tables ?? [])) occupied.add(rt.table_id);
+      }
+    }
+
+    // Choose table
+    let chosenTableId = targetTableId;
+    if (chosenTableId) {
+      // Validate chosen table fits & is free
+      // deno-lint-ignore no-explicit-any
+      const ok = tables.find((t: any) => t.id === chosenTableId);
+      if (!ok) {
+        return json({ error: "Deze tafel past niet bij het gezelschap.", reason_code: "no_table_available" }, 409);
+      }
+      if (occupied.has(chosenTableId)) {
+        return json({ error: "Deze tafel is al bezet in dit tijdslot.", reason_code: "no_table_available" }, 409);
+      }
+    } else {
+      // deno-lint-ignore no-explicit-any
+      const candidate = (tables as any[]).find((t) => !occupied.has(t.id));
+      if (!candidate) {
+        return json({
+          error: "Er is geen passende tafel vrij voor dit moment.",
+          reason_code: "no_table_available",
+        }, 409);
+      }
+      chosenTableId = candidate.id;
+    }
+
+    // Pacing check (skip for walk_in / manager)
+    if (!["walk_in", "manager"].includes(current.channel)) {
+      // deno-lint-ignore no-explicit-any
+      const pacingRows: PacingReservation[] = (live as any[]).map((r) => ({
+        id: r.id,
+        start_time: r.start_time,
+        end_time: r.end_time,
+        party_size: r.party_size ?? 0,
+        status: r.status,
+        hold_expires_at: r.hold_expires_at,
+      }));
+      const pacing = evaluatePacing(
+        { start_iso, end_iso, party_size: newPartySize },
+        pacingRows,
+        {
+          max_covers_per_slot: restaurant.max_covers_per_slot ?? null,
+          max_new_reservations_per_15min: restaurant.max_new_reservations_per_15min ?? null,
+          peak_warning_threshold_pct: restaurant.peak_warning_threshold_pct ?? 85,
+        },
+        current.id,
+      );
+      if (!pacing.ok) {
+        return json({
+          error: "Dit moment wordt operationeel te druk. Kies een iets eerder of later tijdstip.",
+          reason_code: "pacing_limit_reached",
+        }, 409);
+      }
+    }
+
+    // Update reservation
+    // deno-lint-ignore no-explicit-any
+    const patch: Record<string, any> = {
+      reservation_date: newDate,
+      start_time: start_iso,
+      end_time: end_iso,
+      party_size: newPartySize,
+    };
+    if (body.internal_notes !== undefined) patch.internal_notes = body.internal_notes;
+    if (body.special_requests !== undefined) patch.special_requests = body.special_requests;
+
+    const { data: updated, error: uErr } = await admin
+      .from("reservations").update(patch).eq("id", current.id).select("*").single();
+    if (uErr) return json({ error: uErr.message }, 500);
+
+    // Re-link table if changed
+    if (chosenTableId !== currentTableId) {
+      await admin.from("reservation_tables").delete().eq("reservation_id", current.id);
+      if (chosenTableId) {
+        const { error: rtErr } = await admin.from("reservation_tables")
+          .insert({ reservation_id: current.id, table_id: chosenTableId });
+        if (rtErr) return json({ error: "Tafel niet gekoppeld: " + rtErr.message }, 500);
+      }
+    }
+
+    await logAudit(admin, current.restaurant_id, userId, "reservation.updated", current.id, current, updated);
+    await emitEvent(admin, current.restaurant_id, "reservation.updated", {
+      reservation_id: current.id, party_size: newPartySize, start_time: start_iso,
+    });
+    return json({ ok: true, reservation: updated, table_id: chosenTableId });
+  }
+
+  // Plain field-only update (notes etc.)
+  // deno-lint-ignore no-explicit-any
+  const patch: Record<string, any> = {};
+  if (body.internal_notes !== undefined) patch.internal_notes = body.internal_notes;
+  if (body.special_requests !== undefined) patch.special_requests = body.special_requests;
+  if (Object.keys(patch).length === 0) return json({ ok: true, reservation: current, unchanged: true });
+
+  const { data: updated, error } = await admin
+    .from("reservations").update(patch).eq("id", current.id).select("*").single();
+  if (error) return json({ error: error.message }, 500);
+  await logAudit(admin, current.restaurant_id, userId, "reservation.updated", current.id, current, updated);
+  return json({ ok: true, reservation: updated });
+}
+
+// deno-lint-ignore no-explicit-any
+async function logAudit(admin: any, restaurantId: string, userId: string, action: string, entityId: string, before: unknown, after: unknown) {
+  try {
+    await admin.from("audit_log").insert({
+      restaurant_id: restaurantId,
+      actor_user_id: userId,
+      actor_label: "operator",
+      action,
+      entity: "reservation",
+      entity_id: entityId,
+      before_data: before,
+      after_data: after,
+    });
+  } catch (e) {
+    console.error("audit log failed", e);
+  }
+}
+
+// deno-lint-ignore no-explicit-any
+async function emitEvent(admin: any, restaurantId: string, eventType: string, payload: unknown) {
+  try {
+    await admin.from("integration_events").insert({
+      restaurant_id: restaurantId,
+      event_type: eventType,
+      target: "clickwise",
+      payload,
+    });
+  } catch (e) {
+    console.error("integration event failed", e);
+  }
+}
+
+function json(payload: unknown, status = 200) {
+  return new Response(JSON.stringify(payload), {
+    status, headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+}
