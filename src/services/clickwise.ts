@@ -329,6 +329,66 @@ export function buildSamplePayload(eventType: string, restaurantName = "Bistro D
   }
 }
 
+// ---------- Live readiness & server-side dispatch ----------
+
+export type ClickWiseReadiness = {
+  ok: boolean;
+  secrets_present: boolean;
+  location_configured: boolean;
+  issues: string[];
+  can_go_live: boolean;
+  allowed_events: string[];
+  error?: string;
+};
+
+async function invokeProcessor<T = Record<string, unknown>>(body: Record<string, unknown>): Promise<T> {
+  const { data, error } = await supabase.functions.invoke("clickwise_process_event", { body });
+  if (error) throw new Error(error.message);
+  return data as T;
+}
+
+export async function checkClickWiseReadiness(restaurantId: string): Promise<ClickWiseReadiness> {
+  try {
+    return await invokeProcessor<ClickWiseReadiness>({ action: "readiness", restaurant_id: restaurantId });
+  } catch (e) {
+    return {
+      ok: false, secrets_present: false, location_configured: false,
+      issues: [e instanceof Error ? e.message : "Onbekende fout bij readiness check."],
+      can_go_live: false, allowed_events: [],
+      error: e instanceof Error ? e.message : "unknown",
+    };
+  }
+}
+
+export async function processIntegrationEvent(eventId: string) {
+  return invokeProcessor<{ ok: boolean; result: unknown; live_mode: boolean }>({
+    action: "process_event", event_id: eventId,
+  });
+}
+
+export async function processPendingClickWiseEvents(restaurantId: string, limit = 10) {
+  return invokeProcessor<{ ok: boolean; processed: number; live_mode: boolean; results: unknown[] }>({
+    action: "process_pending", restaurant_id: restaurantId, limit,
+  });
+}
+
+/**
+ * Activeer live mode. Geblokkeerd zolang readiness niet groen is.
+ * Geen secrets in frontend — readiness wordt server-side gevalideerd.
+ */
+export async function enableClickWiseLiveMode(restaurantId: string) {
+  const r = await checkClickWiseReadiness(restaurantId);
+  if (!r.can_go_live) {
+    return { ok: false as const, error: "Live mode kan niet worden geactiveerd: " + (r.issues[0] ?? "configuratie incompleet."), readiness: r };
+  }
+  const upd = await updateClickWiseSettings(restaurantId, { connection_mode: "live", sandbox_mode: false });
+  return upd.ok ? { ok: true as const, readiness: r } : { ok: false as const, error: upd.error ?? "onbekend" };
+}
+
+export async function disableClickWiseLiveMode(restaurantId: string) {
+  return updateClickWiseSettings(restaurantId, { connection_mode: "test", sandbox_mode: true });
+}
+
 // ---------- Contact mapping preview ----------
 
 export type ContactMappingRow = { tableWise: string; clickWise: string; sample: string };
