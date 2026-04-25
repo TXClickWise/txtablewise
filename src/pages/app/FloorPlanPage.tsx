@@ -11,10 +11,11 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import {
-  UserPlus, Check, LogOut, UserX, Move, RefreshCw, Clock, Users, Crown,
+  UserPlus, Check, LogOut, UserX, Move, RefreshCw, Clock, Users, Crown, Sparkles,
 } from "lucide-react";
 import { WalkInDialog } from "@/components/WalkInDialog";
 import { StatusBadge } from "@/components/StatusBadge";
+import { AIQuickSeatSheet } from "@/components/floor-plan/AIQuickSeatSheet";
 
 type Zone = { id: string; name: string };
 type Table = {
