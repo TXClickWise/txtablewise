@@ -103,6 +103,35 @@ Deno.serve(async (req) => {
       { restaurant_id, name: "Diner", start_time: "17:00", end_time: "22:30", weekdays: ["tue","wed","thu","fri","sat","sun"], is_active: true },
     ]);
 
+    // Pre-order catalogus (drankjes / upsells)
+    await supabase.from("pre_order_items").insert([
+      { restaurant_id, name: "Glas prosecco bij aankomst", category: "Welkom", price_cents: 750, sort_order: 1 },
+      { restaurant_id, name: "Alcoholvrije welkomstcocktail", category: "Welkom", price_cents: 600, sort_order: 2 },
+      { restaurant_id, name: "Fles huiswijn wit", category: "Wijn", price_cents: 2400, sort_order: 3 },
+      { restaurant_id, name: "Fles huiswijn rood", category: "Wijn", price_cents: 2400, sort_order: 4 },
+      { restaurant_id, name: "Speciaalbier van het seizoen", category: "Bier", price_cents: 550, sort_order: 5 },
+      { restaurant_id, name: "Cocktail van de maand", category: "Cocktails", price_cents: 1100, sort_order: 6 },
+    ]);
+
+    // Special day voorbeeld (Eerste Kerstdag — gesloten)
+    const year = new Date().getFullYear();
+    await supabase.from("special_days").insert([
+      { restaurant_id, date: `${year}-12-25`, name: "Eerste Kerstdag", is_closed: true, notes: "Hele dag gesloten" },
+      { restaurant_id, date: `${year}-12-31`, name: "Oudejaarsavond", is_closed: false, opens_at: "18:00", closes_at: "23:00", notes: "Speciaal menu" },
+    ]);
+
+    // Guest note voorbeeld — koppel aan een willekeurige bestaande gast (indien aanwezig)
+    const { data: someGuest } = await supabase
+      .from("guests").select("id").eq("restaurant_id", restaurant_id).limit(1).maybeSingle();
+    if (someGuest) {
+      await supabase.from("guest_notes").insert({
+        restaurant_id,
+        guest_id: someGuest.id,
+        note: "Houdt van rustig hoekje, allergisch voor noten — altijd vooraf bevestigen.",
+        note_type: "hospitality",
+      });
+    }
+
     return json({ ok: true, seeded: true });
   } catch (e) {
     console.error(e);
