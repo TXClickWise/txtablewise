@@ -52,7 +52,7 @@ const AIHostPage = () => (
       <CardContent className="grid gap-3 md:grid-cols-3">
         {channels.map((c) => (
           <div key={c.t} className="rounded-lg border p-4">
-            <c.i className="h-5 w-5 text-primary mb-2" />
+            <c.Icon className="h-5 w-5 text-primary mb-2" />
             <div className="font-medium">{c.t}</div>
             <div className="text-sm text-muted-foreground">{c.d}</div>
           </div>
