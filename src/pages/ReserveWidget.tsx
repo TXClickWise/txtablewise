@@ -243,10 +243,9 @@ const ReserveWidget = () => {
     );
     setSubmitting(false);
 
-    if (!result.ok) {
-      const r = result;
-      setBookingError(r.error);
-      if (r.retry) {
+    if (result.ok === false) {
+      setBookingError(result.error);
+      if (result.retry) {
         // Slot was just taken — refresh and bring user back to time step
         await fetchSlots();
         setSelectedSlot(null);
