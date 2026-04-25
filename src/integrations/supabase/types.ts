@@ -871,6 +871,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      create_restaurant_with_owner: {
+        Args: { _name: string; _slug: string; _timezone?: string }
+        Returns: string
+      }
       has_restaurant_role: {
         Args: {
           _restaurant_id: string
