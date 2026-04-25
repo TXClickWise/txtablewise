@@ -169,9 +169,13 @@ Deno.serve(async (req) => {
       .from("reservation_tables")
       .select("reservation_id, reservations!inner(start_time, end_time, status, hold_expires_at)")
       .eq("table_id", candidate.id);
-    const conflicts = (doubleCheck ?? []).filter((row: { reservation_id: string; reservations: { start_time: string; end_time: string; status: string; hold_expires_at: string | null } }) => {
+    const conflicts = ((doubleCheck ?? []) as unknown as Array<{
+      reservation_id: string;
+      reservations: { start_time: string; end_time: string; status: string; hold_expires_at: string | null } | null;
+    }>).filter((row) => {
       if (row.reservation_id === reservation.id) return false;
       const r = row.reservations;
+      if (!r) return false;
       if (!ACTIVE_STATUSES.includes(r.status as typeof ACTIVE_STATUSES[number])) return false;
       if (r.status === "hold" && (!r.hold_expires_at || new Date(r.hold_expires_at) <= now)) return false;
       return intervalsOverlap(start_iso, end_iso, r.start_time, r.end_time);
