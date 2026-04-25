@@ -1,6 +1,6 @@
 import {
   LayoutDashboard, CalendarDays, Map, Users, Settings, BookOpen,
-  Hand, ListChecks, UsersRound, BellOff, Wine, Star, Bot, BarChart3, Plug, Tablet, ShieldCheck,
+  Hand, ListChecks, UsersRound, BellOff, Wine, Star, Bot, BarChart3, Plug, Tablet, ShieldCheck, Phone,
 } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import {
@@ -34,6 +34,7 @@ const hospitality: Item[] = [
   { title: "Drankjes vooraf", url: "/app/drankjes", icon: Wine },
   { title: "Reviews & aftercare", url: "/app/reviews", icon: Star },
   { title: "AI Host", url: "/app/ai-host", icon: Bot },
+  { title: "Voice Agent", url: "/app/voice-agent", icon: Phone },
 ];
 
 const beheer: Item[] = [

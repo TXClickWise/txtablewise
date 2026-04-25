@@ -5,3 +5,6 @@ verify_jwt = false
 
 [functions.book_reservation]
 verify_jwt = false
+
+[functions.agent_api]
+verify_jwt = false
