@@ -381,7 +381,11 @@ const FloorPlanPage = () => {
                 />
               ) : (
                 <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <Button size="lg" className="h-14" onClick={() => { setSelectedTableId(null); setWalkInOpen(true); }}>
+                  <Button size="lg" className="h-14" onClick={() => {
+                    setPrefilledTable({ id: selectedTable.id, label: selectedTable.label });
+                    setSelectedTableId(null);
+                    setWalkInOpen(true);
+                  }}>
                     <UserPlus className="mr-2 h-5 w-5" /> Walk-in op deze tafel
                   </Button>
                   <Button size="lg" variant="outline" className="h-14" onClick={() => setSelectedTableId(null)} disabled>
