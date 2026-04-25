@@ -14,6 +14,102 @@ export type Database = {
   }
   public: {
     Tables: {
+      agent_api_keys: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          key_hash: string
+          key_prefix: string
+          label: string
+          last_used_at: string | null
+          provider: string | null
+          restaurant_id: string
+          revoked_at: string | null
+          scopes: string[]
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          key_hash: string
+          key_prefix: string
+          label: string
+          last_used_at?: string | null
+          provider?: string | null
+          restaurant_id: string
+          revoked_at?: string | null
+          scopes?: string[]
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          key_hash?: string
+          key_prefix?: string
+          label?: string
+          last_used_at?: string | null
+          provider?: string | null
+          restaurant_id?: string
+          revoked_at?: string | null
+          scopes?: string[]
+        }
+        Relationships: []
+      }
+      agent_call_logs: {
+        Row: {
+          agent_id: string | null
+          callee_phone: string | null
+          caller_phone: string | null
+          cost_cents: number | null
+          created_at: string
+          duration_seconds: number | null
+          external_call_id: string | null
+          id: string
+          metadata: Json
+          outcome: string | null
+          provider: string | null
+          reservation_id: string | null
+          restaurant_id: string
+          summary: string | null
+          transcript_url: string | null
+        }
+        Insert: {
+          agent_id?: string | null
+          callee_phone?: string | null
+          caller_phone?: string | null
+          cost_cents?: number | null
+          created_at?: string
+          duration_seconds?: number | null
+          external_call_id?: string | null
+          id?: string
+          metadata?: Json
+          outcome?: string | null
+          provider?: string | null
+          reservation_id?: string | null
+          restaurant_id: string
+          summary?: string | null
+          transcript_url?: string | null
+        }
+        Update: {
+          agent_id?: string | null
+          callee_phone?: string | null
+          caller_phone?: string | null
+          cost_cents?: number | null
+          created_at?: string
+          duration_seconds?: number | null
+          external_call_id?: string | null
+          id?: string
+          metadata?: Json
+          outcome?: string | null
+          provider?: string | null
+          reservation_id?: string | null
+          restaurant_id?: string
+          summary?: string | null
+          transcript_url?: string | null
+        }
+        Relationships: []
+      }
       api_tokens: {
         Row: {
           created_at: string
@@ -1744,6 +1840,45 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      voice_agent_settings: {
+        Row: {
+          agent_id: string | null
+          config: Json
+          created_at: string
+          id: string
+          mode: string
+          phone_number: string | null
+          provider: string
+          restaurant_id: string
+          system_prompt_notes: string | null
+          updated_at: string
+        }
+        Insert: {
+          agent_id?: string | null
+          config?: Json
+          created_at?: string
+          id?: string
+          mode?: string
+          phone_number?: string | null
+          provider?: string
+          restaurant_id: string
+          system_prompt_notes?: string | null
+          updated_at?: string
+        }
+        Update: {
+          agent_id?: string | null
+          config?: Json
+          created_at?: string
+          id?: string
+          mode?: string
+          phone_number?: string | null
+          provider?: string
+          restaurant_id?: string
+          system_prompt_notes?: string | null
+          updated_at?: string
+        }
+        Relationships: []
       }
       waitlist_entries: {
         Row: {
