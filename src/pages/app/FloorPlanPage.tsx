@@ -410,9 +410,9 @@ const FloorPlanPage = () => {
         zones={zones}
         tables={tables}
         reservations={reservations}
-        defaultDurationMinutes={current?.restaurants?.default_reservation_minutes ?? 105}
-        largeGroupThreshold={current?.restaurants?.large_group_threshold ?? 9}
-        largeGroupMinutes={current?.restaurants?.large_group_minutes ?? 150}
+        defaultDurationMinutes={(current?.restaurants as any)?.default_reservation_minutes ?? 105}
+        largeGroupThreshold={(current?.restaurants as any)?.large_group_threshold ?? 9}
+        largeGroupMinutes={(current?.restaurants as any)?.large_group_minutes ?? 150}
         onPick={(table) => {
           setPrefilledTable({ id: table.id, label: table.label });
           setWalkInOpen(true);
