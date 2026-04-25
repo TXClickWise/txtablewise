@@ -11,7 +11,15 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
 
-export const WalkInDialog = ({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) => {
+type PrefilledTable = { id: string; label: string };
+
+export const WalkInDialog = ({
+  open, onOpenChange, prefilledTable,
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  prefilledTable?: PrefilledTable;
+}) => {
   const { current } = useRestaurant();
   const qc = useQueryClient();
   const [partySize, setPartySize] = useState(2);
@@ -42,9 +50,26 @@ export const WalkInDialog = ({ open, onOpenChange }: { open: boolean; onOpenChan
         channel,
       },
     });
+    if (error || data?.error) {
+      setSubmitting(false);
+      toast.error(data?.error || "Boeken mislukt");
+      return;
+    }
+
+    // Koppel optioneel tafel direct (AI Quick Seat / handmatige tafelkeuze)
+    if (prefilledTable && data?.reservation?.id) {
+      const { error: linkErr } = await supabase
+        .from("reservation_tables")
+        .insert({ reservation_id: data.reservation.id, table_id: prefilledTable.id });
+      if (linkErr) toast.warning(`Geboekt, tafel ${prefilledTable.label} niet gekoppeld: ${linkErr.message}`);
+    }
+
     setSubmitting(false);
-    if (error || data?.error) { toast.error(data?.error || "Boeken mislukt"); return; }
-    toast.success(channel === "walk_in" ? "Walk-in geplaatst" : "Reservering aangemaakt");
+    toast.success(
+      channel === "walk_in"
+        ? `Walk-in geplaatst${prefilledTable ? ` aan tafel ${prefilledTable.label}` : ""}`
+        : "Reservering aangemaakt",
+    );
     qc.invalidateQueries();
     onOpenChange(false);
     setFirstName(""); setPhone(""); setEmail(""); setNotes("");
