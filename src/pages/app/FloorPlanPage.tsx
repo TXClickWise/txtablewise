@@ -22,6 +22,7 @@ type Table = {
   id: string; label: string; zone_id: string | null;
   capacity_min: number; capacity_max: number;
   pos_x: number; pos_y: number; width: number; height: number; shape: string;
+  combinable: boolean;
 };
 type Res = {
   id: string; start_time: string; end_time: string; status: string; party_size: number;
