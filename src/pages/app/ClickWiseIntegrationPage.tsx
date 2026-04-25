@@ -75,6 +75,8 @@ const ClickWiseIntegrationPage = () => {
   const [tagMap, setTagMap] = useState(DEFAULT_TAG_MAPPING);
   const [fields, setFields] = useState(DEFAULT_CUSTOM_FIELDS);
   const [workflows, setWorkflows] = useState(DEFAULT_WORKFLOWS);
+  const [readiness, setReadiness] = useState<ClickWiseReadiness | null>(null);
+  const [processing, setProcessing] = useState(false);
 
   const refresh = async () => {
     if (!restaurantId) return;
