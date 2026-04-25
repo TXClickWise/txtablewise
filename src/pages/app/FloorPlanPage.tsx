@@ -13,7 +13,7 @@ import { toast } from "sonner";
 import {
   UserPlus, Check, LogOut, UserX, Move, RefreshCw, Clock, Users, Crown, Sparkles,
 } from "lucide-react";
-import { WalkInDialog } from "@/components/WalkInDialog";
+import { WalkInQuickSheet } from "@/components/walk-in/WalkInQuickSheet";
 import { StatusBadge } from "@/components/StatusBadge";
 import { AIQuickSeatSheet } from "@/components/floor-plan/AIQuickSeatSheet";
 
@@ -398,10 +398,10 @@ const FloorPlanPage = () => {
         </SheetContent>
       </Sheet>
 
-      <WalkInDialog
+      <WalkInQuickSheet
         open={walkInOpen}
         onOpenChange={(o) => { setWalkInOpen(o); if (!o) setPrefilledTable(undefined); }}
-        prefilledTable={prefilledTable}
+        prefill={prefilledTable ? { tableId: prefilledTable.id } : undefined}
       />
 
       <AIQuickSeatSheet
