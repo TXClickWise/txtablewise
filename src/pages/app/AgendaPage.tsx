@@ -11,6 +11,8 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar } from "@/components/ui/calendar";
 import { ReservationDetailDialog } from "@/components/ReservationDetailDialog";
 import { PacingIndicator, pacingLevelFromCovers } from "@/components/reservations/PacingIndicator";
+import { PageHeader } from "@/components/PageHeader";
+import { EmptyState } from "@/components/touch/StateViews";
 import { cn } from "@/lib/utils";
 
 // time grid 11:00 → 23:30 every 30 min
@@ -93,32 +95,42 @@ const AgendaPage = () => {
 
   return (
     <div className="p-6 max-w-[1600px] mx-auto space-y-6">
-      <div className="flex items-center justify-between flex-wrap gap-3">
-        <div>
-          <h1 className="font-display text-3xl">Agenda</h1>
-          <p className="text-muted-foreground capitalize">{format(date, "EEEE d MMMM yyyy", { locale: nl })}</p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="icon" onClick={() => setDate(subDays(date, 1))}><ChevronLeft className="h-4 w-4" /></Button>
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button variant="outline">
-                <CalendarIcon className="mr-2 h-4 w-4" />
-                {format(date, "d MMM yyyy", { locale: nl })}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="end">
-              <Calendar mode="single" selected={date} onSelect={(d) => d && setDate(d)} locale={nl} initialFocus className={cn("p-3 pointer-events-auto")} />
-            </PopoverContent>
-          </Popover>
-          <Button variant="outline" size="icon" onClick={() => setDate(addDays(date, 1))}><ChevronRight className="h-4 w-4" /></Button>
-        </div>
-      </div>
+      <PageHeader
+        title="Agenda"
+        description={<span className="capitalize">{format(date, "EEEE d MMMM yyyy", { locale: nl })}</span>}
+        actions={
+          <>
+            <Button variant="outline" size="icon" className="h-11 w-11" onClick={() => setDate(subDays(date, 1))} aria-label="Vorige dag">
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" className="h-11">
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {format(date, "d MMM yyyy", { locale: nl })}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="end">
+                <Calendar mode="single" selected={date} onSelect={(d) => d && setDate(d)} locale={nl} initialFocus className={cn("p-3 pointer-events-auto")} />
+              </PopoverContent>
+            </Popover>
+            <Button variant="outline" size="icon" className="h-11 w-11" onClick={() => setDate(addDays(date, 1))} aria-label="Volgende dag">
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </>
+        }
+      />
 
-      <Card>
+      <Card className="bg-gradient-card shadow-soft">
         <CardContent className="p-0 overflow-x-auto">
           {tables.length === 0 ? (
-            <div className="text-center py-12 text-muted-foreground">Configureer eerst tafels in instellingen.</div>
+            <div className="p-6">
+              <EmptyState
+                icon={<CalendarIcon />}
+                title="Nog geen tafels geconfigureerd"
+                description="Voeg tafels en zones toe in de instellingen om de agenda te gebruiken."
+              />
+            </div>
           ) : (
             <div className="relative" style={{ minWidth: totalWidth + 120 }}>
               {/* Header row */}
