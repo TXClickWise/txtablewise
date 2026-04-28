@@ -102,6 +102,7 @@ const App = () => (
                 <Route path="openingstijden" element={<HoursClosuresSettings />} />
                 <Route path="reserveringen" element={<ReservationRulesSettings />} />
                 <Route path="zones" element={<ZonesTablesSettings />} />
+                <Route path="widget" element={<WidgetSettings />} />
                 <Route path="gasten" element={<GuestsSettings />} />
                 <Route path="berichten" element={<MessagesSettings />} />
                 <Route path="ai-voice" element={<AiVoiceSettings />} />
