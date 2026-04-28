@@ -12,6 +12,7 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { corsHeaders as baseCors } from "../_shared/cors.ts";
+import { logIntegration } from "../_shared/integration-log.ts";
 
 const corsHeaders = {
   ...baseCors,
