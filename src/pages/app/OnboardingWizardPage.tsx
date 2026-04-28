@@ -6,19 +6,21 @@ import {
   Check,
   Sparkles,
   Building2,
-  MapPin,
   Clock,
-  CalendarRange,
   LayoutGrid,
-  Table2,
   ListChecks,
   Users,
-  UsersRound,
   ShieldCheck,
-  Hourglass,
-  Wine,
   Plug,
   PartyPopper,
+  Globe,
+  MessageSquare,
+  Bot,
+  KeyRound,
+  PlayCircle,
+  Copy,
+  ExternalLink,
+  Send,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -34,23 +36,27 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 import GeneralSettings from "@/pages/app/settings/GeneralSettings";
 import OpeningHoursSettings from "@/pages/app/settings/OpeningHoursSettings";
-import ShiftsSettings from "@/pages/app/settings/ShiftsSettings";
 import ZonesTablesSettings from "@/pages/app/settings/ZonesTablesSettings";
 import IntegrationsSettings from "@/pages/app/settings/IntegrationsSettings";
+import MessagesSettings from "@/pages/app/settings/MessagesSettings";
 
-type Step = {
-  key: string;
-  title: string;
-  subtitle?: string;
-  icon: typeof Sparkles;
-  render: (ctx: StepCtx) => ReactNode;
-};
+import { useStepStatuses, type WizardStepKey } from "@/components/onboarding/useStepStatuses";
+import { StepStatusBadge, StepStatusDot } from "@/components/onboarding/StepStatusBadge";
 
 type StepCtx = {
   restaurantId: string;
   settings: any;
   patch: (values: Record<string, any>) => Promise<void>;
   goNext: () => void;
+};
+
+type Step = {
+  key: WizardStepKey | "welcome" | "done";
+  title: string;
+  subtitle?: string;
+  explainer?: string;
+  icon: typeof Sparkles;
+  render: (ctx: StepCtx) => ReactNode;
 };
 
 const Field = ({
@@ -124,6 +130,280 @@ const EmbedSection = ({ children }: { children: ReactNode }) => (
   </div>
 );
 
+// ---- Widget step ----
+const WidgetStep = ({ settings }: StepCtx) => {
+  const slug = settings?.slug;
+  const url = slug
+    ? `${window.location.origin}/r/${slug}`
+    : null;
+  const embed = url
+    ? `<iframe src="${url}" style="border:0;width:100%;height:760px" loading="lazy"></iframe>`
+    : null;
+  return (
+    <div className="space-y-4">
+      <p className="text-sm text-muted-foreground">
+        Je publieke reserveringspagina werkt direct. Plak de link op je website of social, of
+        embed via iframe.
+      </p>
+      {url ? (
+        <>
+          <div>
+            <Label className="text-sm">Publieke widget-URL</Label>
+            <div className="flex gap-2 mt-1.5">
+              <Input value={url} readOnly />
+              <Button
+                variant="outline"
+                onClick={() => {
+                  navigator.clipboard.writeText(url);
+                  toast.success("Link gekopieerd");
+                }}
+              >
+                <Copy className="h-4 w-4" />
+              </Button>
+              <Button asChild variant="outline">
+                <a href={url} target="_blank" rel="noreferrer">
+                  <ExternalLink className="h-4 w-4 mr-1.5" />
+                  Open
+                </a>
+              </Button>
+            </div>
+          </div>
+          <div>
+            <Label className="text-sm">Embed-snippet</Label>
+            <div className="flex gap-2 mt-1.5">
+              <Input value={embed!} readOnly className="font-mono text-xs" />
+              <Button
+                variant="outline"
+                onClick={() => {
+                  navigator.clipboard.writeText(embed!);
+                  toast.success("Snippet gekopieerd");
+                }}
+              >
+                <Copy className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        </>
+      ) : (
+        <p className="text-sm text-amber-700">
+          Stel eerst een slug in onder Restaurantgegevens.
+        </p>
+      )}
+    </div>
+  );
+};
+
+// ---- Walk-ins + waitlist combined ----
+const WalkinsWaitlistStep = ({ settings, patch }: StepCtx) => (
+  <div className="space-y-1 divide-y divide-border">
+    <ToggleRow
+      label="Walk-ins toestaan"
+      checked={!!settings.walkins_enabled}
+      onChange={(v) => patch({ walkins_enabled: v })}
+    />
+    <ToggleRow
+      label="AI Quick Seat tonen"
+      description="Stelt de beste vrije tafel voor op basis van groepsgrootte."
+      checked={!!settings.walkin_ai_quick_seat}
+      onChange={(v) => patch({ walkin_ai_quick_seat: v })}
+    />
+    <ToggleRow
+      label="Wachtlijst activeren"
+      checked={!!settings.waitlist_enabled}
+      onChange={(v) => patch({ waitlist_enabled: v })}
+    />
+    <ToggleRow
+      label="Automatisch aanbieden bij vol tijdslot"
+      checked={!!settings.waitlist_auto_offer_on_full}
+      onChange={(v) => patch({ waitlist_auto_offer_on_full: v })}
+    />
+    <div className="pt-4 grid sm:grid-cols-2 gap-4">
+      <NumberField
+        label="Standaard walk-in duur"
+        value={settings.walkin_default_minutes}
+        onChange={(v) => patch({ walkin_default_minutes: v })}
+        suffix="min"
+      />
+      <NumberField
+        label="Reactietijd wachtlijst"
+        value={settings.waitlist_response_window_minutes}
+        onChange={(v) => patch({ waitlist_response_window_minutes: v })}
+        suffix="min"
+      />
+    </div>
+  </div>
+);
+
+// ---- AI / Voice step ----
+const AiVoiceStep = ({ restaurantId }: StepCtx) => {
+  const { data: keys } = useQuery({
+    queryKey: ["agent-keys-count", restaurantId],
+    enabled: !!restaurantId,
+    queryFn: async () => {
+      const { count } = await supabase
+        .from("agent_api_keys")
+        .select("id", { count: "exact", head: true })
+        .eq("restaurant_id", restaurantId)
+        .is("revoked_at", null);
+      return count ?? 0;
+    },
+  });
+  return (
+    <div className="space-y-4">
+      <p className="text-sm text-muted-foreground">
+        Koppel een Voice Agent (Vapi, Retell, HighLevel) zodat telefonische reserveringen
+        veilig via TableWise lopen. AI mag alleen boeken na bevestigde beschikbaarheid.
+      </p>
+      <Card className="p-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="font-medium text-sm">Actieve agent-keys</p>
+            <p className="text-xs text-muted-foreground">
+              {(keys ?? 0) === 0
+                ? "Nog geen agent-key aangemaakt."
+                : `${keys} actieve key(s).`}
+            </p>
+          </div>
+          <Button asChild>
+            <Link to="/app/voice-agent">Voice Agent openen</Link>
+          </Button>
+        </div>
+      </Card>
+    </div>
+  );
+};
+
+// ---- API & webhooks step ----
+const ApiWebhooksStep = ({ restaurantId, settings, patch }: StepCtx) => (
+  <div className="space-y-4">
+    <p className="text-sm text-muted-foreground">
+      Koppel je eigen back-office of POS via webhooks en API-tokens.
+    </p>
+    <div>
+      <Label className="text-sm">Webhook-URL</Label>
+      <Input
+        type="url"
+        placeholder="https://jouw-systeem.example/webhooks/tablewise"
+        defaultValue={settings.webhook_url ?? ""}
+        onBlur={(e) => patch({ webhook_url: e.target.value || null })}
+      />
+    </div>
+    <div className="flex flex-wrap gap-2">
+      <Button asChild variant="outline">
+        <Link to="/app/instellingen/api">Beheer API-tokens</Link>
+      </Button>
+      <Button
+        variant="outline"
+        onClick={async () => {
+          const { error } = await supabase.from("integration_events").insert({
+            restaurant_id: restaurantId,
+            event_type: "test_webhook",
+            target: "webhook",
+            payload: { source: "wizard_test", at: new Date().toISOString() },
+          } as any);
+          if (error) toast.error("Mislukt: " + error.message);
+          else toast.success("Test-event in wachtrij");
+        }}
+      >
+        <Send className="h-4 w-4 mr-2" />
+        Stuur test-event
+      </Button>
+      <Button asChild variant="ghost">
+        <Link to="/app/integraties/logs">Bekijk logs</Link>
+      </Button>
+    </div>
+  </div>
+);
+
+// ---- Test reservation step ----
+const TestReservationStep = ({ restaurantId }: StepCtx) => {
+  const [busy, setBusy] = useState(false);
+  const [result, setResult] = useState<null | {
+    ok: boolean;
+    msg: string;
+    id?: string;
+  }>(null);
+
+  const run = async () => {
+    setBusy(true);
+    setResult(null);
+    try {
+      const date = new Date();
+      date.setDate(date.getDate() + 1);
+      const dateStr = date.toISOString().slice(0, 10);
+      const start = new Date(date);
+      start.setHours(19, 0, 0, 0);
+      const end = new Date(start);
+      end.setMinutes(end.getMinutes() + 90);
+
+      const { data, error } = await supabase
+        .from("reservations")
+        .insert({
+          restaurant_id: restaurantId,
+          reservation_date: dateStr,
+          start_time: start.toISOString(),
+          end_time: end.toISOString(),
+          party_size: 2,
+          status: "pending",
+          channel: "manual",
+          source_label: "wizard_test",
+          source_metadata: { test: true, source: "onboarding_wizard" },
+          internal_notes: "Test-reservering vanuit setup-wizard",
+        } as any)
+        .select("id")
+        .maybeSingle();
+
+      if (error) throw error;
+      setResult({
+        ok: true,
+        msg: "Test-reservering succesvol aangemaakt voor morgen 19:00.",
+        id: data?.id,
+      });
+      toast.success("Test geslaagd");
+    } catch (e: any) {
+      setResult({ ok: false, msg: e.message ?? "Onbekende fout" });
+      toast.error("Test mislukt");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="space-y-4">
+      <p className="text-sm text-muted-foreground">
+        Voer een complete test-reservering uit: validatie, beschikbaarheid en opslag.
+        Resultaat verschijnt hieronder.
+      </p>
+      <Button onClick={run} disabled={busy} size="lg">
+        <PlayCircle className="h-4 w-4 mr-2" />
+        {busy ? "Bezig…" : "Test reservering uitvoeren"}
+      </Button>
+      {result && (
+        <Card
+          className={
+            result.ok
+              ? "p-4 border-emerald-500/30 bg-emerald-500/5"
+              : "p-4 border-red-500/30 bg-red-500/5"
+          }
+        >
+          <p className="text-sm font-medium">{result.ok ? "Geslaagd" : "Fout"}</p>
+          <p className="text-sm text-muted-foreground mt-1">{result.msg}</p>
+          {result.id && (
+            <Button asChild variant="ghost" size="sm" className="mt-2">
+              <Link to={`/app/reserveringen?id=${result.id}`}>
+                Open reservering <ExternalLink className="h-3 w-3 ml-1.5" />
+              </Link>
+            </Button>
+          )}
+        </Card>
+      )}
+      <Button asChild variant="outline">
+        <Link to="/app/integraties/logs">Bekijk integratie-logs</Link>
+      </Button>
+    </div>
+  );
+};
+
 const STEPS: Step[] = [
   {
     key: "welcome",
@@ -132,32 +412,11 @@ const STEPS: Step[] = [
     render: ({ goNext }) => (
       <div className="space-y-6">
         <p className="text-base text-muted-foreground leading-relaxed">
-          We helpen je om je restaurant klaar te zetten voor slimme reserveringen,
-          walk-ins, tafelbeheer, no-show preventie en gastcommunicatie via ClickWise.
+          We helpen je om je restaurant in 12 stappen klaar te zetten — van openingstijden
+          tot AI Voice Agent en een test-reservering.
         </p>
-        <div className="grid grid-cols-2 gap-2 text-sm">
-          {[
-            "Restaurantgegevens",
-            "Openingstijden",
-            "Tafels en zones",
-            "Reserveringsregels",
-            "Walk-ins",
-            "Grote groepen",
-            "No-show preventie",
-            "Wachtlijst",
-            "Drankjes vooraf",
-            "Integraties",
-          ].map((item) => (
-            <div key={item} className="flex items-center gap-2">
-              <Check className="h-3.5 w-3.5 text-primary shrink-0" />
-              <span>{item}</span>
-            </div>
-          ))}
-        </div>
         <div className="flex gap-3 pt-2">
-          <Button onClick={goNext} size="lg">
-            Setup starten
-          </Button>
+          <Button onClick={goNext} size="lg">Setup starten</Button>
           <Button asChild variant="ghost" size="lg">
             <Link to="/app">Later overslaan</Link>
           </Button>
@@ -168,91 +427,35 @@ const STEPS: Step[] = [
   {
     key: "restaurant",
     title: "Restaurantgegevens",
-    subtitle: "Deze gegevens gebruiken we voor je reserveringswidget en bevestigingen.",
+    subtitle: "Naam, adres en contactgegevens — gebruikt in widget en bevestigingen.",
     icon: Building2,
-    render: () => (
-      <EmbedSection>
-        <GeneralSettings />
-      </EmbedSection>
-    ),
-  },
-  {
-    key: "location",
-    title: "Locatie",
-    subtitle: "Start met één locatie. Multi-location komt in een latere fase.",
-    icon: MapPin,
-    render: () => (
-      <EmbedSection>
-        <GeneralSettings />
-      </EmbedSection>
-    ),
+    render: () => <EmbedSection><GeneralSettings /></EmbedSection>,
   },
   {
     key: "hours",
     title: "Openingstijden",
-    subtitle:
-      "Deze tijden bepalen wanneer gasten in principe kunnen reserveren. Shifts en uitzonderingen kun je hierna instellen.",
+    subtitle: "Wanneer kunnen gasten in principe reserveren.",
     icon: Clock,
-    render: () => (
-      <EmbedSection>
-        <OpeningHoursSettings />
-      </EmbedSection>
-    ),
+    render: () => <EmbedSection><OpeningHoursSettings /></EmbedSection>,
   },
   {
-    key: "shifts",
-    title: "Shifts",
-    subtitle:
-      "Shifts helpen om lunch, diner en terras apart te beheren. Later gebruiken we dit ook voor capaciteits-pacing.",
-    icon: CalendarRange,
-    render: () => (
-      <EmbedSection>
-        <ShiftsSettings />
-      </EmbedSection>
-    ),
-  },
-  {
-    key: "zones",
-    title: "Zones",
-    subtitle: "Zones maken je tafelplan overzichtelijker. Denk aan binnen, terras, bar of serre.",
+    key: "tables_zones",
+    title: "Tafels en zones",
+    subtitle: "Begin simpel — je kunt tafelcombinaties later verfijnen.",
     icon: LayoutGrid,
-    render: () => (
-      <EmbedSection>
-        <ZonesTablesSettings />
-      </EmbedSection>
-    ),
-  },
-  {
-    key: "tables",
-    title: "Tafels",
-    subtitle:
-      "Begin simpel. Je kunt tafelcombinaties en een visuele plattegrond later verder verfijnen.",
-    icon: Table2,
-    render: () => (
-      <EmbedSection>
-        <ZonesTablesSettings />
-      </EmbedSection>
-    ),
+    render: () => <EmbedSection><ZonesTablesSettings /></EmbedSection>,
   },
   {
     key: "rules",
     title: "Reserveringsregels",
-    subtitle:
-      "Deze regels bepalen hoe makkelijk gasten kunnen reserveren en wanneer je zelf controle wilt houden.",
+    subtitle: "Hoe makkelijk mogen gasten boeken en wanneer wil je controle houden.",
     icon: ListChecks,
     render: ({ settings, patch }) => (
       <div className="space-y-1 divide-y divide-border">
         <ToggleRow
           label="Automatisch bevestigen"
-          description="Reserveringen worden direct bevestigd zonder handmatige actie."
           checked={!!settings.auto_confirm}
           onChange={(v) => patch({ auto_confirm: v })}
-        />
-        <ToggleRow
-          label="Zonevoorkeur toestaan"
-          description="Gasten mogen aangeven of ze binnen of op het terras willen zitten."
-          checked={!!settings.allow_zone_preference}
-          onChange={(v) => patch({ allow_zone_preference: v })}
         />
         <ToggleRow
           label="Opmerkingen en allergieën toestaan"
@@ -273,18 +476,6 @@ const STEPS: Step[] = [
             suffix="min"
           />
           <NumberField
-            label="Minimaal vooraf reserveren"
-            value={settings.booking_lead_time_minutes}
-            onChange={(v) => patch({ booking_lead_time_minutes: v })}
-            suffix="min"
-          />
-          <NumberField
-            label="Maximaal vooruit reserveren"
-            value={settings.booking_horizon_days}
-            onChange={(v) => patch({ booking_horizon_days: v })}
-            suffix="dagen"
-          />
-          <NumberField
             label="Max online groepsgrootte"
             value={settings.max_party_size_online}
             onChange={(v) => patch({ max_party_size_online: v })}
@@ -292,104 +483,33 @@ const STEPS: Step[] = [
             min={1}
           />
           <NumberField
-            label="Handmatige goedkeuring vanaf"
-            hint="Optioneel. Laat leeg als je geen drempel wilt."
-            value={settings.manual_approval_from_party_size}
-            onChange={(v) => patch({ manual_approval_from_party_size: v })}
-            suffix="personen"
+            label="Max vooruit reserveren"
+            value={settings.booking_horizon_days}
+            onChange={(v) => patch({ booking_horizon_days: v })}
+            suffix="dagen"
           />
         </div>
       </div>
     ),
   },
   {
-    key: "walkins",
-    title: "Walk-ins",
-    subtitle:
-      "Walk-ins zijn gasten die spontaan binnenkomen. Met Floor Mode kun je ze straks in seconden plaatsen.",
+    key: "online_widget",
+    title: "Online widget",
+    subtitle: "De publieke pagina waar gasten zelf kunnen reserveren.",
+    icon: Globe,
+    render: (ctx) => <WidgetStep {...ctx} />,
+  },
+  {
+    key: "walkins_waitlist",
+    title: "Walk-ins en wachtlijst",
+    subtitle: "Spontane gasten en het opvullen van vrijgekomen tafels.",
     icon: Users,
-    render: ({ settings, patch }) => (
-      <div className="space-y-1 divide-y divide-border">
-        <ToggleRow
-          label="Walk-ins toestaan"
-          checked={!!settings.walkins_enabled}
-          onChange={(v) => patch({ walkins_enabled: v })}
-        />
-        <ToggleRow
-          label="Snelle groepsgrootteknoppen tonen"
-          description="Toon 1, 2, 4, 6, 8 als snelkoppelingen in Floor Mode."
-          checked={!!settings.walkin_quick_buttons}
-          onChange={(v) => patch({ walkin_quick_buttons: v })}
-        />
-        <ToggleRow
-          label="AI Quick Seat tonen"
-          description="Stelt de beste vrije tafel voor op basis van groepsgrootte en bezetting."
-          checked={!!settings.walkin_ai_quick_seat}
-          onChange={(v) => patch({ walkin_ai_quick_seat: v })}
-        />
-        <div className="pt-4">
-          <NumberField
-            label="Standaard walk-in verblijfsduur"
-            value={settings.walkin_default_minutes}
-            onChange={(v) => patch({ walkin_default_minutes: v })}
-            suffix="min"
-          />
-        </div>
-      </div>
-    ),
-  },
-  {
-    key: "large-groups",
-    title: "Grote groepen",
-    subtitle:
-      "Grotere groepen vragen vaak meer voorbereiding. Stel automatisch extra tijd of goedkeuring in.",
-    icon: UsersRound,
-    render: ({ settings, patch }) => (
-      <div className="grid sm:grid-cols-2 gap-4">
-        <NumberField
-          label="Grote groep vanaf"
-          value={settings.large_group_threshold}
-          onChange={(v) => patch({ large_group_threshold: v })}
-          suffix="personen"
-        />
-        <NumberField
-          label="Extra verblijfsduur"
-          value={settings.large_group_extra_minutes}
-          onChange={(v) => patch({ large_group_extra_minutes: v })}
-          suffix="min"
-        />
-        <NumberField
-          label="Handmatige goedkeuring vanaf"
-          value={settings.large_group_manual_approval_from}
-          onChange={(v) => patch({ large_group_manual_approval_from: v })}
-          suffix="personen"
-        />
-        <NumberField
-          label="Aanbetaling aanbevolen vanaf"
-          value={settings.large_group_deposit_recommended_from}
-          onChange={(v) => patch({ large_group_deposit_recommended_from: v })}
-          suffix="personen"
-        />
-        <NumberField
-          label="Automatisch boeken tot"
-          value={settings.large_group_auto_book_max}
-          onChange={(v) => patch({ large_group_auto_book_max: v })}
-          suffix="personen"
-        />
-        <NumberField
-          label="Standaard groepsduur"
-          value={settings.large_group_minutes}
-          onChange={(v) => patch({ large_group_minutes: v })}
-          suffix="min"
-        />
-      </div>
-    ),
+    render: (ctx) => <WalkinsWaitlistStep {...ctx} />,
   },
   {
     key: "noshow",
     title: "No-show preventie",
-    subtitle:
-      "Voorkom lege tafels met vriendelijke bevestigingen, reminders en makkelijke annulering.",
+    subtitle: "Vriendelijke bevestigingen, reminders en makkelijke annulering.",
     icon: ShieldCheck,
     render: ({ settings, patch }) => (
       <div className="space-y-1 divide-y divide-border">
@@ -410,112 +530,52 @@ const STEPS: Step[] = [
         />
         <ToggleRow
           label="Herbevestiging vragen"
-          description="Gast bevestigt nogmaals via een korte link."
           checked={!!settings.noshow_reconfirm_enabled}
           onChange={(v) => patch({ noshow_reconfirm_enabled: v })}
         />
         <ToggleRow
           label="Annuleren via gastlink"
-          description="Maak het laagdrempelig om af te zeggen — beter dan niet komen opdagen."
+          description="Maak afzeggen laagdrempelig — beter dan niet komen opdagen."
           checked={!!settings.noshow_guest_cancel_link_enabled}
           onChange={(v) => patch({ noshow_guest_cancel_link_enabled: v })}
         />
-        <ToggleRow
-          label="Aanbetalingregels voorbereiden"
-          description="Nog niet actief — beschikbaar in een latere fase."
-          checked={!!settings.noshow_deposit_rules_prepared}
-          onChange={(v) => patch({ noshow_deposit_rules_prepared: v })}
-        />
-        <ToggleRow
-          label="Vaste gasten uitzonderen voorbereiden"
-          checked={!!settings.noshow_exempt_regulars_prepared}
-          onChange={(v) => patch({ noshow_exempt_regulars_prepared: v })}
-        />
       </div>
     ),
   },
   {
-    key: "waitlist",
-    title: "Wachtlijst",
-    subtitle:
-      "Met een wachtlijst vul je vrijgekomen tafels snel opnieuw bij annuleringen of no-shows.",
-    icon: Hourglass,
-    render: ({ settings, patch }) => (
-      <div className="space-y-1 divide-y divide-border">
-        <ToggleRow
-          label="Wachtlijst activeren"
-          checked={!!settings.waitlist_enabled}
-          onChange={(v) => patch({ waitlist_enabled: v })}
-        />
-        <ToggleRow
-          label="Automatisch aanbieden bij vol tijdslot"
-          checked={!!settings.waitlist_auto_offer_on_full}
-          onChange={(v) => patch({ waitlist_auto_offer_on_full: v })}
-        />
-        <ToggleRow
-          label="Voorkeurstijden toestaan"
-          checked={!!settings.waitlist_allow_preferred_times}
-          onChange={(v) => patch({ waitlist_allow_preferred_times: v })}
-        />
-        <ToggleRow
-          label="ClickWise bericht voorbereiden"
-          checked={!!settings.waitlist_clickwise_message_prepared}
-          onChange={(v) => patch({ waitlist_clickwise_message_prepared: v })}
-        />
-        <div className="pt-4">
-          <NumberField
-            label="Reactietijd voor aangeboden plek"
-            value={settings.waitlist_response_window_minutes}
-            onChange={(v) => patch({ waitlist_response_window_minutes: v })}
-            suffix="min"
-          />
-        </div>
-      </div>
-    ),
+    key: "messages",
+    title: "Berichten en reminders",
+    subtitle: "Welke berichten gaan automatisch naar de gast en wanneer.",
+    icon: MessageSquare,
+    render: () => <EmbedSection><MessagesSettings /></EmbedSection>,
   },
   {
-    key: "preorders",
-    title: "Drankjes vooraf",
-    subtitle:
-      "Laat gasten alvast iets feestelijks klaarzetten. Voor MVP wordt dit als notitie opgeslagen.",
-    icon: Wine,
-    render: ({ settings, patch }) => (
-      <div className="space-y-1 divide-y divide-border">
-        <ToggleRow
-          label="Drankjes vooraf toestaan"
-          checked={!!settings.preorders_enabled}
-          onChange={(v) => patch({ preorders_enabled: v })}
-        />
-        <ToggleRow
-          label="Betaling vereist"
-          description="Aanbevolen uit voor MVP — geen actieve betaalflow."
-          checked={!!settings.preorders_payment_required}
-          onChange={(v) => patch({ preorders_payment_required: v })}
-        />
-        <ToggleRow
-          label="Vrije tekst toestaan"
-          description="Gast kan een eigen wens toevoegen."
-          checked={!!settings.preorders_allow_free_text}
-          onChange={(v) => patch({ preorders_allow_free_text: v })}
-        />
-        <div className="pt-4 text-sm text-muted-foreground">
-          Standaard opties (Prosecco, alcoholvrije cocktail, fles huiswijn, speciaalbier,
-          cocktail van de maand) kun je later aanvullen via Drankjes.
-        </div>
-      </div>
-    ),
+    key: "ai_voice",
+    title: "AI Host / Voice Agent",
+    subtitle: "Telefonische reserveringen via een AI-agent (optioneel).",
+    icon: Bot,
+    render: (ctx) => <AiVoiceStep {...ctx} />,
   },
   {
-    key: "integrations",
-    title: "Integraties voorbereiden",
-    subtitle:
-      "ClickWise voor CRM, communicatie en AI-agents. Loyverse als aanbevolen starter-POS.",
+    key: "clickwise",
+    title: "ClickWise-integratie",
+    subtitle: "Voor WhatsApp/SMS/email-communicatie en CRM-sync.",
     icon: Plug,
-    render: () => (
-      <EmbedSection>
-        <IntegrationsSettings />
-      </EmbedSection>
-    ),
+    render: () => <EmbedSection><IntegrationsSettings /></EmbedSection>,
+  },
+  {
+    key: "api_webhooks",
+    title: "API en webhooks",
+    subtitle: "Voor eigen koppelingen — POS, BI, of een externe AI agent.",
+    icon: KeyRound,
+    render: (ctx) => <ApiWebhooksStep {...ctx} />,
+  },
+  {
+    key: "test_reservation",
+    title: "Test reservering",
+    subtitle: "Check de complete flow voordat je live gaat.",
+    icon: PlayCircle,
+    render: (ctx) => <TestReservationStep {...ctx} />,
   },
   {
     key: "done",
@@ -524,20 +584,13 @@ const STEPS: Step[] = [
     render: () => (
       <div className="space-y-6">
         <p className="text-base text-muted-foreground leading-relaxed">
-          Je restaurant staat klaar. Je kunt nu reserveringen ontvangen, walk-ins
-          plaatsen en je tafelplan beheren. Alle instellingen blijven later
-          aanpasbaar via <Link to="/app/instellingen" className="underline">Instellingen</Link>.
+          Je restaurant staat klaar. Alle instellingen blijven aanpasbaar via{" "}
+          <Link to="/app/instellingen" className="underline">Instellingen</Link>.
         </p>
         <div className="grid sm:grid-cols-3 gap-3">
-          <Button asChild size="lg">
-            <Link to="/app">Naar dashboard</Link>
-          </Button>
-          <Button asChild size="lg" variant="outline">
-            <Link to="/app/floor">Floor Mode openen</Link>
-          </Button>
-          <Button asChild size="lg" variant="outline">
-            <Link to="/app/instellingen">Instellingen</Link>
-          </Button>
+          <Button asChild size="lg"><Link to="/app">Naar dashboard</Link></Button>
+          <Button asChild size="lg" variant="outline"><Link to="/app/floor">Floor Mode</Link></Button>
+          <Button asChild size="lg" variant="outline"><Link to="/app/instellingen">Instellingen</Link></Button>
         </div>
       </div>
     ),
@@ -551,6 +604,7 @@ export default function OnboardingWizard() {
   const queryClient = useQueryClient();
 
   const restaurantId = current?.restaurant_id;
+  const { data: statuses } = useStepStatuses(restaurantId);
 
   const { data: settings } = useQuery({
     queryKey: ["restaurant-settings", restaurantId],
@@ -577,12 +631,19 @@ export default function OnboardingWizard() {
       return;
     }
     queryClient.invalidateQueries({ queryKey: ["restaurant-settings", restaurantId] });
+    queryClient.invalidateQueries({ queryKey: ["onboarding-step-statuses", restaurantId] });
   };
 
   const step = STEPS[stepIndex];
   const Icon = step.icon;
   const totalSteps = STEPS.length;
-  const progress = useMemo(() => ((stepIndex + 1) / totalSteps) * 100, [stepIndex, totalSteps]);
+
+  // Progress = % completed (done) of the 12 real steps
+  const completedCount = useMemo(() => {
+    if (!statuses) return 0;
+    return Object.values(statuses).filter((s) => s === "done").length;
+  }, [statuses]);
+  const progress = (completedCount / 12) * 100;
 
   const goNext = () => {
     if (stepIndex < totalSteps - 1) setStepIndex((i) => i + 1);
@@ -600,14 +661,18 @@ export default function OnboardingWizard() {
     );
   }
 
+  const currentStatus =
+    step.key !== "welcome" && step.key !== "done" && statuses
+      ? statuses[step.key as WizardStepKey]
+      : null;
+
   return (
     <div className="min-h-screen bg-muted/30">
-      <div className="max-w-3xl mx-auto px-4 py-6 sm:py-10">
-        {/* Progress header */}
+      <div className="max-w-6xl mx-auto px-4 py-6 sm:py-10">
         <div className="mb-6">
           <div className="flex items-center justify-between mb-2 text-sm">
             <span className="font-medium">
-              Stap {stepIndex + 1} van {totalSteps} — {step.title}
+              {completedCount} van 12 stappen voltooid
             </span>
             <Link
               to="/app"
@@ -619,63 +684,86 @@ export default function OnboardingWizard() {
           <Progress value={progress} className="h-1.5" />
         </div>
 
-        <Card className="p-6 sm:p-8">
-          <div className="flex items-start gap-4 mb-6">
-            <div className="rounded-xl bg-primary/10 p-3">
-              <Icon className="h-6 w-6 text-primary" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <h1 className="text-2xl font-semibold tracking-tight">{step.title}</h1>
-              {step.subtitle && (
-                <p className="text-sm text-muted-foreground mt-1.5">{step.subtitle}</p>
-              )}
-            </div>
-          </div>
+        <div className="grid lg:grid-cols-[260px_1fr] gap-6">
+          {/* Steps overview */}
+          <aside className="lg:sticky lg:top-4 lg:self-start">
+            <Card className="p-2">
+              <ol className="space-y-0.5">
+                {STEPS.map((s, i) => {
+                  const isActive = i === stepIndex;
+                  const status =
+                    s.key !== "welcome" && s.key !== "done" && statuses
+                      ? statuses[s.key as WizardStepKey]
+                      : null;
+                  return (
+                    <li key={s.key}>
+                      <button
+                        onClick={() => setStepIndex(i)}
+                        className={`w-full text-left flex items-center gap-2.5 px-2.5 py-2 rounded-md text-sm transition-colors ${
+                          isActive
+                            ? "bg-primary text-primary-foreground"
+                            : "hover:bg-accent"
+                        }`}
+                      >
+                        {status ? (
+                          <StepStatusDot status={status} />
+                        ) : (
+                          <span className="h-2 w-2 rounded-full bg-primary/40 shrink-0" />
+                        )}
+                        <span className="flex-1 truncate">
+                          {s.key === "welcome" || s.key === "done"
+                            ? s.title
+                            : `${i}. ${s.title}`}
+                        </span>
+                        {status === "done" && !isActive && (
+                          <Check className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
+                        )}
+                      </button>
+                    </li>
+                  );
+                })}
+              </ol>
+            </Card>
+          </aside>
 
-          <Separator className="mb-6" />
-
-          <div>
-            {step.render({
-              restaurantId,
-              settings,
-              patch,
-              goNext,
-            })}
-          </div>
-
-          {step.key !== "welcome" && step.key !== "done" && (
-            <>
-              <Separator className="my-6" />
-              <div className="flex items-center justify-between gap-3">
-                <Button variant="ghost" onClick={goBack} disabled={stepIndex === 0}>
-                  <ArrowLeft className="h-4 w-4 mr-1.5" />
-                  Vorige
-                </Button>
-                <Button onClick={goNext} size="lg">
-                  Volgende
-                  <ArrowRight className="h-4 w-4 ml-1.5" />
-                </Button>
+          <Card className="p-6 sm:p-8">
+            <div className="flex items-start gap-4 mb-6">
+              <div className="rounded-xl bg-primary/10 p-3">
+                <Icon className="h-6 w-6 text-primary" />
               </div>
-            </>
-          )}
-        </Card>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h1 className="text-2xl font-semibold tracking-tight">{step.title}</h1>
+                  {currentStatus && <StepStatusBadge status={currentStatus} />}
+                </div>
+                {step.subtitle && (
+                  <p className="text-sm text-muted-foreground mt-1.5">{step.subtitle}</p>
+                )}
+              </div>
+            </div>
 
-        {/* Step dots */}
-        <div className="mt-6 flex flex-wrap items-center justify-center gap-1.5">
-          {STEPS.map((s, i) => (
-            <button
-              key={s.key}
-              onClick={() => setStepIndex(i)}
-              className={`h-2 rounded-full transition-all ${
-                i === stepIndex
-                  ? "w-6 bg-primary"
-                  : i < stepIndex
-                  ? "w-2 bg-primary/50"
-                  : "w-2 bg-muted-foreground/20"
-              }`}
-              aria-label={`Naar stap ${i + 1}: ${s.title}`}
-            />
-          ))}
+            <Separator className="mb-6" />
+
+            <div>
+              {step.render({ restaurantId, settings, patch, goNext })}
+            </div>
+
+            {step.key !== "welcome" && step.key !== "done" && (
+              <>
+                <Separator className="my-6" />
+                <div className="flex items-center justify-between gap-3">
+                  <Button variant="ghost" onClick={goBack} disabled={stepIndex === 0}>
+                    <ArrowLeft className="h-4 w-4 mr-1.5" />
+                    Vorige
+                  </Button>
+                  <Button onClick={goNext} size="lg">
+                    Volgende
+                    <ArrowRight className="h-4 w-4 ml-1.5" />
+                  </Button>
+                </div>
+              </>
+            )}
+          </Card>
         </div>
       </div>
     </div>
