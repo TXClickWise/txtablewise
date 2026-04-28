@@ -49,12 +49,14 @@ type Props = {
   invalidateKeys?: string[];
   /** Hide secondary actions on small layouts. */
   compact?: boolean;
+  /** Optional slot for additional row actions (kebab menu, etc.). */
+  extraActions?: React.ReactNode;
 };
 
 type ConfirmKind = null | "cancel" | "no_show";
 
 export function ReservationCard({
-  reservation, onOpen, largeGroupThreshold, invalidateKeys = [], compact,
+  reservation, onOpen, largeGroupThreshold, invalidateKeys = [], compact, extraActions,
 }: Props) {
   const qc = useQueryClient();
   const [busy, setBusy] = useState(false);
@@ -204,6 +206,7 @@ export function ReservationCard({
                 <XCircle className="h-4 w-4" /> <span className="hidden md:inline">Annuleer</span>
               </Button>
             )}
+            {extraActions}
           </div>
         </div>
       </div>
