@@ -8,7 +8,8 @@ import {
   CardDescription,
 } from "@/components/ui/card";
 
-interface SectionCardProps extends React.HTMLAttributes<HTMLDivElement> {
+interface SectionCardProps
+  extends Omit<React.HTMLAttributes<HTMLDivElement>, "title"> {
   title?: React.ReactNode;
   description?: React.ReactNode;
   icon?: React.ReactNode;
