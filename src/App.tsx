@@ -26,6 +26,14 @@ import IntegrationsSettings from "./pages/app/settings/IntegrationsSettings.tsx"
 import CapacitySettings from "./pages/app/settings/CapacitySettings.tsx";
 import NoShowSettings from "./pages/app/settings/NoShowSettings.tsx";
 import LargeGroupSettings from "./pages/app/settings/LargeGroupSettings.tsx";
+import HoursClosuresSettings from "./pages/app/settings/HoursClosuresSettings.tsx";
+import ReservationRulesSettings from "./pages/app/settings/ReservationRulesSettings.tsx";
+import GuestsSettings from "./pages/app/settings/GuestsSettings.tsx";
+import MessagesSettings from "./pages/app/settings/MessagesSettings.tsx";
+import AiVoiceSettings from "./pages/app/settings/AiVoiceSettings.tsx";
+import ApiWebhooksSettings from "./pages/app/settings/ApiWebhooksSettings.tsx";
+import UsersRolesSettings from "./pages/app/settings/UsersRolesSettings.tsx";
+import SubscriptionSettings from "./pages/app/settings/SubscriptionSettings.tsx";
 import FloorModePage from "./pages/app/FloorModePage.tsx";
 import WalkInsPage from "./pages/app/WalkInsPage.tsx";
 import WaitlistPage from "./pages/app/WaitlistPage.tsx";
@@ -89,12 +97,21 @@ const App = () => (
               <Route path="integraties/logs" element={<IntegrationLogsPage />} />
               <Route path="instellingen" element={<SettingsPage />}>
                 <Route index element={<GeneralSettings />} />
-                <Route path="openingstijden" element={<OpeningHoursSettings />} />
+                {/* New grouped sections */}
+                <Route path="openingstijden" element={<HoursClosuresSettings />} />
+                <Route path="reserveringen" element={<ReservationRulesSettings />} />
+                <Route path="zones" element={<ZonesTablesSettings />} />
+                <Route path="gasten" element={<GuestsSettings />} />
+                <Route path="berichten" element={<MessagesSettings />} />
+                <Route path="ai-voice" element={<AiVoiceSettings />} />
+                <Route path="integraties" element={<IntegrationsSettings />} />
+                <Route path="api" element={<ApiWebhooksSettings />} />
+                <Route path="gebruikers" element={<UsersRolesSettings />} />
+                <Route path="abonnement" element={<SubscriptionSettings />} />
+                {/* Legacy routes — preserved for old links */}
                 <Route path="shifts" element={<ShiftsSettings />} />
                 <Route path="capaciteit" element={<CapacitySettings />} />
-                <Route path="zones" element={<ZonesTablesSettings />} />
                 <Route path="sluitingen" element={<ClosuresSettings />} />
-                <Route path="integraties" element={<IntegrationsSettings />} />
                 <Route path="grote-groepen" element={<LargeGroupSettings />} />
                 <Route path="no-show" element={<NoShowSettings />} />
               </Route>
