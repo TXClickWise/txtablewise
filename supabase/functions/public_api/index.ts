@@ -248,7 +248,7 @@ Deno.serve(async (req) => {
     reservationId: reservationIdForLog,
     apiKeyPrefix,
     externalReference: rawBody?.externalReference ?? null,
-    metadata: { method: req.method, path: url.pathname, key_label: keyRow.label ?? null },
+    metadata: { method: req.method, path: url.pathname, key_id: keyRow.id, provider: keyRow.provider ?? null },
   });
 
   return response;
