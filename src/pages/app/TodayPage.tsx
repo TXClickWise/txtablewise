@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { format } from "date-fns";
 import { nl } from "date-fns/locale";
-import { CalendarDays, UserPlus, Users, Clock, TrendingUp, Sparkles, CalendarPlus } from "lucide-react";
+import { CalendarDays, UserPlus, Users, Clock, AlertTriangle, Sparkles, CalendarPlus } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useRestaurant } from "@/hooks/useRestaurant";
 import { KpiCard } from "@/components/KpiCard";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { PageHeader } from "@/components/PageHeader";
+import { SectionCard } from "@/components/SectionCard";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { WalkInDialog } from "@/components/WalkInDialog";
@@ -15,6 +17,7 @@ import { ReservationFormSheet } from "@/components/reservations/ReservationFormS
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { LastMinuteFillPanel } from "@/components/waitlist/LastMinuteFillPanel";
 import { PreOrderReadyList } from "@/components/pre-orders/PreOrderReadyList";
+import { CardSkeletonGrid, EmptyState } from "@/components/touch/StateViews";
 
 const TodayPage = () => {
   const { current } = useRestaurant();
@@ -109,34 +112,61 @@ const TodayPage = () => {
 
   return (
     <div className="p-4 sm:p-6 max-w-7xl mx-auto space-y-6">
-      <div className="flex items-center justify-between flex-wrap gap-3">
-        <div>
-          <h1 className="font-display text-3xl">Vandaag</h1>
-          <p className="text-muted-foreground capitalize">
+      <PageHeader
+        title="Vandaag"
+        description={
+          <span className="capitalize">
             {format(new Date(), "EEEE d MMMM yyyy", { locale: nl })}
-          </p>
-        </div>
-        <div className="flex items-center gap-2 flex-wrap">
-          {tableCount === 0 && (
-            <Button onClick={handleSeed} disabled={seeding} variant="outline" className="h-11">
-              <Sparkles className="mr-2 h-4 w-4" />
-              {seeding ? "Bezig…" : "Demo-data inladen"}
+          </span>
+        }
+        badge={
+          <Badge variant="outline" className="gap-1.5">
+            <span className="h-1.5 w-1.5 rounded-full bg-success animate-pulse" />
+            Live
+          </Badge>
+        }
+        actions={
+          <>
+            {tableCount === 0 && (
+              <Button onClick={handleSeed} disabled={seeding} variant="outline" className="h-11">
+                <Sparkles className="mr-2 h-4 w-4" />
+                {seeding ? "Bezig…" : "Demo-data inladen"}
+              </Button>
+            )}
+            <Button variant="outline" className="h-11" onClick={() => setWalkInOpen(true)}>
+              <UserPlus className="mr-2 h-4 w-4" /> Walk-in
             </Button>
-          )}
-          <Button variant="outline" className="h-11" onClick={() => setWalkInOpen(true)}>
-            <UserPlus className="mr-2 h-4 w-4" /> Walk-in
-          </Button>
-          <Button className="h-11" onClick={() => setCreateOpen(true)}>
-            <CalendarPlus className="mr-2 h-4 w-4" /> Reservering
-          </Button>
-        </div>
-      </div>
+            <Button className="h-11" onClick={() => setCreateOpen(true)}>
+              <CalendarPlus className="mr-2 h-4 w-4" /> Reservering
+            </Button>
+          </>
+        }
+      />
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <KpiCard label="Gasten verwacht" value={kpis.guestsTotal} icon={<Users className="h-5 w-5" />} />
-        <KpiCard label="Reserveringen" value={reservations.length} icon={<CalendarDays className="h-5 w-5" />} />
-        <KpiCard label="Aan tafel" value={kpis.seated} icon={<Clock className="h-5 w-5" />} />
-        <KpiCard label="No-shows" value={kpis.noShows} icon={<TrendingUp className="h-5 w-5" />} />
+        <KpiCard
+          label="Gasten verwacht"
+          value={kpis.guestsTotal}
+          icon={<Users className="h-5 w-5" />}
+          tone="premium"
+        />
+        <KpiCard
+          label="Reserveringen"
+          value={reservations.length}
+          icon={<CalendarDays className="h-5 w-5" />}
+        />
+        <KpiCard
+          label="Aan tafel"
+          value={kpis.seated}
+          icon={<Clock className="h-5 w-5" />}
+          accent="primary"
+        />
+        <KpiCard
+          label="No-shows"
+          value={kpis.noShows}
+          icon={<AlertTriangle className="h-5 w-5" />}
+          accent={kpis.noShows > 0 ? "destructive" : "default"}
+        />
       </div>
 
       <div className="grid lg:grid-cols-2 gap-4">
@@ -151,38 +181,45 @@ const TodayPage = () => {
         )}
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="font-display text-xl">Reserveringen vandaag</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {isLoading ? (
-            <div className="space-y-2">
-              {[0, 1, 2].map((i) => <div key={i} className="h-24 rounded-lg bg-muted/40 animate-pulse" />)}
-            </div>
-          ) : reservations.length === 0 ? (
-            <div className="text-center py-12 text-muted-foreground space-y-3">
-              <CalendarDays className="h-10 w-10 mx-auto opacity-40" />
-              <p>Vandaag staan er nog geen reserveringen gepland.</p>
-              {tableCount === 0 && (
-                <p className="text-sm">Klik op "Demo-data inladen" om snel aan de slag te gaan.</p>
-              )}
-            </div>
-          ) : (
-            <div className="space-y-2">
-              {reservations.map((r) => (
-                <ReservationCard
-                  key={r.id}
-                  reservation={r}
-                  onOpen={setSelectedId}
-                  largeGroupThreshold={largeGroupThreshold}
-                  invalidateKeys={["reservations-today"]}
-                />
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+      <SectionCard title="Reserveringen vandaag" icon={<CalendarDays />}>
+        {isLoading ? (
+          <CardSkeletonGrid count={3} />
+        ) : reservations.length === 0 ? (
+          <EmptyState
+            icon={<CalendarDays />}
+            title="Nog geen reserveringen vandaag"
+            description={
+              tableCount === 0
+                ? "Laad demo-data in om snel te zien hoe TableWise eruitziet."
+                : "Nieuwe reserveringen verschijnen hier automatisch."
+            }
+            action={
+              tableCount === 0 ? (
+                <Button onClick={handleSeed} disabled={seeding} variant="outline">
+                  <Sparkles className="mr-2 h-4 w-4" />
+                  {seeding ? "Bezig…" : "Demo-data inladen"}
+                </Button>
+              ) : (
+                <Button onClick={() => setCreateOpen(true)}>
+                  <CalendarPlus className="mr-2 h-4 w-4" /> Reservering toevoegen
+                </Button>
+              )
+            }
+          />
+        ) : (
+          <div className="space-y-2">
+            {reservations.map((r) => (
+              <ReservationCard
+                key={r.id}
+                reservation={r}
+                onOpen={setSelectedId}
+                largeGroupThreshold={largeGroupThreshold}
+                invalidateKeys={["reservations-today"]}
+              />
+            ))}
+          </div>
+        )}
+      </SectionCard>
 
       <WalkInDialog open={walkInOpen} onOpenChange={setWalkInOpen} />
       <ReservationFormSheet open={createOpen} onOpenChange={setCreateOpen} />
