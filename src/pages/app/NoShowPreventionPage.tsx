@@ -351,20 +351,6 @@ const NoShowPreventionPage = () => {
   );
 };
 
-const KpiTile = ({
-  label, value, tone = "muted",
-}: { label: string; value: number; tone?: "muted" | "warn" | "danger" }) => {
-  const colour =
-    tone === "danger" ? "text-destructive"
-    : tone === "warn" ? "text-warning"
-    : "text-foreground";
-  return (
-    <div className="rounded-lg border border-border p-4 bg-card">
-      <div className={`font-display text-3xl ${colour}`}>{value}</div>
-      <div className="text-xs text-muted-foreground mt-1">{label}</div>
-    </div>
-  );
-};
 
 const TemplatePreview = ({ title, body }: { title: string; body: string }) => (
   <div className="rounded-md border border-border bg-muted/30 p-3">
