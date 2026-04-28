@@ -208,6 +208,45 @@ const ReportsPage = () => {
               )}
           </ReportSection>
 
+          {/* AI Voice Agent performance */}
+          <ReportSection title="AI Voice Agent" status={data.ai.totalCalls > 0 ? "live" : "prepared"}
+            description="Hoe goed verwerkt de telefonische AI-host inkomende reserveringen?">
+            {data.ai.totalCalls === 0 ? (
+              <EmptyState
+                title="Nog geen AI-gesprekken"
+                message="Zodra de Voice Agent gekoppeld is en gesprekken binnenkomen verschijnen hier de cijfers. Ga naar Voice Agent om de koppeling te starten."
+              />
+            ) : (
+              <>
+                <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
+                  <ReportKpiCard label="Aantal calls" value={data.ai.totalCalls} />
+                  <ReportKpiCard label="Geslaagde boekingen" value={data.ai.successfulBookings} hint={`${data.ai.successRate}% slaagpercentage`} />
+                  <ReportKpiCard label="Mislukte boekingen" value={data.ai.failedBookings} status={data.ai.failedBookings > 0 ? "incomplete" : undefined} />
+                  <ReportKpiCard label="Overdrachten naar team" value={data.ai.handovers} />
+                  <ReportKpiCard label="Gem. gespreksduur" value={formatDuration(data.ai.avgDurationSeconds)} />
+                </div>
+                {data.ai.topErrorCodes.length > 0 && (
+                  <Card>
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-sm font-display">Meest voorkomende foutcodes</CardTitle>
+                      <CardDescription className="text-xs">Op basis van Voice-integratielogs in deze periode.</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <ul className="space-y-1.5 text-sm">
+                        {data.ai.topErrorCodes.map((e) => (
+                          <li key={e.code} className="flex items-center justify-between border-b py-1.5 last:border-0">
+                            <span className="font-mono text-xs">{e.code}</span>
+                            <span className="tabular-nums text-muted-foreground">{e.count}×</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </CardContent>
+                  </Card>
+                )}
+              </>
+            )}
+          </ReportSection>
+
           {/* No-show */}
           <ReportSection title="No-show & annuleringen" status="live"
             description="No-shows zijn reserveringen waarbij de gast niet is verschenen en dit door het team is gemarkeerd.">
