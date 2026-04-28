@@ -38,6 +38,10 @@ type AllMetrics = {
   guests: Awaited<ReturnType<typeof getGuestMetrics>>;
   pos: Awaited<ReturnType<typeof getPOSRevenueMetrics>>;
   pacing: Awaited<ReturnType<typeof getPacingMetrics>>;
+  hourly: Awaited<ReturnType<typeof getHourlyOccupancy>>;
+  topSeating: Awaited<ReturnType<typeof getTopSeatingMetrics>>;
+  reminders: Awaited<ReturnType<typeof getReminderMetrics>>;
+  ai: Awaited<ReturnType<typeof getAIPerformanceMetrics>>;
 };
 
 const ReportsPage = () => {
@@ -67,8 +71,12 @@ const ReportsPage = () => {
       getGuestMetrics(restaurantId, range),
       getPOSRevenueMetrics(restaurantId, range),
       getPacingMetrics(restaurantId, range),
-    ]).then(([reservations, channels, noShow, waitlist, walkIn, largeGroup, preOrder, reviews, guests, pos, pacing]) => {
-      setData({ reservations, channels, noShow, waitlist, walkIn, largeGroup, preOrder, reviews, guests, pos, pacing });
+      getHourlyOccupancy(restaurantId, range),
+      getTopSeatingMetrics(restaurantId, range),
+      getReminderMetrics(restaurantId, range),
+      getAIPerformanceMetrics(restaurantId, range),
+    ]).then(([reservations, channels, noShow, waitlist, walkIn, largeGroup, preOrder, reviews, guests, pos, pacing, hourly, topSeating, reminders, ai]) => {
+      setData({ reservations, channels, noShow, waitlist, walkIn, largeGroup, preOrder, reviews, guests, pos, pacing, hourly, topSeating, reminders, ai });
     }).catch((e: Error) => setError(e.message)).finally(() => setLoading(false));
   }, [restaurantId, range]);
 
