@@ -264,7 +264,7 @@ Deno.serve(async (req) => {
       // Rollback
       await supabase.from("reservation_tables").delete().eq("reservation_id", reservation.id);
       await supabase.from("reservations").delete().eq("id", reservation.id);
-      return json({ error: "Slot net bezet door een andere reservering, probeer opnieuw", retry: true }, 409);
+      return json({ error: "Slot net bezet door een andere reservering, probeer opnieuw", error_code: "slot_unavailable", field: "time", retry: true }, 409);
     }
 
     // Emit integration event (fire-and-forget)
