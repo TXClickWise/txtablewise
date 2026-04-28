@@ -4,6 +4,7 @@
 // that haven't migrated to multi-endpoints yet.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { corsHeaders } from "../_shared/cors.ts";
+import { logIntegration } from "../_shared/integration-log.ts";
 
 const MAX_ATTEMPTS = 5;
 const BATCH_SIZE = 25;
