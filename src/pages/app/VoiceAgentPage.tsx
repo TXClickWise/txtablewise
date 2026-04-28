@@ -91,6 +91,32 @@ export default function VoiceAgentPage() {
   const [newKeyLabel, setNewKeyLabel] = useState("");
   const [newKeyValue, setNewKeyValue] = useState<string | null>(null);
 
+  // Flow test state
+  const tomorrowIso = useMemo(() => {
+    const d = new Date(); d.setDate(d.getDate() + 1);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  }, []);
+  const [flowInput, setFlowInput] = useState<VoiceFlowInput>({
+    spokenDate: tomorrowIso,
+    spokenTime: "19:30",
+    spokenParty: "4",
+    firstName: "Test",
+    lastName: "Gast",
+    phone: "0612345678",
+    notes: "Voice-flow test reservering — kan worden geannuleerd",
+  });
+  const [flowRunning, setFlowRunning] = useState(false);
+  const [flowResult, setFlowResult] = useState<VoiceFlowResult | null>(null);
+
+  // Restore last flow result
+  useEffect(() => {
+    if (!rid) return;
+    const raw = localStorage.getItem(`voiceFlow:lastResult:${rid}`);
+    if (raw) {
+      try { setFlowResult(JSON.parse(raw) as VoiceFlowResult); } catch { /* noop */ }
+    }
+  }, [rid]);
+
   const agentApiUrl = useMemo(() => {
     const projectId = (import.meta as any).env?.VITE_SUPABASE_PROJECT_ID;
     return `https://${projectId}.supabase.co/functions/v1/agent_api`;
