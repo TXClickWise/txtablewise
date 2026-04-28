@@ -10,10 +10,18 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { Copy, Trash2, Plus, Phone, Bot, BookOpen } from "lucide-react";
+import { Copy, Trash2, Plus, Phone, Bot, BookOpen, CheckCircle2, XCircle, Loader2, PlayCircle, AlertTriangle } from "lucide-react";
 import { Link } from "react-router-dom";
 import { format } from "date-fns";
 import { nl } from "date-fns/locale";
+import {
+  runVoiceFlow,
+  VOICE_FLOW_FIELDS,
+  VOICE_FLOW_PROMPT_TEMPLATE,
+  type VoiceFlowInput,
+  type VoiceFlowResult,
+} from "@/services/voiceFlow";
+import { Badge } from "@/components/ui/badge";
 
 type VoiceSettings = {
   id?: string;
