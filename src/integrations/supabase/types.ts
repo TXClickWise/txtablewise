@@ -560,6 +560,72 @@ export type Database = {
           },
         ]
       }
+      integration_logs: {
+        Row: {
+          action: string
+          api_key_prefix: string | null
+          created_at: string
+          error_code: string | null
+          error_message: string | null
+          external_reference: string | null
+          guest_id: string | null
+          http_status: number | null
+          id: string
+          latency_ms: number | null
+          metadata: Json
+          possible_cause: string | null
+          request_payload: Json | null
+          reservation_id: string | null
+          response_payload: Json | null
+          restaurant_id: string
+          retry_safe: boolean
+          source: string
+          status: string
+        }
+        Insert: {
+          action: string
+          api_key_prefix?: string | null
+          created_at?: string
+          error_code?: string | null
+          error_message?: string | null
+          external_reference?: string | null
+          guest_id?: string | null
+          http_status?: number | null
+          id?: string
+          latency_ms?: number | null
+          metadata?: Json
+          possible_cause?: string | null
+          request_payload?: Json | null
+          reservation_id?: string | null
+          response_payload?: Json | null
+          restaurant_id: string
+          retry_safe?: boolean
+          source: string
+          status: string
+        }
+        Update: {
+          action?: string
+          api_key_prefix?: string | null
+          created_at?: string
+          error_code?: string | null
+          error_message?: string | null
+          external_reference?: string | null
+          guest_id?: string | null
+          http_status?: number | null
+          id?: string
+          latency_ms?: number | null
+          metadata?: Json
+          possible_cause?: string | null
+          request_payload?: Json | null
+          reservation_id?: string | null
+          response_payload?: Json | null
+          restaurant_id?: string
+          retry_safe?: boolean
+          source?: string
+          status?: string
+        }
+        Relationships: []
+      }
       large_group_requests: {
         Row: {
           assigned_to: string | null
