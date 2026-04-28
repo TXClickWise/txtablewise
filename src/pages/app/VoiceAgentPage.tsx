@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { PageHeader } from "@/components/PageHeader";
 import { toast } from "sonner";
 import { Copy, Trash2, Plus, Phone, Bot, BookOpen, CheckCircle2, XCircle, Loader2, PlayCircle, AlertTriangle } from "lucide-react";
 import { Link } from "react-router-dom";
@@ -216,22 +217,22 @@ Je neemt telefonisch reserveringen aan in vriendelijke, natuurlijke Nederlandse 
 
   return (
     <div className="p-6 space-y-6 max-w-5xl">
-      <div className="flex items-start justify-between gap-3 flex-wrap">
-        <div className="flex items-center gap-3">
-          <Bot className="h-7 w-7 text-primary" />
-          <div>
-            <h1 className="font-display text-2xl">AI Voice Agent</h1>
-            <p className="text-sm text-muted-foreground">
-              Koppel een externe AI voice-agent (ClickWise, Vapi, Retell) aan TableWise voor telefonische reserveringen.
-            </p>
-          </div>
-        </div>
-        <Button asChild variant="outline" size="sm">
-          <Link to="/app/help/voice-agent">
-            <BookOpen className="h-4 w-4 mr-1" /> Help & koppeling
-          </Link>
-        </Button>
-      </div>
+      <PageHeader
+        title="AI Voice Agent"
+        description="Koppel een externe AI voice-agent (ClickWise, Vapi, Retell) aan TableWise voor telefonische reserveringen."
+        badge={
+          <Badge variant="outline" className="gap-1.5">
+            <Bot className="h-3 w-3 text-primary" /> Voice
+          </Badge>
+        }
+        actions={
+          <Button asChild variant="outline" className="h-11">
+            <Link to="/app/help/voice-agent">
+              <BookOpen className="h-4 w-4 mr-2" /> Help & koppeling
+            </Link>
+          </Button>
+        }
+      />
 
       <Tabs defaultValue="setup">
         <TabsList>

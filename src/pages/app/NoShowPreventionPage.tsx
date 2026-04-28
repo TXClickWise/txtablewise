@@ -8,6 +8,9 @@ import { useRestaurant } from "@/hooks/useRestaurant";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge as UIBadge } from "@/components/ui/badge";
+import { KpiCard } from "@/components/KpiCard";
+import { PageHeader } from "@/components/PageHeader";
+import { EmptyState, LoadingState } from "@/components/touch/StateViews";
 import { toast } from "sonner";
 import { reservations as resService } from "@/services/reservations";
 import { calculateNoShowSignal, RISK_LABEL } from "@/lib/noShowSignal";
@@ -190,46 +193,57 @@ const NoShowPreventionPage = () => {
 
   return (
     <div className="p-4 md:p-6 max-w-6xl mx-auto space-y-6">
-      <header className="flex items-start justify-between gap-4 flex-wrap">
-        <div>
-          <h1 className="font-display text-3xl flex items-center gap-2">
-            <Sparkles className="h-7 w-7 text-primary" /> No-show preventie
-          </h1>
-          <p className="text-muted-foreground mt-1 max-w-2xl">
-            Maak het gasten makkelijk om hun reservering te bevestigen, wijzigen of op tijd te annuleren —
-            zodat je tafels goed kunt plannen.
-          </p>
-        </div>
-        <Button variant="outline" asChild>
-          <Link to="/app/instellingen/no-show">
-            <Settings className="h-4 w-4 mr-2" /> Instellingen
-          </Link>
-        </Button>
-      </header>
+      <PageHeader
+        title="No-show preventie"
+        description="Maak het gasten makkelijk om hun reservering te bevestigen, wijzigen of op tijd te annuleren — zodat je tafels goed kunt plannen."
+        badge={
+          <UIBadge variant="outline" className="gap-1.5">
+            <Sparkles className="h-3 w-3 text-primary" /> Hospitality-first
+          </UIBadge>
+        }
+        actions={
+          <Button variant="outline" className="h-11" asChild>
+            <Link to="/app/instellingen/no-show">
+              <Settings className="h-4 w-4 mr-2" /> Instellingen
+            </Link>
+          </Button>
+        }
+      />
 
       {/* KPIs */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <KpiTile label="Herbevestigingen open" value={kpis.reconfirmOpen} />
-        <KpiTile label="Risico vandaag (medium/hoog)" value={kpis.highRisk} tone={kpis.highRisk > 0 ? "warn" : "muted"} />
-        <KpiTile label="Reserveringsgaranties open" value={kpis.depositOpen} />
-        <KpiTile label="Te laat & nog niet seated" value={kpis.lateNotSeated} tone={kpis.lateNotSeated > 0 ? "danger" : "muted"} />
+        <KpiCard label="Herbevestigingen open" value={kpis.reconfirmOpen} tone="premium" />
+        <KpiCard
+          label="Risico vandaag"
+          value={kpis.highRisk}
+          accent={kpis.highRisk > 0 ? "warning" : "default"}
+          icon={<AlertTriangle className="h-5 w-5" />}
+        />
+        <KpiCard label="Reserveringsgaranties open" value={kpis.depositOpen} icon={<Wallet className="h-5 w-5" />} />
+        <KpiCard
+          label="Te laat & nog niet seated"
+          value={kpis.lateNotSeated}
+          accent={kpis.lateNotSeated > 0 ? "destructive" : "default"}
+        />
       </div>
 
       {/* Follow-up list */}
-      <Card>
+      <Card className="bg-gradient-card shadow-soft">
         <CardHeader>
-          <CardTitle>Vandaag opvolgen</CardTitle>
+          <CardTitle className="font-display">Vandaag opvolgen</CardTitle>
           <CardDescription>
             Reserveringen tot en met morgen die aandacht vragen.
           </CardDescription>
         </CardHeader>
         <CardContent>
           {isLoading ? (
-            <div className="text-sm text-muted-foreground">Laden…</div>
+            <LoadingState label="Risico-reserveringen laden…" />
           ) : followup.length === 0 ? (
-            <div className="text-sm text-muted-foreground">
-              Niets om op te volgen — je staat er goed voor.
-            </div>
+            <EmptyState
+              icon={<ShieldCheck />}
+              title="Niets om op te volgen"
+              description="Geen risico-reserveringen vandaag of morgen — je staat er goed voor."
+            />
           ) : (
             <ul className="divide-y divide-border">
               {followup.map(({ r, signal, isLargeGroup, needsDeposit, isLate, reconfirmOpen }) => {
@@ -337,20 +351,6 @@ const NoShowPreventionPage = () => {
   );
 };
 
-const KpiTile = ({
-  label, value, tone = "muted",
-}: { label: string; value: number; tone?: "muted" | "warn" | "danger" }) => {
-  const colour =
-    tone === "danger" ? "text-destructive"
-    : tone === "warn" ? "text-warning"
-    : "text-foreground";
-  return (
-    <div className="rounded-lg border border-border p-4 bg-card">
-      <div className={`font-display text-3xl ${colour}`}>{value}</div>
-      <div className="text-xs text-muted-foreground mt-1">{label}</div>
-    </div>
-  );
-};
 
 const TemplatePreview = ({ title, body }: { title: string; body: string }) => (
   <div className="rounded-md border border-border bg-muted/30 p-3">

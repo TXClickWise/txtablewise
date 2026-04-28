@@ -1,77 +1,90 @@
-# Online reserveringswidget — embed, link, QR & instellingenpagina
+# UI/UX-polish — consistent gebruik van het bestaande design system
 
-## Uitgangspositie
-- ✅ Volledig werkende widget op `/r/:slug`, `/reserveer/:slug`, `/book/:slug` (`src/pages/ReserveWidget.tsx`, 869 regels)
-- ✅ Stappen: party → date → time → details → confirm, met large-group en waitlist fallback
-- ✅ Gebruikt al `getAvailability()` + `createPublicReservation()` uit `src/services/publicBooking.ts` — zelfde edge functions als interne flow, AI Voice Agent en publieke API → **geen aparte logica nodig**
-- ✅ Mobiel-first responsive, sticky header, grote touch-targets, progressive disclosure
-- ❌ Geen embed-codegenerator, geen QR, geen brand-styling toegepast, geen URL-prefill voor party/date, geen taal-override
-- ❌ Geen settings-pagina "Online reserveren / Widget"
+## Uitgangspunt
 
-## Aanpak
-**Geen nieuwe booking-logica.** Twee gerichte uitbreidingen:
+Het design system is al sterk: warm-burgundy palette, status- en channel-tokens, gradient-card, shadow-soft/elegant/lifted, Fraunces display, `KpiCard`, `StatusBadge`, `StateViews` (Loading/Empty/Error/Connection) en touch-primitives. Het probleem is **inconsistente toepassing**: pagina's hebben hun eigen ad-hoc skeletons, lege states, ronde knopjes, status-pills en spacing.
 
-### 1. `src/pages/ReserveWidget.tsx` — URL params + brand styling
-Lees deze nieuwe `searchParams`:
-| Param | Effect |
+De polish bestaat dus vooral uit **opruim- en hergebruikswerk** — niet uit nieuwe tokens of nieuwe layouts. Geen nieuwe globale styling, geen risico op kapotte andere pagina's.
+
+## Stap 1 — Twee nieuwe shared primitives (klein, additief)
+
+### `src/components/PageHeader.tsx` (nieuw)
+Eén header voor alle `/app`-pagina's: titel (`font-display text-3xl`), optionele subtekst, optionele breadcrumb-/badge-strip en een rechterzijde voor primary/secondary actions. Tablet-first: actions worden onder de titel gestapeld < md.
+
+```tsx
+<PageHeader
+  title="Vandaag"
+  description="Maandag 28 april 2026"
+  badge={<Badge variant="outline">Live</Badge>}
+  actions={<Button>Reservering</Button>}
+/>
+```
+
+### `src/components/SectionCard.tsx` (nieuw)
+Dunne wrapper rond shadcn `<Card>` met `shadow-soft hover:shadow-elegant transition-smooth bg-gradient-card`, een gestandaardiseerde header met optioneel icoon + actions. Hiermee krijgen alle "secties" op alle pagina's exact dezelfde look zonder dat we elke `<Card>` afzonderlijk moeten herwerken.
+
+Geen wijzigingen aan `Card` zelf — wie het niet wil gebruiken behoudt huidig gedrag.
+
+## Stap 2 — `KpiCard` lichte uitbreiding
+
+`KpiCard` krijgt twee optionele props (volledig backwards-compatible):
+- `delta?: { value: string; trend: "up" | "down" | "flat" }` — kleine pill met pijltje, gebruikt status/success/destructive tokens
+- `tone?: "neutral" | "premium"` — bij `premium` tonen we een dunne brass-accentlijn boven de waarde (gebruikt bestaande `--accent`)
+
+## Stap 3 — Per pagina toepassing (geen logica wijzigen)
+
+Per pagina exact deze drie ingrepen, niets meer:
+
+1. Vervang ad-hoc header door `<PageHeader>`.
+2. Vervang inline `<div className="text-center py-12 …">`-leegstates door `<EmptyState>`, inline pulses door `<CardSkeletonGrid>` of `<LoadingState>`, en error-blokjes door `<ErrorRetryState>`.
+3. Vervang ruwe status-tekst door `<StatusBadge>` waar het type een reservation_status of large_group_status is.
+
+Pagina's:
+
+| Pagina | Voornaamste ingreep |
 |---|---|
-| `party=4` | Initiële `partySize`, slaat party-stap eventueel niet over (gast kan nog wijzigen) |
-| `date=2026-04-30` | Initiële `date`, ISO yyyy-MM-dd |
-| `time=19:00` | Pre-select tijdslot wanneer beschikbaarheid laadt |
-| `lang=nl\|en` | Voor toekomstige i18n; nu alleen `<html lang>` zetten + dateformat |
-| `hide_logo=1` | Verbergt het TableWise-logo in de header |
-| `accent=#hex` | Override van `restaurants.brand_primary`, alleen geldig hex |
-| `source=...` | Bestaand (channel attribution) |
+| **TodayPage** (Dashboard) | `PageHeader` met live-tijd badge; KpiCards krijgen `delta` waar zinvol; lege staat → `EmptyState`; skeleton → `CardSkeletonGrid` |
+| **ReservationsPage** | `PageHeader` met primaire CTA; KPI strip via `KpiCard`; `EmptyState`; statussen via `StatusBadge` |
+| **AgendaPage** | `PageHeader`; loading/empty primitives; legenda met `StatusBadge` mini variant |
+| **FloorPlanPage** | `PageHeader` met "Bewerken/Bekijken" toggle; `EmptyState` als nog geen tafels |
+| **FloorModePage** | `PageHeader` blijft compact (tablet); duidelijker connectiestatus via `<ConnectionStatusNotice>` bovenaan; statuspills via `StatusBadge` |
+| **WalkInsPage** | `PageHeader` + `EmptyState` + `SectionCard` voor de quick-seat tegels |
+| **WaitlistPage** | `PageHeader`; `EmptyState`; status- en kanaalbadges uniform |
+| **GuestsPage** | `PageHeader` met zoek-action; `EmptyState`; segment-kpi's via `KpiCard` (totaal gasten, VIP's, frequent, no-show risico) |
+| **NoShowPreventionPage** | `PageHeader`; KPI's krijgen `delta` (vorige periode); `EmptyState` voor "geen risico-reserveringen vandaag" |
+| **AIHostPage / VoiceAgentPage** | `PageHeader` met provider-badge; readiness-checklist binnen `SectionCard`; `EmptyState` voor "nog geen calls" |
+| **IntegrationHubPage** | `PageHeader` + per integratie een `SectionCard` met statuspil (verbonden / niet ingesteld / fout) |
+| **SettingsPage** | bovenste hero blijft, sidebar krijgt subtieler hover-state (`hover:bg-sidebar-accent/60`); leesbare actieve indicator zonder zware achtergrond |
 
-Brand styling (zonder hardcoded kleuren in components):
-- Restaurant-query uitbreiden met `brand_primary`, `logo_url`
-- In `useEffect` na laden: zet `--primary` en `--ring` als CSS-variable op de root van het widget-`<div>` met de hex (geconverteerd naar HSL via een kleine helper). Zo blijft alle bestaande `bg-primary` etc. werken zonder componentwijzigingen.
-- Logo van het restaurant tonen in header bij `restaurant.logo_url` als `hide_logo` niet gezet is. TableWise-merk wordt subtieler ("powered by") onderaan.
+## Stap 4 — Mobiele/tablet polish
 
-Validatie: hex met `^#[0-9a-fA-F]{6}$` regex; ongeldige waarden negeren stilletjes.
+- Gestapelde header-acties onder titel < md, en standaard `min-h-[44px]` op alle CTA's via een `Button size="default"` audit (geen wijziging in component zelf — dit gebeurt al via de `pointer: coarse` media query in `index.css`).
+- Sticky `<PageHeader>` op `/app` schermen met veel scroll (Reservations, Guests, NoShow): krijgt `sticky top-0 z-20 bg-background/80 backdrop-blur` als opt-in prop. Default uit.
+- KPI grid: `grid-cols-2 sm:grid-cols-2 lg:grid-cols-4` overal hetzelfde.
 
-### 2. `src/pages/app/settings/WidgetSettings.tsx` — nieuwe pagina
-Alles op één scherm, twee kolommen op desktop, gestapeld op mobiel:
+## Stap 5 — Iconenconsistentie
 
-**Linker kolom — Configuratie**
-- **Brand**: kleurkiezer (gekoppeld aan `restaurants.brand_primary`), upload-/URL-veld voor `logo_url` (alleen URL voor nu, file upload bestaat nog niet — duidelijk gemarkeerd)
-- **Standaarden**: aantal personen (1–8), datum (vandaag/morgen/specifiek), tijd (HH:mm of leeg), taal (nl/en) — komen als URL-params terecht in alle gegenereerde links
-- **Toon TableWise-logo**: switch (default aan)
+Eén pictogram per concept, bestaand:
+- gasten = `Users`, reservering = `CalendarDays`, walk-in = `UserPlus`, tijd/aan tafel = `Clock`, no-show/risk = `AlertTriangle`, AI = `Sparkles`/`Bot`, integratie = `Plug`, instellingen = `Settings`. Bestaande pagina's die afwijken (bv. `TrendingUp` voor no-shows in TodayPage) worden afgestemd.
 
-**Rechter kolom — Verspreiden**
-- **Directe link**: `https://<host>/r/<slug>?party=…&date=…` met copy-button
-- **Embed script**: `<iframe>` snippet met de gekozen defaults, copy-button. Inclusief `loading="lazy"` en responsive sizing (style: width 100%, min-height 720px, border 0)
-- **QR-code**: `qrcode.react` SVG, downloadbaar als PNG via canvas-conversie. Onder de QR-code: link naar de exacte URL.
+## Wat NIET verandert
 
-**Volledige breedte — Preview**
-- Tabs/segments: **Mobiel** (375×667) en **Desktop** (1024×768) — frame met `<iframe src=…>` op de juiste viewport. Live-update wanneer instellingen veranderen.
-
-### 3. Routing & navigatie
-- Nieuwe route in `src/App.tsx`: `instellingen/widget` → `<WidgetSettings />`
-- Nieuw item in `SettingsPage.tsx` onder groep "Operatie": "Online reserveren" met `Globe`-icoon
-
-### 4. Persistentie
-- `restaurants.brand_primary` en `restaurants.logo_url` bestaan al → direct opslaan via update
-- Defaults voor party/date/time/taal hoeven niet in DB; ze leven alleen in de gegenereerde URLs (one-shot configuratie). Optioneel later in `restaurants.metadata` opslaan zodat gebruikers ze terugzien — nu lokaal per sessie.
+- Geen wijzigingen aan `index.css` tokens (kleuren, radius, shadows, fonts) — dus geen kans op cascade-effect op andere pagina's
+- Geen nieuwe routes
+- Geen wijziging aan `Card`, `Button`, `Badge` shadcn primitives
+- Geen wijziging in datafetching, queries of business-logica
+- Geen nieuwe animaties — bestaande `transition-smooth` blijft de enige
 
 ## Bestanden
-**Nieuw**
-- `src/pages/app/settings/WidgetSettings.tsx`
 
-**Aangepast**
-- `src/pages/ReserveWidget.tsx` — `RestaurantInfo` uitgebreid met `brand_primary` + `logo_url`, URL-param parsing voor `party/date/time/lang/hide_logo/accent`, brand styling via CSS-variabelen, optionele logo render
-- `src/App.tsx` — route toevoegen
-- `src/pages/app/SettingsPage.tsx` — navigatie-item "Online reserveren"
+**Nieuw (2)**
+- `src/components/PageHeader.tsx`
+- `src/components/SectionCard.tsx`
 
-**Niet aangeraakt**
-- `src/services/publicBooking.ts` — al gedeeld met AI Voice Agent en publieke API
-- Edge functions, RLS, DB schema (alle vereiste velden bestaan al)
+**Aangepast (klein)**
+- `src/components/KpiCard.tsx` — twee optionele props erbij
+- 12 pagina's in `src/pages/app/` — alleen header- en state-blokken vervangen, geen logica raken
 
-## Dependency
-- `qrcode.react` reeds geïnstalleerd
+## Risico
 
-## Guardrails toegepast
-- **Geen aparte widget-logica** — widget gebruikt dezelfde `getAvailability` en `createPublicReservation` services als interne flow, AI Voice en publieke API
-- **Zelfde validatie** — `guestSchema` (zod) blijft de single source of truth in de widget
-- **Mobiel** — bestaande widget is al touch-first; instellingen-pagina krijgt mobiele preview-tab; embed-snippet is responsive
-- **Veiligheid** — hex-color en URL-param validatie op de widget; geen DOM-injectie van user content
+Laag. Alle wijzigingen zijn additief of vervangen ad-hoc markup door bestaande, geteste primitives die al elders in de codebase werken (StatusBadge in detail-dialogen, StateViews in touch-folder). Performance verandert niet — minder DOM, niet meer.

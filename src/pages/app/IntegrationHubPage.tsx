@@ -10,6 +10,7 @@ import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { PageHeader } from "@/components/PageHeader";
 import { toast } from "sonner";
 import { Plug, Webhook, Bot, KeyRound, FlaskConical, Plus, Trash2, Send, Eye, EyeOff, Phone } from "lucide-react";
 import {
@@ -99,16 +100,16 @@ export default function IntegrationHubPage() {
   };
 
   return (
-    <div className="p-6 space-y-6 max-w-6xl">
-      <div className="flex items-center gap-3">
-        <Plug className="h-7 w-7 text-primary" />
-        <div>
-          <h1 className="font-display text-2xl">Integratiehub</h1>
-          <p className="text-sm text-muted-foreground">
-            Beheer API-sleutels, webhooks en test live je koppelingen met externe systemen.
-          </p>
-        </div>
-      </div>
+    <div className="p-4 sm:p-6 space-y-6 max-w-6xl mx-auto">
+      <PageHeader
+        title="Integratiehub"
+        description="Beheer API-sleutels, webhooks en test live je koppelingen met externe systemen."
+        badge={
+          <Badge variant="outline" className="gap-1.5">
+            <Plug className="h-3 w-3 text-primary" /> Open platform
+          </Badge>
+        }
+      />
 
       <Tabs defaultValue="overview">
         <TabsList>

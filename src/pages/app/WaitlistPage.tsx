@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { format, addDays } from "date-fns";
-import { Plus, Search } from "lucide-react";
+import { Plus, Search, Users } from "lucide-react";
 
 import { useRestaurant } from "@/hooks/useRestaurant";
 import { supabase } from "@/integrations/supabase/client";
@@ -10,6 +10,8 @@ import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { KpiCard } from "@/components/KpiCard";
+import { PageHeader } from "@/components/PageHeader";
+import { EmptyState, LoadingState } from "@/components/touch/StateViews";
 import { WaitlistCard } from "@/components/waitlist/WaitlistCard";
 import { WaitlistFormSheet } from "@/components/waitlist/WaitlistFormSheet";
 import { WaitlistDetailDialog } from "@/components/waitlist/WaitlistDetailDialog";
@@ -134,30 +136,28 @@ const WaitlistPage = () => {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between gap-4 flex-wrap">
-        <div>
-          <h1 className="font-display text-3xl">Wachtlijst</h1>
-          <p className="text-muted-foreground text-sm mt-1">
-            Voorkom lege tafels — vul vrijgekomen plekken snel en gastvrij opnieuw op.
-          </p>
-        </div>
-        <Button size="lg" className="h-11" onClick={() => { setEditEntry(null); setFormOpen(true); }}>
-          <Plus className="mr-2 h-4 w-4" /> Wachtlijstitem
-        </Button>
-      </div>
+    <div className="p-4 sm:p-6 max-w-7xl mx-auto space-y-6">
+      <PageHeader
+        title="Wachtlijst"
+        description="Voorkom lege tafels — vul vrijgekomen plekken snel en gastvrij opnieuw op."
+        actions={
+          <Button size="lg" className="h-11" onClick={() => { setEditEntry(null); setFormOpen(true); }}>
+            <Plus className="mr-2 h-4 w-4" /> Wachtlijstitem
+          </Button>
+        }
+      />
 
       <LastMinuteFillPanel restaurantId={restaurantId} />
 
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-        <KpiCard label="Actief" value={kpis.active} />
-        <KpiCard label="Vandaag te vullen" value={kpis.todayCount} />
+        <KpiCard label="Actief" value={kpis.active} tone="premium" />
+        <KpiCard label="Vandaag te vullen" value={kpis.todayCount} accent="primary" />
         <KpiCard label="Bericht voorbereid" value={kpis.matched} />
-        <KpiCard label="Omgezet" value={kpis.converted} />
-        <KpiCard label="Verlopen" value={kpis.expired} />
+        <KpiCard label="Omgezet" value={kpis.converted} accent="success" />
+        <KpiCard label="Verlopen" value={kpis.expired} accent="warning" />
       </div>
 
-      <Card className="p-4 space-y-4">
+      <Card className="p-4 space-y-4 bg-gradient-card shadow-soft">
         <div className="flex flex-wrap gap-3 items-center justify-between">
           <Tabs value={dateFilter} onValueChange={(v) => setDateFilter(v as DateFilter)}>
             <TabsList>
@@ -193,17 +193,18 @@ const WaitlistPage = () => {
       </Card>
 
       <div className="space-y-3">
-        {isLoading && <p className="text-sm text-muted-foreground">Wachtlijst laden…</p>}
+        {isLoading && <LoadingState label="Wachtlijst laden…" />}
         {!isLoading && filtered.length === 0 && (
-          <Card className="p-8 text-center">
-            <p className="font-display text-lg mb-1">Geen wachtlijstitems gevonden</p>
-            <p className="text-sm text-muted-foreground mb-4">
-              Er staan momenteel geen gasten op de wachtlijst voor deze selectie.
-            </p>
-            <Button onClick={() => { setEditEntry(null); setFormOpen(true); }}>
-              <Plus className="mr-2 h-4 w-4" /> Wachtlijstitem
-            </Button>
-          </Card>
+          <EmptyState
+            icon={<Users />}
+            title="Geen wachtlijstitems gevonden"
+            description="Er staan momenteel geen gasten op de wachtlijst voor deze selectie."
+            action={
+              <Button onClick={() => { setEditEntry(null); setFormOpen(true); }}>
+                <Plus className="mr-2 h-4 w-4" /> Wachtlijstitem
+              </Button>
+            }
+          />
         )}
         {filtered.map((e) => (
           <WaitlistCard

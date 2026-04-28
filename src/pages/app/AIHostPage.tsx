@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { PageHeader } from "@/components/PageHeader";
 import {
   Phone, MessageSquare, MessageCircle, Globe, UserCheck, ShieldCheck,
   Sparkles, AlertTriangle, CheckCircle2, Loader2, Hourglass,
@@ -241,14 +242,16 @@ const AIHostPage = () => {
     setHistory((h) => [{ at: Date.now(), action: res.action, res }, ...h].slice(0, 25));
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">AI Host</h1>
-        <p className="text-sm text-muted-foreground mt-1 max-w-2xl">
-          AI mag gesprekken voeren. De reserveringsengine beslist of er echt plek is. Geen dubbele boekingen — ooit.
-          Hieronder zie je alle toegestane acties en kun je ze veilig testen in een sandbox.
-        </p>
-      </div>
+    <div className="p-4 sm:p-6 max-w-7xl mx-auto space-y-6">
+      <PageHeader
+        title="AI Host"
+        description="AI mag gesprekken voeren. De reserveringsengine beslist of er echt plek is. Geen dubbele boekingen — ooit. Hieronder zie je alle toegestane acties en kun je ze veilig testen in een sandbox."
+        badge={
+          <Badge variant="outline" className="gap-1.5">
+            <Sparkles className="h-3 w-3 text-primary" /> AI-native
+          </Badge>
+        }
+      />
 
       <Card>
         <CardHeader><CardTitle className="text-base">Kanalen</CardTitle></CardHeader>
