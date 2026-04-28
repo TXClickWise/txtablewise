@@ -5,7 +5,7 @@ import { Copy, Download, Globe, Smartphone, Monitor, Image as ImageIcon, Externa
 import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
-import { useActiveRestaurant } from "@/hooks/useActiveRestaurant";
+import { useRestaurant } from "@/hooks/useRestaurant";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
