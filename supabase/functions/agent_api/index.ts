@@ -117,9 +117,10 @@ Deno.serve(async (req) => {
   try {
     switch (action) {
       case "check_availability": {
-        if (!keyRow.scopes.includes("availability")) return json({ error: "Scope missing: availability" }, 403);
+        if (!keyRow.scopes.includes("availability")) return json({ error: "Scope missing: availability", error_code: "auth_scope_missing", field: "availability" }, 403);
         const { date, party_size } = payload as { date?: string; party_size?: number };
-        if (!date || !party_size) return json({ error: "date and party_size required" }, 400);
+        if (!date) return json({ error: "date required (YYYY-MM-DD)", error_code: "missing_field", field: "date" }, 400);
+        if (!party_size) return json({ error: "party_size required", error_code: "missing_field", field: "party_size" }, 400);
         const r = await callInternalFn("availability", {
           restaurant_id: keyRow.restaurant_id,
           date,
