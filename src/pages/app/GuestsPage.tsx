@@ -14,6 +14,8 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { KpiCard } from "@/components/KpiCard";
+import { PageHeader } from "@/components/PageHeader";
+import { EmptyState, LoadingState } from "@/components/touch/StateViews";
 import { GuestBadges } from "@/components/guests/GuestBadges";
 import { GuestFormSheet } from "@/components/guests/GuestFormSheet";
 import { GuestNotesSection } from "@/components/guests/GuestNotesSection";
@@ -75,29 +77,27 @@ const GuestsPage = () => {
 
   return (
     <div className="p-4 lg:p-6 max-w-7xl space-y-5">
-      <header className="flex items-start justify-between gap-3 flex-wrap">
-        <div>
-          <h1 className="font-display text-2xl">Gasten</h1>
-          <p className="text-sm text-muted-foreground">
-            Bewaar alleen informatie die helpt om gasten beter te ontvangen.
-          </p>
-        </div>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={() => refetch()} disabled={isLoading}>
-            <RefreshCw className={isLoading ? "animate-spin" : ""} />
-          </Button>
-          <Button size="lg" className="h-11" onClick={() => setCreateOpen(true)}>
-            <Plus className="mr-1 h-4 w-4" /> Gast
-          </Button>
-        </div>
-      </header>
+      <PageHeader
+        title="Gasten"
+        description="Bewaar alleen informatie die helpt om gasten beter te ontvangen."
+        actions={
+          <>
+            <Button variant="outline" size="icon" className="h-11 w-11" onClick={() => refetch()} disabled={isLoading} aria-label="Vernieuwen">
+              <RefreshCw className={isLoading ? "h-4 w-4 animate-spin" : "h-4 w-4"} />
+            </Button>
+            <Button size="lg" className="h-11" onClick={() => setCreateOpen(true)}>
+              <Plus className="mr-1 h-4 w-4" /> Gast
+            </Button>
+          </>
+        }
+      />
 
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-        <KpiCard label="Totaal gasten"        value={kpis?.total ?? "—"}          icon={<Users className="h-5 w-5" />} />
-        <KpiCard label="Terugkerend"          value={kpis?.returning ?? "—"}      icon={<Users className="h-5 w-5" />} />
-        <KpiCard label="VIP"                  value={kpis?.vip ?? "—"}            icon={<Crown className="h-5 w-5" />} />
+        <KpiCard label="Totaal gasten"        value={kpis?.total ?? "—"}          icon={<Users className="h-5 w-5" />} tone="premium" />
+        <KpiCard label="Terugkerend"          value={kpis?.returning ?? "—"}      icon={<Users className="h-5 w-5" />} accent="primary" />
+        <KpiCard label="VIP"                  value={kpis?.vip ?? "—"}            icon={<Crown className="h-5 w-5" />} accent="warning" />
         <KpiCard label="Allergie"             value={kpis?.allergy ?? "—"}        icon={<AlertTriangle className="h-5 w-5" />} />
-        <KpiCard label="Nieuw deze maand"     value={kpis?.newThisMonth ?? "—"}   icon={<UserPlus className="h-5 w-5" />} />
+        <KpiCard label="Nieuw deze maand"     value={kpis?.newThisMonth ?? "—"}   icon={<UserPlus className="h-5 w-5" />} accent="success" />
         <KpiCard label="Marketing opt-in"     value={kpis?.marketingOptIn ?? "—"} icon={<MailCheck className="h-5 w-5" />} />
       </div>
 
@@ -121,12 +121,18 @@ const GuestsPage = () => {
         </CardHeader>
         <CardContent>
           {isLoading ? (
-            <p className="text-sm text-muted-foreground py-8 text-center">Laden…</p>
+            <LoadingState label="Gasten laden…" />
           ) : guests.length === 0 ? (
-            <div className="py-12 text-center space-y-3">
-              <p className="text-sm text-muted-foreground">Er zijn nog geen gasten opgeslagen.</p>
-              <Button onClick={() => setCreateOpen(true)}><Plus className="h-4 w-4 mr-1" /> Gast toevoegen</Button>
-            </div>
+            <EmptyState
+              icon={<Users />}
+              title="Nog geen gastprofielen"
+              description="Voeg een eerste gast toe of laat reserveringen automatisch profielen aanmaken."
+              action={
+                <Button onClick={() => setCreateOpen(true)}>
+                  <Plus className="h-4 w-4 mr-1" /> Gast toevoegen
+                </Button>
+              }
+            />
           ) : (
             <ul className="divide-y">
               {guests.map((g) => (
