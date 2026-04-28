@@ -34,12 +34,16 @@ Deno.serve(async (req) => {
 
   try {
     const body = (await req.json()) as BookRequest;
-    if (!body?.date || !body?.time || !body?.party_size || !body?.guest?.email || !body?.guest?.first_name) {
-      return json({ error: "Missing required fields" }, 400);
-    }
-    if (!(body.restaurant_id || body.restaurant_slug)) return json({ error: "Restaurant required" }, 400);
-    if (body.party_size < 1 || body.party_size > 50) return json({ error: "Invalid party_size" }, 400);
-    if (!/^\S+@\S+\.\S+$/.test(body.guest.email)) return json({ error: "Invalid email" }, 400);
+    const missing: string[] = [];
+    if (!body?.date) missing.push("date");
+    if (!body?.time) missing.push("time");
+    if (!body?.party_size) missing.push("party_size");
+    if (!body?.guest?.first_name) missing.push("guest.first_name");
+    if (!body?.guest?.email) missing.push("guest.email");
+    if (missing.length) return json({ error: `Missing required fields: ${missing.join(", ")}`, error_code: "missing_field", field: missing[0] }, 400);
+    if (!(body.restaurant_id || body.restaurant_slug)) return json({ error: "Restaurant required", error_code: "missing_field", field: "restaurant_id" }, 400);
+    if (body.party_size < 1 || body.party_size > 50) return json({ error: "Invalid party_size", error_code: "invalid_field", field: "party_size" }, 400);
+    if (!/^\S+@\S+\.\S+$/.test(body.guest.email)) return json({ error: "Invalid email", error_code: "invalid_email", field: "guest.email" }, 400);
 
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL")!,
@@ -51,11 +55,11 @@ Deno.serve(async (req) => {
       ? supabase.from("restaurants").select("*").eq("id", body.restaurant_id).maybeSingle()
       : supabase.from("restaurants").select("*").eq("slug", body.restaurant_slug!).maybeSingle();
     const { data: restaurant, error: rErr } = await restQuery;
-    if (rErr) return json({ error: rErr.message }, 500);
-    if (!restaurant) return json({ error: "Restaurant not found" }, 404);
+    if (rErr) return json({ error: rErr.message, error_code: "internal" }, 500);
+    if (!restaurant) return json({ error: "Restaurant not found", error_code: "not_found", field: "restaurant_id" }, 404);
 
     if (body.party_size > restaurant.max_party_size_online && body.channel !== "manager") {
-      return json({ error: "Party size exceeds online limit", large_group: true }, 400);
+      return json({ error: "Party size exceeds online limit", error_code: "large_group_required_manual", field: "party_size", large_group: true }, 400);
     }
 
     const tz: string = restaurant.timezone;
@@ -76,7 +80,7 @@ Deno.serve(async (req) => {
     const end_iso = addMinutesIso(start_iso, durationMinutes);
 
     if (new Date(start_iso) < new Date(Date.now() + (restaurant.booking_lead_time_minutes ?? 0) * 60_000)) {
-      return json({ error: "Slot too soon" }, 400);
+      return json({ error: "Slot too soon", error_code: "slot_too_soon", field: "time" }, 400);
     }
 
     // Find fitting tables
@@ -87,7 +91,7 @@ Deno.serve(async (req) => {
       .order("capacity_max", { ascending: true });
 
     if (!tables || tables.length === 0) {
-      return json({ error: "Geen passende tafel beschikbaar voor deze groepsgrootte" }, 409);
+      return json({ error: "Geen passende tafel beschikbaar voor deze groepsgrootte", error_code: "no_table_available", field: "party_size" }, 409);
     }
 
     // Existing active reservations overlapping window
@@ -110,7 +114,7 @@ Deno.serve(async (req) => {
       }
     }
     const candidate = tables.find((t) => !occupied.has(t.id));
-    if (!candidate) return json({ error: "Geen tafel meer beschikbaar voor dit moment", retry: true }, 409);
+    if (!candidate) return json({ error: "Geen tafel meer beschikbaar voor dit moment", error_code: "slot_unavailable", field: "time", retry: true }, 409);
 
     // Pacing check (skip for operator-driven walk-ins / manager bookings)
     const skipPacing = channel === "walk_in" || channel === "manager";
@@ -135,6 +139,8 @@ Deno.serve(async (req) => {
       if (!pacing.ok) {
         return json({
           error: "Dit tijdslot is operationeel vol. Kies een ander tijdstip of plaats de gast op de wachtlijst.",
+          error_code: "pacing_limit_reached",
+          field: "time",
           reason: pacing.reason,
           pacing_full: true,
         }, 409);
@@ -258,7 +264,7 @@ Deno.serve(async (req) => {
       // Rollback
       await supabase.from("reservation_tables").delete().eq("reservation_id", reservation.id);
       await supabase.from("reservations").delete().eq("id", reservation.id);
-      return json({ error: "Slot net bezet door een andere reservering, probeer opnieuw", retry: true }, 409);
+      return json({ error: "Slot net bezet door een andere reservering, probeer opnieuw", error_code: "slot_unavailable", field: "time", retry: true }, 409);
     }
 
     // Emit integration event (fire-and-forget)

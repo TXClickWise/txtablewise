@@ -1973,6 +1973,57 @@ export type Database = {
         }
         Relationships: []
       }
+      webhook_endpoints: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          events: string[]
+          id: string
+          is_active: boolean
+          label: string
+          last_test_at: string | null
+          last_test_response_body: string | null
+          last_test_response_code: number | null
+          last_test_status: string | null
+          restaurant_id: string
+          secret: string | null
+          updated_at: string
+          url: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          events?: string[]
+          id?: string
+          is_active?: boolean
+          label: string
+          last_test_at?: string | null
+          last_test_response_body?: string | null
+          last_test_response_code?: number | null
+          last_test_status?: string | null
+          restaurant_id: string
+          secret?: string | null
+          updated_at?: string
+          url: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          events?: string[]
+          id?: string
+          is_active?: boolean
+          label?: string
+          last_test_at?: string | null
+          last_test_response_body?: string | null
+          last_test_response_code?: number | null
+          last_test_status?: string | null
+          restaurant_id?: string
+          secret?: string | null
+          updated_at?: string
+          url?: string
+        }
+        Relationships: []
+      }
       zones: {
         Row: {
           created_at: string

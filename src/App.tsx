@@ -37,6 +37,7 @@ import AIHostPage from "./pages/app/AIHostPage.tsx";
 import VoiceAgentPage from "./pages/app/VoiceAgentPage.tsx";
 import VoiceAgentHelp from "./pages/app/help/VoiceAgentHelp.tsx";
 import IntegrationsPage from "./pages/app/IntegrationsPage.tsx";
+import IntegrationHubPage from "./pages/app/IntegrationHubPage.tsx";
 import ClickWiseIntegrationPage from "./pages/app/ClickWiseIntegrationPage.tsx";
 import POSIntegrationPage from "./pages/app/POSIntegrationPage.tsx";
 import ReportsPage from "./pages/app/ReportsPage.tsx";

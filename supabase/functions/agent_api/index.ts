@@ -49,7 +49,7 @@ async function authenticate(req: Request) {
     req.headers.get("x-agent-api-key") ||
     req.headers.get("X-Agent-Api-Key") ||
     "";
-  if (!key) return { error: "Missing X-Agent-Api-Key", status: 401 };
+  if (!key) return { error: "Missing X-Agent-Api-Key", error_code: "auth_missing", status: 401 };
   const hash = await sha256Hex(key);
   const sb = admin();
   const { data, error } = await sb
@@ -57,8 +57,8 @@ async function authenticate(req: Request) {
     .select("id, restaurant_id, scopes, revoked_at, provider")
     .eq("key_hash", hash)
     .maybeSingle();
-  if (error || !data) return { error: "Invalid key", status: 401 };
-  if (data.revoked_at) return { error: "Key revoked", status: 401 };
+  if (error || !data) return { error: "Invalid key", error_code: "auth_invalid", status: 401 };
+  if (data.revoked_at) return { error: "Key revoked", error_code: "auth_revoked", status: 401 };
   // touch last_used_at (best effort)
   sb.from("agent_api_keys")
     .update({ last_used_at: new Date().toISOString() })
@@ -96,17 +96,17 @@ Deno.serve(async (req) => {
   const segments = url.pathname.split("/").filter(Boolean);
   const action = segments[segments.length - 1] || "";
 
-  if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
+  if (req.method !== "POST") return json({ error: "Method not allowed", error_code: "method_not_allowed" }, 405);
 
   const auth = await authenticate(req);
-  if ("error" in auth) return json({ error: auth.error }, auth.status);
+  if ("error" in auth) return json({ error: auth.error, error_code: auth.error_code }, auth.status);
   const { keyRow } = auth;
 
   let payload: Record<string, unknown> = {};
   try {
     payload = (await req.json()) ?? {};
   } catch {
-    return json({ error: "Invalid JSON body" }, 400);
+    return json({ error: "Invalid JSON body", error_code: "invalid_json" }, 400);
   }
 
   // Force restaurant_id to the one the key belongs to (prevents cross-tenant)
@@ -117,9 +117,10 @@ Deno.serve(async (req) => {
   try {
     switch (action) {
       case "check_availability": {
-        if (!keyRow.scopes.includes("availability")) return json({ error: "Scope missing: availability" }, 403);
+        if (!keyRow.scopes.includes("availability")) return json({ error: "Scope missing: availability", error_code: "auth_scope_missing", field: "availability" }, 403);
         const { date, party_size } = payload as { date?: string; party_size?: number };
-        if (!date || !party_size) return json({ error: "date and party_size required" }, 400);
+        if (!date) return json({ error: "date required (YYYY-MM-DD)", error_code: "missing_field", field: "date" }, 400);
+        if (!party_size) return json({ error: "party_size required", error_code: "missing_field", field: "party_size" }, 400);
         const r = await callInternalFn("availability", {
           restaurant_id: keyRow.restaurant_id,
           date,
@@ -129,13 +130,13 @@ Deno.serve(async (req) => {
       }
 
       case "book_reservation": {
-        if (!keyRow.scopes.includes("book")) return json({ error: "Scope missing: book" }, 403);
+        if (!keyRow.scopes.includes("book")) return json({ error: "Scope missing: book", error_code: "auth_scope_missing", field: "book" }, 403);
         const required = ["date", "time", "party_size", "guest"];
         for (const k of required) {
-          if (!(k in payload)) return json({ error: `Missing field: ${k}` }, 400);
+          if (!(k in payload)) return json({ error: `Missing field: ${k}`, error_code: "missing_field", field: k }, 400);
         }
         const guest = payload.guest as Record<string, unknown> | undefined;
-        if (!guest?.first_name) return json({ error: "guest.first_name required" }, 400);
+        if (!guest?.first_name) return json({ error: "guest.first_name required", error_code: "missing_field", field: "guest.first_name" }, 400);
         // Voice-agents leveren niet altijd e-mail — gebruik placeholder als ontbreekt
         if (!guest.email) {
           guest.email = `voice-${Date.now()}@tablewise.local`;
@@ -154,14 +155,14 @@ Deno.serve(async (req) => {
       }
 
       case "cancel_reservation": {
-        if (!keyRow.scopes.includes("cancel")) return json({ error: "Scope missing: cancel" }, 403);
+        if (!keyRow.scopes.includes("cancel")) return json({ error: "Scope missing: cancel", error_code: "auth_scope_missing", field: "cancel" }, 403);
         const { reservation_id, manage_token, reason } = payload as {
           reservation_id?: string;
           manage_token?: string;
           reason?: string;
         };
         if (!reservation_id && !manage_token) {
-          return json({ error: "reservation_id or manage_token required" }, 400);
+          return json({ error: "reservation_id or manage_token required", error_code: "missing_field", field: "reservation_id" }, 400);
         }
         // Direct DB update — beperkt tot eigen restaurant
         let q = sb.from("reservations").update({
@@ -175,8 +176,8 @@ Deno.serve(async (req) => {
           q = q.eq("manage_token", manage_token).eq("restaurant_id", keyRow.restaurant_id);
         }
         const { data, error } = await q.select("id").maybeSingle();
-        if (error) return json({ error: error.message }, 400);
-        if (!data) return json({ error: "Reservation not found" }, 404);
+        if (error) return json({ error: error.message, error_code: "internal" }, 400);
+        if (!data) return json({ error: "Reservation not found", error_code: "not_found", field: "reservation_id" }, 404);
         return json({ ok: true, reservation_id: data.id });
       }
 
@@ -209,15 +210,15 @@ Deno.serve(async (req) => {
           summary: summary as string | null,
           metadata: (metadata as object) ?? {},
         });
-        if (error) return json({ error: error.message }, 400);
+        if (error) return json({ error: error.message, error_code: "internal" }, 400);
         return json({ ok: true });
       }
 
       default:
-        return json({ error: `Unknown action '${action}'. Use check_availability, book_reservation, cancel_reservation or log_call.` }, 404);
+        return json({ error: `Unknown action '${action}'. Use check_availability, book_reservation, cancel_reservation or log_call.`, error_code: "unknown_action", field: "action" }, 404);
     }
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Unknown error";
-    return json({ error: msg }, 500);
+    return json({ error: msg, error_code: "internal" }, 500);
   }
 });
