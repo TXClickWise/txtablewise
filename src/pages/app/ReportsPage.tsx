@@ -220,7 +220,21 @@ const ReportsPage = () => {
             </div>
           </ReportSection>
 
-          {/* Waitlist */}
+          {/* Reminders & op-tijd annuleringen */}
+          <ReportSection title="Reminders & op-tijd annuleringen" status="live"
+            description="Hoeveel berichten zijn verstuurd om no-shows te voorkomen, en hoeveel gasten annuleerden ruim op tijd.">
+            <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
+              <ReportKpiCard label="Reminders verzonden" value={data.reminders.totalSent} hint="Totaal in periode" />
+              <ReportKpiCard label="Bevestigingen" value={data.reminders.byType.confirmation ?? 0} />
+              <ReportKpiCard label="Reminder 24u" value={data.reminders.byType.reminder_24h ?? 0} />
+              <ReportKpiCard label="Reminder 2u" value={data.reminders.byType.reminder_2h ?? 0} />
+              <ReportKpiCard label="Herbevestigingen" value={data.reminders.reconfirmationsSent} hint="Vraag of gast nog komt" />
+              <ReportKpiCard label="In wachtrij" value={data.reminders.pending} />
+              <ReportKpiCard label="Mislukte verzendingen" value={data.reminders.failed} status={data.reminders.failed > 0 ? "incomplete" : undefined} />
+              <ReportKpiCard label="Annuleringen op tijd" value={data.reminders.cancelledOnTime} hint="≥ 2u voor aankomst" />
+            </div>
+          </ReportSection>
+
           <ReportSection title="Wachtlijst & last-minute opvulling" status="live">
             <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
               <ReportKpiCard label="Actief op wachtlijst" value={data.waitlist.active} />
