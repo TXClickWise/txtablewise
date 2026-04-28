@@ -49,7 +49,7 @@ async function authenticate(req: Request) {
     req.headers.get("x-agent-api-key") ||
     req.headers.get("X-Agent-Api-Key") ||
     "";
-  if (!key) return { error: "Missing X-Agent-Api-Key", status: 401 };
+  if (!key) return { error: "Missing X-Agent-Api-Key", error_code: "auth_missing", status: 401 };
   const hash = await sha256Hex(key);
   const sb = admin();
   const { data, error } = await sb
@@ -57,8 +57,8 @@ async function authenticate(req: Request) {
     .select("id, restaurant_id, scopes, revoked_at, provider")
     .eq("key_hash", hash)
     .maybeSingle();
-  if (error || !data) return { error: "Invalid key", status: 401 };
-  if (data.revoked_at) return { error: "Key revoked", status: 401 };
+  if (error || !data) return { error: "Invalid key", error_code: "auth_invalid", status: 401 };
+  if (data.revoked_at) return { error: "Key revoked", error_code: "auth_revoked", status: 401 };
   // touch last_used_at (best effort)
   sb.from("agent_api_keys")
     .update({ last_used_at: new Date().toISOString() })
