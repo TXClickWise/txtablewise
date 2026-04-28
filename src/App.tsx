@@ -38,6 +38,7 @@ import VoiceAgentPage from "./pages/app/VoiceAgentPage.tsx";
 import VoiceAgentHelp from "./pages/app/help/VoiceAgentHelp.tsx";
 import IntegrationsPage from "./pages/app/IntegrationsPage.tsx";
 import IntegrationHubPage from "./pages/app/IntegrationHubPage.tsx";
+import IntegrationLogsPage from "./pages/app/IntegrationLogsPage.tsx";
 import ClickWiseIntegrationPage from "./pages/app/ClickWiseIntegrationPage.tsx";
 import POSIntegrationPage from "./pages/app/POSIntegrationPage.tsx";
 import ReportsPage from "./pages/app/ReportsPage.tsx";
@@ -84,6 +85,8 @@ const App = () => (
               <Route path="integraties" element={<IntegrationsPage />} />
               <Route path="integraties/clickwise" element={<ClickWiseIntegrationPage />} />
               <Route path="integraties/pos" element={<POSIntegrationPage />} />
+              <Route path="integraties/hub" element={<IntegrationHubPage />} />
+              <Route path="integraties/logs" element={<IntegrationLogsPage />} />
               <Route path="instellingen" element={<SettingsPage />}>
                 <Route index element={<GeneralSettings />} />
                 <Route path="openingstijden" element={<OpeningHoursSettings />} />

@@ -18,6 +18,7 @@ import {
   zonedDateTimeToUtcIso, addMinutesIso, intervalsOverlap, ACTIVE_STATUSES,
 } from "../_shared/reservation-utils.ts";
 import { mapInternalError, twError, twHttp, type TwCode } from "../_shared/tw-errors.ts";
+import { logIntegration, actionFromPath } from "../_shared/integration-log.ts";
 
 const corsHeaders = {
   ...baseCors,
@@ -166,35 +167,91 @@ function buildLinks(req: Request, reservationId: string, manageToken?: string | 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
+  const startedAt = Date.now();
   const url = new URL(req.url);
-  // Path: /public_api/<resource>[/:id]
   const segments = url.pathname.split("/").filter(Boolean);
   const idx = segments.indexOf("public_api");
   const tail = idx >= 0 ? segments.slice(idx + 1) : segments;
   const resource = tail[0] || "";
   const resId = tail[1];
 
-  // Auth eerst
+  // Capture body once for logging (handlers re-parse via clone).
+  let rawBody: any = undefined;
+  if (req.method !== "GET" && req.method !== "OPTIONS") {
+    try { rawBody = await req.clone().json(); } catch { rawBody = undefined; }
+  }
+  const apiKeyHeader = req.headers.get("X-TableWise-Api-Key") || req.headers.get("x-tablewise-api-key") || "";
+  const apiKeyPrefix = apiKeyHeader ? apiKeyHeader.slice(0, 12) : null;
+
+  // Action mapping for logging.
+  const action =
+    resource === "availability" ? "check_availability"
+    : resource === "reservations"
+      ? (req.method === "POST" ? "create_reservation"
+        : req.method === "PATCH" ? "update_reservation"
+        : req.method === "DELETE" ? "cancel_reservation"
+        : "other")
+      : actionFromPath(url.pathname);
+
+  // Auth
   const auth = await authenticate(req);
-  if (auth.errorCode || !auth.keyRow) return errResp(auth.errorCode || "TW_401_AUTH_INVALID");
+  if (auth.errorCode || !auth.keyRow) {
+    const resp = errResp(auth.errorCode || "TW_401_AUTH_INVALID");
+    // We have no restaurantId here — skip log (auth-failure logging would leak to wrong tenant).
+    return resp;
+  }
   const keyRow = auth.keyRow;
+
+  let response: Response;
+  let respBodyForLog: any = undefined;
+  let reservationIdForLog: string | null = (resId && resource === "reservations") ? resId : null;
 
   try {
     if (resource === "availability") {
-      if (req.method !== "POST") return errResp("TW_405_METHOD_NOT_ALLOWED");
-      return await handleAvailability(req, keyRow);
+      if (req.method !== "POST") response = errResp("TW_405_METHOD_NOT_ALLOWED");
+      else response = await handleAvailability(req, keyRow);
+    } else if (resource === "reservations") {
+      if (req.method === "POST" && !resId) response = await handleCreateReservation(req, keyRow);
+      else if (req.method === "PATCH" && resId) response = await handleUpdateReservation(req, keyRow, resId);
+      else if (req.method === "DELETE" && resId) response = await handleCancelReservation(req, keyRow, resId);
+      else response = errResp("TW_405_METHOD_NOT_ALLOWED");
+    } else {
+      response = errResp("TW_405_METHOD_NOT_ALLOWED", undefined, `Onbekend endpoint '/public_api/${resource}'.`);
     }
-    if (resource === "reservations") {
-      if (req.method === "POST" && !resId) return await handleCreateReservation(req, keyRow);
-      if (req.method === "PATCH" && resId) return await handleUpdateReservation(req, keyRow, resId);
-      if (req.method === "DELETE" && resId) return await handleCancelReservation(req, keyRow, resId);
-      return errResp("TW_405_METHOD_NOT_ALLOWED");
-    }
-    return errResp("TW_405_METHOD_NOT_ALLOWED", undefined, `Onbekend endpoint '/public_api/${resource}'.`);
   } catch (e) {
     console.error("public_api error", e);
-    return errResp("TW_500_INTERNAL", undefined, e instanceof Error ? e.message : undefined);
+    response = errResp("TW_500_INTERNAL", undefined, e instanceof Error ? e.message : undefined);
   }
+
+  // Read response body for logging without consuming the original.
+  try {
+    const cloned = response.clone();
+    respBodyForLog = await cloned.json();
+    if (respBodyForLog?.reservationId) reservationIdForLog = respBodyForLog.reservationId;
+  } catch { /* not json — skip */ }
+
+  const status = response.status;
+  const isSuccess = status >= 200 && status < 300;
+  const errBlock = respBodyForLog?.error;
+
+  logIntegration({
+    restaurantId: keyRow.restaurant_id,
+    source: "api",
+    action,
+    status: isSuccess ? "success" : "failed",
+    httpStatus: status,
+    latencyMs: Date.now() - startedAt,
+    errorCode: errBlock?.code ?? null,
+    errorMessage: errBlock?.message ?? null,
+    requestPayload: rawBody,
+    responsePayload: respBodyForLog,
+    reservationId: reservationIdForLog,
+    apiKeyPrefix,
+    externalReference: rawBody?.externalReference ?? null,
+    metadata: { method: req.method, path: url.pathname, key_id: keyRow.id, provider: keyRow.provider ?? null },
+  });
+
+  return response;
 });
 
 // --- Availability -------------------------------------------------------------

@@ -40,6 +40,7 @@ const hospitality: Item[] = [
 const beheer: Item[] = [
   { title: "Rapportages", url: "/app/rapportages", icon: BarChart3 },
   { title: "Integraties", url: "/app/integraties", icon: Plug },
+  { title: "Integratie-logs", url: "/app/integraties/logs", icon: Plug },
   { title: "Pilot readiness", url: "/app/pilot-readiness", icon: ShieldCheck },
   { title: "Instellingen", url: "/app/instellingen", icon: Settings },
 ];

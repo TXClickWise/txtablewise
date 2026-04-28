@@ -1,72 +1,107 @@
 
 # Doel
 
-Eén heldere AI Voice Agent flow-pagina in TableWise die externe agents (ClickWise, Vapi, Retell) dwingt tot de juiste 6-staps volgorde: gather → normalize → check availability → book → confirm → fallback. Plus een in-app "Test complete voice reservation flow" knop die exact dezelfde flow uitvoert tegen onze eigen `public_api`.
+Eén logging-dashboard onder **Beheer / Integraties / Logs** dat per inbound call (API, AI Voice Agent, ClickWise, widget, webhook, dashboard) toont wat er gebeurde, waarom het faalde, en — wanneer veilig — een retry-knop biedt. Foutoorzaken worden automatisch gesuggereerd.
 
 # Aanpak in één zin
 
-We voegen een nieuwe **"Flow"** tab toe aan `VoiceAgentPage`, een nieuwe service `src/services/voiceFlow.ts` met normalisatie + flow-runner bovenop de bestaande `public_api`, en een uitgebreide prompt-template die de stappen afdwingt. Niets aan `agent_api`, `public_api`, of de bestaande Voice Agent tabs wordt vervangen.
+We voegen een nieuwe tabel `integration_logs` toe (apart van bestaande `integration_events` voor outbound), een gedeelde edge-function helper die request/response veilig logt met masking en `possible_cause`, hooks in `public_api` / `agent_api` / `dispatch_webhooks`, en een nieuwe pagina onder `/app/integrations/logs`.
 
 # Wat we bouwen
 
-## 1. Nieuw bestand: `src/services/voiceFlow.ts`
+## 1. Database — nieuwe tabel `integration_logs`
 
-- **Normalisatiehelpers** (lokaal, geen LLM):
-  - `normalizeDate("morgen" | "1 mei" | "01-05-2026" | ...)` → `YYYY-MM-DD`
-  - `normalizeTime("half acht" | "19:30" | "19.30")` → `HH:MM`
-  - `normalizePartySize("vier" | "4 personen")` → `number`
-  - `normalizePhone("06 12345678" | "0031...")` → `+31...` (E.164)
-- **`runVoiceFlow(restaurantId, input)`** voert deze 6 stappen uit en retourneert per stap `{ ok, message, errorCode?, field?, data? }`:
-  1. **gather** — controleert of alle verplichte velden zijn ontvangen.
-  2. **normalize** — converteert ruwe spraakinput naar API-formaat.
-  3. **availability** — POST `public_api/availability`. Als niet beschikbaar → toont alternatieven, stopt vóór boeken.
-  4. **book** — POST `public_api/reservations` met genormaliseerde payload + `source: "voice_agent"` + `externalReference: "flow-test-..."`.
-  5. **confirm** — bouwt bevestigingsregel met datum/tijd/personen/naam/reserveringscode.
-  6. **fallback** — bij elke faal: concrete instructie wat de agent zou moeten zeggen.
-- **Tijdelijke API-key voor de in-app test**: omdat `public_api` `X-TableWise-Api-Key` vereist en wij alleen hashes opslaan, maakt de runner aan het begin een eenmalige sleutel aan in `agent_api_keys` (label `Voice flow test ...`, scope `availability+book+cancel`), gebruikt hem, en trekt hem direct daarna in (`revoked_at`). Sleutel wordt nooit getoond in de UI.
-- **`VOICE_FLOW_FIELDS`** — single source of truth voor de tabel "wat verzamelt de agent" met `payloadField`-mapping (gebruikt door de UI).
-- **`VOICE_FLOW_PROMPT_TEMPLATE`** — kant-en-klare Nederlandse prompt die exact deze flow afdwingt en TW_-foutcodes noemt.
+Bewust **niet** misbruiken van `integration_events` (dat is outbound queue voor ClickWise) of `audit_log` (entity-mutaties).
 
-## 2. Wijziging: `src/pages/app/VoiceAgentPage.tsx` (tab "Flow" toevoegen)
+```
+id uuid pk
+restaurant_id uuid not null
+created_at timestamptz default now()
+source text not null         -- dashboard|widget|voice_agent|clickwise|api|webhook
+action text not null         -- check_availability|create_reservation|update_reservation|cancel_reservation|webhook_delivery|other
+status text not null         -- success|warning|failed
+http_status int
+latency_ms int
+error_code text              -- TW_-codes of provider-codes
+error_message text
+possible_cause text          -- auto-gegenereerd op basis van error_code/payload
+request_payload jsonb        -- ALTIJD gemaskeerd opgeslagen
+response_payload jsonb       -- ALTIJD gemaskeerd opgeslagen
+guest_id uuid
+reservation_id uuid
+api_key_prefix text          -- alleen prefix (12 chars), nooit hele key
+external_reference text
+retry_safe boolean default false
+metadata jsonb default '{}'
+```
 
-Niets verwijderen. Eén nieuwe tab tussen "Configuratie" en "API-sleutels":
+Indexen op `(restaurant_id, created_at desc)`, `(restaurant_id, status)`, `(restaurant_id, source)`, `(reservation_id)`, `(guest_id)`.
 
-- **Sectie "Velden & mapping"** — tabel uit `VOICE_FLOW_FIELDS`:
-  | Veld | Verplicht | Voorbeeld | Payload-veld | Notitie |
-  Verplichte velden krijgen een rode badge, optionele een grijze.
-- **Sectie "Stappen"** — visuele 6-staps lijst (1. Gather → 6. Fallback) met korte uitleg per stap.
-- **Sectie "Prompt voor je agent"** — `VOICE_FLOW_PROMPT_TEMPLATE` in een `<pre>` met copy-knop. Aparte sub-knop "Kopieer als ClickWise system prompt" (zelfde tekst, andere toast).
-- **Sectie "Test complete voice reservation flow"**:
-  - Compact formulier: spokenDate, spokenTime, spokenParty, firstName, lastName, phone, notes (defaults gevuld met realistisch voorbeeld zodat 1 klik voldoende is).
-  - Knop "Voer flow uit". Tijdens uitvoering: spinner.
-  - Resultaat: tijdlijn van de 6 stappen met ✓/✗-iconen, foutcode (TW_*) en `field` indien aanwezig, en de eind-bevestiging met reserveringscode.
-  - Persistentie: `localStorage` `voiceFlow:lastResult:<rid>` zodat "laatste testresultaat" en "laatste foutmelding" bij paginarefresh zichtbaar blijven.
-- **Veiligheid**: testreserveringen worden gemarkeerd via `externalReference: flow-test-<timestamp>` en `source_metadata.via=public_api`. We boeken bewust géén droge run — een echte reservering geeft de meest realistische test (operator kan hem in /app annuleren). Ik markeer dit duidelijk in de UI: "Dit maakt een echte reservering — annuleer hem na de test."
+RLS: `members read integration_logs` (`is_restaurant_member`), `manager write integration_logs` (alleen voor in-app retry-acties; edge functions schrijven via service role en omzeilen RLS).
 
-## 3. Geen wijzigingen aan
+## 2. Shared helper `supabase/functions/_shared/integration-log.ts`
 
-- `agent_api` (bestaande externe endpoint blijft werken voor wie hem al gebruikt).
-- `public_api` (de flow gebruikt 'm zoals hij is).
-- Database/RLS (we hergebruiken `agent_api_keys`).
-- Andere tabs van `VoiceAgentPage`.
+Eén `logIntegration()` functie die:
+- Diep cloned + maskeert: `phone` → `+31••••••89`, `email` → `j••@•••.com`, `password`/`token`/`api_key`/`secret` → `***`, `X-TableWise-Api-Key` header → eerste 12 chars + `…`.
+- Limiteert payload-grootte tot 8 KB (truncatie + `_truncated: true`).
+- Genereert `possible_cause` op basis van `error_code`:
+  - `TW_400_MISSING_DATE` → "Datum ontbreekt in payload"
+  - `TW_400_MISSING_TIME` → "Tijd ontbreekt"
+  - `TW_400_MISSING_PARTY_SIZE` → "Aantal personen ontbreekt"
+  - `TW_400_INVALID_PHONE` → "Telefoonnummer niet in geldig formaat (verwacht +31...)"
+  - `TW_409_TIMESLOT_UNAVAILABLE` → "Tijdslot zit vol — bied alternatief of wachtlijst aan"
+  - `TW_409_PARTY_TOO_LARGE` → "Groep groter dan max online — vereist handmatige goedkeuring"
+  - `TW_401_*` → "API-sleutel ongeldig of ingetrokken"
+  - `TW_404_*` → "Reservering niet gevonden"
+  - webhook 5xx/timeout → "Endpoint offline of antwoordt niet"
+  - webhook 4xx → "Veldmapping klopt niet of payload geweigerd"
+- Schrijft async ("fire-and-forget" via `EdgeRuntime.waitUntil` of `.catch(noop)`) zodat de hot path niet vertraagt.
 
-# UX-eisen check
+## 3. Hooks in bestaande edge functions
 
-- ✓ Welke velden verplicht — rode badge in de mapping-tabel.
-- ✓ Welke velden de agent verzamelt — kolom "Spreekvoorbeeld".
-- ✓ Welke velden gekoppeld zijn aan de payload — kolom "Payload-veld".
-- ✓ Laatste testresultaat — opgeslagen in localStorage, getoond als groene kaart bovenaan testsectie.
-- ✓ Laatste foutmelding — als laatste run faalde, rode kaart met TW_-code + field + suggestedFix.
-- ✓ Knop "Test complete voice reservation flow" — primary button, met disclaimer over echte reservering.
+- **`public_api`** — log na elke route in de bestaande `try/catch` (zowel succes als faal): source `api`, action mapped uit pad, http_status, latency, error_code/message uit `twError`. Geen tweede try/catch — alleen één regel toevoegen vóór elke return.
+- **`agent_api`** — zelfde patroon: source `voice_agent`, action uit pad, key_prefix gederiveerd uit X-Agent-Api-Key.
+- **`dispatch_webhooks`** — log per delivery: source `webhook`, action `webhook_delivery`, target = endpoint URL, response_payload = body (truncated). Markeer `retry_safe: true` voor webhook-deliveries.
+- **`book_reservation` / `manage_reservation`** — niet aanraken; ze worden indirect geraakt via `public_api`. (Dit voorkomt dubbele logs.)
 
-# Guardrails check
+## 4. Frontend
 
-- ✓ Geen externe workflow verplicht — TableWise voert de complete flow zelf uit via `public_api`.
-- ✓ Geen reservering bij faal — runner stopt na elke fout, vóór de book-stap.
-- ✓ Geen book vóór availability — book-stap is conditioneel op `availability.ok && data.isAvailable`.
+- **`src/services/integrationLogs.ts`** — `listLogs(restaurantId, filters, page)`, `retryLog(logId)`, `getLog(id)`, type-definities.
+- **`src/pages/app/IntegrationLogsPage.tsx`** —
+  - Filters bovenaan: datum-range (default laatste 24h), status (success/warning/failed), source (multi), error_code (vrije tekst), zoek op gast/reservering (id of naam via join).
+  - Tabel-rijen met linker statusbalk (groen/oranje/rood). Kolommen: tijd, source-badge, action, status, error_code, gast/reservering, retry-knop (alleen als `retry_safe`).
+  - Detail-drawer: volledige (gemaskeerde) request + response in JSON-blok, possible_cause-card, links naar gast/reservering/api-key.
+  - Retry-knop: roept `retry_log` edge function aan die alleen voor whitelisted actions herexecuteert (`check_availability` en `webhook_delivery`). `create_reservation` retry is geblokkeerd om dubbels te voorkomen — i.p.v. retry tonen we "Maak handmatig aan" met pre-filled link naar `/app/reservations/new`.
+- **Routing & nav**:
+  - Route `/app/integraties/logs` in `src/App.tsx`.
+  - Link in `AppSidebar.tsx` onder bestaande Integraties-sectie ("Logs").
+  - Knop "Bekijk logs" in `IntegrationHubPage` Overview-tab.
+
+## 5. Nieuwe edge function `retry_log`
+
+Klein, één bestand:
+- Authenticatie via user JWT (alleen managers van het restaurant).
+- Laadt log, valideert `retry_safe = true`.
+- Voor `check_availability` → re-runt tegen `availability` engine (read-only, géén side effects).
+- Voor `webhook_delivery` → re-fetcht naar opgeslagen target met origineel payload.
+- Schrijft een nieuwe `integration_logs` regel met `metadata.retry_of = <oude id>`.
+- Weigert alle andere actions met duidelijke message.
+
+## 6. Performance & veiligheid
+
+- Async logging (waitUntil) zodat API-latency ongewijzigd blijft.
+- 8 KB payload-cap voorkomt dat grote bodies de DB belasten.
+- API-keys nooit volledig: alleen `key_prefix` (eerste 12 chars).
+- Telefoon/email/secrets gemaskeerd vóór insert.
+- Retry-functie is whitelisted; `create_reservation`/`update_reservation`/`cancel_reservation` zijn nooit retry-safe.
+
+# Wat we NIET aanraken
+
+- Bestaande `integration_events` tabel (outbound ClickWise queue) blijft.
+- Bestaande `audit_log` tabel (entity-mutaties) blijft.
+- Bestaande `agent_call_logs` (telefonie-summary) blijft — dat is een ander concern (kosten/transcript).
+- `book_reservation` / `manage_reservation` core logic.
 
 # Open vraag
 
-De testflow maakt een **echte reservering** (zodat we tafeltoewijzing/pacing/webhooks meetesten). Wil je dat liever:
-- A. Echte reservering, met grote disclaimer + "Annuleer test-reservering"-knop in resultaat (voorstel).
-- B. Droge run: alleen availability checken, book overslaan en simuleren.
+Wil je in fase 1 ook de **dashboard-acties** loggen (handmatige reservering aanmaken in /app), of houden we dat buiten scope (die staan al in `audit_log`) en focussen we puur op externe calls?

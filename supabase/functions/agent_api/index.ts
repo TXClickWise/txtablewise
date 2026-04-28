@@ -12,6 +12,7 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { corsHeaders as baseCors } from "../_shared/cors.ts";
+import { logIntegration } from "../_shared/integration-log.ts";
 
 const corsHeaders = {
   ...baseCors,
@@ -88,47 +89,33 @@ async function callInternalFn(name: string, body: unknown) {
   return { status: res.status, body: parsed };
 }
 
-Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
-
-  const url = new URL(req.url);
-  // path is /agent_api/<action> when invoked via /functions/v1/agent_api/<action>
-  const segments = url.pathname.split("/").filter(Boolean);
-  const action = segments[segments.length - 1] || "";
-
+async function handle(
+  req: Request,
+  ctx: { action: string; rawBody: any; setReservationId: (id: string | null) => void; setRestaurantId: (id: string) => void; setKeyPrefix: (p: string | null) => void; setProvider: (p: string | null) => void; },
+): Promise<Response> {
   if (req.method !== "POST") return json({ error: "Method not allowed", error_code: "method_not_allowed" }, 405);
 
   const auth = await authenticate(req);
   if ("error" in auth) return json({ error: auth.error, error_code: auth.error_code }, auth.status);
   const { keyRow } = auth;
+  ctx.setRestaurantId(keyRow.restaurant_id);
+  ctx.setProvider(keyRow.provider ?? null);
 
-  let payload: Record<string, unknown> = {};
-  try {
-    payload = (await req.json()) ?? {};
-  } catch {
-    return json({ error: "Invalid JSON body", error_code: "invalid_json" }, 400);
-  }
-
-  // Force restaurant_id to the one the key belongs to (prevents cross-tenant)
+  const payload: Record<string, unknown> = ctx.rawBody ?? {};
   payload.restaurant_id = keyRow.restaurant_id;
 
   const sb = admin();
 
   try {
-    switch (action) {
+    switch (ctx.action) {
       case "check_availability": {
         if (!keyRow.scopes.includes("availability")) return json({ error: "Scope missing: availability", error_code: "auth_scope_missing", field: "availability" }, 403);
         const { date, party_size } = payload as { date?: string; party_size?: number };
         if (!date) return json({ error: "date required (YYYY-MM-DD)", error_code: "missing_field", field: "date" }, 400);
         if (!party_size) return json({ error: "party_size required", error_code: "missing_field", field: "party_size" }, 400);
-        const r = await callInternalFn("availability", {
-          restaurant_id: keyRow.restaurant_id,
-          date,
-          party_size,
-        });
+        const r = await callInternalFn("availability", { restaurant_id: keyRow.restaurant_id, date, party_size });
         return json(r.body, r.status);
       }
-
       case "book_reservation": {
         if (!keyRow.scopes.includes("book")) return json({ error: "Scope missing: book", error_code: "auth_scope_missing", field: "book" }, 403);
         const required = ["date", "time", "party_size", "guest"];
@@ -137,64 +124,31 @@ Deno.serve(async (req) => {
         }
         const guest = payload.guest as Record<string, unknown> | undefined;
         if (!guest?.first_name) return json({ error: "guest.first_name required", error_code: "missing_field", field: "guest.first_name" }, 400);
-        // Voice-agents leveren niet altijd e-mail — gebruik placeholder als ontbreekt
-        if (!guest.email) {
-          guest.email = `voice-${Date.now()}@tablewise.local`;
-        }
+        if (!guest.email) guest.email = `voice-${Date.now()}@tablewise.local`;
         const bookBody = {
           ...payload,
           channel: "ai_host",
-          source_metadata: {
-            ...(payload.source_metadata as object | undefined),
-            agent_provider: keyRow.provider,
-            via: "agent_api",
-          },
+          source_metadata: { ...(payload.source_metadata as object | undefined), agent_provider: keyRow.provider, via: "agent_api" },
         };
         const r = await callInternalFn("book_reservation", bookBody);
+        if (r.status >= 200 && r.status < 300 && (r.body as any)?.reservation_id) ctx.setReservationId((r.body as any).reservation_id);
         return json(r.body, r.status);
       }
-
       case "cancel_reservation": {
         if (!keyRow.scopes.includes("cancel")) return json({ error: "Scope missing: cancel", error_code: "auth_scope_missing", field: "cancel" }, 403);
-        const { reservation_id, manage_token, reason } = payload as {
-          reservation_id?: string;
-          manage_token?: string;
-          reason?: string;
-        };
-        if (!reservation_id && !manage_token) {
-          return json({ error: "reservation_id or manage_token required", error_code: "missing_field", field: "reservation_id" }, 400);
-        }
-        // Direct DB update — beperkt tot eigen restaurant
-        let q = sb.from("reservations").update({
-          status: "cancelled",
-          cancelled_at: new Date().toISOString(),
-          cancellation_reason: reason || "Geannuleerd via voice-agent",
-        });
-        if (reservation_id) {
-          q = q.eq("id", reservation_id).eq("restaurant_id", keyRow.restaurant_id);
-        } else if (manage_token) {
-          q = q.eq("manage_token", manage_token).eq("restaurant_id", keyRow.restaurant_id);
-        }
+        const { reservation_id, manage_token, reason } = payload as { reservation_id?: string; manage_token?: string; reason?: string };
+        if (!reservation_id && !manage_token) return json({ error: "reservation_id or manage_token required", error_code: "missing_field", field: "reservation_id" }, 400);
+        let q = sb.from("reservations").update({ status: "cancelled", cancelled_at: new Date().toISOString(), cancellation_reason: reason || "Geannuleerd via voice-agent" });
+        if (reservation_id) q = q.eq("id", reservation_id).eq("restaurant_id", keyRow.restaurant_id);
+        else if (manage_token) q = q.eq("manage_token", manage_token).eq("restaurant_id", keyRow.restaurant_id);
         const { data, error } = await q.select("id").maybeSingle();
         if (error) return json({ error: error.message, error_code: "internal" }, 400);
         if (!data) return json({ error: "Reservation not found", error_code: "not_found", field: "reservation_id" }, 404);
+        ctx.setReservationId(data.id);
         return json({ ok: true, reservation_id: data.id });
       }
-
       case "log_call": {
-        const {
-          external_call_id,
-          caller_phone,
-          callee_phone,
-          outcome,
-          reservation_id,
-          duration_seconds,
-          cost_cents,
-          transcript_url,
-          summary,
-          agent_id,
-          metadata,
-        } = payload as Record<string, unknown>;
+        const { external_call_id, caller_phone, callee_phone, outcome, reservation_id, duration_seconds, cost_cents, transcript_url, summary, agent_id, metadata } = payload as Record<string, unknown>;
         const { error } = await sb.from("agent_call_logs").insert({
           restaurant_id: keyRow.restaurant_id,
           provider: keyRow.provider,
@@ -213,12 +167,71 @@ Deno.serve(async (req) => {
         if (error) return json({ error: error.message, error_code: "internal" }, 400);
         return json({ ok: true });
       }
-
       default:
-        return json({ error: `Unknown action '${action}'. Use check_availability, book_reservation, cancel_reservation or log_call.`, error_code: "unknown_action", field: "action" }, 404);
+        return json({ error: `Unknown action '${ctx.action}'.`, error_code: "unknown_action", field: "action" }, 404);
     }
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Unknown error";
     return json({ error: msg, error_code: "internal" }, 500);
   }
+}
+
+Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+
+  const startedAt = Date.now();
+  const url = new URL(req.url);
+  const segments = url.pathname.split("/").filter(Boolean);
+  const action = segments[segments.length - 1] || "";
+
+  let rawBody: any = undefined;
+  try { rawBody = await req.clone().json(); } catch { /* none */ }
+
+  const apiKeyHeader = req.headers.get("X-Agent-Api-Key") || req.headers.get("x-agent-api-key") || "";
+  const initialPrefix = apiKeyHeader ? apiKeyHeader.slice(0, 12) : null;
+
+  let restaurantId: string | null = null;
+  let reservationId: string | null = null;
+  let keyPrefix: string | null = initialPrefix;
+  let provider: string | null = null;
+
+  const response = await handle(req, {
+    action,
+    rawBody,
+    setReservationId: (id) => { reservationId = id; },
+    setRestaurantId: (id) => { restaurantId = id; },
+    setKeyPrefix: (p) => { keyPrefix = p; },
+    setProvider: (p) => { provider = p; },
+  });
+
+  // Read response body for log
+  let respBody: any = undefined;
+  try { respBody = await response.clone().json(); } catch { /* skip */ }
+
+  if (restaurantId) {
+    const isSuccess = response.status >= 200 && response.status < 300;
+    const actionMap: Record<string, string> = {
+      check_availability: "check_availability",
+      book_reservation: "create_reservation",
+      cancel_reservation: "cancel_reservation",
+      log_call: "log_call",
+    };
+    logIntegration({
+      restaurantId,
+      source: "voice_agent",
+      action: actionMap[action] ?? action,
+      status: isSuccess ? "success" : "failed",
+      httpStatus: response.status,
+      latencyMs: Date.now() - startedAt,
+      errorCode: respBody?.error_code ?? null,
+      errorMessage: respBody?.error ?? null,
+      requestPayload: rawBody,
+      responsePayload: respBody,
+      reservationId,
+      apiKeyPrefix: keyPrefix,
+      metadata: { method: req.method, path: url.pathname, provider, agent_action: action },
+    });
+  }
+
+  return response;
 });
