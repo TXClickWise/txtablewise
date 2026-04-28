@@ -14,6 +14,8 @@ import {
   getReservationMetrics, getChannelMetrics, getNoShowMetrics, getWaitlistMetrics,
   getWalkInMetrics, getLargeGroupMetrics, getPreOrderMetrics, getReviewMetrics,
   getGuestMetrics, getPOSRevenueMetrics, getPacingMetrics, buildInsightCards, formatEuro,
+  getHourlyOccupancy, getTopSeatingMetrics, getReminderMetrics, getAIPerformanceMetrics,
+  formatDuration,
 } from "@/services/reporting";
 
 const CHANNEL_LABELS: Record<string, string> = {
