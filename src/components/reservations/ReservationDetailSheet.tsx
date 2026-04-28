@@ -126,12 +126,13 @@ export function ReservationDetailSheet({ reservationId, open, onOpenChange, onOp
     }
     setBusy(false);
     if (!res.ok) return toast.error(res.error || "Actie mislukt.");
-    toast.success({
+    const messages: Record<string, string> = {
       seated: "Gast staat op 'aangekomen'.",
       completed: "Bezoek afgerond.",
       cancel: "Geannuleerd. De tafel komt weer beschikbaar.",
       no_show: "Gemarkeerd als no-show.",
-    }[kind]);
+    };
+    toast.success(messages[kind]);
     refresh();
   };
 
