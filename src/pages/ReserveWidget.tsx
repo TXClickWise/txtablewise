@@ -146,10 +146,33 @@ const ReserveWidget = () => {
   const [restaurant, setRestaurant] = useState<RestaurantInfo | null>(null);
   const [step, setStep] = useState<Step>("party");
 
+  // URL prefill helpers
+  const initialParty = useMemo(() => {
+    const v = parseInt(searchParams.get("party") ?? "", 10);
+    return !Number.isNaN(v) && v >= 1 && v <= 50 ? v : 2;
+  }, [searchParams]);
+  const initialDate = useMemo(() => {
+    const raw = searchParams.get("date");
+    if (!raw) return undefined;
+    const d = new Date(raw);
+    return Number.isNaN(d.getTime()) ? undefined : d;
+  }, [searchParams]);
+  const initialTime = useMemo(() => {
+    const raw = searchParams.get("time");
+    return raw && /^\d{1,2}:\d{2}$/.test(raw) ? raw : null;
+  }, [searchParams]);
+  const hideTableWiseLogo = searchParams.get("hide_logo") === "1";
+  const accentOverride = useMemo(() => {
+    const raw = searchParams.get("accent");
+    if (!raw) return null;
+    const hex = raw.startsWith("#") ? raw : `#${raw}`;
+    return hexToHslTokens(hex);
+  }, [searchParams]);
+
   // Booking state
-  const [partySize, setPartySize] = useState<number>(2);
+  const [partySize, setPartySize] = useState<number>(initialParty);
   const [customParty, setCustomParty] = useState<string>("");
-  const [date, setDate] = useState<Date | undefined>();
+  const [date, setDate] = useState<Date | undefined>(initialDate);
   const [slots, setSlots] = useState<Slot[]>([]);
   const [loadingSlots, setLoadingSlots] = useState(false);
   const [closedReason, setClosedReason] = useState<string | null>(null);
@@ -181,7 +204,7 @@ const ReserveWidget = () => {
     (async () => {
       const { data, error } = await supabase
         .from("restaurants")
-        .select("id, name, slug, timezone, max_party_size_online, large_group_threshold, preorders_enabled, preorders_allow_free_text, allow_zone_preference")
+        .select("id, name, slug, timezone, max_party_size_online, large_group_threshold, preorders_enabled, preorders_allow_free_text, allow_zone_preference, brand_primary, logo_url")
         .eq("slug", slug).maybeSingle();
       if (error || !data) {
         toast.error("Restaurant niet gevonden");
@@ -190,6 +213,13 @@ const ReserveWidget = () => {
       setRestaurant(data as RestaurantInfo);
     })();
   }, [slug]);
+
+  // Resolve effective brand color (URL override wins)
+  const brandHsl = useMemo(() => {
+    if (accentOverride) return accentOverride;
+    if (restaurant?.brand_primary) return hexToHslTokens(restaurant.brand_primary);
+    return null;
+  }, [accentOverride, restaurant?.brand_primary]);
 
   const fetchSlots = async () => {
     if (!restaurant || !date) return;
@@ -222,6 +252,14 @@ const ReserveWidget = () => {
     if (step === "time") fetchSlots();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step, partySize, date]);
+
+  // Preselect slot from URL when slots load
+  useEffect(() => {
+    if (!initialTime || step !== "time" || selectedSlot) return;
+    const match = slots.find((s) => s.time === initialTime || s.time.startsWith(initialTime));
+    if (match) setSelectedSlot(match);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [slots, step, initialTime]);
 
   // Auto-route to large group if party crosses online max
   const goToTimeFromDate = () => {
