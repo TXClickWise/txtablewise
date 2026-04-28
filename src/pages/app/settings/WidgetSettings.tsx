@@ -34,7 +34,8 @@ function publicOrigin(): string {
 }
 
 const WidgetSettings = () => {
-  const { restaurant } = useActiveRestaurant();
+  const { current } = useRestaurant();
+  const restaurant = current?.restaurants;
   const [brand, setBrand] = useState<RestaurantBrand | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
