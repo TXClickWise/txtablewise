@@ -210,15 +210,15 @@ Deno.serve(async (req) => {
           summary: summary as string | null,
           metadata: (metadata as object) ?? {},
         });
-        if (error) return json({ error: error.message }, 400);
+        if (error) return json({ error: error.message, error_code: "internal" }, 400);
         return json({ ok: true });
       }
 
       default:
-        return json({ error: `Unknown action '${action}'. Use check_availability, book_reservation, cancel_reservation or log_call.` }, 404);
+        return json({ error: `Unknown action '${action}'. Use check_availability, book_reservation, cancel_reservation or log_call.`, error_code: "unknown_action", field: "action" }, 404);
     }
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Unknown error";
-    return json({ error: msg }, 500);
+    return json({ error: msg, error_code: "internal" }, 500);
   }
 });
