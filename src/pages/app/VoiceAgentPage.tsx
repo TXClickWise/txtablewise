@@ -236,6 +236,7 @@ Je neemt telefonisch reserveringen aan in vriendelijke, natuurlijke Nederlandse 
       <Tabs defaultValue="setup">
         <TabsList>
           <TabsTrigger value="setup">Configuratie</TabsTrigger>
+          <TabsTrigger value="flow">Flow</TabsTrigger>
           <TabsTrigger value="keys">API-sleutels</TabsTrigger>
           <TabsTrigger value="howto">Hoe koppelen</TabsTrigger>
           <TabsTrigger value="logs">Calls</TabsTrigger>
