@@ -1,183 +1,72 @@
 
 # Doel
 
-Een schone, publieke API-laag voor TableWise die ClickWise, AI Voice Agents, WhatsApp/SMS-bots en CRM's eenvoudig kunnen gebruiken — zonder een tweede reserveringsengine te bouwen. Alle bestaande interne flows (widget, /app, agent_api) blijven exact werken.
+Eén heldere AI Voice Agent flow-pagina in TableWise die externe agents (ClickWise, Vapi, Retell) dwingt tot de juiste 6-staps volgorde: gather → normalize → check availability → book → confirm → fallback. Plus een in-app "Test complete voice reservation flow" knop die exact dezelfde flow uitvoert tegen onze eigen `public_api`.
 
 # Aanpak in één zin
 
-We bouwen één nieuwe edge function `public_api` die alle `/api/public/*` routes afhandelt, payloads valideert in een Guestplan-achtig formaat, en intern de bestaande engines (`availability`, `book_reservation`, `manage_reservation`) aanroept. Niets in de bestaande functies wordt vervangen.
+We voegen een nieuwe **"Flow"** tab toe aan `VoiceAgentPage`, een nieuwe service `src/services/voiceFlow.ts` met normalisatie + flow-runner bovenop de bestaande `public_api`, en een uitgebreide prompt-template die de stappen afdwingt. Niets aan `agent_api`, `public_api`, of de bestaande Voice Agent tabs wordt vervangen.
 
-# Architectuur
+# Wat we bouwen
 
-```text
-ClickWise / Voice / Bot / CRM
-            │
-            ▼
-   POST /functions/v1/public_api/availability
-   POST /functions/v1/public_api/reservations
-   PATCH /functions/v1/public_api/reservations/:id
-   DELETE /functions/v1/public_api/reservations/:id
-            │  (auth: X-TableWise-Api-Key  → agent_api_keys)
-            ▼
-       public_api (NEW)
-        - parseert Guestplan-stijl payload
-        - mapt naar interne payload
-        - vertaalt interne errors → TW_* codes
-            │
-            ├─► availability        (bestaand, ongewijzigd)
-            ├─► book_reservation    (bestaand, ongewijzigd)
-            └─► manage_reservation  (bestaand, ongewijzigd via service role)
-```
+## 1. Nieuw bestand: `src/services/voiceFlow.ts`
 
-Belangrijke keuzes:
-- Hergebruik van `agent_api_keys` voor authenticatie (zelfde sleutel werkt straks voor `agent_api` én `public_api`). Geen nieuwe sleuteltabel.
-- Geen wijzigingen aan database, RLS of bestaande edge functions.
-- `restaurant_id` wordt altijd afgeleid uit de API-key (cross-tenant onmogelijk). `restaurantId`/`locationId` in de body wordt geaccepteerd maar genegeerd als die afwijkt → `TW_403_TENANT_MISMATCH`.
+- **Normalisatiehelpers** (lokaal, geen LLM):
+  - `normalizeDate("morgen" | "1 mei" | "01-05-2026" | ...)` → `YYYY-MM-DD`
+  - `normalizeTime("half acht" | "19:30" | "19.30")` → `HH:MM`
+  - `normalizePartySize("vier" | "4 personen")` → `number`
+  - `normalizePhone("06 12345678" | "0031...")` → `+31...` (E.164)
+- **`runVoiceFlow(restaurantId, input)`** voert deze 6 stappen uit en retourneert per stap `{ ok, message, errorCode?, field?, data? }`:
+  1. **gather** — controleert of alle verplichte velden zijn ontvangen.
+  2. **normalize** — converteert ruwe spraakinput naar API-formaat.
+  3. **availability** — POST `public_api/availability`. Als niet beschikbaar → toont alternatieven, stopt vóór boeken.
+  4. **book** — POST `public_api/reservations` met genormaliseerde payload + `source: "voice_agent"` + `externalReference: "flow-test-..."`.
+  5. **confirm** — bouwt bevestigingsregel met datum/tijd/personen/naam/reserveringscode.
+  6. **fallback** — bij elke faal: concrete instructie wat de agent zou moeten zeggen.
+- **Tijdelijke API-key voor de in-app test**: omdat `public_api` `X-TableWise-Api-Key` vereist en wij alleen hashes opslaan, maakt de runner aan het begin een eenmalige sleutel aan in `agent_api_keys` (label `Voice flow test ...`, scope `availability+book+cancel`), gebruikt hem, en trekt hem direct daarna in (`revoked_at`). Sleutel wordt nooit getoond in de UI.
+- **`VOICE_FLOW_FIELDS`** — single source of truth voor de tabel "wat verzamelt de agent" met `payloadField`-mapping (gebruikt door de UI).
+- **`VOICE_FLOW_PROMPT_TEMPLATE`** — kant-en-klare Nederlandse prompt die exact deze flow afdwingt en TW_-foutcodes noemt.
 
-# Endpoints
+## 2. Wijziging: `src/pages/app/VoiceAgentPage.tsx` (tab "Flow" toevoegen)
 
-## 1. POST /public_api/availability
-Body (Guestplan-stijl, camelCase):
-```json
-{ "locationId": "<uuid>", "localDate": "2026-05-01", "localTime": "19:30", "partySize": 4 }
-```
-Mapping → intern `availability` payload (snake_case + `date`, `party_size`).
-Response:
-```json
-{
-  "isAvailable": true,
-  "isAvailableWithWaitlist": false,
-  "requestedSlot": { "localDate": "...", "localTime": "19:30", "available": true },
-  "availableSlots": [ { "localTime": "19:00", "available": true, "peakWarning": false }, ... ],
-  "suggestedAlternatives": [ { "localTime": "19:15" }, { "localTime": "19:45" } ],
-  "reason": null
-}
-```
-`reason` wordt gevuld met TW_-code als `requestedSlot.available === false` (bv. `TW_409_TIMESLOT_UNAVAILABLE`, `TW_409_PARTY_TOO_LARGE`, `TW_423_RESTAURANT_CLOSED`).
+Niets verwijderen. Eén nieuwe tab tussen "Configuratie" en "API-sleutels":
 
-## 2. POST /public_api/reservations
-Body:
-```json
-{
-  "locationId": "<uuid>",
-  "localDate": "2026-05-01",
-  "localTime": "19:30",
-  "partySize": 4,
-  "contact": { "fullName": "Willem van Oranje", "phone": "+31612345678", "email": "w@x.nl", "language": "nl" },
-  "notes": "Hoekje graag",
-  "source": "voice_agent",
-  "externalReference": "vapi_call_abc123"
-}
-```
-Mapping naar interne `book_reservation` payload:
-- `contact.fullName` → splitsen op laatste spatie → `guest.first_name`, `guest.last_name` (of direct `firstName`/`lastName` overnemen).
-- `contact.phone` → verplicht; gevalideerd via E.164-achtige regex (`/^\+?[0-9\s\-()]{7,20}$/`).
-- `contact.email` ontbreekt? `public_api` genereert geen placeholder zoals `agent_api` doet — emails zijn optioneel; intern wordt een neutrale placeholder gebruikt zodat de bestaande email-validatie in `book_reservation` slaagt, en in `source_metadata.email_provided=false` gemarkeerd. Zo blijven bestaande dedupe-regels (per email) intact.
-- `source` → vaste mapping naar interne `channel` enum (`voice_agent`→`ai_host`, `whatsapp`→`clickwise`, etc.). Onbekende waarden → `online` met `source_metadata.source` bewaard.
-- `externalReference` → `source_metadata.external_reference` + topfield `external_reference` op de reservering.
+- **Sectie "Velden & mapping"** — tabel uit `VOICE_FLOW_FIELDS`:
+  | Veld | Verplicht | Voorbeeld | Payload-veld | Notitie |
+  Verplichte velden krijgen een rode badge, optionele een grijze.
+- **Sectie "Stappen"** — visuele 6-staps lijst (1. Gather → 6. Fallback) met korte uitleg per stap.
+- **Sectie "Prompt voor je agent"** — `VOICE_FLOW_PROMPT_TEMPLATE` in een `<pre>` met copy-knop. Aparte sub-knop "Kopieer als ClickWise system prompt" (zelfde tekst, andere toast).
+- **Sectie "Test complete voice reservation flow"**:
+  - Compact formulier: spokenDate, spokenTime, spokenParty, firstName, lastName, phone, notes (defaults gevuld met realistisch voorbeeld zodat 1 klik voldoende is).
+  - Knop "Voer flow uit". Tijdens uitvoering: spinner.
+  - Resultaat: tijdlijn van de 6 stappen met ✓/✗-iconen, foutcode (TW_*) en `field` indien aanwezig, en de eind-bevestiging met reserveringscode.
+  - Persistentie: `localStorage` `voiceFlow:lastResult:<rid>` zodat "laatste testresultaat" en "laatste foutmelding" bij paginarefresh zichtbaar blijven.
+- **Veiligheid**: testreserveringen worden gemarkeerd via `externalReference: flow-test-<timestamp>` en `source_metadata.via=public_api`. We boeken bewust géén droge run — een echte reservering geeft de meest realistische test (operator kan hem in /app annuleren). Ik markeer dit duidelijk in de UI: "Dit maakt een echte reservering — annuleer hem na de test."
 
-Response:
-```json
-{
-  "status": "confirmed",
-  "reservationId": "<uuid>",
-  "reservationCode": "AB23CD45",
-  "localDate": "2026-05-01",
-  "localTime": "19:30",
-  "partySize": 4,
-  "guest": { "fullName": "...", "phone": "...", "email": "..." },
-  "links": {
-    "self":   "https://.../api/public/reservations/<id>",
-    "update": "https://.../api/public/reservations/<id>",
-    "cancel": "https://.../api/public/reservations/<id>",
-    "guestManage": "https://txtablewise.lovable.app/manage/<manage_token>"
-  }
-}
-```
+## 3. Geen wijzigingen aan
 
-## 3. PATCH /public_api/reservations/:id
-Body (alle velden optioneel):
-```json
-{ "localDate": "...", "localTime": "...", "partySize": 5, "notes": "...", "contact": { "phone": "..." } }
-```
-Mapping → `manage_reservation` met `action: "update"`. Authenticatie via API-key, intern callen we `manage_reservation` met service-role + impersonatie van `restaurant_id` (we voegen géén bypass toe in `manage_reservation`; in plaats daarvan gebruiken we direct DB writes voor de toegestane velden binnen `restaurant_id` van de key — exact zoals `agent_api/cancel_reservation` dat al doet).
+- `agent_api` (bestaande externe endpoint blijft werken voor wie hem al gebruikt).
+- `public_api` (de flow gebruikt 'm zoals hij is).
+- Database/RLS (we hergebruiken `agent_api_keys`).
+- Andere tabs van `VoiceAgentPage`.
 
-Voor wijzigingen van datum/tijd/personen valt `public_api` terug op een nieuwe interne helper-call die hergebruikt wat `book_reservation`/`manage_reservation` aan tafel- en pacing-checks doen. We doen dit zonder code-duplicatie door `manage_reservation` als HTTP-call te invoken met een service-role JWT en een speciale header `X-Internal-Caller: public_api` die we in `manage_reservation` accepteren als equivalent voor "operator-actie" voor enkel `update` en `cancel`. (Kleine, geïsoleerde wijziging in `manage_reservation`; geen gedragswijziging voor bestaande operators.)
+# UX-eisen check
 
-## 4. DELETE /public_api/reservations/:id
-Optionele query: `?reason=...`. Mapping → `manage_reservation` met `action: "cancel"` (zelfde mechanisme als hierboven), of fallback direct DB update zoals `agent_api/cancel_reservation`.
+- ✓ Welke velden verplicht — rode badge in de mapping-tabel.
+- ✓ Welke velden de agent verzamelt — kolom "Spreekvoorbeeld".
+- ✓ Welke velden gekoppeld zijn aan de payload — kolom "Payload-veld".
+- ✓ Laatste testresultaat — opgeslagen in localStorage, getoond als groene kaart bovenaan testsectie.
+- ✓ Laatste foutmelding — als laatste run faalde, rode kaart met TW_-code + field + suggestedFix.
+- ✓ Knop "Test complete voice reservation flow" — primary button, met disclaimer over echte reservering.
 
-# Validatie & Foutcodes
+# Guardrails check
 
-Alle errors hebben de vorm:
-```json
-{ "error": { "code": "TW_400_MISSING_DATE", "message": "...", "field": "localDate", "suggestedFix": "Voeg localDate (YYYY-MM-DD) toe." } }
-```
+- ✓ Geen externe workflow verplicht — TableWise voert de complete flow zelf uit via `public_api`.
+- ✓ Geen reservering bij faal — runner stopt na elke fout, vóór de book-stap.
+- ✓ Geen book vóór availability — book-stap is conditioneel op `availability.ok && data.isAvailable`.
 
-Mapping van validaties:
+# Open vraag
 
-| Conditie | HTTP | Code |
-|---|---|---|
-| `localDate` ontbreekt | 400 | `TW_400_MISSING_DATE` |
-| `localTime` ontbreekt | 400 | `TW_400_MISSING_TIME` |
-| `partySize` ontbreekt/0 | 400 | `TW_400_MISSING_PARTY_SIZE` |
-| Telefoon ongeldig | 400 | `TW_400_INVALID_PHONE` |
-| Email ongeldig (indien gegeven) | 400 | `TW_400_INVALID_EMAIL` |
-| Datum in verleden | 400 | `TW_400_DATE_IN_PAST` |
-| Naam ontbreekt | 400 | `TW_400_MISSING_NAME` |
-| API-key ontbreekt/ongeldig | 401 | `TW_401_AUTH_INVALID` |
-| Sleutel mist scope | 403 | `TW_403_SCOPE_MISSING` |
-| `locationId` ≠ key tenant | 403 | `TW_403_TENANT_MISMATCH` |
-| Reservering niet gevonden | 404 | `TW_404_RESERVATION_NOT_FOUND` |
-| Restaurant gesloten | 423 | `TW_423_RESTAURANT_CLOSED` |
-| Tijdslot bezet (`slot_unavailable`/`no_table_available`) | 409 | `TW_409_TIMESLOT_UNAVAILABLE` |
-| Pacing vol | 409 | `TW_409_PACING_FULL` |
-| Groep te groot voor online | 409 | `TW_409_PARTY_TOO_LARGE` |
-| Mogelijke duplicate (zelfde email+date+time binnen 5 min) | 409 | `TW_409_POSSIBLE_DUPLICATE` |
-| Reservering niet wijzigbaar (status cancelled/no_show) | 422 | `TW_422_RESERVATION_NOT_VALID` |
-| Interne fout | 500 | `TW_500_INTERNAL` |
-
-`public_api` heeft één centrale mapper: `mapInternalError(internalErrorCode) → TWCode` zodat één plek alle vertalingen beheert.
-
-# Bestanden die we maken/aanpassen
-
-Nieuw:
-- `supabase/functions/public_api/index.ts` — router + validatie + mapping + interne fetches.
-- `supabase/functions/_shared/tw-errors.ts` — TW-codes, mapper, helper `twError(code, field?, customMessage?)`.
-- `docs/PUBLIC_API.md` — endpointreferentie met voorbeelden voor ClickWise/Voice/cURL.
-- `docs/PUBLIC_API_ERROR_CODES.md` — volledige TW_-tabel.
-
-Klein aanpassen (non-breaking):
-- `supabase/functions/manage_reservation/index.ts` — accepteer header `X-Internal-Caller: public_api` met service-role JWT als equivalent voor operator (alleen voor `update` en `cancel`). Bestaand operatorpad blijft ongewijzigd.
-- `src/pages/app/IntegrationHubPage.tsx` — voeg een tab "Publieke API" toe met endpoint-lijst, voorbeeld-cURL en knop "Open documentatie". Geen bestaande tabs aanraken.
-
-Niet aangeraakt:
-- `availability`, `book_reservation`, `agent_api`, `guest_reservation`, `dispatch_webhooks`, `clickwise_process_event`, RLS, datamodel.
-
-# Auth
-
-- Header: `X-TableWise-Api-Key: tw_live_...`
-- Validatie identiek aan `agent_api`: SHA-256 hash → lookup in `agent_api_keys`, scopes: `availability`, `book`, `cancel`, plus nieuwe optionele scope `update` (default toegevoegd aan bestaande sleutels via fallback: ontbrekende `update`-scope → toegestaan, met deprecation note in response header `X-TableWise-Deprecation`).
-- `last_used_at` wordt bijgewerkt (best effort).
-
-# UX in Integration Hub
-
-Nieuwe tab "Publieke API" met:
-- Endpoint-blokken met copy-knop (cURL + JSON).
-- Live "Test availability" en "Test reservation" knoppen die naar `public_api` gaan met `source_metadata.test=true` (volgt bestaande `integration_test`-patroon).
-- Tabel met TW-foutcodes en uitleg.
-- Verwijzing: "Wil je dit zelf koppelen aan ClickWise/Vapi/Retell? Zie /app/voice-agent voor field-checklist."
-
-# Guardrails (bevestigd)
-
-- Geen breaking changes: alle bestaande functies behouden hun huidige routes en payloads.
-- Geen tweede engine: `public_api` doet alleen routing/validatie/mapping, écht boeken gebeurt in `book_reservation`.
-- Geen DB-migratie nodig.
-- Geen secrets in code; API-keys deels gemaskerd in UI (bestaand patroon).
-- Webhooks worden alleen geraakt via bestaande `book_reservation`-flow (die `integration_events.created` insert doet) — geen extra webhook-firing in `public_api`.
-
-# Open vragen voor jou
-
-1. **Routebasis**: gebruik je liever de pure functie-URL (`/functions/v1/public_api/...`) of moet ik ook een rewrite documenteren naar `/api/public/...` (vereist een hostingrewrite die we niet beheren — voorstel: alleen `/functions/v1/public_api/...` gebruiken en in docs als `POST <BASE>/availability` presenteren)?
-2. **Update-scope op bestaande keys**: nieuwe scope `update` standaard toekennen aan oude keys (backwards compatible) of forceren dat de gebruiker hem expliciet aanvinkt in de Hub UI?
-3. **Duplicate-detectie venster**: 5 minuten standaard ok, of strenger (15 min) zoals Guestplan?
+De testflow maakt een **echte reservering** (zodat we tafeltoewijzing/pacing/webhooks meetesten). Wil je dat liever:
+- A. Echte reservering, met grote disclaimer + "Annuleer test-reservering"-knop in resultaat (voorstel).
+- B. Droge run: alleen availability checken, book overslaan en simuleren.
