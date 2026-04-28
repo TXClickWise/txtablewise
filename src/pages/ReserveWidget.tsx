@@ -51,7 +51,35 @@ type RestaurantInfo = {
   preorders_enabled: boolean;
   preorders_allow_free_text: boolean;
   allow_zone_preference: boolean;
+  brand_primary: string | null;
+  logo_url: string | null;
 };
+
+// Convert #RRGGBB hex to "h s% l%" string for CSS HSL custom properties.
+function hexToHslTokens(hex: string): string | null {
+  const m = /^#([0-9a-fA-F]{6})$/.exec(hex.trim());
+  if (!m) return null;
+  const n = parseInt(m[1], 16);
+  const r = ((n >> 16) & 255) / 255;
+  const g = ((n >> 8) & 255) / 255;
+  const b = (n & 255) / 255;
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  const l = (max + min) / 2;
+  let h = 0;
+  let s = 0;
+  if (max !== min) {
+    const d = max - min;
+    s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+    switch (max) {
+      case r: h = (g - b) / d + (g < b ? 6 : 0); break;
+      case g: h = (b - r) / d + 2; break;
+      case b: h = (r - g) / d + 4; break;
+    }
+    h /= 6;
+  }
+  return `${Math.round(h * 360)} ${Math.round(s * 100)}% ${Math.round(l * 100)}%`;
+}
 
 const guestSchema = z.object({
   first_name: z.string().trim().min(1, "Voornaam is verplicht").max(80),
@@ -118,10 +146,33 @@ const ReserveWidget = () => {
   const [restaurant, setRestaurant] = useState<RestaurantInfo | null>(null);
   const [step, setStep] = useState<Step>("party");
 
+  // URL prefill helpers
+  const initialParty = useMemo(() => {
+    const v = parseInt(searchParams.get("party") ?? "", 10);
+    return !Number.isNaN(v) && v >= 1 && v <= 50 ? v : 2;
+  }, [searchParams]);
+  const initialDate = useMemo(() => {
+    const raw = searchParams.get("date");
+    if (!raw) return undefined;
+    const d = new Date(raw);
+    return Number.isNaN(d.getTime()) ? undefined : d;
+  }, [searchParams]);
+  const initialTime = useMemo(() => {
+    const raw = searchParams.get("time");
+    return raw && /^\d{1,2}:\d{2}$/.test(raw) ? raw : null;
+  }, [searchParams]);
+  const hideTableWiseLogo = searchParams.get("hide_logo") === "1";
+  const accentOverride = useMemo(() => {
+    const raw = searchParams.get("accent");
+    if (!raw) return null;
+    const hex = raw.startsWith("#") ? raw : `#${raw}`;
+    return hexToHslTokens(hex);
+  }, [searchParams]);
+
   // Booking state
-  const [partySize, setPartySize] = useState<number>(2);
+  const [partySize, setPartySize] = useState<number>(initialParty);
   const [customParty, setCustomParty] = useState<string>("");
-  const [date, setDate] = useState<Date | undefined>();
+  const [date, setDate] = useState<Date | undefined>(initialDate);
   const [slots, setSlots] = useState<Slot[]>([]);
   const [loadingSlots, setLoadingSlots] = useState(false);
   const [closedReason, setClosedReason] = useState<string | null>(null);
@@ -153,7 +204,7 @@ const ReserveWidget = () => {
     (async () => {
       const { data, error } = await supabase
         .from("restaurants")
-        .select("id, name, slug, timezone, max_party_size_online, large_group_threshold, preorders_enabled, preorders_allow_free_text, allow_zone_preference")
+        .select("id, name, slug, timezone, max_party_size_online, large_group_threshold, preorders_enabled, preorders_allow_free_text, allow_zone_preference, brand_primary, logo_url")
         .eq("slug", slug).maybeSingle();
       if (error || !data) {
         toast.error("Restaurant niet gevonden");
@@ -162,6 +213,13 @@ const ReserveWidget = () => {
       setRestaurant(data as RestaurantInfo);
     })();
   }, [slug]);
+
+  // Resolve effective brand color (URL override wins)
+  const brandHsl = useMemo(() => {
+    if (accentOverride) return accentOverride;
+    if (restaurant?.brand_primary) return hexToHslTokens(restaurant.brand_primary);
+    return null;
+  }, [accentOverride, restaurant?.brand_primary]);
 
   const fetchSlots = async () => {
     if (!restaurant || !date) return;
@@ -194,6 +252,14 @@ const ReserveWidget = () => {
     if (step === "time") fetchSlots();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step, partySize, date]);
+
+  // Preselect slot from URL when slots load
+  useEffect(() => {
+    if (!initialTime || step !== "time" || selectedSlot) return;
+    const match = slots.find((s) => s.time === initialTime || s.time.startsWith(initialTime));
+    if (match) setSelectedSlot(match);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [slots, step, initialTime]);
 
   // Auto-route to large group if party crosses online max
   const goToTimeFromDate = () => {
@@ -288,11 +354,23 @@ const ReserveWidget = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div
+      className="min-h-screen bg-background"
+      style={brandHsl ? ({ ["--primary" as any]: brandHsl, ["--ring" as any]: brandHsl } as React.CSSProperties) : undefined}
+    >
       <header className="border-b border-border bg-card sticky top-0 z-10">
-        <div className="max-w-2xl mx-auto px-4 py-4 flex items-center justify-between">
-          <Link to="/" className="font-display text-lg text-primary">TableWise</Link>
-          <span className="text-sm text-muted-foreground truncate ml-3">{restaurant.name}</span>
+        <div className="max-w-2xl mx-auto px-4 py-4 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3 min-w-0">
+            {restaurant.logo_url ? (
+              <img src={restaurant.logo_url} alt={`${restaurant.name} logo`} className="h-8 w-auto object-contain" />
+            ) : null}
+            <span className="font-display text-base sm:text-lg truncate">{restaurant.name}</span>
+          </div>
+          {!hideTableWiseLogo && (
+            <Link to="/" className="text-xs text-muted-foreground hover:text-foreground whitespace-nowrap">
+              powered by <span className="font-display text-primary">TableWise</span>
+            </Link>
+          )}
         </div>
       </header>
 

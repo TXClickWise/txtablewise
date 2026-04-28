@@ -1,78 +1,77 @@
-# Rapportages uitbreiden — uur-bezetting, top tafels, reminders, AI-performance
+# Online reserveringswidget — embed, link, QR & instellingenpagina
 
 ## Uitgangspositie
-De rapportagepagina `/app/rapportages` heeft al een sterke basis met centrale `src/services/reporting.ts`:
-- ✅ Reserveringen-totalen, statusverdeling, per dag, gem. groepsgrootte
-- ✅ Kanalen (incl. AI Host, ClickWise, walk-in, etc.) met no-show% per kanaal
-- ✅ No-show: aantal, %, herbevestigingen open/bevestigd, grote-groep no-shows
-- ✅ Wachtlijst-conversie, walk-ins, grote groepen
-- ✅ Pre-orders met geschatte omzet en topitems
-- ✅ Reviews, gasten/CRM, POS-omzet (rolbewust), pacing per half uur
-- ✅ Insight-cards en datumfilter (vandaag/gisteren/week/maand/custom)
-
-## Wat ontbreekt nog (uit de opdracht)
-1. **Bezetting per uur** — hourly breakdown (reservations + covers per uur, niet per half uur)
-2. **Populairste tijdslots** als top-lijst (nu alleen als grafiek via pacing)
-3. **Top tafels & top zones** — bestaat nog niet
-4. **Reminders verzonden** + per type + op-tijd-annuleringen
-5. **AI Voice Agent performance** — `agent_call_logs` wordt nog niet gerapporteerd
-6. **Pre-order conversieratio** (pre-orders / reserveringen × 100)
+- ✅ Volledig werkende widget op `/r/:slug`, `/reserveer/:slug`, `/book/:slug` (`src/pages/ReserveWidget.tsx`, 869 regels)
+- ✅ Stappen: party → date → time → details → confirm, met large-group en waitlist fallback
+- ✅ Gebruikt al `getAvailability()` + `createPublicReservation()` uit `src/services/publicBooking.ts` — zelfde edge functions als interne flow, AI Voice Agent en publieke API → **geen aparte logica nodig**
+- ✅ Mobiel-first responsive, sticky header, grote touch-targets, progressive disclosure
+- ❌ Geen embed-codegenerator, geen QR, geen brand-styling toegepast, geen URL-prefill voor party/date, geen taal-override
+- ❌ Geen settings-pagina "Online reserveren / Widget"
 
 ## Aanpak
-Uitbreiden van bestaande infra — geen nieuwe pagina, geen nieuwe service.
+**Geen nieuwe booking-logica.** Twee gerichte uitbreidingen:
 
-### 1. `src/services/reporting.ts` — 4 nieuwe functies toevoegen
-| Functie | Bron | Output |
-|---|---|---|
-| `getHourlyOccupancy(restaurantId, range)` | `reservations` | Array `{hour: "HH:00", reservations, covers}`, telt cancelled/hold uit |
-| `getTopSeatingMetrics(restaurantId, range)` | `reservations` + `reservation_tables` + `tables` + `zones` | `{tables: top 8, zones: alle}` met reservations + covers per tafel/zone |
-| `getReminderMetrics(restaurantId, range, cutoffMin)` | `reservation_reminders` + `reservations` | `{totalSent, byType, failed, pending, reconfirmationsSent, cancelledOnTime}` (op-tijd = `cancelled_at` ≥ `start_time − cutoffMin`) |
-| `getAIPerformanceMetrics(restaurantId, range)` | `agent_call_logs` + `integration_logs` (source=voice_agent, status=failed) | `{totalCalls, successfulBookings, failedBookings, handovers, avgDurationSeconds, byOutcome, topErrorCodes, successRate}` |
+### 1. `src/pages/ReserveWidget.tsx` — URL params + brand styling
+Lees deze nieuwe `searchParams`:
+| Param | Effect |
+|---|---|
+| `party=4` | Initiële `partySize`, slaat party-stap eventueel niet over (gast kan nog wijzigen) |
+| `date=2026-04-30` | Initiële `date`, ISO yyyy-MM-dd |
+| `time=19:00` | Pre-select tijdslot wanneer beschikbaarheid laadt |
+| `lang=nl\|en` | Voor toekomstige i18n; nu alleen `<html lang>` zetten + dateformat |
+| `hide_logo=1` | Verbergt het TableWise-logo in de header |
+| `accent=#hex` | Override van `restaurants.brand_primary`, alleen geldig hex |
+| `source=...` | Bestaand (channel attribution) |
 
-Optimalisatie: alle queries gefilterd op `restaurant_id` + datumvenster zodat RLS-indexen werken; geen N+1 (1 batch-call voor `reservation_tables` met `.in()`).
+Brand styling (zonder hardcoded kleuren in components):
+- Restaurant-query uitbreiden met `brand_primary`, `logo_url`
+- In `useEffect` na laden: zet `--primary` en `--ring` als CSS-variable op de root van het widget-`<div>` met de hex (geconverteerd naar HSL via een kleine helper). Zo blijft alle bestaande `bg-primary` etc. werken zonder componentwijzigingen.
+- Logo van het restaurant tonen in header bij `restaurant.logo_url` als `hide_logo` niet gezet is. TableWise-merk wordt subtieler ("powered by") onderaan.
 
-### 2. `src/pages/app/ReportsPage.tsx` — drie nieuwe secties + uitbreiding KPI's
+Validatie: hex met `^#[0-9a-fA-F]{6}$` regex; ongeldige waarden negeren stilletjes.
 
-Toevoegen in deze volgorde, na bestaande "Reserveringen & covers":
+### 2. `src/pages/app/settings/WidgetSettings.tsx` — nieuwe pagina
+Alles op één scherm, twee kolommen op desktop, gestapeld op mobiel:
 
-**A. Bezetting per uur & populaire tijdslots** (na "Reserveringen & covers")
-- Bar chart: covers per uur via `getHourlyOccupancy`
-- Top 5-lijst: drukste tijdslots (uit pacing)
-- Empty state als geen data
+**Linker kolom — Configuratie**
+- **Brand**: kleurkiezer (gekoppeld aan `restaurants.brand_primary`), upload-/URL-veld voor `logo_url` (alleen URL voor nu, file upload bestaat nog niet — duidelijk gemarkeerd)
+- **Standaarden**: aantal personen (1–8), datum (vandaag/morgen/specifiek), tijd (HH:mm of leeg), taal (nl/en) — komen als URL-params terecht in alle gegenereerde links
+- **Toon TableWise-logo**: switch (default aan)
 
-**B. Top tafels & zones** (nieuwe sectie)
-- 2-koloms: top 8 tafels (label + zone) en lijst zones (alle)
-- Sorteerd op aantal reserveringen
-- Empty state
+**Rechter kolom — Verspreiden**
+- **Directe link**: `https://<host>/r/<slug>?party=…&date=…` met copy-button
+- **Embed script**: `<iframe>` snippet met de gekozen defaults, copy-button. Inclusief `loading="lazy"` en responsive sizing (style: width 100%, min-height 720px, border 0)
+- **QR-code**: `qrcode.react` SVG, downloadbaar als PNG via canvas-conversie. Onder de QR-code: link naar de exacte URL.
 
-**C. Reminders & op-tijd annuleringen** (uitbreiding van No-show sectie of nieuwe directe sectie)
-- KPI's: Reminders verzonden, Bevestigingen verzonden, Reminders 24u/2u, Mislukte verzendingen, Annuleringen op tijd
-- Splitsing per `reminder_type`
+**Volledige breedte — Preview**
+- Tabs/segments: **Mobiel** (375×667) en **Desktop** (1024×768) — frame met `<iframe src=…>` op de juiste viewport. Live-update wanneer instellingen veranderen.
 
-**D. AI Voice Agent performance** (na Kanalen)
-- KPI's: Aantal calls, Geslaagde boekingen, Mislukte boekingen, Overdrachten, Slaagpercentage, Gem. gespreksduur (mm:ss)
-- Lijst top 5 foutcodes met aantal
-- Empty state met link naar `/app/voice-agent` als nog geen calls
+### 3. Routing & navigatie
+- Nieuwe route in `src/App.tsx`: `instellingen/widget` → `<WidgetSettings />`
+- Nieuw item in `SettingsPage.tsx` onder groep "Operatie": "Online reserveren" met `Globe`-icoon
 
-**E. Pre-orders sectie** — extra KPI "Conversieratio"
-- `pre_orders.total / reservations.total × 100`
-
-### 3. `App.tsx` / routing
-Geen wijziging — pagina blijft op `/app/rapportages`.
+### 4. Persistentie
+- `restaurants.brand_primary` en `restaurants.logo_url` bestaan al → direct opslaan via update
+- Defaults voor party/date/time/taal hoeven niet in DB; ze leven alleen in de gegenereerde URLs (one-shot configuratie). Optioneel later in `restaurants.metadata` opslaan zodat gebruikers ze terugzien — nu lokaal per sessie.
 
 ## Bestanden
+**Nieuw**
+- `src/pages/app/settings/WidgetSettings.tsx`
+
 **Aangepast**
-- `src/services/reporting.ts` — 4 functies + 4 type-exports toegevoegd, geen wijziging in bestaande functies
-- `src/pages/app/ReportsPage.tsx` — Promise.all uitbreiden, 3 nieuwe ReportSection-blocks, 1 KPI extra in pre-orders
+- `src/pages/ReserveWidget.tsx` — `RestaurantInfo` uitgebreid met `brand_primary` + `logo_url`, URL-param parsing voor `party/date/time/lang/hide_logo/accent`, brand styling via CSS-variabelen, optionele logo render
+- `src/App.tsx` — route toevoegen
+- `src/pages/app/SettingsPage.tsx` — navigatie-item "Online reserveren"
 
 **Niet aangeraakt**
-- Bestaande functies in `reporting.ts`
-- `ReportPrimitives.tsx`, `ReportDateRangePicker.tsx`
-- DB schema, RLS, edge functions
-- Andere pagina's
+- `src/services/publicBooking.ts` — al gedeeld met AI Voice Agent en publieke API
+- Edge functions, RLS, DB schema (alle vereiste velden bestaan al)
+
+## Dependency
+- `qrcode.react` reeds geïnstalleerd
 
 ## Guardrails toegepast
-- **Bestaande data** — alle nieuwe metrics komen uit bestaande tabellen (`reservations`, `reservation_tables`, `tables`, `zones`, `reservation_reminders`, `agent_call_logs`, `integration_logs`)
-- **Lege states** — elke nieuwe sectie heeft `EmptyState` als data ontbreekt
-- **Performance** — datumvensters op alle queries, geen N+1, batch via `.in()`, gebruik bestaande indexen (`idx_agent_call_logs_restaurant_created`, `idx_reminders_restaurant_scheduled`)
-- **Tablet-first** — KPI-grids gebruiken bestaande `ReportKpiCard` en blijven responsive
+- **Geen aparte widget-logica** — widget gebruikt dezelfde `getAvailability` en `createPublicReservation` services als interne flow, AI Voice en publieke API
+- **Zelfde validatie** — `guestSchema` (zod) blijft de single source of truth in de widget
+- **Mobiel** — bestaande widget is al touch-first; instellingen-pagina krijgt mobiele preview-tab; embed-snippet is responsive
+- **Veiligheid** — hex-color en URL-param validatie op de widget; geen DOM-injectie van user content
