@@ -4,7 +4,8 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useRestaurant } from "@/hooks/useRestaurant";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { SectionCard } from "@/components/SectionCard";
+import { PageHeader } from "@/components/PageHeader";
 import { UserPlus, Sparkles } from "lucide-react";
 import { WalkInQuickSheet, type WalkInQuickPrefill } from "@/components/walk-in/WalkInQuickSheet";
 import { AIQuickSeatInput } from "@/components/walk-in/AIQuickSeatInput";
@@ -30,43 +31,30 @@ const WalkInsPage = () => {
   const startQuick = (p?: WalkInQuickPrefill) => { setPrefill(p); setOpen(true); };
 
   return (
-    <div className="p-6 max-w-4xl mx-auto space-y-6">
-      <header>
-        <h1 className="font-display text-3xl">Walk-ins</h1>
-        <p className="text-muted-foreground">
-          Spontane gast aan de deur? Drie tikken en geplaatst.
-        </p>
-      </header>
+    <div className="p-4 sm:p-6 max-w-4xl mx-auto space-y-6">
+      <PageHeader
+        title="Walk-ins"
+        description="Spontane gast aan de deur? Drie tikken en geplaatst."
+      />
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 font-display">
-            <UserPlus className="h-5 w-5 text-primary" /> Walk-in snel plaatsen
-          </CardTitle>
-          <CardDescription>
-            Open de snelle plaatsing-sheet. Voor een snelle walk-in heb je geen gastgegevens nodig.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Button size="lg" className="h-14 w-full text-base" onClick={() => startQuick()}>
-            <UserPlus className="mr-2 h-5 w-5" /> Nieuwe walk-in
-          </Button>
-        </CardContent>
-      </Card>
+      <SectionCard
+        title="Walk-in snel plaatsen"
+        description="Open de snelle plaatsing-sheet. Voor een snelle walk-in heb je geen gastgegevens nodig."
+        icon={<UserPlus />}
+      >
+        <Button size="lg" className="h-14 w-full text-base" onClick={() => startQuick()}>
+          <UserPlus className="mr-2 h-5 w-5" /> Nieuwe walk-in
+        </Button>
+      </SectionCard>
 
       <AIQuickSeatInput zones={zones} onConfirm={(p) => startQuick(p)} />
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 font-display text-lg">
-            <Sparkles className="h-4 w-4 text-primary" /> Tip
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="text-sm text-muted-foreground">
+      <SectionCard title="Tip" icon={<Sparkles />}>
+        <p className="text-sm text-muted-foreground">
           Floor Mode en Tafelplan hebben dezelfde walk-in flow ingebouwd. Tik op een vrije
           tafel om die direct voor te selecteren.
-        </CardContent>
-      </Card>
+        </p>
+      </SectionCard>
 
       <WalkInQuickSheet
         open={open}
