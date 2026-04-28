@@ -114,7 +114,7 @@ Deno.serve(async (req) => {
       }
     }
     const candidate = tables.find((t) => !occupied.has(t.id));
-    if (!candidate) return json({ error: "Geen tafel meer beschikbaar voor dit moment", retry: true }, 409);
+    if (!candidate) return json({ error: "Geen tafel meer beschikbaar voor dit moment", error_code: "slot_unavailable", field: "time", retry: true }, 409);
 
     // Pacing check (skip for operator-driven walk-ins / manager bookings)
     const skipPacing = channel === "walk_in" || channel === "manager";
