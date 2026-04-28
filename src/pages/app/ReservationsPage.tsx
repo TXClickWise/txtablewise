@@ -431,43 +431,44 @@ function ContentArea({
 }) {
   if (isError) {
     return (
-      <div className="text-center py-12 space-y-3">
-        <p className="text-destructive">De reserveringen konden niet worden geladen.</p>
-        <Button variant="outline" onClick={onRetry}>Opnieuw proberen</Button>
-      </div>
+      <EmptyState
+        icon={<RotateCw />}
+        title="Reserveringen konden niet worden geladen"
+        description="Controleer de verbinding en probeer het opnieuw."
+        action={
+          <Button variant="outline" onClick={onRetry}>
+            <RotateCw className="mr-2 h-4 w-4" /> Opnieuw proberen
+          </Button>
+        }
+      />
     );
   }
   if (isLoading) {
-    return (
-      <div className="space-y-2">
-        {[0, 1, 2].map((i) => (
-          <div key={i} className="h-24 rounded-lg bg-muted/40 animate-pulse" />
-        ))}
-      </div>
-    );
+    return <CardSkeletonGrid count={3} />;
   }
   if (filtered.length === 0) {
-    return (
-      <div className="text-center py-12 space-y-3">
-        {filtersActive ? (
-          <>
-            <p className="text-muted-foreground">Geen reserveringen gevonden met deze filters.</p>
-            <Button variant="outline" onClick={onClear}>Filters wissen</Button>
-          </>
-        ) : (
-          <>
-            <p className="text-muted-foreground">Geen reserveringen voor deze dag.</p>
-            <div className="flex justify-center gap-2">
-              <Button variant="outline" onClick={onWalkIn}>
-                <UserPlus className="mr-2 h-4 w-4" /> Walk-in
-              </Button>
-              <Button onClick={onCreate}>
-                <CalendarPlus className="mr-2 h-4 w-4" /> Reservering
-              </Button>
-            </div>
-          </>
-        )}
-      </div>
+    return filtersActive ? (
+      <EmptyState
+        title="Geen reserveringen met deze filters"
+        description="Pas de filters aan of wis ze om alles te tonen."
+        action={<Button variant="outline" onClick={onClear}>Filters wissen</Button>}
+      />
+    ) : (
+      <EmptyState
+        icon={<CalendarIcon />}
+        title="Geen reserveringen voor deze dag"
+        description="Voeg een walk-in toe of maak een nieuwe reservering aan."
+        action={
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={onWalkIn}>
+              <UserPlus className="mr-2 h-4 w-4" /> Walk-in
+            </Button>
+            <Button onClick={onCreate}>
+              <CalendarPlus className="mr-2 h-4 w-4" /> Reservering
+            </Button>
+          </div>
+        }
+      />
     );
   }
   return <>{renderItems()}</>;
