@@ -34,6 +34,7 @@ import AiVoiceSettings from "./pages/app/settings/AiVoiceSettings.tsx";
 import ApiWebhooksSettings from "./pages/app/settings/ApiWebhooksSettings.tsx";
 import UsersRolesSettings from "./pages/app/settings/UsersRolesSettings.tsx";
 import SubscriptionSettings from "./pages/app/settings/SubscriptionSettings.tsx";
+import WidgetSettings from "./pages/app/settings/WidgetSettings.tsx";
 import FloorModePage from "./pages/app/FloorModePage.tsx";
 import WalkInsPage from "./pages/app/WalkInsPage.tsx";
 import WaitlistPage from "./pages/app/WaitlistPage.tsx";
