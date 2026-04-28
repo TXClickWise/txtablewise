@@ -35,6 +35,7 @@ const GROUPS: Group[] = [
     label: "Operatie",
     items: [
       { to: "/app/instellingen/reserveringen", label: "Reserveringen", icon: CalendarRange },
+      { to: "/app/instellingen/widget", label: "Online reserveren", icon: Globe },
       { to: "/app/instellingen/zones", label: "Tafels & zones", icon: LayoutGrid },
     ],
   },
