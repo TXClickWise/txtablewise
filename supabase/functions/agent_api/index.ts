@@ -130,13 +130,13 @@ Deno.serve(async (req) => {
       }
 
       case "book_reservation": {
-        if (!keyRow.scopes.includes("book")) return json({ error: "Scope missing: book" }, 403);
+        if (!keyRow.scopes.includes("book")) return json({ error: "Scope missing: book", error_code: "auth_scope_missing", field: "book" }, 403);
         const required = ["date", "time", "party_size", "guest"];
         for (const k of required) {
-          if (!(k in payload)) return json({ error: `Missing field: ${k}` }, 400);
+          if (!(k in payload)) return json({ error: `Missing field: ${k}`, error_code: "missing_field", field: k }, 400);
         }
         const guest = payload.guest as Record<string, unknown> | undefined;
-        if (!guest?.first_name) return json({ error: "guest.first_name required" }, 400);
+        if (!guest?.first_name) return json({ error: "guest.first_name required", error_code: "missing_field", field: "guest.first_name" }, 400);
         // Voice-agents leveren niet altijd e-mail — gebruik placeholder als ontbreekt
         if (!guest.email) {
           guest.email = `voice-${Date.now()}@tablewise.local`;
@@ -155,14 +155,14 @@ Deno.serve(async (req) => {
       }
 
       case "cancel_reservation": {
-        if (!keyRow.scopes.includes("cancel")) return json({ error: "Scope missing: cancel" }, 403);
+        if (!keyRow.scopes.includes("cancel")) return json({ error: "Scope missing: cancel", error_code: "auth_scope_missing", field: "cancel" }, 403);
         const { reservation_id, manage_token, reason } = payload as {
           reservation_id?: string;
           manage_token?: string;
           reason?: string;
         };
         if (!reservation_id && !manage_token) {
-          return json({ error: "reservation_id or manage_token required" }, 400);
+          return json({ error: "reservation_id or manage_token required", error_code: "missing_field", field: "reservation_id" }, 400);
         }
         // Direct DB update — beperkt tot eigen restaurant
         let q = sb.from("reservations").update({
@@ -176,8 +176,8 @@ Deno.serve(async (req) => {
           q = q.eq("manage_token", manage_token).eq("restaurant_id", keyRow.restaurant_id);
         }
         const { data, error } = await q.select("id").maybeSingle();
-        if (error) return json({ error: error.message }, 400);
-        if (!data) return json({ error: "Reservation not found" }, 404);
+        if (error) return json({ error: error.message, error_code: "internal" }, 400);
+        if (!data) return json({ error: "Reservation not found", error_code: "not_found", field: "reservation_id" }, 404);
         return json({ ok: true, reservation_id: data.id });
       }
 
