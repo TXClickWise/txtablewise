@@ -354,11 +354,23 @@ const ReserveWidget = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div
+      className="min-h-screen bg-background"
+      style={brandHsl ? ({ ["--primary" as any]: brandHsl, ["--ring" as any]: brandHsl } as React.CSSProperties) : undefined}
+    >
       <header className="border-b border-border bg-card sticky top-0 z-10">
-        <div className="max-w-2xl mx-auto px-4 py-4 flex items-center justify-between">
-          <Link to="/" className="font-display text-lg text-primary">TableWise</Link>
-          <span className="text-sm text-muted-foreground truncate ml-3">{restaurant.name}</span>
+        <div className="max-w-2xl mx-auto px-4 py-4 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3 min-w-0">
+            {restaurant.logo_url ? (
+              <img src={restaurant.logo_url} alt={`${restaurant.name} logo`} className="h-8 w-auto object-contain" />
+            ) : null}
+            <span className="font-display text-base sm:text-lg truncate">{restaurant.name}</span>
+          </div>
+          {!hideTableWiseLogo && (
+            <Link to="/" className="text-xs text-muted-foreground hover:text-foreground whitespace-nowrap">
+              powered by <span className="font-display text-primary">TableWise</span>
+            </Link>
+          )}
         </div>
       </header>
 
