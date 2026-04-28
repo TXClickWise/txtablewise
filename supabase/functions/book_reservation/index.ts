@@ -80,7 +80,7 @@ Deno.serve(async (req) => {
     const end_iso = addMinutesIso(start_iso, durationMinutes);
 
     if (new Date(start_iso) < new Date(Date.now() + (restaurant.booking_lead_time_minutes ?? 0) * 60_000)) {
-      return json({ error: "Slot too soon" }, 400);
+      return json({ error: "Slot too soon", error_code: "slot_too_soon", field: "time" }, 400);
     }
 
     // Find fitting tables
