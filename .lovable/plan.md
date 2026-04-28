@@ -1,107 +1,133 @@
+## Doel
 
-# Doel
+`/app/reserveringen` upgraden van een lijst-met-filters naar een volwaardige reserveringscockpit met meerdere weergaves, sterkere filters, complete snelle acties en een uitgebreid detailpaneel. Alle bestaande functionaliteit (services, statussen, dialogs, mutaties) blijft intact en wordt hergebruikt.
 
-Eén logging-dashboard onder **Beheer / Integraties / Logs** dat per inbound call (API, AI Voice Agent, ClickWise, widget, webhook, dashboard) toont wat er gebeurde, waarom het faalde, en — wanneer veilig — een retry-knop biedt. Foutoorzaken worden automatisch gesuggereerd.
+## Wat er nu staat
 
-# Aanpak in één zin
+- `ReservationsPage.tsx` — alleen lijstweergave per dag, status-chips + 5 signaal-chips, zoek, kaarten via `ReservationCard`.
+- `AgendaPage.tsx` — bestaande tafelgrid (tafels × tijdslots) op `/app/agenda`. Wordt geïntegreerd als view.
+- `FloorModePage.tsx` / `FloorPlanPage.tsx` — bestaande tablet-floor en plattegrond. Worden niet vervangen, alleen via tabs/links bereikbaar gemaakt.
+- `ReservationCard` — heeft al: bekijken, aangekomen, voltooid, no-show, annuleer.
+- `ReservationDetailDialog` — heeft al: gast, datum/tijd/personen edit, status-acties, no-show, pre-orders, aftercare, POS, large-group goedkeuring.
 
-We voegen een nieuwe tabel `integration_logs` toe (apart van bestaande `integration_events` voor outbound), een gedeelde edge-function helper die request/response veilig logt met masking en `possible_cause`, hooks in `public_api` / `agent_api` / `dispatch_webhooks`, en een nieuwe pagina onder `/app/integrations/logs`.
+## Wat we toevoegen
 
-# Wat we bouwen
+### 1. View-switcher op `/app/reserveringen`
 
-## 1. Database — nieuwe tabel `integration_logs`
+Eén pagina met segmented control bovenaan: **Dag · Week · Lijst · Tafelgrid · Floor**.
 
-Bewust **niet** misbruiken van `integration_events` (dat is outbound queue voor ClickWise) of `audit_log` (entity-mutaties).
-
-```
-id uuid pk
-restaurant_id uuid not null
-created_at timestamptz default now()
-source text not null         -- dashboard|widget|voice_agent|clickwise|api|webhook
-action text not null         -- check_availability|create_reservation|update_reservation|cancel_reservation|webhook_delivery|other
-status text not null         -- success|warning|failed
-http_status int
-latency_ms int
-error_code text              -- TW_-codes of provider-codes
-error_message text
-possible_cause text          -- auto-gegenereerd op basis van error_code/payload
-request_payload jsonb        -- ALTIJD gemaskeerd opgeslagen
-response_payload jsonb       -- ALTIJD gemaskeerd opgeslagen
-guest_id uuid
-reservation_id uuid
-api_key_prefix text          -- alleen prefix (12 chars), nooit hele key
-external_reference text
-retry_safe boolean default false
-metadata jsonb default '{}'
+```text
+Dag        → tijdlijn vandaag/gekozen dag, gegroepeerd per tijdvak (ochtend/lunch/diner/late)
+Week       → 7 kolommen × dagen, compacte kaart per reservering, klik = detail
+Lijst      → huidige lijst (default voor mobiel)
+Tafelgrid  → embed AgendaPage-grid (tafels × tijd) — bestaande component hergebruiken
+Floor      → link/redirect naar /app/floor (Floor Mode is volwaardige tablet-route)
 ```
 
-Indexen op `(restaurant_id, created_at desc)`, `(restaurant_id, status)`, `(restaurant_id, source)`, `(reservation_id)`, `(guest_id)`.
+State (view, datum, filters) in URL search params zodat refresh + delen werkt.
 
-RLS: `members read integration_logs` (`is_restaurant_member`), `manager write integration_logs` (alleen voor in-app retry-acties; edge functions schrijven via service role en omzeilen RLS).
+### 2. KPI-strip (3-seconden-eis)
 
-## 2. Shared helper `supabase/functions/_shared/integration-log.ts`
+Direct onder de header, 4 compacte kaarten:
+- **Gasten vandaag** — som `party_size` op gekozen dag
+- **Aandacht nodig** — pending + manual_approval + reconfirmation_status='requested' + grote groep open
+- **Tafels vrij nu** — count tafels zonder lopende reservering op huidig tijdslot
+- **No-show risico** — count met `no_show_risk` in ('medium','high')
 
-Eén `logIntegration()` functie die:
-- Diep cloned + maskeert: `phone` → `+31••••••89`, `email` → `j••@•••.com`, `password`/`token`/`api_key`/`secret` → `***`, `X-TableWise-Api-Key` header → eerste 12 chars + `…`.
-- Limiteert payload-grootte tot 8 KB (truncatie + `_truncated: true`).
-- Genereert `possible_cause` op basis van `error_code`:
-  - `TW_400_MISSING_DATE` → "Datum ontbreekt in payload"
-  - `TW_400_MISSING_TIME` → "Tijd ontbreekt"
-  - `TW_400_MISSING_PARTY_SIZE` → "Aantal personen ontbreekt"
-  - `TW_400_INVALID_PHONE` → "Telefoonnummer niet in geldig formaat (verwacht +31...)"
-  - `TW_409_TIMESLOT_UNAVAILABLE` → "Tijdslot zit vol — bied alternatief of wachtlijst aan"
-  - `TW_409_PARTY_TOO_LARGE` → "Groep groter dan max online — vereist handmatige goedkeuring"
-  - `TW_401_*` → "API-sleutel ongeldig of ingetrokken"
-  - `TW_404_*` → "Reservering niet gevonden"
-  - webhook 5xx/timeout → "Endpoint offline of antwoordt niet"
-  - webhook 4xx → "Veldmapping klopt niet of payload geweigerd"
-- Schrijft async ("fire-and-forget" via `EdgeRuntime.waitUntil` of `.catch(noop)`) zodat de hot path niet vertraagt.
+Klik op een kaart = filter activeren.
 
-## 3. Hooks in bestaande edge functions
+### 3. Uitgebreide filterbar
 
-- **`public_api`** — log na elke route in de bestaande `try/catch` (zowel succes als faal): source `api`, action mapped uit pad, http_status, latency, error_code/message uit `twError`. Geen tweede try/catch — alleen één regel toevoegen vóór elke return.
-- **`agent_api`** — zelfde patroon: source `voice_agent`, action uit pad, key_prefix gederiveerd uit X-Agent-Api-Key.
-- **`dispatch_webhooks`** — log per delivery: source `webhook`, action `webhook_delivery`, target = endpoint URL, response_payload = body (truncated). Markeer `retry_safe: true` voor webhook-deliveries.
-- **`book_reservation` / `manage_reservation`** — niet aanraken; ze worden indirect geraakt via `public_api`. (Dit voorkomt dubbele logs.)
+Bestaand uitbreiden, alles in één collapsible "Filters"-balk:
 
-## 4. Frontend
+| Filter | Bron |
+|---|---|
+| Datum | bestaande date-popover |
+| Tijdvak | nieuw: ochtend/lunch/middag/diner/late + custom range |
+| Status | bestaande chips |
+| Bron (channel) | nieuw multi-select: online, walk_in, phone, ai_voice, manual, etc. |
+| Personen | nieuw range slider (min–max) |
+| Allergieën | bestaande signal-chip |
+| No-show risico | nieuw: `no_show_risk` low/medium/high |
+| Grote groepen | bestaande chip (≥ `large_group_threshold`) |
+| Walk-ins | bestaande chip |
+| Wachtlijst | nieuw: toon dag-wachtlijst inline (read-only summary, link naar `/app/wachtlijst`) |
 
-- **`src/services/integrationLogs.ts`** — `listLogs(restaurantId, filters, page)`, `retryLog(logId)`, `getLog(id)`, type-definities.
-- **`src/pages/app/IntegrationLogsPage.tsx`** —
-  - Filters bovenaan: datum-range (default laatste 24h), status (success/warning/failed), source (multi), error_code (vrije tekst), zoek op gast/reservering (id of naam via join).
-  - Tabel-rijen met linker statusbalk (groen/oranje/rood). Kolommen: tijd, source-badge, action, status, error_code, gast/reservering, retry-knop (alleen als `retry_safe`).
-  - Detail-drawer: volledige (gemaskeerde) request + response in JSON-blok, possible_cause-card, links naar gast/reservering/api-key.
-  - Retry-knop: roept `retry_log` edge function aan die alleen voor whitelisted actions herexecuteert (`check_availability` en `webhook_delivery`). `create_reservation` retry is geblokkeerd om dubbels te voorkomen — i.p.v. retry tonen we "Maak handmatig aan" met pre-filled link naar `/app/reservations/new`.
-- **Routing & nav**:
-  - Route `/app/integraties/logs` in `src/App.tsx`.
-  - Link in `AppSidebar.tsx` onder bestaande Integraties-sectie ("Logs").
-  - Knop "Bekijk logs" in `IntegrationHubPage` Overview-tab.
+Actieve filters tonen als verwijderbare badges. "Wis filters" blijft.
 
-## 5. Nieuwe edge function `retry_log`
+### 4. Snelle acties per rij
 
-Klein, één bestand:
-- Authenticatie via user JWT (alleen managers van het restaurant).
-- Laadt log, valideert `retry_safe = true`.
-- Voor `check_availability` → re-runt tegen `availability` engine (read-only, géén side effects).
-- Voor `webhook_delivery` → re-fetcht naar opgeslagen target met origineel payload.
-- Schrijft een nieuwe `integration_logs` regel met `metadata.retry_of = <oude id>`.
-- Weigert alle andere actions met duidelijke message.
+`ReservationCard` houden, ontbrekende acties toevoegen via een **kebab-menu** (`DropdownMenu`) rechts van de bestaande knoppen:
 
-## 6. Performance & veiligheid
+- ✓ Bekijken (bestaat)
+- ✓ Aangekomen / Voltooid (bestaan)
+- ✓ Annuleren / No-show (bestaan)
+- ➕ **Wijzigen** — opent detailpaneel direct in edit-modus
+- ➕ **Verplaatsen** — kleine sheet: nieuwe datum + tijd, gebruikt `resService.update`
+- ➕ **Tafel toewijzen** — sheet met vrije tafels op tijdslot, mutatie op `reservation_tables`
+- ➕ **Gastprofiel openen** — link naar `/app/gasten?focus=<guest_id>`
+- ➕ **Bericht sturen** — schiet `integration_events` event af (`guest_message_requested`) zodat ClickWise het oppakt; toont "verzoek verzonden" toast
 
-- Async logging (waitUntil) zodat API-latency ongewijzigd blijft.
-- 8 KB payload-cap voorkomt dat grote bodies de DB belasten.
-- API-keys nooit volledig: alleen `key_prefix` (eerste 12 chars).
-- Telefoon/email/secrets gemaskeerd vóór insert.
-- Retry-functie is whitelisted; `create_reservation`/`update_reservation`/`cancel_reservation` zijn nooit retry-safe.
+### 5. Detailpaneel als zijpaneel (Sheet)
 
-# Wat we NIET aanraken
+Nieuwe component `ReservationDetailSheet` naast bestaande `ReservationDetailDialog`. Sheet komt rechts open (desktop) en als bottom-sheet (mobiel). Bevat dezelfde secties + 3 nieuwe blokken:
 
-- Bestaande `integration_events` tabel (outbound ClickWise queue) blijft.
-- Bestaande `audit_log` tabel (entity-mutaties) blijft.
-- Bestaande `agent_call_logs` (telefonie-summary) blijft — dat is een ander concern (kosten/transcript).
-- `book_reservation` / `manage_reservation` core logic.
+```text
+Header  : status, channel, bevestigingscode, gast-naam
+Tabs    : Overzicht · Gast · Activiteit · Integraties
+  Overzicht   = huidige inhoud Detail Dialog (gast, datum/tijd, personen, notities, status-acties, no-show, pre-orders, aftercare, POS, large-group)
+  Gast        = uitgebreid gastprofiel (visit_count, no_show_count, tags, allergieën, hospitality_notes) + link naar volledig profiel
+  Activiteit  = no-show historie (`reservation_status_history`) + reminders (`reservation_reminders`) tijdlijn
+  Integraties = laatste AI-call (`agent_call_logs` matched on reservation_id) + laatste 5 `integration_logs` voor reservation_id (link naar /app/integraties/logs)
+```
 
-# Open vraag
+`ReservationDetailDialog` blijft bestaan voor backwards compat (wordt in het Sheet hergebruikt voor de Overzicht-tab — same content, andere chrome).
 
-Wil je in fase 1 ook de **dashboard-acties** loggen (handmatige reservering aanmaken in /app), of houden we dat buiten scope (die staan al in `audit_log`) en focussen we puur op externe calls?
+### 6. Mobiel
+
+- Sheet wordt bottom-sheet < md.
+- View-switcher wordt dropdown < md (alleen Lijst/Dag/Tafelgrid relevant op klein scherm).
+- Filterbar in Drawer met "Filters (n)" knop.
+- `ReservationCard` is al touch-friendly; kebab-menu houdt rij compact.
+
+## Bestanden
+
+**Nieuw**
+- `src/components/reservations/ReservationViewSwitcher.tsx` — segmented control
+- `src/components/reservations/ReservationKpiStrip.tsx` — 4 kaartjes, klikbaar
+- `src/components/reservations/ReservationFilterBar.tsx` — uitgebreide filters + actieve-badges
+- `src/components/reservations/views/DayView.tsx` — gegroepeerd per tijdvak
+- `src/components/reservations/views/WeekView.tsx` — 7-koloms grid
+- `src/components/reservations/views/TableGridView.tsx` — wrapper rond bestaande agenda-tafelgrid (geëxtraheerd uit `AgendaPage`)
+- `src/components/reservations/ReservationDetailSheet.tsx` — Sheet met 4 tabs, hergebruikt Detail Dialog secties
+- `src/components/reservations/QuickActionsMenu.tsx` — kebab-dropdown (verplaatsen/tafel/profiel/bericht/wijzigen)
+- `src/components/reservations/MoveReservationSheet.tsx` — datum+tijd snel verplaatsen
+- `src/components/reservations/AssignTableSheet.tsx` — tafel toewijzen aan reservering
+- `src/services/reservationMessages.ts` — dunne helper rond `integration_events` insert voor "Bericht sturen"
+
+**Aangepast**
+- `src/pages/app/ReservationsPage.tsx` — wordt orchestrator: KPI-strip + view-switcher + filterbar + actieve view + detail-sheet. URL-state met `useSearchParams`.
+- `src/components/reservations/ReservationCard.tsx` — voeg `<QuickActionsMenu>` toe naast bestaande knoppen, geen verlies van huidige acties.
+- `src/pages/app/AgendaPage.tsx` — blijft bestaan (oude route), maar tafelgrid-rendering wordt geëxtraheerd naar `TableGridView` zodat beide pagina's dezelfde component delen. Geen breaking change.
+
+**Niet aangeraakt**
+- `services/reservations.ts`, statussen, RLS, dialogs, FloorMode/FloorPlan, walk-in, wachtlijst-pagina's.
+
+## Data-aanpak
+
+- Bestaande dag-query uitbreiden met `no_show_risk`, `reconfirmation_status`, `guests.visit_count, no_show_count, tags, hospitality_notes`.
+- Voor WeekView: één query per week-range (`reservation_date BETWEEN`), zelfde shape als CardReservation.
+- Voor "Tafels vrij nu" KPI: hergebruik `tables` query + dag-query om bezetting per tijdslot te bepalen (client-side, geen extra round-trip).
+- Activiteit-tab: queries op `reservation_status_history` en `reservation_reminders` per `reservation_id`.
+- Integraties-tab: query `integration_logs` `where reservation_id = ?` limit 5 + `agent_call_logs` `where reservation_id = ?` limit 1.
+
+## Guardrails (gerespecteerd)
+
+- Geen reserverings­logica vervangen — alle mutaties via bestaande `services/reservations.ts`.
+- Geen nieuwe statussen — gebruikt alleen bestaande enum-waardes.
+- Mobiel: views & sheet zijn responsive; KPI-strip wraps; filterbar in drawer < md.
+- Geen breaking changes voor `/app/agenda`, `/app/floor`, `/app/tafelplan`, `ReservationDetailDialog`.
+
+## Geen migraties nodig
+
+Alle vereiste velden staan al in de DB (`no_show_risk`, `reconfirmation_status`, `external_reference`, `integration_logs`, `agent_call_logs`, `reservation_status_history`, `reservation_reminders`).
