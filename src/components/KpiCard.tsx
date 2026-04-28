@@ -1,5 +1,13 @@
 import * as React from "react";
+import { ArrowDownRight, ArrowUpRight, Minus } from "lucide-react";
 import { cn } from "@/lib/utils";
+
+interface KpiDelta {
+  value: string;
+  trend: "up" | "down" | "flat";
+  /** Soms is "omhoog" slecht (bv. no-shows). Default: up = goed. */
+  invert?: boolean;
+}
 
 interface KpiCardProps extends React.HTMLAttributes<HTMLDivElement> {
   label: string;
@@ -7,6 +15,8 @@ interface KpiCardProps extends React.HTMLAttributes<HTMLDivElement> {
   hint?: React.ReactNode;
   icon?: React.ReactNode;
   accent?: "default" | "primary" | "success" | "warning" | "destructive";
+  delta?: KpiDelta;
+  tone?: "neutral" | "premium";
 }
 
 const ACCENT: Record<NonNullable<KpiCardProps["accent"]>, string> = {
@@ -17,7 +27,27 @@ const ACCENT: Record<NonNullable<KpiCardProps["accent"]>, string> = {
   destructive: "text-destructive",
 };
 
-export function KpiCard({ label, value, hint, icon, accent = "default", className, ...props }: KpiCardProps) {
+function deltaTone(delta: KpiDelta) {
+  if (delta.trend === "flat") return "bg-muted text-muted-foreground border-border";
+  const positive =
+    (delta.trend === "up" && !delta.invert) ||
+    (delta.trend === "down" && delta.invert);
+  return positive
+    ? "bg-success/10 text-success border-success/30"
+    : "bg-destructive/10 text-destructive border-destructive/30";
+}
+
+export function KpiCard({
+  label,
+  value,
+  hint,
+  icon,
+  accent = "default",
+  delta,
+  tone = "neutral",
+  className,
+  ...props
+}: KpiCardProps) {
   return (
     <div
       className={cn(
@@ -26,12 +56,44 @@ export function KpiCard({ label, value, hint, icon, accent = "default", classNam
       )}
       {...props}
     >
+      {tone === "premium" && (
+        <span
+          aria-hidden
+          className="absolute inset-x-0 top-0 h-[2px] bg-gradient-to-r from-transparent via-accent to-transparent"
+        />
+      )}
       <div className="flex items-start justify-between gap-3">
-        <div className="text-xs font-medium uppercase tracking-wider text-muted-foreground">{label}</div>
-        {icon && <div className={cn("opacity-70", ACCENT[accent])}>{icon}</div>}
+        <div className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+          {label}
+        </div>
+        {icon && (
+          <div className={cn("opacity-70", ACCENT[accent])}>{icon}</div>
+        )}
       </div>
-      <div className={cn("mt-3 font-display text-3xl font-semibold leading-none", ACCENT[accent])}>{value}</div>
-      {hint && <div className="mt-2 text-xs text-muted-foreground">{hint}</div>}
+      <div
+        className={cn(
+          "mt-3 font-display text-3xl font-semibold leading-none",
+          ACCENT[accent]
+        )}
+      >
+        {value}
+      </div>
+      <div className="mt-2 flex items-center gap-2 flex-wrap">
+        {delta && (
+          <span
+            className={cn(
+              "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-medium",
+              deltaTone(delta)
+            )}
+          >
+            {delta.trend === "up" && <ArrowUpRight className="h-3 w-3" />}
+            {delta.trend === "down" && <ArrowDownRight className="h-3 w-3" />}
+            {delta.trend === "flat" && <Minus className="h-3 w-3" />}
+            {delta.value}
+          </span>
+        )}
+        {hint && <span className="text-xs text-muted-foreground">{hint}</span>}
+      </div>
     </div>
   );
 }
