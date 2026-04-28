@@ -91,7 +91,7 @@ Deno.serve(async (req) => {
       .order("capacity_max", { ascending: true });
 
     if (!tables || tables.length === 0) {
-      return json({ error: "Geen passende tafel beschikbaar voor deze groepsgrootte" }, 409);
+      return json({ error: "Geen passende tafel beschikbaar voor deze groepsgrootte", error_code: "no_table_available", field: "party_size" }, 409);
     }
 
     // Existing active reservations overlapping window
