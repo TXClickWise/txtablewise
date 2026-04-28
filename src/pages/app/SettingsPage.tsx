@@ -70,7 +70,7 @@ const SettingsPage = () => {
     <div className="p-4 sm:p-6 max-w-7xl mx-auto">
       <div className="mb-6">
         <h1 className="font-display text-3xl">Instellingen</h1>
-        <p className="text-muted-foreground">Beheer je restaurant configuratie</p>
+        <p className="text-muted-foreground">Beheer hoe TableWise voor jouw restaurant werkt.</p>
       </div>
 
       <div className="grid lg:grid-cols-[240px_1fr] gap-6">
@@ -121,13 +121,13 @@ const SettingsPage = () => {
                           to={item.to}
                           end={item.end}
                           className={cn(
-                            "flex items-center gap-2.5 px-2.5 py-1.5 rounded-md text-sm transition-colors",
+                            "flex items-center gap-2.5 px-2.5 py-2 rounded-md text-sm transition-colors border-l-2",
                             active
-                              ? "bg-accent text-foreground font-medium"
-                              : "text-muted-foreground hover:bg-accent/50 hover:text-foreground",
+                              ? "bg-primary/8 text-foreground font-medium border-primary"
+                              : "border-transparent text-muted-foreground hover:bg-sidebar-accent/60 hover:text-foreground",
                           )}
                         >
-                          <Icon className="h-4 w-4 shrink-0" />
+                          <Icon className={cn("h-4 w-4 shrink-0", active ? "text-primary" : "")} />
                           {item.label}
                         </NavLink>
                       </li>
