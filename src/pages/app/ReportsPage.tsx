@@ -14,6 +14,8 @@ import {
   getReservationMetrics, getChannelMetrics, getNoShowMetrics, getWaitlistMetrics,
   getWalkInMetrics, getLargeGroupMetrics, getPreOrderMetrics, getReviewMetrics,
   getGuestMetrics, getPOSRevenueMetrics, getPacingMetrics, buildInsightCards, formatEuro,
+  getHourlyOccupancy, getTopSeatingMetrics, getReminderMetrics, getAIPerformanceMetrics,
+  formatDuration,
 } from "@/services/reporting";
 
 const CHANNEL_LABELS: Record<string, string> = {
@@ -36,6 +38,10 @@ type AllMetrics = {
   guests: Awaited<ReturnType<typeof getGuestMetrics>>;
   pos: Awaited<ReturnType<typeof getPOSRevenueMetrics>>;
   pacing: Awaited<ReturnType<typeof getPacingMetrics>>;
+  hourly: Awaited<ReturnType<typeof getHourlyOccupancy>>;
+  topSeating: Awaited<ReturnType<typeof getTopSeatingMetrics>>;
+  reminders: Awaited<ReturnType<typeof getReminderMetrics>>;
+  ai: Awaited<ReturnType<typeof getAIPerformanceMetrics>>;
 };
 
 const ReportsPage = () => {
@@ -65,8 +71,12 @@ const ReportsPage = () => {
       getGuestMetrics(restaurantId, range),
       getPOSRevenueMetrics(restaurantId, range),
       getPacingMetrics(restaurantId, range),
-    ]).then(([reservations, channels, noShow, waitlist, walkIn, largeGroup, preOrder, reviews, guests, pos, pacing]) => {
-      setData({ reservations, channels, noShow, waitlist, walkIn, largeGroup, preOrder, reviews, guests, pos, pacing });
+      getHourlyOccupancy(restaurantId, range),
+      getTopSeatingMetrics(restaurantId, range),
+      getReminderMetrics(restaurantId, range),
+      getAIPerformanceMetrics(restaurantId, range),
+    ]).then(([reservations, channels, noShow, waitlist, walkIn, largeGroup, preOrder, reviews, guests, pos, pacing, hourly, topSeating, reminders, ai]) => {
+      setData({ reservations, channels, noShow, waitlist, walkIn, largeGroup, preOrder, reviews, guests, pos, pacing, hourly, topSeating, reminders, ai });
     }).catch((e: Error) => setError(e.message)).finally(() => setLoading(false));
   }, [restaurantId, range]);
 
@@ -159,6 +169,41 @@ const ReportsPage = () => {
             </div>
           </ReportSection>
 
+          {/* Bezetting per uur & populairste tijdslots */}
+          <ReportSection title="Bezetting per uur & populaire tijdslots" status="live"
+            description="Wanneer is het structureel druk? Helpt bij planning van personeel en walk-in capaciteit.">
+            <div className="grid gap-4 md:grid-cols-2">
+              <Card>
+                <CardHeader className="pb-2"><CardTitle className="text-sm font-display">Covers per uur</CardTitle></CardHeader>
+                <CardContent>
+                  {data.hourly.length === 0
+                    ? <p className="text-sm text-muted-foreground">Nog geen reserveringen om bezetting te tonen.</p>
+                    : <SimpleBarChart data={data.hourly.map((h) => ({ label: h.hour, value: h.covers }))} />
+                  }
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader className="pb-2"><CardTitle className="text-sm font-display">Top 5 drukste tijdslots</CardTitle>
+                  <CardDescription className="text-xs">Per half uur op basis van starttijd.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {data.pacing.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">Geen tijdslot-data in deze periode.</p>
+                  ) : (
+                    <ul className="space-y-1.5 text-sm">
+                      {[...data.pacing].sort((a, b) => b.covers - a.covers).slice(0, 5).map((s) => (
+                        <li key={s.slot} className="flex items-center justify-between border-b py-1.5 last:border-0">
+                          <span className="font-medium">{s.slot}</span>
+                          <span className="tabular-nums text-muted-foreground">{s.covers} covers · {s.reservations} res</span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          </ReportSection>
+
           {/* Channels */}
           <ReportSection title="Kanalen" status="live"
             description="Welke reserveringskanalen leveren wat op?">
@@ -198,6 +243,45 @@ const ReportsPage = () => {
               )}
           </ReportSection>
 
+          {/* AI Voice Agent performance */}
+          <ReportSection title="AI Voice Agent" status={data.ai.totalCalls > 0 ? "live" : "prepared"}
+            description="Hoe goed verwerkt de telefonische AI-host inkomende reserveringen?">
+            {data.ai.totalCalls === 0 ? (
+              <EmptyState
+                title="Nog geen AI-gesprekken"
+                message="Zodra de Voice Agent gekoppeld is en gesprekken binnenkomen verschijnen hier de cijfers. Ga naar Voice Agent om de koppeling te starten."
+              />
+            ) : (
+              <>
+                <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
+                  <ReportKpiCard label="Aantal calls" value={data.ai.totalCalls} />
+                  <ReportKpiCard label="Geslaagde boekingen" value={data.ai.successfulBookings} hint={`${data.ai.successRate}% slaagpercentage`} />
+                  <ReportKpiCard label="Mislukte boekingen" value={data.ai.failedBookings} status={data.ai.failedBookings > 0 ? "incomplete" : undefined} />
+                  <ReportKpiCard label="Overdrachten naar team" value={data.ai.handovers} />
+                  <ReportKpiCard label="Gem. gespreksduur" value={formatDuration(data.ai.avgDurationSeconds)} />
+                </div>
+                {data.ai.topErrorCodes.length > 0 && (
+                  <Card>
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-sm font-display">Meest voorkomende foutcodes</CardTitle>
+                      <CardDescription className="text-xs">Op basis van Voice-integratielogs in deze periode.</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <ul className="space-y-1.5 text-sm">
+                        {data.ai.topErrorCodes.map((e) => (
+                          <li key={e.code} className="flex items-center justify-between border-b py-1.5 last:border-0">
+                            <span className="font-mono text-xs">{e.code}</span>
+                            <span className="tabular-nums text-muted-foreground">{e.count}×</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </CardContent>
+                  </Card>
+                )}
+              </>
+            )}
+          </ReportSection>
+
           {/* No-show */}
           <ReportSection title="No-show & annuleringen" status="live"
             description="No-shows zijn reserveringen waarbij de gast niet is verschenen en dit door het team is gemarkeerd.">
@@ -210,7 +294,21 @@ const ReportsPage = () => {
             </div>
           </ReportSection>
 
-          {/* Waitlist */}
+          {/* Reminders & op-tijd annuleringen */}
+          <ReportSection title="Reminders & op-tijd annuleringen" status="live"
+            description="Hoeveel berichten zijn verstuurd om no-shows te voorkomen, en hoeveel gasten annuleerden ruim op tijd.">
+            <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
+              <ReportKpiCard label="Reminders verzonden" value={data.reminders.totalSent} hint="Totaal in periode" />
+              <ReportKpiCard label="Bevestigingen" value={data.reminders.byType.confirmation ?? 0} />
+              <ReportKpiCard label="Reminder 24u" value={data.reminders.byType.reminder_24h ?? 0} />
+              <ReportKpiCard label="Reminder 2u" value={data.reminders.byType.reminder_2h ?? 0} />
+              <ReportKpiCard label="Herbevestigingen" value={data.reminders.reconfirmationsSent} hint="Vraag of gast nog komt" />
+              <ReportKpiCard label="In wachtrij" value={data.reminders.pending} />
+              <ReportKpiCard label="Mislukte verzendingen" value={data.reminders.failed} status={data.reminders.failed > 0 ? "incomplete" : undefined} />
+              <ReportKpiCard label="Annuleringen op tijd" value={data.reminders.cancelledOnTime} hint="≥ 2u voor aankomst" />
+            </div>
+          </ReportSection>
+
           <ReportSection title="Wachtlijst & last-minute opvulling" status="live">
             <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
               <ReportKpiCard label="Actief op wachtlijst" value={data.waitlist.active} />
@@ -235,7 +333,49 @@ const ReportsPage = () => {
             )}
           </ReportSection>
 
-          {/* Large groups */}
+          {/* Top tafels & zones */}
+          <ReportSection title="Top tafels & zones" status="live"
+            description="Welke tafels en zones leveren de meeste covers op?">
+            {data.topSeating.tables.length === 0 ? (
+              <EmptyState title="Nog geen tafeldata" message="Wijs tafels toe aan reserveringen om hier de drukste tafels en zones te zien." />
+            ) : (
+              <div className="grid gap-4 md:grid-cols-2">
+                <Card>
+                  <CardHeader className="pb-2"><CardTitle className="text-sm font-display">Top tafels</CardTitle></CardHeader>
+                  <CardContent>
+                    <ul className="space-y-1.5 text-sm">
+                      {data.topSeating.tables.map((t) => (
+                        <li key={t.tableId} className="flex items-center justify-between border-b py-1.5 last:border-0">
+                          <span>
+                            <span className="font-medium">Tafel {t.label}</span>
+                            {t.zoneName && <span className="text-muted-foreground text-xs ml-2">{t.zoneName}</span>}
+                          </span>
+                          <span className="tabular-nums text-muted-foreground">{t.reservations} res · {t.covers} covers</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader className="pb-2"><CardTitle className="text-sm font-display">Per zone</CardTitle></CardHeader>
+                  <CardContent>
+                    {data.topSeating.zones.length === 0 ? (
+                      <p className="text-sm text-muted-foreground">Geen zones ingericht.</p>
+                    ) : (
+                      <ul className="space-y-1.5 text-sm">
+                        {data.topSeating.zones.map((z) => (
+                          <li key={z.zoneName} className="flex items-center justify-between border-b py-1.5 last:border-0">
+                            <span className="font-medium">{z.zoneName}</span>
+                            <span className="tabular-nums text-muted-foreground">{z.reservations} res · {z.covers} covers</span>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+            )}
+          </ReportSection>
           <ReportSection title="Grote groepen" status="live"
             description="Grote groepen leveren veel covers op, maar vragen vaker handmatige opvolging.">
             <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
@@ -258,6 +398,11 @@ const ReportsPage = () => {
               <ReportKpiCard label="Geschatte omzet" value={formatEuro(data.preOrder.estimatedRevenueCents)} status="incomplete" />
               <ReportKpiCard label="Klaargezet" value={data.preOrder.byStatus.prepared ?? 0} />
               <ReportKpiCard label="Geserveerd" value={data.preOrder.byStatus.served ?? 0} />
+              <ReportKpiCard
+                label="Conversieratio"
+                value={`${data.reservations.total > 0 ? Math.round((data.preOrder.total / data.reservations.total) * 1000) / 10 : 0}%`}
+                hint="Pre-orders per reservering"
+              />
             </div>
             {data.preOrder.topItems.length > 0 && (
               <Card>
