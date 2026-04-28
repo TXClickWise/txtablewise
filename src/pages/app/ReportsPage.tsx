@@ -245,7 +245,49 @@ const ReportsPage = () => {
             )}
           </ReportSection>
 
-          {/* Large groups */}
+          {/* Top tafels & zones */}
+          <ReportSection title="Top tafels & zones" status="live"
+            description="Welke tafels en zones leveren de meeste covers op?">
+            {data.topSeating.tables.length === 0 ? (
+              <EmptyState title="Nog geen tafeldata" message="Wijs tafels toe aan reserveringen om hier de drukste tafels en zones te zien." />
+            ) : (
+              <div className="grid gap-4 md:grid-cols-2">
+                <Card>
+                  <CardHeader className="pb-2"><CardTitle className="text-sm font-display">Top tafels</CardTitle></CardHeader>
+                  <CardContent>
+                    <ul className="space-y-1.5 text-sm">
+                      {data.topSeating.tables.map((t) => (
+                        <li key={t.tableId} className="flex items-center justify-between border-b py-1.5 last:border-0">
+                          <span>
+                            <span className="font-medium">Tafel {t.label}</span>
+                            {t.zoneName && <span className="text-muted-foreground text-xs ml-2">{t.zoneName}</span>}
+                          </span>
+                          <span className="tabular-nums text-muted-foreground">{t.reservations} res · {t.covers} covers</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader className="pb-2"><CardTitle className="text-sm font-display">Per zone</CardTitle></CardHeader>
+                  <CardContent>
+                    {data.topSeating.zones.length === 0 ? (
+                      <p className="text-sm text-muted-foreground">Geen zones ingericht.</p>
+                    ) : (
+                      <ul className="space-y-1.5 text-sm">
+                        {data.topSeating.zones.map((z) => (
+                          <li key={z.zoneName} className="flex items-center justify-between border-b py-1.5 last:border-0">
+                            <span className="font-medium">{z.zoneName}</span>
+                            <span className="tabular-nums text-muted-foreground">{z.reservations} res · {z.covers} covers</span>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+            )}
+          </ReportSection>
           <ReportSection title="Grote groepen" status="live"
             description="Grote groepen leveren veel covers op, maar vragen vaker handmatige opvolging.">
             <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
