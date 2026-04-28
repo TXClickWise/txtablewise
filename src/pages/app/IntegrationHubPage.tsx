@@ -116,8 +116,68 @@ export default function IntegrationHubPage() {
           <TabsTrigger value="webhooks"><Webhook className="h-3 w-3 mr-1" />Webhooks</TabsTrigger>
           <TabsTrigger value="keys"><KeyRound className="h-3 w-3 mr-1" />API-sleutels</TabsTrigger>
           <TabsTrigger value="voice"><Bot className="h-3 w-3 mr-1" />Voice Agent</TabsTrigger>
+          <TabsTrigger value="public"><Plug className="h-3 w-3 mr-1" />Publieke API</TabsTrigger>
           <TabsTrigger value="test"><FlaskConical className="h-3 w-3 mr-1" />Live test</TabsTrigger>
         </TabsList>
+
+        {/* PUBLIEKE API */}
+        <TabsContent value="public" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">TableWise Public API</CardTitle>
+              <CardDescription>
+                Eén schone laag voor ClickWise, voice-agents, WhatsApp/SMS-bots en CRM's.
+                Gebruikt dezelfde reserveringen als de app — geen tweede systeem.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="rounded-md bg-muted/40 p-3 text-sm font-mono break-all">
+                {`https://${(import.meta as { env?: Record<string, string> }).env?.VITE_SUPABASE_PROJECT_ID}.supabase.co/functions/v1/public_api`}
+              </div>
+              <div className="grid md:grid-cols-2 gap-3">
+                <div className="rounded-md border p-3">
+                  <div className="font-semibold text-sm mb-1">POST /availability</div>
+                  <div className="text-xs text-muted-foreground">Slot-check vóór boeken. Retourneert alternatieven.</div>
+                </div>
+                <div className="rounded-md border p-3">
+                  <div className="font-semibold text-sm mb-1">POST /reservations</div>
+                  <div className="text-xs text-muted-foreground">Maakt reservering + retourneert reservationCode + manage-link.</div>
+                </div>
+                <div className="rounded-md border p-3">
+                  <div className="font-semibold text-sm mb-1">PATCH /reservations/&#123;id&#125;</div>
+                  <div className="text-xs text-muted-foreground">Wijzigt datum/tijd/personen/notities. Conflict-check inbegrepen.</div>
+                </div>
+                <div className="rounded-md border p-3">
+                  <div className="font-semibold text-sm mb-1">DELETE /reservations/&#123;id&#125;</div>
+                  <div className="text-xs text-muted-foreground">Annuleert. Optionele <code>?reason=</code>.</div>
+                </div>
+              </div>
+              <div className="rounded-md border p-3 text-sm">
+                <div className="font-semibold mb-2">Authenticatie</div>
+                <div className="font-mono text-xs bg-muted/40 p-2 rounded">
+                  X-TableWise-Api-Key: tw_live_...
+                </div>
+                <div className="text-xs text-muted-foreground mt-2">
+                  Hergebruik dezelfde sleutels als de Voice Agent. Beheer in tab "API-sleutels".
+                </div>
+              </div>
+              <div className="rounded-md border p-3 text-sm">
+                <div className="font-semibold mb-2">Foutformaat</div>
+                <pre className="text-xs bg-muted/40 p-2 rounded overflow-x-auto">{`{
+  "error": {
+    "code": "TW_409_TIMESLOT_UNAVAILABLE",
+    "message": "Dit tijdslot is niet meer beschikbaar.",
+    "field": "localTime",
+    "suggestedFix": "Probeer een ander tijdstip of vraag /availability op."
+  }
+}`}</pre>
+                <div className="text-xs text-muted-foreground mt-2">
+                  Volledige codetabel: zie <code>docs/PUBLIC_API_ERROR_CODES.md</code> in het project.
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
 
         {/* OVERVIEW */}
         <TabsContent value="overview" className="space-y-4">
