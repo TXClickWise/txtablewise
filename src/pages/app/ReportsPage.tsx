@@ -268,6 +268,11 @@ const ReportsPage = () => {
               <ReportKpiCard label="Geschatte omzet" value={formatEuro(data.preOrder.estimatedRevenueCents)} status="incomplete" />
               <ReportKpiCard label="Klaargezet" value={data.preOrder.byStatus.prepared ?? 0} />
               <ReportKpiCard label="Geserveerd" value={data.preOrder.byStatus.served ?? 0} />
+              <ReportKpiCard
+                label="Conversieratio"
+                value={`${data.reservations.total > 0 ? Math.round((data.preOrder.total / data.reservations.total) * 1000) / 10 : 0}%`}
+                hint="Pre-orders per reservering"
+              />
             </div>
             {data.preOrder.topItems.length > 0 && (
               <Card>
