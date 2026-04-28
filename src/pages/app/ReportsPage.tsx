@@ -169,6 +169,41 @@ const ReportsPage = () => {
             </div>
           </ReportSection>
 
+          {/* Bezetting per uur & populairste tijdslots */}
+          <ReportSection title="Bezetting per uur & populaire tijdslots" status="live"
+            description="Wanneer is het structureel druk? Helpt bij planning van personeel en walk-in capaciteit.">
+            <div className="grid gap-4 md:grid-cols-2">
+              <Card>
+                <CardHeader className="pb-2"><CardTitle className="text-sm font-display">Covers per uur</CardTitle></CardHeader>
+                <CardContent>
+                  {data.hourly.length === 0
+                    ? <p className="text-sm text-muted-foreground">Nog geen reserveringen om bezetting te tonen.</p>
+                    : <SimpleBarChart data={data.hourly.map((h) => ({ label: h.hour, value: h.covers }))} />
+                  }
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader className="pb-2"><CardTitle className="text-sm font-display">Top 5 drukste tijdslots</CardTitle>
+                  <CardDescription className="text-xs">Per half uur op basis van starttijd.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {data.pacing.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">Geen tijdslot-data in deze periode.</p>
+                  ) : (
+                    <ul className="space-y-1.5 text-sm">
+                      {[...data.pacing].sort((a, b) => b.covers - a.covers).slice(0, 5).map((s) => (
+                        <li key={s.slot} className="flex items-center justify-between border-b py-1.5 last:border-0">
+                          <span className="font-medium">{s.slot}</span>
+                          <span className="tabular-nums text-muted-foreground">{s.covers} covers · {s.reservations} res</span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          </ReportSection>
+
           {/* Channels */}
           <ReportSection title="Kanalen" status="live"
             description="Welke reserveringskanalen leveren wat op?">
