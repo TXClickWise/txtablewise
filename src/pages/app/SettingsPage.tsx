@@ -12,6 +12,7 @@ import {
   KeyRound,
   UserCog,
   Crown,
+  Globe,
 } from "lucide-react";
 
 type Item = {
