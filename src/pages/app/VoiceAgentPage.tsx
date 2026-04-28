@@ -312,6 +312,202 @@ Je neemt telefonisch reserveringen aan in vriendelijke, natuurlijke Nederlandse 
           </Card>
         </TabsContent>
 
+        {/* Flow */}
+        <TabsContent value="flow" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg font-display">Vaste reservatie-flow</CardTitle>
+              <CardDescription>
+                De voice-agent moet altijd deze 6 stappen doorlopen. Wijk hier nooit van af in je eigen prompts.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ol className="space-y-2 text-sm">
+                {[
+                  ["Gegevens verzamelen", "Datum, tijd, aantal personen, voornaam, telefoonnummer (achternaam + opmerkingen optioneel)."],
+                  ["Normaliseren", "Datum → YYYY-MM-DD · Tijd → HH:MM · Telefoon → +31… · Aantal → integer."],
+                  ["Beschikbaarheid controleren", "Altijd vóór boeken. Bij geen plek: bied 1–3 alternatieven uit suggestedAlternatives."],
+                  ["Reservering maken", "Alleen als alle verplichte velden geldig zijn én availability bevestigd is."],
+                  ["Bevestiging teruggeven", "Datum, tijd, aantal, naam en reserveringscode hardop herhalen."],
+                  ["Fallback", "Ontbrekend veld → opnieuw vragen. API-fout → terugbel-belofte. Geen plek → alternatief of wachtlijst."],
+                ].map(([title, body], i) => (
+                  <li key={title} className="flex gap-3 rounded-md border bg-card p-3">
+                    <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground text-xs font-semibold">{i + 1}</div>
+                    <div>
+                      <div className="font-medium">{title}</div>
+                      <div className="text-muted-foreground text-xs mt-0.5">{body}</div>
+                    </div>
+                  </li>
+                ))}
+              </ol>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg font-display">Velden & payload-mapping</CardTitle>
+              <CardDescription>Welke velden de agent verzamelt en hoe ze in de boekings-payload terechtkomen.</CardDescription>
+            </CardHeader>
+            <CardContent className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="text-xs text-muted-foreground">
+                  <tr className="border-b">
+                    <th className="text-left py-2 pr-3">Veld</th>
+                    <th className="text-left py-2 pr-3">Status</th>
+                    <th className="text-left py-2 pr-3">Spreekvoorbeeld</th>
+                    <th className="text-left py-2 pr-3">Payload-veld</th>
+                    <th className="text-left py-2">Notitie</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {VOICE_FLOW_FIELDS.map((f) => (
+                    <tr key={f.key} className="border-b last:border-0">
+                      <td className="py-2 pr-3 font-medium">{f.label}</td>
+                      <td className="py-2 pr-3">
+                        {f.required ? (
+                          <Badge variant="destructive" className="text-[10px]">verplicht</Badge>
+                        ) : (
+                          <Badge variant="secondary" className="text-[10px]">optioneel</Badge>
+                        )}
+                      </td>
+                      <td className="py-2 pr-3 text-muted-foreground">{f.spokenExample}</td>
+                      <td className="py-2 pr-3"><code className="text-xs">{f.payloadField}</code></td>
+                      <td className="py-2 text-xs text-muted-foreground">{f.notes ?? "—"}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <div className="flex items-start justify-between gap-2">
+                <div>
+                  <CardTitle className="text-lg font-display">Prompt voor je voice-agent</CardTitle>
+                  <CardDescription>Kopieer deze prompt naar Vapi, Retell of ClickWise. Hij dwingt de 6-staps flow af.</CardDescription>
+                </div>
+                <Button size="sm" variant="outline" onClick={() => copy(VOICE_FLOW_PROMPT_TEMPLATE)}>
+                  <Copy className="h-3 w-3 mr-1" /> Kopieer prompt
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <pre className="text-xs whitespace-pre-wrap font-mono rounded-md border bg-muted/40 p-3 max-h-72 overflow-auto">{VOICE_FLOW_PROMPT_TEMPLATE}</pre>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg font-display flex items-center gap-2">
+                <PlayCircle className="h-5 w-5 text-primary" /> Test complete voice reservation flow
+              </CardTitle>
+              <CardDescription>
+                Voert exact dezelfde flow uit als de voice-agent: verzamelen → normaliseren → beschikbaarheid → boeken → bevestigen.
+                <span className="block mt-1 flex items-start gap-1 text-amber-600 dark:text-amber-400">
+                  <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+                  Dit maakt een echte reservering. Annuleer hem na de test in /app/reservations.
+                </span>
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Datum (gesproken)</Label>
+                  <Input value={flowInput.spokenDate} onChange={(e) => setFlowInput({ ...flowInput, spokenDate: e.target.value })} placeholder="morgen / 2026-05-01" />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Tijd (gesproken)</Label>
+                  <Input value={flowInput.spokenTime} onChange={(e) => setFlowInput({ ...flowInput, spokenTime: e.target.value })} placeholder="19:30 / half acht" />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Aantal personen</Label>
+                  <Input value={flowInput.spokenParty} onChange={(e) => setFlowInput({ ...flowInput, spokenParty: e.target.value })} placeholder="4 / vier" />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Voornaam</Label>
+                  <Input value={flowInput.firstName} onChange={(e) => setFlowInput({ ...flowInput, firstName: e.target.value })} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Achternaam</Label>
+                  <Input value={flowInput.lastName ?? ""} onChange={(e) => setFlowInput({ ...flowInput, lastName: e.target.value })} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Telefoon</Label>
+                  <Input value={flowInput.phone} onChange={(e) => setFlowInput({ ...flowInput, phone: e.target.value })} placeholder="06 12345678" />
+                </div>
+                <div className="space-y-1.5 sm:col-span-2 lg:col-span-3">
+                  <Label className="text-xs">Opmerkingen</Label>
+                  <Input value={flowInput.notes ?? ""} onChange={(e) => setFlowInput({ ...flowInput, notes: e.target.value })} />
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <Button
+                  onClick={async () => {
+                    if (!rid) return;
+                    setFlowRunning(true);
+                    try {
+                      const res = await runVoiceFlow(rid, flowInput);
+                      setFlowResult(res);
+                      localStorage.setItem(`voiceFlow:lastResult:${rid}`, JSON.stringify(res));
+                      if (res.success) toast.success(`Flow OK · code ${res.reservationCode}`);
+                      else toast.error("Flow gefaald — zie tijdlijn hieronder");
+                    } catch (err: any) {
+                      toast.error(err?.message ?? "Onbekende fout");
+                    } finally {
+                      setFlowRunning(false);
+                    }
+                  }}
+                  disabled={flowRunning}
+                >
+                  {flowRunning ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <PlayCircle className="h-4 w-4 mr-1" />}
+                  {flowRunning ? "Bezig…" : "Test complete voice reservation flow"}
+                </Button>
+                {flowResult && (
+                  <span className="text-xs text-muted-foreground">
+                    Laatste run: {format(new Date(flowResult.finishedAt), "d MMM HH:mm:ss", { locale: nl })}
+                  </span>
+                )}
+              </div>
+
+              {flowResult && (
+                <div className={`rounded-md border p-3 space-y-2 ${flowResult.success ? "border-emerald-500/40 bg-emerald-500/5" : "border-destructive/40 bg-destructive/5"}`}>
+                  <div className="text-sm font-medium flex items-center gap-2">
+                    {flowResult.success ? (
+                      <><CheckCircle2 className="h-4 w-4 text-emerald-600" /> Flow geslaagd · reserveringscode {flowResult.reservationCode}</>
+                    ) : (
+                      <><XCircle className="h-4 w-4 text-destructive" /> Flow gefaald</>
+                    )}
+                  </div>
+                  <ol className="space-y-1.5 text-xs">
+                    {flowResult.steps.map((s, i) => (
+                      <li key={i} className="flex items-start gap-2">
+                        {s.ok ? (
+                          <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600 mt-0.5 shrink-0" />
+                        ) : (
+                          <XCircle className="h-3.5 w-3.5 text-destructive mt-0.5 shrink-0" />
+                        )}
+                        <div className="flex-1">
+                          <span className="font-medium capitalize">{s.step}</span>
+                          <span className="text-muted-foreground"> — {s.message}</span>
+                          {s.errorCode && (
+                            <div className="mt-0.5">
+                              <code className="text-[10px] px-1.5 py-0.5 rounded bg-destructive/10 text-destructive">{s.errorCode}</code>
+                              {s.field && <code className="ml-1 text-[10px] px-1.5 py-0.5 rounded bg-muted">field: {s.field}</code>}
+                              {s.suggestedFix && <span className="block text-muted-foreground mt-0.5">→ {s.suggestedFix}</span>}
+                            </div>
+                          )}
+                        </div>
+                      </li>
+                    ))}
+                  </ol>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
         {/* Keys */}
         <TabsContent value="keys" className="space-y-4">
           <Card>
