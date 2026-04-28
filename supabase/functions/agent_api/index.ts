@@ -96,17 +96,17 @@ Deno.serve(async (req) => {
   const segments = url.pathname.split("/").filter(Boolean);
   const action = segments[segments.length - 1] || "";
 
-  if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
+  if (req.method !== "POST") return json({ error: "Method not allowed", error_code: "method_not_allowed" }, 405);
 
   const auth = await authenticate(req);
-  if ("error" in auth) return json({ error: auth.error }, auth.status);
+  if ("error" in auth) return json({ error: auth.error, error_code: auth.error_code }, auth.status);
   const { keyRow } = auth;
 
   let payload: Record<string, unknown> = {};
   try {
     payload = (await req.json()) ?? {};
   } catch {
-    return json({ error: "Invalid JSON body" }, 400);
+    return json({ error: "Invalid JSON body", error_code: "invalid_json" }, 400);
   }
 
   // Force restaurant_id to the one the key belongs to (prevents cross-tenant)
