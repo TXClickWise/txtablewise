@@ -85,6 +85,8 @@ const App = () => (
               <Route path="integraties" element={<IntegrationsPage />} />
               <Route path="integraties/clickwise" element={<ClickWiseIntegrationPage />} />
               <Route path="integraties/pos" element={<POSIntegrationPage />} />
+              <Route path="integraties/hub" element={<IntegrationHubPage />} />
+              <Route path="integraties/logs" element={<IntegrationLogsPage />} />
               <Route path="instellingen" element={<SettingsPage />}>
                 <Route index element={<GeneralSettings />} />
                 <Route path="openingstijden" element={<OpeningHoursSettings />} />
