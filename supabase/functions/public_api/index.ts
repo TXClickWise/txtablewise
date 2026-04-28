@@ -18,6 +18,7 @@ import {
   zonedDateTimeToUtcIso, addMinutesIso, intervalsOverlap, ACTIVE_STATUSES,
 } from "../_shared/reservation-utils.ts";
 import { mapInternalError, twError, twHttp, type TwCode } from "../_shared/tw-errors.ts";
+import { logIntegration, actionFromPath } from "../_shared/integration-log.ts";
 
 const corsHeaders = {
   ...baseCors,
