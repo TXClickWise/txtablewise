@@ -123,6 +123,10 @@ Deno.serve(async (req) => {
         if (ep.secret) {
           headers["X-TableWise-Signature"] = await sign(body, ep.secret);
         }
+        const epStartedAt = Date.now();
+        let httpStatus: number | undefined;
+        let respText = "";
+        let epError: string | null = null;
         try {
           const resp = await fetch(ep.url, {
             method: "POST",
@@ -130,17 +134,33 @@ Deno.serve(async (req) => {
             body,
             signal: AbortSignal.timeout(10_000),
           });
+          httpStatus = resp.status;
+          respText = await resp.text().catch(() => "");
           if (!resp.ok) {
-            const txt = await resp.text().catch(() => "");
-            errors.push(`${ep.label}: HTTP ${resp.status} ${txt.slice(0, 100)}`);
+            epError = `HTTP ${resp.status} ${respText.slice(0, 100)}`;
+            errors.push(`${ep.label}: ${epError}`);
             allOk = false;
-          } else {
-            await resp.text().catch(() => "");
           }
         } catch (e) {
-          errors.push(`${ep.label}: ${e instanceof Error ? e.message.slice(0, 120) : "fetch error"}`);
+          epError = e instanceof Error ? e.message.slice(0, 120) : "fetch error";
+          errors.push(`${ep.label}: ${epError}`);
           allOk = false;
         }
+        // Log this delivery attempt
+        logIntegration({
+          restaurantId: ev.restaurant_id,
+          source: "webhook",
+          action: "webhook_delivery",
+          status: epError ? "failed" : "success",
+          httpStatus,
+          latencyMs: Date.now() - epStartedAt,
+          errorCode: epError ? `HTTP_${httpStatus ?? "TIMEOUT"}` : null,
+          errorMessage: epError,
+          requestPayload: { event_type: ev.event_type, payload: ev.payload, endpoint_label: ep.label, endpoint_url: ep.url },
+          responsePayload: respText ? { body: respText.slice(0, 2000) } : null,
+          retrySafe: true,
+          metadata: { event_id: ev.id, attempts: ev.attempts + 1 },
+        });
       }
 
       if (allOk) {
