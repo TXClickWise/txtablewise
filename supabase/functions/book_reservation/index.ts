@@ -139,6 +139,8 @@ Deno.serve(async (req) => {
       if (!pacing.ok) {
         return json({
           error: "Dit tijdslot is operationeel vol. Kies een ander tijdstip of plaats de gast op de wachtlijst.",
+          error_code: "pacing_limit_reached",
+          field: "time",
           reason: pacing.reason,
           pacing_full: true,
         }, 409);
