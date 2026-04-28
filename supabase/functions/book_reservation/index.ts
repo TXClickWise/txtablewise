@@ -55,11 +55,11 @@ Deno.serve(async (req) => {
       ? supabase.from("restaurants").select("*").eq("id", body.restaurant_id).maybeSingle()
       : supabase.from("restaurants").select("*").eq("slug", body.restaurant_slug!).maybeSingle();
     const { data: restaurant, error: rErr } = await restQuery;
-    if (rErr) return json({ error: rErr.message }, 500);
-    if (!restaurant) return json({ error: "Restaurant not found" }, 404);
+    if (rErr) return json({ error: rErr.message, error_code: "internal" }, 500);
+    if (!restaurant) return json({ error: "Restaurant not found", error_code: "not_found", field: "restaurant_id" }, 404);
 
     if (body.party_size > restaurant.max_party_size_online && body.channel !== "manager") {
-      return json({ error: "Party size exceeds online limit", large_group: true }, 400);
+      return json({ error: "Party size exceeds online limit", error_code: "large_group_required_manual", field: "party_size", large_group: true }, 400);
     }
 
     const tz: string = restaurant.timezone;
