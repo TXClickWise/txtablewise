@@ -389,3 +389,173 @@ export function buildInsightCards(args: {
 export function formatEuro(cents: number): string {
   return new Intl.NumberFormat("nl-NL", { style: "currency", currency: "EUR" }).format(cents / 100);
 }
+
+// ---------- Hourly occupancy ----------
+export type HourlyOccupancyRow = { hour: string; reservations: number; covers: number };
+
+export async function getHourlyOccupancy(restaurantId: string, range: DateRange): Promise<HourlyOccupancyRow[]> {
+  const { data } = await (supabase as unknown as {
+    from: (t: string) => { select: (s: string) => { eq: (c: string, v: unknown) => { gte: (c: string, v: unknown) => { lte: (c: string, v: unknown) => Promise<{ data: Array<{ start_time: string; party_size: number; status: string }> }> } } } };
+  }).from("reservations").select("start_time,party_size,status").eq("restaurant_id", restaurantId).gte("reservation_date", range.from).lte("reservation_date", range.to);
+  const rows = data ?? [];
+  const map = new Map<number, { reservations: number; covers: number }>();
+  for (const r of rows) {
+    if (!r.start_time || ["cancelled", "hold"].includes(r.status)) continue;
+    const h = new Date(r.start_time).getHours();
+    const cur = map.get(h) ?? { reservations: 0, covers: 0 };
+    cur.reservations += 1;
+    if (r.status !== "no_show") cur.covers += r.party_size;
+    map.set(h, cur);
+  }
+  return Array.from(map.keys()).sort((a, b) => a - b).map((h) => ({
+    hour: `${String(h).padStart(2, "0")}:00`,
+    reservations: map.get(h)!.reservations,
+    covers: map.get(h)!.covers,
+  }));
+}
+
+// ---------- Top tables & zones ----------
+export type TopTableRow = { tableId: string; label: string; zoneName: string | null; reservations: number; covers: number };
+export type TopZoneRow = { zoneName: string; reservations: number; covers: number };
+export type TopSeatingMetrics = { tables: TopTableRow[]; zones: TopZoneRow[] };
+
+export async function getTopSeatingMetrics(restaurantId: string, range: DateRange): Promise<TopSeatingMetrics> {
+  const { data: resRows } = await (supabase as unknown as {
+    from: (t: string) => { select: (s: string) => { eq: (c: string, v: unknown) => { gte: (c: string, v: unknown) => { lte: (c: string, v: unknown) => Promise<{ data: Array<{ id: string; party_size: number; status: string }> }> } } } };
+  }).from("reservations").select("id,party_size,status").eq("restaurant_id", restaurantId).gte("reservation_date", range.from).lte("reservation_date", range.to);
+  const reservations = (resRows ?? []).filter((r) => !["cancelled", "no_show", "hold"].includes(r.status));
+  if (reservations.length === 0) return { tables: [], zones: [] };
+  const resMap = new Map(reservations.map((r) => [r.id, r]));
+  const ids = reservations.map((r) => r.id);
+
+  const { data: rt } = await (supabase as unknown as {
+    from: (t: string) => { select: (s: string) => { in: (c: string, v: unknown[]) => Promise<{ data: Array<{ reservation_id: string; table_id: string; tables: { id: string; label: string; zone_id: string | null } | null }> }> } };
+  }).from("reservation_tables").select("reservation_id,table_id,tables(id,label,zone_id)").in("reservation_id", ids);
+
+  const { data: zones } = await (supabase as unknown as {
+    from: (t: string) => { select: (s: string) => { eq: (c: string, v: unknown) => Promise<{ data: Array<{ id: string; name: string }> }> } };
+  }).from("zones").select("id,name").eq("restaurant_id", restaurantId);
+  const zoneNames = new Map((zones ?? []).map((z) => [z.id, z.name]));
+
+  const tableMap = new Map<string, TopTableRow>();
+  const zoneMap = new Map<string, TopZoneRow>();
+  for (const link of rt ?? []) {
+    const res = resMap.get(link.reservation_id);
+    if (!res || !link.tables) continue;
+    const zoneName = link.tables.zone_id ? (zoneNames.get(link.tables.zone_id) ?? null) : null;
+    const tRow = tableMap.get(link.table_id) ?? { tableId: link.table_id, label: link.tables.label, zoneName, reservations: 0, covers: 0 };
+    tRow.reservations += 1;
+    tRow.covers += res.party_size;
+    tableMap.set(link.table_id, tRow);
+    const zKey = zoneName ?? "Zonder zone";
+    const zRow = zoneMap.get(zKey) ?? { zoneName: zKey, reservations: 0, covers: 0 };
+    zRow.reservations += 1;
+    zRow.covers += res.party_size;
+    zoneMap.set(zKey, zRow);
+  }
+  return {
+    tables: Array.from(tableMap.values()).sort((a, b) => b.reservations - a.reservations).slice(0, 8),
+    zones: Array.from(zoneMap.values()).sort((a, b) => b.reservations - a.reservations),
+  };
+}
+
+// ---------- Reminder metrics ----------
+export type ReminderMetrics = {
+  totalSent: number;
+  byType: Record<string, number>;
+  failed: number;
+  pending: number;
+  reconfirmationsSent: number;
+  cancelledOnTime: number;
+};
+
+export async function getReminderMetrics(restaurantId: string, range: DateRange, cutoffMinutes = 120): Promise<ReminderMetrics> {
+  const fromTs = `${range.from}T00:00:00Z`;
+  const toTs = `${range.to}T23:59:59Z`;
+  const { data } = await (supabase as unknown as {
+    from: (t: string) => { select: (s: string) => { eq: (c: string, v: unknown) => { gte: (c: string, v: unknown) => { lte: (c: string, v: unknown) => Promise<{ data: Array<{ status: string; reminder_type: string }> }> } } } };
+  }).from("reservation_reminders").select("status,reminder_type").eq("restaurant_id", restaurantId).gte("scheduled_for", fromTs).lte("scheduled_for", toTs);
+  const rows = data ?? [];
+  const byType: Record<string, number> = {};
+  let totalSent = 0, failed = 0, pending = 0, reconf = 0;
+  for (const r of rows) {
+    if (r.status === "sent") {
+      totalSent += 1;
+      byType[r.reminder_type] = (byType[r.reminder_type] ?? 0) + 1;
+      if (r.reminder_type === "reconfirmation") reconf += 1;
+    } else if (r.status === "failed") failed += 1;
+    else if (["pending", "scheduled"].includes(r.status)) pending += 1;
+  }
+
+  const { data: cancels } = await (supabase as unknown as {
+    from: (t: string) => { select: (s: string) => { eq: (c: string, v: unknown) => { eq: (c: string, v: unknown) => { gte: (c: string, v: unknown) => { lte: (c: string, v: unknown) => Promise<{ data: Array<{ start_time: string; cancelled_at: string | null }> }> } } } } };
+  }).from("reservations").select("start_time,cancelled_at").eq("restaurant_id", restaurantId).eq("status", "cancelled").gte("reservation_date", range.from).lte("reservation_date", range.to);
+  const cutoffMs = cutoffMinutes * 60_000;
+  let onTime = 0;
+  for (const c of cancels ?? []) {
+    if (!c.cancelled_at || !c.start_time) continue;
+    if (new Date(c.start_time).getTime() - new Date(c.cancelled_at).getTime() >= cutoffMs) onTime += 1;
+  }
+  return { totalSent, byType, failed, pending, reconfirmationsSent: reconf, cancelledOnTime: onTime };
+}
+
+// ---------- AI Voice Agent performance ----------
+export type AIPerformanceMetrics = {
+  totalCalls: number;
+  successfulBookings: number;
+  failedBookings: number;
+  handovers: number;
+  avgDurationSeconds: number;
+  byOutcome: Record<string, number>;
+  topErrorCodes: Array<{ code: string; count: number }>;
+  successRate: number;
+};
+
+export async function getAIPerformanceMetrics(restaurantId: string, range: DateRange): Promise<AIPerformanceMetrics> {
+  const fromTs = `${range.from}T00:00:00Z`;
+  const toTs = `${range.to}T23:59:59Z`;
+  const { data: calls } = await (supabase as unknown as {
+    from: (t: string) => { select: (s: string) => { eq: (c: string, v: unknown) => { gte: (c: string, v: unknown) => { lte: (c: string, v: unknown) => Promise<{ data: Array<{ outcome: string | null; duration_seconds: number | null; reservation_id: string | null }> }> } } } };
+  }).from("agent_call_logs").select("outcome,duration_seconds,reservation_id").eq("restaurant_id", restaurantId).gte("created_at", fromTs).lte("created_at", toTs);
+  const rows = calls ?? [];
+  const byOutcome: Record<string, number> = {};
+  let successful = 0, failed = 0, handovers = 0, durSum = 0, durCount = 0;
+  for (const r of rows) {
+    const o = r.outcome ?? "unknown";
+    byOutcome[o] = (byOutcome[o] ?? 0) + 1;
+    const isHandover = ["handover", "transferred", "human_handover"].includes(o);
+    if (isHandover) handovers += 1;
+    if (["booked", "reservation_created", "success"].includes(o) || (r.reservation_id && !isHandover)) successful += 1;
+    else if (["failed", "error", "no_availability", "validation_failed"].includes(o)) failed += 1;
+    if (typeof r.duration_seconds === "number") { durSum += r.duration_seconds; durCount += 1; }
+  }
+
+  const { data: errs } = await (supabase as unknown as {
+    from: (t: string) => { select: (s: string) => { eq: (c: string, v: unknown) => { eq: (c: string, v: unknown) => { eq: (c: string, v: unknown) => { gte: (c: string, v: unknown) => { lte: (c: string, v: unknown) => Promise<{ data: Array<{ error_code: string | null }> }> } } } } } };
+  }).from("integration_logs").select("error_code").eq("restaurant_id", restaurantId).eq("source", "voice_agent").eq("status", "failed").gte("created_at", fromTs).lte("created_at", toTs);
+  const errMap = new Map<string, number>();
+  for (const e of errs ?? []) {
+    if (!e.error_code) continue;
+    errMap.set(e.error_code, (errMap.get(e.error_code) ?? 0) + 1);
+  }
+  const topErrorCodes = Array.from(errMap.entries()).map(([code, count]) => ({ code, count })).sort((a, b) => b.count - a.count).slice(0, 5);
+
+  return {
+    totalCalls: rows.length,
+    successfulBookings: successful,
+    failedBookings: failed,
+    handovers,
+    avgDurationSeconds: durCount > 0 ? Math.round(durSum / durCount) : 0,
+    byOutcome,
+    topErrorCodes,
+    successRate: safePct(successful, rows.length),
+  };
+}
+
+export function formatDuration(seconds: number): string {
+  if (!seconds) return "—";
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+  return `${m}:${String(s).padStart(2, "0")}`;
+}
+
