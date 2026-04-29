@@ -1,7 +1,7 @@
 import {
   LayoutDashboard, CalendarDays, Map, Users, Settings, BookOpen,
   Hand, ListChecks, UsersRound, BellOff, Wine, Star, Bot, BarChart3, Plug, Tablet, ShieldCheck, Phone,
-  Database, FileText, CreditCard, Shield,
+  Database, FileText, CreditCard, Shield, Crown,
 } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import {
@@ -48,6 +48,7 @@ const beheer: Item[] = [
 
 // System admin only
 const admin: Item[] = [
+  { title: "Plan-aanvragen", url: "/app/admin/plan-requests", icon: Crown },
   { title: "Integratiebeheer", url: "/app/admin/integraties", icon: Database },
   { title: "Integratie-logs", url: "/app/admin/logs", icon: FileText },
   { title: "ClickWise beheer", url: "/app/admin/clickwise", icon: Plug },
