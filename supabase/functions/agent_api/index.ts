@@ -1,4 +1,4 @@
-// Agent API — externe AI voice agents (Vapi, Retell, HighLevel) bellen deze endpoint
+// Agent API — externe AI voice agents (Vapi, Retell, ClickWise) bellen deze endpoint
 // om beschikbaarheid te checken, te boeken of te annuleren via TableWise.
 //
 // Auth: header X-Agent-Api-Key. Sleutel wordt vergeleken met sha-256 hash in agent_api_keys.

@@ -1,4 +1,4 @@
-// ClickWise / HighLevel integration service.
+// ClickWise integration service.
 // Geen echte externe API-call vanuit de frontend — alle uitgaande verzending gebeurt later
 // via een veilige edge function. Deze service beheert configuratie, mappings, payload previews
 // en de event queue.

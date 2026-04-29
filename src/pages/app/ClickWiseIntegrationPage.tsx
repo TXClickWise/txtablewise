@@ -1,4 +1,4 @@
-// ClickWise / HighLevel integratie — instellingen, mappings, event queue en payload preview.
+// ClickWise integratie — instellingen, mappings, event queue en payload preview.
 // Geen echte API-calls vanuit de frontend; alle uitgaande synchronisatie loopt later via een
 // veilige edge function. Deze pagina structureert configuratie en geeft heldere previews.
 import { useEffect, useMemo, useState } from "react";
@@ -212,7 +212,7 @@ const ClickWiseIntegrationPage = () => {
   return (
     <div className="p-4 md:p-6 space-y-6 max-w-7xl">
       <header className="space-y-1">
-        <h1 className="text-2xl md:text-3xl font-display font-semibold">ClickWise / HighLevel</h1>
+        <h1 className="text-2xl md:text-3xl font-display font-semibold">ClickWise</h1>
         <p className="text-sm text-muted-foreground">
           ClickWise wordt gebruikt voor CRM, WhatsApp, SMS, e-mail, workflows, reminders, reviews en AI-agents.
           TableWise levert de reserveringsdata en events aan.

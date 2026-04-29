@@ -53,7 +53,7 @@ const SECTIONS: Array<{ title: string; items: Item[] }> = [
   {
     title: "Voorbereide integraties (nog niet live)",
     items: [
-      { name: "ClickWise / HighLevel",  status: "prepared", note: "Mapping, queue en payload preview klaar; geen externe verzending." },
+      { name: "ClickWise",  status: "prepared", note: "Mapping, queue en payload preview klaar; geen externe verzending." },
       { name: "WhatsApp / SMS / E-mail",status: "prepared", note: "Templates en triggers voorbereid; verzending niet actief." },
       { name: "AI Host actions",        status: "prepared", note: "Action catalog en dispatcher; geen publieke endpoint zonder beveiliging." },
       { name: "Loyverse POS",           status: "prepared", note: "Demo/handmatige bonnen en matching; geen live API-call." },
