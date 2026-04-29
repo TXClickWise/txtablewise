@@ -251,7 +251,7 @@ const AiVoiceStep = ({ restaurantId }: StepCtx) => {
   return (
     <div className="space-y-4">
       <p className="text-sm text-muted-foreground">
-        Koppel een Voice Agent (Vapi, Retell, HighLevel) zodat telefonische reserveringen
+        Koppel een Voice Agent (Vapi, Retell, ClickWise) zodat telefonische reserveringen
         veilig via TableWise lopen. AI mag alleen boeken na bevestigde beschikbaarheid.
       </p>
       <Card className="p-4">

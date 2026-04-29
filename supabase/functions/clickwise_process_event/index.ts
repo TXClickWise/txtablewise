@@ -1,7 +1,7 @@
-// ClickWise / HighLevel — server-side event processor.
+// ClickWise — server-side event processor.
 //
 // VEILIGHEIDSPRINCIPE
-// - Alle uitgaande API-calls naar ClickWise/HighLevel gebeuren ALLEEN hier (server-side).
+// - Alle uitgaande API-calls naar ClickWise gebeuren ALLEEN hier (server-side).
 // - Secrets worden uit Deno.env gelezen, NOOIT uit payloads of database.
 // - Zonder geconfigureerde secrets blijft live mode geblokkeerd; events worden niet verstuurd.
 // - Magic tokens en API keys worden gemaskeerd in payload previews en audit logs.
@@ -22,7 +22,7 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const ANON = Deno.env.get("SUPABASE_ANON_KEY")!;
 
-// ClickWise / HighLevel server-side secrets — alleen lezen, nooit echoen.
+// ClickWise server-side secrets — alleen lezen, nooit echoen.
 const CLICKWISE_API_KEY = Deno.env.get("CLICKWISE_API_KEY") ?? "";
 const CLICKWISE_LOCATION_ID = Deno.env.get("CLICKWISE_LOCATION_ID") ?? "";
 const CLICKWISE_BASE_URL =

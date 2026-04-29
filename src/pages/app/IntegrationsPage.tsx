@@ -52,7 +52,7 @@ const IntegrationsPage = () => (
       </p>
     </div>
 
-    <Section title="ClickWise / HighLevel" intro="CRM, communicatie en AI-laag voor reminders, reviews en gespreksautomatisering.">
+    <Section title="ClickWise" intro="CRM, communicatie en AI-laag voor reminders, reviews en gespreksautomatisering.">
       <Card className="border-primary/40 bg-primary/[0.03] md:col-span-2 lg:col-span-3">
         <CardHeader className="space-y-1">
           <CardTitle className="text-base">ClickWise integratielaag</CardTitle>

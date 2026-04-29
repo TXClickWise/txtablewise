@@ -381,7 +381,7 @@ const AIHostPage = () => {
                 <div className="font-medium mb-1">Logging</div>
                 <p className="text-muted-foreground">
                   Elke actie wordt gelogd in <code>audit_log</code> én als <code>integration_events</code> entry
-                  klaargezet voor ClickWise/HighLevel.
+                  klaargezet voor ClickWise.
                 </p>
               </div>
             </CardContent>
