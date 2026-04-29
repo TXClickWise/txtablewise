@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRestaurant } from "@/hooks/useRestaurant";
+import { useIsSystemAdmin } from "@/hooks/useIsSystemAdmin";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -10,19 +11,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PageHeader } from "@/components/PageHeader";
+import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Copy, Trash2, Plus, Phone, Bot, BookOpen, CheckCircle2, XCircle, Loader2, PlayCircle, AlertTriangle } from "lucide-react";
+import { Copy, Phone, Bot, BookOpen, KeyRound, Link2, ShieldCheck, Eye, EyeOff } from "lucide-react";
 import { Link } from "react-router-dom";
 import { format } from "date-fns";
 import { nl } from "date-fns/locale";
-import {
-  runVoiceFlow,
-  VOICE_FLOW_FIELDS,
-  VOICE_FLOW_PROMPT_TEMPLATE,
-  type VoiceFlowInput,
-  type VoiceFlowResult,
-} from "@/services/voiceFlow";
-import { Badge } from "@/components/ui/badge";
 
 type VoiceSettings = {
   id?: string;
@@ -45,16 +39,6 @@ type ApiKeyRow = {
   revoked_at: string | null;
 };
 
-type CallLog = {
-  id: string;
-  created_at: string;
-  caller_phone: string | null;
-  outcome: string | null;
-  summary: string | null;
-  reservation_id: string | null;
-  duration_seconds: number | null;
-};
-
 const PROVIDERS = [
   { value: "vapi", label: "Vapi (aanbevolen)" },
   { value: "retell", label: "Retell AI" },
@@ -63,60 +47,16 @@ const PROVIDERS = [
   { value: "other", label: "Anders" },
 ];
 
-function generateKey(): string {
-  const bytes = crypto.getRandomValues(new Uint8Array(32));
-  const b64 = btoa(String.fromCharCode(...bytes))
-    .replace(/\+/g, "-")
-    .replace(/\//g, "_")
-    .replace(/=+$/, "");
-  return `tw_voice_${b64}`;
-}
-
-async function sha256Hex(input: string): Promise<string> {
-  const data = new TextEncoder().encode(input);
-  const hash = await crypto.subtle.digest("SHA-256", data);
-  return Array.from(new Uint8Array(hash))
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join("");
-}
-
 export default function VoiceAgentPage() {
   const { current } = useRestaurant();
+  const { isSystemAdmin } = useIsSystemAdmin();
   const rid = current?.restaurant_id;
 
   const [settings, setSettings] = useState<VoiceSettings | null>(null);
   const [keys, setKeys] = useState<ApiKeyRow[]>([]);
-  const [logs, setLogs] = useState<CallLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [newKeyLabel, setNewKeyLabel] = useState("");
-  const [newKeyValue, setNewKeyValue] = useState<string | null>(null);
-
-  // Flow test state
-  const tomorrowIso = useMemo(() => {
-    const d = new Date(); d.setDate(d.getDate() + 1);
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-  }, []);
-  const [flowInput, setFlowInput] = useState<VoiceFlowInput>({
-    spokenDate: tomorrowIso,
-    spokenTime: "19:30",
-    spokenParty: "4",
-    firstName: "Test",
-    lastName: "Gast",
-    phone: "0612345678",
-    notes: "Voice-flow test reservering — kan worden geannuleerd",
-  });
-  const [flowRunning, setFlowRunning] = useState(false);
-  const [flowResult, setFlowResult] = useState<VoiceFlowResult | null>(null);
-
-  // Restore last flow result
-  useEffect(() => {
-    if (!rid) return;
-    const raw = localStorage.getItem(`voiceFlow:lastResult:${rid}`);
-    if (raw) {
-      try { setFlowResult(JSON.parse(raw) as VoiceFlowResult); } catch { /* noop */ }
-    }
-  }, [rid]);
+  const [showFullPrefix, setShowFullPrefix] = useState(false);
 
   const agentApiUrl = useMemo(() => {
     const projectId = (import.meta as any).env?.VITE_SUPABASE_PROJECT_ID;
@@ -126,10 +66,14 @@ export default function VoiceAgentPage() {
   const load = async () => {
     if (!rid) return;
     setLoading(true);
-    const [s, k, l] = await Promise.all([
+    const [s, k] = await Promise.all([
       supabase.from("voice_agent_settings").select("*").eq("restaurant_id", rid).maybeSingle(),
-      supabase.from("agent_api_keys").select("*").eq("restaurant_id", rid).order("created_at", { ascending: false }),
-      supabase.from("agent_call_logs").select("*").eq("restaurant_id", rid).order("created_at", { ascending: false }).limit(20),
+      supabase
+        .from("agent_api_keys")
+        .select("*")
+        .eq("restaurant_id", rid)
+        .is("revoked_at", null)
+        .order("created_at", { ascending: false }),
     ]);
     setSettings(
       (s.data as VoiceSettings | null) ?? {
@@ -142,7 +86,6 @@ export default function VoiceAgentPage() {
       },
     );
     setKeys((k.data as ApiKeyRow[]) ?? []);
-    setLogs((l.data as CallLog[]) ?? []);
     setLoading(false);
   };
 
@@ -168,58 +111,27 @@ export default function VoiceAgentPage() {
     load();
   };
 
-  const createKey = async () => {
-    if (!rid) return;
-    if (!newKeyLabel.trim()) return toast.error("Geef de sleutel een naam");
-    const key = generateKey();
-    const hash = await sha256Hex(key);
-    const prefix = key.slice(0, 12);
-    const { error } = await supabase.from("agent_api_keys").insert({
-      restaurant_id: rid,
-      label: newKeyLabel.trim(),
-      provider: settings?.provider ?? null,
-      key_hash: hash,
-      key_prefix: prefix,
-    });
-    if (error) return toast.error(error.message);
-    setNewKeyValue(key);
-    setNewKeyLabel("");
-    load();
-  };
-
-  const revokeKey = async (id: string) => {
-    if (!confirm("Sleutel intrekken? De voice-agent kan dan niet meer boeken.")) return;
-    const { error } = await supabase
-      .from("agent_api_keys")
-      .update({ revoked_at: new Date().toISOString() })
-      .eq("id", id);
-    if (error) return toast.error(error.message);
-    toast.success("Sleutel ingetrokken");
-    load();
-  };
-
-  const copy = (text: string) => {
+  const copy = (text: string, label = "Gekopieerd") => {
     navigator.clipboard.writeText(text);
-    toast.success("Gekopieerd");
+    toast.success(label);
   };
 
   if (loading || !settings) {
     return <p className="text-muted-foreground p-6">Laden…</p>;
   }
 
-  const promptTemplate = `Je bent de gastvrouw van ${current?.restaurants?.name ?? "[restaurant]"}.
-Je neemt telefonisch reserveringen aan in vriendelijke, natuurlijke Nederlandse taal.
-- Vraag naam, datum, tijd, aantal personen, telefoonnummer, en eventuele allergieën.
-- Gebruik de tool check_availability voor je een tijd bevestigt.
-- Gebruik book_reservation om de reservering vast te leggen zodra alles klopt.
-- Bevestig altijd de gegevens hardop voor je boekt.
-- Bij twijfel of grote groep (>8 personen): geef aan dat het restaurant terugbelt.`;
+  const activeKey = keys[0] ?? null;
+  const maskedKey = activeKey
+    ? showFullPrefix
+      ? `${activeKey.key_prefix}••••••••••••••••••••`
+      : `${activeKey.key_prefix.slice(0, 8)}••••••••••••••••••••••••`
+    : null;
 
   return (
     <div className="p-6 space-y-6 max-w-5xl">
       <PageHeader
         title="AI Voice Agent"
-        description="Koppel een externe AI voice-agent (ClickWise, Vapi, Retell) aan TableWise voor telefonische reserveringen."
+        description="Koppel een AI voice-agent (ClickWise, Vapi, Retell) aan TableWise voor telefonische reserveringen."
         badge={
           <Badge variant="outline" className="gap-1.5">
             <Bot className="h-3 w-3 text-primary" /> Voice
@@ -234,16 +146,130 @@ Je neemt telefonisch reserveringen aan in vriendelijke, natuurlijke Nederlandse 
         }
       />
 
-      <Tabs defaultValue="setup">
+      <Tabs defaultValue="api">
         <TabsList>
+          <TabsTrigger value="api">
+            <Link2 className="h-3.5 w-3.5 mr-1.5" />
+            API-koppeling
+          </TabsTrigger>
           <TabsTrigger value="setup">Configuratie</TabsTrigger>
-          <TabsTrigger value="flow">Flow</TabsTrigger>
-          <TabsTrigger value="keys">API-sleutels</TabsTrigger>
           <TabsTrigger value="howto">Hoe koppelen</TabsTrigger>
-          <TabsTrigger value="logs">Calls</TabsTrigger>
         </TabsList>
 
-        {/* Setup */}
+        {/* API koppeling — voor eindgebruiker */}
+        <TabsContent value="api" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg font-display flex items-center gap-2">
+                <KeyRound className="h-5 w-5 text-primary" />
+                Jouw koppelgegevens
+              </CardTitle>
+              <CardDescription>
+                Plak deze gegevens in je voice-platform (ClickWise, Vapi of Retell). De voice-agent
+                gebruikt ze om beschikbaarheid te checken en reserveringen te boeken in TableWise.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-5">
+              {/* API endpoint */}
+              <div className="space-y-1.5">
+                <Label className="text-xs uppercase tracking-wide text-muted-foreground">
+                  API-endpoint (Base URL)
+                </Label>
+                <div className="flex items-center gap-2 rounded-md border bg-muted/40 px-3 py-2.5">
+                  <code className="flex-1 text-xs font-mono break-all">{agentApiUrl}</code>
+                  <Button size="sm" variant="outline" onClick={() => copy(agentApiUrl, "Endpoint gekopieerd")}>
+                    <Copy className="h-3 w-3 mr-1" /> Kopieer
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Hier stuurt de voice-agent zijn aanvragen heen. Werkt voor alle providers.
+                </p>
+              </div>
+
+              {/* API sleutel */}
+              <div className="space-y-1.5">
+                <Label className="text-xs uppercase tracking-wide text-muted-foreground">
+                  API-sleutel
+                </Label>
+                {activeKey ? (
+                  <>
+                    <div className="flex items-center gap-2 rounded-md border bg-muted/40 px-3 py-2.5">
+                      <code className="flex-1 text-xs font-mono break-all">{maskedKey}</code>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => setShowFullPrefix((v) => !v)}
+                        title="Toon prefix"
+                      >
+                        {showFullPrefix ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                      </Button>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      We tonen om veiligheidsredenen alleen het begin. De volledige sleutel is{" "}
+                      <strong>één keer</strong> getoond bij aanmaken. Heb je hem niet meer? Vraag je
+                      contactpersoon om een nieuwe te genereren.
+                    </p>
+                    {activeKey.last_used_at && (
+                      <p className="text-xs text-muted-foreground">
+                        Laatst gebruikt:{" "}
+                        {format(new Date(activeKey.last_used_at), "d MMM yyyy HH:mm", { locale: nl })}
+                      </p>
+                    )}
+                  </>
+                ) : (
+                  <div className="rounded-md border border-amber-500/40 bg-amber-500/5 p-3 text-sm">
+                    <p className="font-medium text-amber-900 dark:text-amber-200">
+                      Nog geen API-sleutel beschikbaar
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Neem contact op met TableWise support om een sleutel voor jouw restaurant te
+                      laten aanmaken.
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {/* Header */}
+              <div className="space-y-1.5">
+                <Label className="text-xs uppercase tracking-wide text-muted-foreground">
+                  Header-naam
+                </Label>
+                <div className="flex items-center gap-2 rounded-md border bg-muted/40 px-3 py-2.5">
+                  <code className="flex-1 text-xs font-mono">X-Agent-Api-Key</code>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => copy("X-Agent-Api-Key", "Header gekopieerd")}
+                  >
+                    <Copy className="h-3 w-3 mr-1" /> Kopieer
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Stuur de API-sleutel mee in deze header bij elke aanvraag.
+                </p>
+              </div>
+
+              {/* Korte uitleg */}
+              <div className="rounded-md border border-primary/20 bg-primary/5 p-4 space-y-2">
+                <div className="flex items-center gap-2 text-sm font-medium">
+                  <ShieldCheck className="h-4 w-4 text-primary" />
+                  Hoe gebruik je deze gegevens in ClickWise?
+                </div>
+                <ol className="list-decimal list-inside text-xs text-muted-foreground space-y-1">
+                  <li>Open in ClickWise je voice-flow en ga naar <strong>HTTP Request</strong>.</li>
+                  <li>Plak de <strong>Base URL</strong> hierboven in het URL-veld.</li>
+                  <li>
+                    Voeg een header toe met naam <code>X-Agent-Api-Key</code> en waarde je{" "}
+                    <strong>API-sleutel</strong>.
+                  </li>
+                  <li>Test eerst in sandbox-modus voordat je live gaat.</li>
+                </ol>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Configuratie */}
         <TabsContent value="setup" className="space-y-4">
           <Card>
             <CardHeader>
@@ -311,255 +337,23 @@ Je neemt telefonisch reserveringen aan in vriendelijke, natuurlijke Nederlandse 
               </div>
             </CardContent>
           </Card>
-        </TabsContent>
 
-        {/* Flow */}
-        <TabsContent value="flow" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg font-display">Vaste reservatie-flow</CardTitle>
-              <CardDescription>
-                De voice-agent moet altijd deze 6 stappen doorlopen. Wijk hier nooit van af in je eigen prompts.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <ol className="space-y-2 text-sm">
-                {[
-                  ["Gegevens verzamelen", "Datum, tijd, aantal personen, voornaam, telefoonnummer (achternaam + opmerkingen optioneel)."],
-                  ["Normaliseren", "Datum → YYYY-MM-DD · Tijd → HH:MM · Telefoon → +31… · Aantal → integer."],
-                  ["Beschikbaarheid controleren", "Altijd vóór boeken. Bij geen plek: bied 1–3 alternatieven uit suggestedAlternatives."],
-                  ["Reservering maken", "Alleen als alle verplichte velden geldig zijn én availability bevestigd is."],
-                  ["Bevestiging teruggeven", "Datum, tijd, aantal, naam en reserveringscode hardop herhalen."],
-                  ["Fallback", "Ontbrekend veld → opnieuw vragen. API-fout → terugbel-belofte. Geen plek → alternatief of wachtlijst."],
-                ].map(([title, body], i) => (
-                  <li key={title} className="flex gap-3 rounded-md border bg-card p-3">
-                    <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground text-xs font-semibold">{i + 1}</div>
-                    <div>
-                      <div className="font-medium">{title}</div>
-                      <div className="text-muted-foreground text-xs mt-0.5">{body}</div>
-                    </div>
-                  </li>
-                ))}
-              </ol>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg font-display">Velden & payload-mapping</CardTitle>
-              <CardDescription>Welke velden de agent verzamelt en hoe ze in de boekings-payload terechtkomen.</CardDescription>
-            </CardHeader>
-            <CardContent className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead className="text-xs text-muted-foreground">
-                  <tr className="border-b">
-                    <th className="text-left py-2 pr-3">Veld</th>
-                    <th className="text-left py-2 pr-3">Status</th>
-                    <th className="text-left py-2 pr-3">Spreekvoorbeeld</th>
-                    <th className="text-left py-2 pr-3">Payload-veld</th>
-                    <th className="text-left py-2">Notitie</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {VOICE_FLOW_FIELDS.map((f) => (
-                    <tr key={f.key} className="border-b last:border-0">
-                      <td className="py-2 pr-3 font-medium">{f.label}</td>
-                      <td className="py-2 pr-3">
-                        {f.required ? (
-                          <Badge variant="destructive" className="text-[10px]">verplicht</Badge>
-                        ) : (
-                          <Badge variant="secondary" className="text-[10px]">optioneel</Badge>
-                        )}
-                      </td>
-                      <td className="py-2 pr-3 text-muted-foreground">{f.spokenExample}</td>
-                      <td className="py-2 pr-3"><code className="text-xs">{f.payloadField}</code></td>
-                      <td className="py-2 text-xs text-muted-foreground">{f.notes ?? "—"}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <div className="flex items-start justify-between gap-2">
-                <div>
-                  <CardTitle className="text-lg font-display">Prompt voor je voice-agent</CardTitle>
-                  <CardDescription>Kopieer deze prompt naar Vapi, Retell of ClickWise. Hij dwingt de 6-staps flow af.</CardDescription>
+          {isSystemAdmin && (
+            <Card className="border-primary/30 bg-primary/5">
+              <CardContent className="p-4 flex items-start gap-3">
+                <ShieldCheck className="h-5 w-5 text-primary shrink-0 mt-0.5" />
+                <div className="flex-1 text-sm">
+                  <div className="font-medium">Admin-tools beschikbaar</div>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Flow-tester, payload-mapping, sleutelbeheer en call-logs vind je in de admin-sectie.
+                  </p>
                 </div>
-                <Button size="sm" variant="outline" onClick={() => copy(VOICE_FLOW_PROMPT_TEMPLATE)}>
-                  <Copy className="h-3 w-3 mr-1" /> Kopieer prompt
+                <Button asChild size="sm" variant="outline">
+                  <Link to="/app/admin/voice-agent">Open admin</Link>
                 </Button>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <pre className="text-xs whitespace-pre-wrap font-mono rounded-md border bg-muted/40 p-3 max-h-72 overflow-auto">{VOICE_FLOW_PROMPT_TEMPLATE}</pre>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg font-display flex items-center gap-2">
-                <PlayCircle className="h-5 w-5 text-primary" /> Test complete voice reservation flow
-              </CardTitle>
-              <CardDescription>
-                Voert exact dezelfde flow uit als de voice-agent: verzamelen → normaliseren → beschikbaarheid → boeken → bevestigen.
-                <span className="block mt-1 flex items-start gap-1 text-amber-600 dark:text-amber-400">
-                  <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
-                  Dit maakt een echte reservering. Annuleer hem na de test in /app/reservations.
-                </span>
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                <div className="space-y-1.5">
-                  <Label className="text-xs">Datum (gesproken)</Label>
-                  <Input value={flowInput.spokenDate} onChange={(e) => setFlowInput({ ...flowInput, spokenDate: e.target.value })} placeholder="morgen / 2026-05-01" />
-                </div>
-                <div className="space-y-1.5">
-                  <Label className="text-xs">Tijd (gesproken)</Label>
-                  <Input value={flowInput.spokenTime} onChange={(e) => setFlowInput({ ...flowInput, spokenTime: e.target.value })} placeholder="19:30 / half acht" />
-                </div>
-                <div className="space-y-1.5">
-                  <Label className="text-xs">Aantal personen</Label>
-                  <Input value={flowInput.spokenParty} onChange={(e) => setFlowInput({ ...flowInput, spokenParty: e.target.value })} placeholder="4 / vier" />
-                </div>
-                <div className="space-y-1.5">
-                  <Label className="text-xs">Voornaam</Label>
-                  <Input value={flowInput.firstName} onChange={(e) => setFlowInput({ ...flowInput, firstName: e.target.value })} />
-                </div>
-                <div className="space-y-1.5">
-                  <Label className="text-xs">Achternaam</Label>
-                  <Input value={flowInput.lastName ?? ""} onChange={(e) => setFlowInput({ ...flowInput, lastName: e.target.value })} />
-                </div>
-                <div className="space-y-1.5">
-                  <Label className="text-xs">Telefoon</Label>
-                  <Input value={flowInput.phone} onChange={(e) => setFlowInput({ ...flowInput, phone: e.target.value })} placeholder="06 12345678" />
-                </div>
-                <div className="space-y-1.5 sm:col-span-2 lg:col-span-3">
-                  <Label className="text-xs">Opmerkingen</Label>
-                  <Input value={flowInput.notes ?? ""} onChange={(e) => setFlowInput({ ...flowInput, notes: e.target.value })} />
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <Button
-                  onClick={async () => {
-                    if (!rid) return;
-                    setFlowRunning(true);
-                    try {
-                      const res = await runVoiceFlow(rid, flowInput);
-                      setFlowResult(res);
-                      localStorage.setItem(`voiceFlow:lastResult:${rid}`, JSON.stringify(res));
-                      if (res.success) toast.success(`Flow OK · code ${res.reservationCode}`);
-                      else toast.error("Flow gefaald — zie tijdlijn hieronder");
-                    } catch (err: any) {
-                      toast.error(err?.message ?? "Onbekende fout");
-                    } finally {
-                      setFlowRunning(false);
-                    }
-                  }}
-                  disabled={flowRunning}
-                >
-                  {flowRunning ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <PlayCircle className="h-4 w-4 mr-1" />}
-                  {flowRunning ? "Bezig…" : "Test complete voice reservation flow"}
-                </Button>
-                {flowResult && (
-                  <span className="text-xs text-muted-foreground">
-                    Laatste run: {format(new Date(flowResult.finishedAt), "d MMM HH:mm:ss", { locale: nl })}
-                  </span>
-                )}
-              </div>
-
-              {flowResult && (
-                <div className={`rounded-md border p-3 space-y-2 ${flowResult.success ? "border-emerald-500/40 bg-emerald-500/5" : "border-destructive/40 bg-destructive/5"}`}>
-                  <div className="text-sm font-medium flex items-center gap-2">
-                    {flowResult.success ? (
-                      <><CheckCircle2 className="h-4 w-4 text-emerald-600" /> Flow geslaagd · reserveringscode {flowResult.reservationCode}</>
-                    ) : (
-                      <><XCircle className="h-4 w-4 text-destructive" /> Flow gefaald</>
-                    )}
-                  </div>
-                  <ol className="space-y-1.5 text-xs">
-                    {flowResult.steps.map((s, i) => (
-                      <li key={i} className="flex items-start gap-2">
-                        {s.ok ? (
-                          <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600 mt-0.5 shrink-0" />
-                        ) : (
-                          <XCircle className="h-3.5 w-3.5 text-destructive mt-0.5 shrink-0" />
-                        )}
-                        <div className="flex-1">
-                          <span className="font-medium capitalize">{s.step}</span>
-                          <span className="text-muted-foreground"> — {s.message}</span>
-                          {s.errorCode && (
-                            <div className="mt-0.5">
-                              <code className="text-[10px] px-1.5 py-0.5 rounded bg-destructive/10 text-destructive">{s.errorCode}</code>
-                              {s.field && <code className="ml-1 text-[10px] px-1.5 py-0.5 rounded bg-muted">field: {s.field}</code>}
-                              {s.suggestedFix && <span className="block text-muted-foreground mt-0.5">→ {s.suggestedFix}</span>}
-                            </div>
-                          )}
-                        </div>
-                      </li>
-                    ))}
-                  </ol>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* Keys */}
-        <TabsContent value="keys" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg font-display">API-sleutels</CardTitle>
-              <CardDescription>
-                De voice-agent gebruikt deze sleutel als <code className="text-xs">X-Agent-Api-Key</code> header.
-                De sleutel zie je <strong>één keer</strong> bij aanmaken — bewaar hem direct.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex gap-2">
-                <Input placeholder="Naam, bv. 'Vapi productie'" value={newKeyLabel} onChange={(e) => setNewKeyLabel(e.target.value)} />
-                <Button onClick={createKey}><Plus className="h-4 w-4 mr-1" /> Genereer</Button>
-              </div>
-
-              {newKeyValue && (
-                <div className="rounded-md border border-primary/40 bg-primary/5 p-3 space-y-2">
-                  <div className="text-xs text-muted-foreground">
-                    Nieuwe sleutel — kopieer nu, hij wordt niet opnieuw getoond.
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <code className="flex-1 text-xs font-mono break-all">{newKeyValue}</code>
-                    <Button size="sm" variant="outline" onClick={() => copy(newKeyValue)}>
-                      <Copy className="h-3 w-3 mr-1" /> Kopieer
-                    </Button>
-                  </div>
-                  <Button size="sm" variant="ghost" onClick={() => setNewKeyValue(null)}>Sluiten</Button>
-                </div>
-              )}
-
-              <div className="divide-y divide-border text-sm">
-                {keys.length === 0 && <p className="text-muted-foreground py-4">Nog geen sleutels.</p>}
-                {keys.map((k) => (
-                  <div key={k.id} className="py-2 flex items-center gap-3">
-                    <div className="flex-1 min-w-0">
-                      <div className="font-medium">{k.label}</div>
-                      <div className="text-xs text-muted-foreground font-mono">
-                        {k.key_prefix}…{k.revoked_at ? " · ingetrokken" : k.last_used_at ? ` · laatst: ${format(new Date(k.last_used_at), "d MMM HH:mm", { locale: nl })}` : " · nog niet gebruikt"}
-                      </div>
-                    </div>
-                    {!k.revoked_at && (
-                      <Button size="icon" variant="ghost" onClick={() => revokeKey(k.id)}>
-                        <Trash2 className="h-4 w-4 text-destructive" />
-                      </Button>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          )}
         </TabsContent>
 
         {/* How-to */}
@@ -567,92 +361,45 @@ Je neemt telefonisch reserveringen aan in vriendelijke, natuurlijke Nederlandse 
           <Card>
             <CardHeader>
               <CardTitle className="text-lg font-display">Stap-voor-stap koppelen</CardTitle>
+              <CardDescription>
+                Een korte handleiding om je voice-agent aan TableWise te koppelen.
+              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4 text-sm">
-              <ol className="list-decimal list-inside space-y-2">
-                <li>Maak hierboven een API-sleutel aan en kopieer hem.</li>
-                <li>Maak in je voice-platform (Vapi/Retell/HighLevel) een nieuwe assistant aan, taal NL, stem naar keuze.</li>
+              <ol className="list-decimal list-inside space-y-2.5">
                 <li>
-                  Stel onderstaande system-prompt in als basis:
+                  Ga naar het tabblad <strong>API-koppeling</strong> en kopieer de Base URL en je
+                  API-sleutel.
+                </li>
+                <li>
+                  Maak in je voice-platform (ClickWise, Vapi of Retell) een nieuwe assistant aan met
+                  Nederlands als taal.
+                </li>
+                <li>
+                  Voeg in dat platform een <strong>HTTP Request</strong> stap toe met:
+                  <ul className="list-disc list-inside ml-4 mt-1 text-xs text-muted-foreground space-y-0.5">
+                    <li>URL: de gekopieerde Base URL</li>
+                    <li>Header: <code>X-Agent-Api-Key</code> met je sleutel als waarde</li>
+                    <li>Header: <code>Content-Type: application/json</code></li>
+                  </ul>
+                </li>
+                <li>Koppel een telefoonnummer aan de assistant (via Twilio of je provider).</li>
+                <li>
+                  Test eerst in <strong>sandbox-modus</strong>: bel zelf en boek een
+                  test-reservering.
+                </li>
+                <li>
+                  Schakel pas naar <strong>live</strong> als je tevreden bent. ClickWise pakt dan
+                  automatisch de bevestigings- en reminder-flow op.
                 </li>
               </ol>
 
-              <div className="rounded-md border bg-muted/40 p-3 space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-muted-foreground">System prompt template</span>
-                  <Button size="sm" variant="ghost" onClick={() => copy(promptTemplate)}>
-                    <Copy className="h-3 w-3 mr-1" /> Kopieer
-                  </Button>
-                </div>
-                <pre className="text-xs whitespace-pre-wrap font-mono">{promptTemplate}</pre>
+              <div className="rounded-md border bg-muted/40 p-3 text-xs">
+                <p className="font-medium mb-1">Hulp nodig?</p>
+                <p className="text-muted-foreground">
+                  Bekijk de uitgebreide handleiding via de <Link to="/app/help/voice-agent" className="text-primary underline">Help & koppeling</Link> knop bovenaan, of neem contact op met TableWise support.
+                </p>
               </div>
-
-              <ol className="list-decimal list-inside space-y-2" start={4}>
-                <li>
-                  Voeg drie tools / functions toe die HTTP POST doen naar:
-                </li>
-              </ol>
-
-              <div className="rounded-md border bg-muted/40 p-3 space-y-2 text-xs font-mono">
-                <div className="flex items-center justify-between">
-                  <span>Base URL</span>
-                  <Button size="sm" variant="ghost" onClick={() => copy(agentApiUrl)}>
-                    <Copy className="h-3 w-3 mr-1" /> Kopieer
-                  </Button>
-                </div>
-                <div className="break-all">{agentApiUrl}</div>
-                <ul className="list-disc list-inside pt-2 space-y-1">
-                  <li>POST <code>{agentApiUrl}/check_availability</code> — body: <code>{`{ date, party_size }`}</code></li>
-                  <li>POST <code>{agentApiUrl}/book_reservation</code> — body: <code>{`{ date, time, party_size, guest: { first_name, phone, email? }, special_requests? }`}</code></li>
-                  <li>POST <code>{agentApiUrl}/cancel_reservation</code> — body: <code>{`{ reservation_id, reason? }`}</code></li>
-                </ul>
-                <div className="pt-2">
-                  Headers (verplicht): <br />
-                  <code>X-Agent-Api-Key: &lt;jouw sleutel&gt;</code><br />
-                  <code>Content-Type: application/json</code>
-                </div>
-              </div>
-
-              <ol className="list-decimal list-inside space-y-2" start={5}>
-                <li>Koppel een telefoonnummer (Twilio of provider-nummer) aan de assistant.</li>
-                <li>Test in <strong>sandbox-modus</strong>: bel zelf en boek een testreservering.</li>
-                <li>Schakel in TableWise pas naar <strong>live</strong> als je tevreden bent. ClickWise/HighLevel pakt dan automatisch de bevestigings- en reminder-flow op via de bestaande webhook-integratie.</li>
-              </ol>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* Logs */}
-        <TabsContent value="logs" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg font-display">Recente calls</CardTitle>
-              <CardDescription>De laatste 20 gesprekken die de voice-agent heeft gelogd.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {logs.length === 0 ? (
-                <p className="text-sm text-muted-foreground">Nog geen calls gelogd.</p>
-              ) : (
-                <div className="divide-y divide-border text-sm">
-                  {logs.map((c) => (
-                    <div key={c.id} className="py-2">
-                      <div className="flex items-center gap-2">
-                        <span className="font-mono text-xs">{c.caller_phone ?? "onbekend"}</span>
-                        <span className="text-xs text-muted-foreground">
-                          {format(new Date(c.created_at), "d MMM HH:mm", { locale: nl })}
-                        </span>
-                        {c.outcome && (
-                          <span className="text-xs px-2 py-0.5 rounded border bg-muted">{c.outcome}</span>
-                        )}
-                        {c.duration_seconds != null && (
-                          <span className="text-xs text-muted-foreground">{c.duration_seconds}s</span>
-                        )}
-                      </div>
-                      {c.summary && <p className="text-xs text-muted-foreground mt-1">{c.summary}</p>}
-                    </div>
-                  ))}
-                </div>
-              )}
             </CardContent>
           </Card>
         </TabsContent>

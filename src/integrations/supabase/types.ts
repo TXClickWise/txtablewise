@@ -726,6 +726,30 @@ export type Database = {
           },
         ]
       }
+      platform_admins: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          note: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          note?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          note?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       pos_connections: {
         Row: {
           access_token_encrypted: string | null
@@ -2155,6 +2179,7 @@ export type Database = {
         Args: { _restaurant_id: string }
         Returns: boolean
       }
+      is_system_admin: { Args: never; Returns: boolean }
     }
     Enums: {
       app_role: "owner" | "manager" | "host" | "staff"

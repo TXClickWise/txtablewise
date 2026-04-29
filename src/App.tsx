@@ -53,6 +53,8 @@ import POSIntegrationPage from "./pages/app/POSIntegrationPage.tsx";
 import ReportsPage from "./pages/app/ReportsPage.tsx";
 import OnboardingWizardPage from "./pages/app/OnboardingWizardPage.tsx";
 import PilotReadinessPage from "./pages/app/PilotReadinessPage.tsx";
+import AdminVoiceAgentPage from "./pages/app/admin/AdminVoiceAgentPage.tsx";
+import { RequireSystemAdmin } from "./components/RequireSystemAdmin";
 import NotFound from "./pages/NotFound.tsx";
 
 const queryClient = new QueryClient();
@@ -90,12 +92,22 @@ const App = () => (
               <Route path="voice-agent" element={<VoiceAgentPage />} />
               <Route path="help/voice-agent" element={<VoiceAgentHelp />} />
               <Route path="rapportages" element={<ReportsPage />} />
-              <Route path="pilot-readiness" element={<PilotReadinessPage />} />
               <Route path="integraties" element={<IntegrationsPage />} />
-              <Route path="integraties/clickwise" element={<ClickWiseIntegrationPage />} />
-              <Route path="integraties/pos" element={<POSIntegrationPage />} />
-              <Route path="integraties/hub" element={<IntegrationHubPage />} />
-              <Route path="integraties/logs" element={<IntegrationLogsPage />} />
+
+              {/* Admin-only routes (system admin) */}
+              <Route path="admin/voice-agent" element={<RequireSystemAdmin><AdminVoiceAgentPage /></RequireSystemAdmin>} />
+              <Route path="admin/integraties" element={<RequireSystemAdmin><IntegrationHubPage /></RequireSystemAdmin>} />
+              <Route path="admin/logs" element={<RequireSystemAdmin><IntegrationLogsPage /></RequireSystemAdmin>} />
+              <Route path="admin/clickwise" element={<RequireSystemAdmin><ClickWiseIntegrationPage /></RequireSystemAdmin>} />
+              <Route path="admin/pos" element={<RequireSystemAdmin><POSIntegrationPage /></RequireSystemAdmin>} />
+              <Route path="admin/pilot-readiness" element={<RequireSystemAdmin><PilotReadinessPage /></RequireSystemAdmin>} />
+
+              {/* Legacy redirects — kept for old links, also guarded */}
+              <Route path="pilot-readiness" element={<RequireSystemAdmin><PilotReadinessPage /></RequireSystemAdmin>} />
+              <Route path="integraties/clickwise" element={<RequireSystemAdmin><ClickWiseIntegrationPage /></RequireSystemAdmin>} />
+              <Route path="integraties/pos" element={<RequireSystemAdmin><POSIntegrationPage /></RequireSystemAdmin>} />
+              <Route path="integraties/hub" element={<RequireSystemAdmin><IntegrationHubPage /></RequireSystemAdmin>} />
+              <Route path="integraties/logs" element={<RequireSystemAdmin><IntegrationLogsPage /></RequireSystemAdmin>} />
               <Route path="instellingen" element={<SettingsPage />}>
                 <Route index element={<GeneralSettings />} />
                 {/* New grouped sections */}
