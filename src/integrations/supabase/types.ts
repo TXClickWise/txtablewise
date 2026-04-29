@@ -726,6 +726,59 @@ export type Database = {
           },
         ]
       }
+      plan_upgrade_requests: {
+        Row: {
+          admin_note: string | null
+          created_at: string
+          current_plan: Database["public"]["Enums"]["subscription_plan"]
+          id: string
+          requested_by: string
+          requested_plan: Database["public"]["Enums"]["subscription_plan"]
+          requester_note: string | null
+          restaurant_id: string
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          admin_note?: string | null
+          created_at?: string
+          current_plan: Database["public"]["Enums"]["subscription_plan"]
+          id?: string
+          requested_by: string
+          requested_plan: Database["public"]["Enums"]["subscription_plan"]
+          requester_note?: string | null
+          restaurant_id: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          admin_note?: string | null
+          created_at?: string
+          current_plan?: Database["public"]["Enums"]["subscription_plan"]
+          id?: string
+          requested_by?: string
+          requested_plan?: Database["public"]["Enums"]["subscription_plan"]
+          requester_note?: string | null
+          restaurant_id?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "plan_upgrade_requests_restaurant_id_fkey"
+            columns: ["restaurant_id"]
+            isOneToOne: false
+            referencedRelation: "restaurants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       platform_admins: {
         Row: {
           created_at: string
@@ -1457,6 +1510,8 @@ export type Database = {
           noshow_risk_signal_enabled: boolean
           peak_warning_threshold_pct: number
           phone: string | null
+          plan: Database["public"]["Enums"]["subscription_plan"]
+          plan_started_at: string
           plan_type: string | null
           postal_code: string | null
           preorders_allow_free_text: boolean
@@ -1465,6 +1520,7 @@ export type Database = {
           slot_duration_minutes: number
           slug: string
           timezone: string
+          trial_ends_at: string | null
           updated_at: string
           waitlist_allow_preferred_times: boolean
           waitlist_auto_offer_on_full: boolean
@@ -1537,6 +1593,8 @@ export type Database = {
           noshow_risk_signal_enabled?: boolean
           peak_warning_threshold_pct?: number
           phone?: string | null
+          plan?: Database["public"]["Enums"]["subscription_plan"]
+          plan_started_at?: string
           plan_type?: string | null
           postal_code?: string | null
           preorders_allow_free_text?: boolean
@@ -1545,6 +1603,7 @@ export type Database = {
           slot_duration_minutes?: number
           slug: string
           timezone?: string
+          trial_ends_at?: string | null
           updated_at?: string
           waitlist_allow_preferred_times?: boolean
           waitlist_auto_offer_on_full?: boolean
@@ -1617,6 +1676,8 @@ export type Database = {
           noshow_risk_signal_enabled?: boolean
           peak_warning_threshold_pct?: number
           phone?: string | null
+          plan?: Database["public"]["Enums"]["subscription_plan"]
+          plan_started_at?: string
           plan_type?: string | null
           postal_code?: string | null
           preorders_allow_free_text?: boolean
@@ -1625,6 +1686,7 @@ export type Database = {
           slot_duration_minutes?: number
           slug?: string
           timezone?: string
+          trial_ends_at?: string | null
           updated_at?: string
           waitlist_allow_preferred_times?: boolean
           waitlist_auto_offer_on_full?: boolean
@@ -2180,6 +2242,10 @@ export type Database = {
         Returns: boolean
       }
       is_system_admin: { Args: never; Returns: boolean }
+      restaurant_plan: {
+        Args: { _restaurant_id: string }
+        Returns: Database["public"]["Enums"]["subscription_plan"]
+      }
     }
     Enums: {
       app_role: "owner" | "manager" | "host" | "staff"
@@ -2253,6 +2319,7 @@ export type Database = {
         | "negative"
         | "follow_up_required"
         | "google_review_invited"
+      subscription_plan: "trial" | "basic" | "pro"
       waitlist_status:
         | "waiting"
         | "matched"
@@ -2466,6 +2533,7 @@ export const Constants = {
         "follow_up_required",
         "google_review_invited",
       ],
+      subscription_plan: ["trial", "basic", "pro"],
       waitlist_status: [
         "waiting",
         "matched",
