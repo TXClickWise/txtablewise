@@ -1,7 +1,7 @@
 import {
   LayoutDashboard, CalendarDays, Map, Users, Settings, BookOpen,
   Hand, ListChecks, UsersRound, BellOff, Wine, Star, Bot, BarChart3, Plug, Tablet, ShieldCheck, Phone,
-  Database, FileText, CreditCard, Shield,
+  Database, FileText, CreditCard, Shield, Crown,
 } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import {
