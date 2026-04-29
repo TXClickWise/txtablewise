@@ -19,7 +19,7 @@ interface PlanData {
 export function usePlan() {
   const { current } = useRestaurant();
   const restaurantId = current?.restaurant_id ?? null;
-  const { data: isSystemAdmin } = useIsSystemAdmin();
+  const { isSystemAdmin } = useIsSystemAdmin();
 
   const query = useQuery<PlanData | null>({
     queryKey: ["restaurant-plan", restaurantId],
