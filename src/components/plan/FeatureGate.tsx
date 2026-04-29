@@ -42,7 +42,7 @@ export function FeatureGate({ feature, children, silent, fallback, inline }: Pro
           {label} is beschikbaar in <span className="font-medium text-foreground">{neededName}</span>.
         </span>
         <Button asChild size="sm" variant="ghost" className="ml-auto h-7">
-          <Link to="/app/settings/subscription">Upgraden</Link>
+          <Link to="/app/instellingen/abonnement">Upgraden</Link>
         </Button>
       </div>
     );
@@ -60,7 +60,7 @@ export function FeatureGate({ feature, children, silent, fallback, inline }: Pro
             Upgrade je abonnement om deze functie te activeren. Je bestaande data en instellingen blijven behouden.
           </p>
           <Button asChild className="mt-3">
-            <Link to="/app/settings/subscription">Bekijk abonnementen</Link>
+            <Link to="/app/instellingen/abonnement">Bekijk abonnementen</Link>
           </Button>
         </div>
       </div>

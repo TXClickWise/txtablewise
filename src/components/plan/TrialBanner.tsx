@@ -35,7 +35,7 @@ export function TrialBanner() {
       <Sparkles className="h-4 w-4 text-primary shrink-0" />
       <span className="flex-1 text-foreground">{message}</span>
       <Button asChild size="sm" variant="default" className="h-7">
-        <Link to="/app/settings/subscription">Upgrade nu</Link>
+        <Link to="/app/instellingen/abonnement">Upgrade nu</Link>
       </Button>
       {!trialExpired && (
         <button
