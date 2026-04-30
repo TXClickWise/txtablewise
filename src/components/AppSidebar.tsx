@@ -85,12 +85,14 @@ function Group({ label, items, collapsed, pathname, accent, onNavigate }: { labe
 }
 
 export function AppSidebar() {
-  const { state } = useSidebar();
+  const { state, isMobile, setOpenMobile } = useSidebar();
   const collapsed = state === "collapsed";
   const { signOut, user } = useAuth();
   const { current } = useRestaurant();
   const { isSystemAdmin } = useIsSystemAdmin();
   const location = useLocation();
+
+  const handleNavigate = isMobile ? () => setOpenMobile(false) : undefined;
 
   return (
     <Sidebar collapsible="icon">
@@ -111,12 +113,12 @@ export function AppSidebar() {
       </SidebarHeader>
 
       <SidebarContent>
-        <Group label="Operatie" items={operatie} collapsed={collapsed} pathname={location.pathname} />
-        <Group label="Gasten" items={gasten} collapsed={collapsed} pathname={location.pathname} />
-        <Group label="Hospitality" items={hospitality} collapsed={collapsed} pathname={location.pathname} />
-        <Group label="Beheer" items={beheer} collapsed={collapsed} pathname={location.pathname} />
+        <Group label="Operatie" items={operatie} collapsed={collapsed} pathname={location.pathname} onNavigate={handleNavigate} />
+        <Group label="Gasten" items={gasten} collapsed={collapsed} pathname={location.pathname} onNavigate={handleNavigate} />
+        <Group label="Hospitality" items={hospitality} collapsed={collapsed} pathname={location.pathname} onNavigate={handleNavigate} />
+        <Group label="Beheer" items={beheer} collapsed={collapsed} pathname={location.pathname} onNavigate={handleNavigate} />
         {isSystemAdmin && (
-          <Group label="Admin" items={admin} collapsed={collapsed} pathname={location.pathname} accent />
+          <Group label="Admin" items={admin} collapsed={collapsed} pathname={location.pathname} accent onNavigate={handleNavigate} />
         )}
       </SidebarContent>
 
