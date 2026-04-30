@@ -436,17 +436,20 @@ const SECTIONS: Section[] = [
   "time": "{{time}}",
   "party_size": {{party_size}},
   "guest": {
-    "first_name": "{{first_name}}",
-    "last_name": "{{last_name}}",
-    "phone": "{{phone}}"
+    "first_name": "{{contact.first_name}}",
+    "last_name": "{{contact.last_name}}",
+    "phone": "{{contact.phone}}",
+    "email": "{{contact.email}}"
   },
   "special_requests": "{{special_requests}}"
 }`}</CodeBlock>
             <div className="text-xs text-muted-foreground">
               Parameters: <code>date</code> (YYYY-MM-DD), <code>time</code> (HH:MM 24h),
-              <code> party_size</code> (1–8), <code>first_name</code> (verplicht),
-              <code> last_name</code> (optioneel), <code>phone</code> (verplicht, internationaal +31...),
-              <code> special_requests</code> (optioneel — allergieën / gelegenheid).
+              <code> party_size</code> (1–8). <strong>Naam, telefoon en e-mail</strong> komen uit de
+              standaard ClickWise/HighLevel contactvelden via <code>{`{{contact.first_name}}`}</code>,{" "}
+              <code>{`{{contact.last_name}}`}</code>, <code>{`{{contact.phone}}`}</code> en{" "}
+              <code>{`{{contact.email}}`}</code> — die hoef je niet als custom field aan te maken.
+              Optioneel: <code>special_requests</code> (allergieën / gelegenheid).
               Response bevat <code>reservation_id</code> en <code>manage_token</code>.
               Lees de laatste 6 tekens van <code>reservation_id</code> hardop voor als bevestigingscode.
             </div>
