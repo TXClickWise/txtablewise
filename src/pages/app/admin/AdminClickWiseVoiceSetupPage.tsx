@@ -462,6 +462,28 @@ X-Agent-Api-Key: ${apiKey}`;
               </AccordionContent>
             </AccordionItem>
           </Accordion>
+
+          <Card className="p-4 space-y-3 border-amber-500/30 bg-amber-500/5">
+            <h3 className="font-display text-base flex items-center gap-2">
+              <Wrench className="h-4 w-4 text-amber-600" />
+              Trainen — eenmalige test-payloads voor response-mapping
+            </h3>
+            <p className="text-sm text-muted-foreground">
+              Plak per Custom Action <strong>tijdelijk</strong> de payload hieronder in het body-veld en klik <em>Test</em> in ClickWise.
+              Zo ziet ClickWise een echte response en kun je velden zoals <code>response.reservation_id</code> mappen naar custom fields.
+              <strong> Zet de body daarna terug naar de versie met <code>{`{{...}}`}</code> placeholders</strong> uit het accordion hierboven.
+            </p>
+            <div className="grid gap-3">
+              <CopyBlock label="check_availability — test body" value={trainCheck} lang="json" />
+              <CopyBlock label="book_reservation — test body" value={trainBook} lang="json" />
+              <CopyBlock label="cancel_reservation — test body" value={trainCancel} lang="json" />
+              <CopyBlock label="log_call — test body" value={trainLog} lang="json" />
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Tip: voer ze in deze volgorde uit. De <code>reservation_id</code> uit de book-test plak je in de cancel- en log-test.
+              Verwijder de testreservering daarna in <code>/app/reserveringen</code>.
+            </p>
+          </Card>
         </TabsContent>
 
         {/* VALUES */}
