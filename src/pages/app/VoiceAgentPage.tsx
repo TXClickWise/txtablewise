@@ -17,6 +17,9 @@ import { Copy, Phone, Bot, BookOpen, KeyRound, Link2, ShieldCheck, Eye, EyeOff }
 import { Link } from "react-router-dom";
 import { format } from "date-fns";
 import { nl } from "date-fns/locale";
+import { AdvancedOnly } from "@/components/AdvancedOnly";
+import { useAdvancedMode } from "@/hooks/useAdvancedMode";
+import { SimpleEventLog } from "@/components/integrations/SimpleEventLog";
 
 type VoiceSettings = {
   id?: string;
