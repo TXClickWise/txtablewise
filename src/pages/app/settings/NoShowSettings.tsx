@@ -13,6 +13,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import { ShieldCheck, Wallet, MailCheck, Info } from "lucide-react";
+import { AdvancedSection } from "@/components/AdvancedSection";
 
 type Form = {
   // Confirmation & reminders
