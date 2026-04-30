@@ -125,7 +125,7 @@ Roep ALTIJD \`log_call\` aan met de samenvatting, outcome (booked/changed/cancel
   const checkAvailJson = `{
   "name": "check_availability",
   "description": "Controleer of een tafel beschikbaar is op een datum/tijd voor een aantal personen. Roep dit aan VOORDAT je gaat boeken.",
-  "url": "${FN_BASE}/check_availability",
+  "url": "${FN_BASE_VAR}/check_availability",
   "method": "POST",
   "headers": {
     "Content-Type": "application/json",
