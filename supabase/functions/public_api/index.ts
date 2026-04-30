@@ -186,6 +186,7 @@ Deno.serve(async (req) => {
   // Action mapping for logging.
   const action =
     resource === "availability" ? "check_availability"
+    : resource === "reservation-request" ? "create_reservation"
     : resource === "reservations"
       ? (req.method === "POST" ? "create_reservation"
         : req.method === "PATCH" ? "update_reservation"
@@ -210,6 +211,10 @@ Deno.serve(async (req) => {
     if (resource === "availability") {
       if (req.method !== "POST") response = errResp("TW_405_METHOD_NOT_ALLOWED");
       else response = await handleAvailability(req, keyRow);
+    } else if (resource === "reservation-request") {
+      // Ultra-simple endpoint for AI Voice / ClickWise: check availability + book in one call.
+      if (req.method !== "POST") response = errResp("TW_405_METHOD_NOT_ALLOWED");
+      else response = await handleReservationRequest(req, keyRow);
     } else if (resource === "reservations") {
       if (req.method === "POST" && !resId) response = await handleCreateReservation(req, keyRow);
       else if (req.method === "PATCH" && resId) response = await handleUpdateReservation(req, keyRow, resId);
