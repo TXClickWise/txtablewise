@@ -167,7 +167,7 @@ Roep ALTIJD \`log_call\` aan met de samenvatting, outcome (booked/changed/cancel
   const cancelJson = `{
   "name": "cancel_reservation",
   "description": "Annuleer een bestaande reservering op basis van reservation_id of manage_token.",
-  "url": "${FN_BASE}/cancel_reservation",
+  "url": "${FN_BASE_VAR}/cancel_reservation",
   "method": "POST",
   "headers": {
     "Content-Type": "application/json",
