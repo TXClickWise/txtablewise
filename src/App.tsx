@@ -100,6 +100,7 @@ const App = () => (
 
               {/* Admin-only routes (system admin) */}
               <Route path="admin/voice-agent" element={<RequireSystemAdmin><AdminVoiceAgentPage /></RequireSystemAdmin>} />
+              <Route path="admin/clickwise-voice-setup" element={<RequireSystemAdmin><AdminClickWiseVoiceSetupPage /></RequireSystemAdmin>} />
               <Route path="admin/plan-requests" element={<RequireSystemAdmin><AdminPlanRequestsPage /></RequireSystemAdmin>} />
               <Route path="admin/integraties" element={<RequireSystemAdmin><IntegrationHubPage /></RequireSystemAdmin>} />
               <Route path="admin/logs" element={<RequireSystemAdmin><IntegrationLogsPage /></RequireSystemAdmin>} />
