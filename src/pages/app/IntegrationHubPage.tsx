@@ -18,6 +18,7 @@ import {
   deleteWebhookEndpoint, testWebhook, testAvailability, testBook,
   type WebhookEndpoint, type WebhookEvent,
 } from "@/services/integrations";
+import { ClickWiseVoiceCard } from "@/components/integrations/ClickWiseVoiceCard";
 
 const today = () => new Date().toISOString().slice(0, 10);
 
