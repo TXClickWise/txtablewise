@@ -640,6 +640,110 @@ X-Agent-Api-Key: ${apiKey}`;
           </Card>
 
         </TabsContent>
+
+        {/* SNAPSHOT */}
+        <TabsContent value="snapshot" className="space-y-4">
+          <Card className="p-4 space-y-3">
+            <div className="flex items-center gap-2">
+              <Package className="h-4 w-4 text-primary" />
+              <h3 className="font-display text-base">Hoe werkt de snapshot-strategie?</h3>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              Bouw deze hele setup éénmalig in een 'master' sub-account in ClickWise (HighLevel). Exporteer dan een snapshot
+              en koppel die aan elke nieuwe of bestaande klant-sub-account. Snapshots nemen
+              <strong> Custom Actions, Custom Values, Custom Fields én Workflows </strong>
+              mee — maar <strong>niet</strong> de Voice AI Agent zelf, het Twilio-nummer of de response-mapping per Custom Action.
+            </p>
+            <div className="grid sm:grid-cols-2 gap-3 text-sm">
+              <div className="rounded-md border border-emerald-500/30 bg-emerald-500/5 p-3 space-y-1">
+                <p className="font-medium text-emerald-700 dark:text-emerald-400 flex items-center gap-1.5"><Check className="h-3.5 w-3.5" /> Wel in de snapshot</p>
+                <ul className="list-disc pl-4 text-muted-foreground space-y-0.5">
+                  <li>4 Custom Actions (tool definities + bodies)</li>
+                  <li>Custom Values (sleutels, mét waarden)</li>
+                  <li>Custom Fields (definities)</li>
+                  <li>Workflow "Voice Agent — Inbound call → TableWise"</li>
+                  <li>SMS-templates en tags</li>
+                </ul>
+              </div>
+              <div className="rounded-md border border-amber-500/30 bg-amber-500/5 p-3 space-y-1">
+                <p className="font-medium text-amber-700 dark:text-amber-500 flex items-center gap-1.5"><AlertTriangle className="h-3.5 w-3.5" /> Niet in de snapshot</p>
+                <ul className="list-disc pl-4 text-muted-foreground space-y-0.5">
+                  <li>De AI Voice Agent zelf (handmatig opnieuw)</li>
+                  <li>Twilio telefoonnummer-koppeling</li>
+                  <li>Response-mapping per Custom Action ("Trainen")</li>
+                  <li>Echte API key-waarde (gebruik placeholder!)</li>
+                </ul>
+              </div>
+            </div>
+          </Card>
+
+          <Card className="p-4 space-y-3">
+            <h3 className="font-display text-base">Master sub-account — placeholder Custom Values</h3>
+            <p className="text-sm text-muted-foreground">
+              Vul in de master sub-account de Custom Values met deze <strong>dummy-waarden</strong>. Zo lekt er nooit een echte klant-API-key
+              of restaurant-ID in je snapshot. <code>tablewise_base_url</code> blijft wel echt — die is voor alle klanten gelijk.
+            </p>
+            <CopyBlock value={customValuesSnapshot} lang="env" />
+            <div className="rounded-md border border-destructive/30 bg-destructive/5 p-3 text-xs text-muted-foreground">
+              <strong className="text-destructive">Belangrijk:</strong> bouw de snapshot NOOIT in een sub-account die een echte klant bedient.
+              De Custom Values worden mét waarden meegenomen. Alleen via deze placeholders blijft de snapshot veilig deelbaar.
+            </div>
+          </Card>
+
+          <Card className="p-4 space-y-3 border-primary/30 bg-primary/5">
+            <h3 className="font-display text-base flex items-center gap-2">
+              <ListChecks className="h-4 w-4 text-primary" />
+              Per nieuwe klant — exact 6 handmatige stappen
+            </h3>
+            <ol className="text-sm space-y-2 list-decimal pl-4">
+              <li>
+                <strong>Snapshot importeren</strong> in de nieuwe (of bestaande) sub-account van de klant.
+                Agency-account → Sub-Accounts → klant → <em>Load Snapshot</em>.
+              </li>
+              <li>
+                <strong>Custom Values vervangen</strong>: open Settings → Custom Values en zet alle <code>REPLACE_PER_CLIENT_*</code>
+                waarden om naar de echte data van deze klant.
+                <ul className="list-disc pl-5 mt-1 text-muted-foreground space-y-0.5">
+                  <li><code>tablewise_api_key</code> — uit TableWise → Voice Agent → Sleutel genereren (per restaurant uniek)</li>
+                  <li><code>tablewise_restaurant_id</code> — uit TableWise (<code>/app/instellingen</code> of admin)</li>
+                  <li><code>restaurant_name</code>, <code>restaurant_phone</code>, <code>restaurant_address</code>, <code>opening_hours_short</code></li>
+                  <li><code>tablewise_base_url</code> — laat staan, is globaal</li>
+                </ul>
+              </li>
+              <li>
+                <strong>Voice AI Agent opnieuw aanmaken</strong> (Voice AI → Agents → New Agent). Plak de system prompt en first message uit tab <em>Prompt</em>.
+                Die teksten gebruiken al <code>{`{{custom_values.restaurant_name}}`}</code>, dus werken meteen voor élke klant.
+              </li>
+              <li>
+                <strong>Tools koppelen</strong> aan de nieuwe agent: selecteer de 4 Custom Actions die uit de snapshot komen
+                (<code>check_availability</code>, <code>book_reservation</code>, <code>cancel_reservation</code>, <code>log_call</code>).
+              </li>
+              <li>
+                <strong>Telefoonnummer (Twilio) koppelen</strong> aan de agent of doorschakelen vanaf het bestaande restaurantnummer.
+              </li>
+              <li>
+                <strong>"Trainen" per Custom Action</strong>: open elke action, plak tijdelijk de test-payload uit tab <em>Actions → Trainen</em>,
+                klik <em>Test</em>, sla de response sample op en map de velden. Daarna body terugzetten naar de versie met <code>{`{{...}}`}</code>.
+                Zonder deze stap blijven custom fields leeg na een echte call.
+              </li>
+            </ol>
+            <p className="text-xs text-muted-foreground pt-2 border-t border-border">
+              Stappen 1, 2 en 5 kosten ~5 minuten. Stappen 3, 4 en 6 samen ~15 minuten. Reken op ~20-25 min per nieuwe klant.
+            </p>
+          </Card>
+
+          <Card className="p-4 space-y-3">
+            <h3 className="font-display text-base">Wat je in deze pagina al hebt gedaan om snapshot-ready te zijn</h3>
+            <ul className="text-sm space-y-1.5 list-disc pl-4 text-muted-foreground">
+              <li>Tool URLs gebruiken <code>{`{{custom_values.tablewise_base_url}}`}</code> i.p.v. een hardcoded URL — staging/prod-split mogelijk.</li>
+              <li>Tool headers gebruiken <code>{`{{custom_values.tablewise_api_key}}`}</code> — geen sleutel in de Custom Action body.</li>
+              <li>System prompt + first message gebruiken <code>{`{{custom_values.restaurant_name}}`}</code> — zelfde tekst werkt in elke sub-account.</li>
+              <li>SMS-bodies in workflow gebruiken <code>{`{{custom_values.restaurant_name}}`}</code>.</li>
+              <li>Identity-velden komen uit native HighLevel <code>{`{{contact.*}}`}</code> — bestaan automatisch in elke sub-account.</li>
+              <li>Custom Fields zijn generiek (geen restaurantnaam in de field-naam) — herbruikbaar zonder rename.</li>
+            </ul>
+          </Card>
+        </TabsContent>
       </Tabs>
     </div>
   );
