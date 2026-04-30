@@ -275,6 +275,49 @@ steps:
   -H "X-Agent-Api-Key: ${apiKey}" \\
   -d '{"date":"2026-05-15","party_size":2}'`;
 
+  // Realistische test-payloads — gebruikt in tab "Trainen" zodat ClickWise een
+  // echte response ziet en daar custom-field-mappings op kan baseren.
+  const trainCheck = `{
+  "date": "2026-05-15",
+  "party_size": 2
+}`;
+
+  const trainBook = `{
+  "date": "2026-05-15",
+  "time": "19:30",
+  "party_size": 2,
+  "guest": {
+    "first_name": "Test",
+    "last_name": "Tester",
+    "phone": "+31600000000",
+    "email": "test@example.com"
+  },
+  "notes": "Trainingsboeking — mag verwijderd worden",
+  "source_metadata": {
+    "agent_provider": "clickwise",
+    "external_call_id": "train_001"
+  }
+}`;
+
+  const trainCancel = `{
+  "reservation_id": "<plak-reservation_id-uit-book-test-response>",
+  "reason": "training"
+}`;
+
+  const trainLog = `{
+  "external_call_id": "train_001",
+  "caller_phone": "+31600000000",
+  "outcome": "booked",
+  "reservation_id": "<plak-reservation_id-uit-book-test-response>",
+  "duration_seconds": 42,
+  "summary": "Trainingsgesprek voor response-mapping"
+}`;
+
+  const hoppscotchUrl = `${FN_BASE}/check_availability`;
+  const hoppscotchHeaders = `Content-Type: application/json
+X-Agent-Api-Key: ${apiKey}`;
+  const hoppscotchBody = `{"date":"2026-05-15","party_size":2}`;
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -349,9 +392,24 @@ steps:
             <p>Maak een workflow met trigger <em>Inbound Call</em> die de agent activeert en na afloop SMS verstuurt. Zie tab <em>Workflow</em> voor de YAML-structuur.</p>
           </StepCard>
 
-          <StepCard n={6} title="Testen" icon={Phone}>
-            <p>Bel het nummer, doe een testreservering, controleer in TableWise → <code>/app/reserveringen</code> én in <code>/app/admin/logs</code> dat de events binnenkomen. Zie tab <em>Test</em>.</p>
+          <StepCard n={5.5 as unknown as number} title="Trainen — laat ClickWise de response herkennen" icon={Wrench}>
+            <p>
+              ClickWise weet pas welke velden uit de TableWise-response (zoals <code>reservation_id</code>, <code>availableSlots</code>) bestaan
+              <strong> nadat het één keer een echte response heeft gezien</strong>. Dat doe je per Custom Action met een testaanroep met écht ingevulde waarden.
+            </p>
+            <ol className="list-decimal pl-4 space-y-1.5">
+              <li>Open een Custom Action (bv. <code>book_reservation</code>) in ClickWise.</li>
+              <li>Vervang het body-veld tijdelijk door de <strong>test-payload</strong> uit tab <em>Actions → Trainen</em>.</li>
+              <li>Klik <em>Test</em> / <em>Run test</em>. Je ziet de echte JSON-response.</li>
+              <li>Klik <em>Save response sample</em> (of <em>Map fields</em>) en koppel velden zoals <code>response.reservation_id</code> → custom field <code>reservation_id</code>.</li>
+              <li><strong>Belangrijk:</strong> zet de body daarna terug naar de versie met <code>{`{{...}}`}</code> placeholders, anders boekt elke beller "Test Tester".</li>
+            </ol>
           </StepCard>
+
+          <StepCard n={6} title="Testen" icon={Phone}>
+            <p>Heb je in stap 5.5 alle 4 de tools getraind? Dan vult de end-to-end belproef de custom fields automatisch. Bel het nummer, doe een testreservering en controleer in TableWise → <code>/app/reserveringen</code> én <code>/app/admin/logs</code>. Zie tab <em>Test</em>.</p>
+          </StepCard>
+
         </TabsContent>
 
         {/* PROMPT */}
@@ -404,6 +462,28 @@ steps:
               </AccordionContent>
             </AccordionItem>
           </Accordion>
+
+          <Card className="p-4 space-y-3 border-amber-500/30 bg-amber-500/5">
+            <h3 className="font-display text-base flex items-center gap-2">
+              <Wrench className="h-4 w-4 text-amber-600" />
+              Trainen — eenmalige test-payloads voor response-mapping
+            </h3>
+            <p className="text-sm text-muted-foreground">
+              Plak per Custom Action <strong>tijdelijk</strong> de payload hieronder in het body-veld en klik <em>Test</em> in ClickWise.
+              Zo ziet ClickWise een echte response en kun je velden zoals <code>response.reservation_id</code> mappen naar custom fields.
+              <strong> Zet de body daarna terug naar de versie met <code>{`{{...}}`}</code> placeholders</strong> uit het accordion hierboven.
+            </p>
+            <div className="grid gap-3">
+              <CopyBlock label="check_availability — test body" value={trainCheck} lang="json" />
+              <CopyBlock label="book_reservation — test body" value={trainBook} lang="json" />
+              <CopyBlock label="cancel_reservation — test body" value={trainCancel} lang="json" />
+              <CopyBlock label="log_call — test body" value={trainLog} lang="json" />
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Tip: voer ze in deze volgorde uit. De <code>reservation_id</code> uit de book-test plak je in de cancel- en log-test.
+              Verwijder de testreservering daarna in <code>/app/reserveringen</code>.
+            </p>
+          </Card>
         </TabsContent>
 
         {/* VALUES */}
@@ -446,13 +526,62 @@ steps:
 
         {/* TEST */}
         <TabsContent value="test" className="space-y-4">
-          <Card className="p-4 space-y-3">
-            <h3 className="font-display text-base">Test 1 — API key direct (curl)</h3>
-            <p className="text-sm text-muted-foreground">Verwacht een 200 met <code>availableSlots</code>.</p>
-            <CopyBlock value={testCurl} lang="bash" />
+          <Card className="p-4 space-y-3 border-primary/30 bg-primary/5">
+            <h3 className="font-display text-base">Test 1 — Valideer de API key buiten ClickWise</h3>
+            <p className="text-sm text-muted-foreground">
+              Doe deze test <strong>vóórdat</strong> je in ClickWise gaat klikken. Hiermee bewijs je dat je sleutel werkt en dat de TableWise-endpoint bereikbaar is.
+              Verwacht een <code>200</code> met <code>availableSlots</code>. Lukt dit niet? Dan ligt het aan TableWise/sleutel — niet aan ClickWise.
+            </p>
+            <div className="rounded-md border border-amber-500/30 bg-amber-500/5 p-3 text-xs text-muted-foreground">
+              <strong className="text-foreground">Let op:</strong> ClickWise/HighLevel heeft géén losse "curl-knop". De Custom Actions die je later in ClickWise bouwt
+              dóén feitelijk hetzelfde als deze curl onder de motorkap. Deze test is dus alleen voor jouw eigen zekerheid vooraf, op je eigen machine of in een browsertool.
+            </div>
+
+            <Accordion type="single" collapsible defaultValue="curl">
+              <AccordionItem value="curl">
+                <AccordionTrigger>Optie A — Terminal (curl)</AccordionTrigger>
+                <AccordionContent className="space-y-2">
+                  <p className="text-sm text-muted-foreground">Mac/Linux: open <em>Terminal</em>. Windows: open <em>PowerShell</em> of <em>WSL</em>. Plak en run:</p>
+                  <CopyBlock value={testCurl} lang="bash" />
+                </AccordionContent>
+              </AccordionItem>
+              <AccordionItem value="hopp">
+                <AccordionTrigger>Optie B — Browser (hoppscotch.io, gratis)</AccordionTrigger>
+                <AccordionContent className="space-y-3">
+                  <ol className="text-sm space-y-1 list-decimal pl-4">
+                    <li>Ga naar <a href="https://hoppscotch.io" target="_blank" rel="noreferrer" className="text-primary underline">hoppscotch.io</a>.</li>
+                    <li>Methode = <strong>POST</strong>. Plak de URL hieronder.</li>
+                    <li>Tab <em>Headers</em>: voeg de twee headers hieronder toe.</li>
+                    <li>Tab <em>Body</em> → <em>Raw input</em> → <em>application/json</em>: plak de body.</li>
+                    <li>Klik <em>Send</em>. Verwacht <code>200</code>.</li>
+                  </ol>
+                  <CopyBlock label="URL" value={hoppscotchUrl} lang="text" />
+                  <CopyBlock label="Headers" value={hoppscotchHeaders} lang="text" />
+                  <CopyBlock label="Body (JSON)" value={hoppscotchBody} lang="json" />
+                </AccordionContent>
+              </AccordionItem>
+              <AccordionItem value="postman">
+                <AccordionTrigger>Optie C — Postman / Insomnia</AccordionTrigger>
+                <AccordionContent className="space-y-3">
+                  <ol className="text-sm space-y-1 list-decimal pl-4">
+                    <li>Nieuwe request → methode <strong>POST</strong> → URL plakken.</li>
+                    <li>Headers tab: beide headers plakken.</li>
+                    <li>Body → raw → JSON: body plakken.</li>
+                    <li>Send. Verwacht <code>200</code>.</li>
+                  </ol>
+                  <CopyBlock label="URL" value={hoppscotchUrl} lang="text" />
+                  <CopyBlock label="Headers" value={hoppscotchHeaders} lang="text" />
+                  <CopyBlock label="Body (JSON)" value={hoppscotchBody} lang="json" />
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>
           </Card>
+
           <Card className="p-4 space-y-2">
             <h3 className="font-display text-base">Test 2 — End-to-end belscript</h3>
+            <p className="text-sm text-muted-foreground">
+              Pas uitvoeren als je tools getraind hebt (zie tab <em>Actions → Trainen</em>). Anders blijven de custom fields leeg na de call.
+            </p>
             <ol className="text-sm space-y-1.5 list-decimal pl-4">
               <li>Bel het gekoppelde nummer.</li>
               <li>"Ik wil graag reserveren voor 2 personen, vrijdag om 19:30."</li>
@@ -469,8 +598,10 @@ steps:
               <li><strong>403 auth_scope_missing</strong> — sleutel mist scope. Maak nieuwe sleutel met scopes <code>availability, book, cancel</code>.</li>
               <li><strong>409 timeslot_unavailable</strong> — verwacht gedrag bij vol; agent moet dan alternatieven voorstellen.</li>
               <li><strong>Agent boekt zonder bevestiging</strong> — versterk in prompt: "Pas NA mondelinge bevestiging".</li>
+              <li><strong>Custom fields blijven leeg na call</strong> — tools zijn nog niet getraind. Zie tab <em>Actions → Trainen</em>.</li>
             </ul>
           </Card>
+
         </TabsContent>
       </Tabs>
     </div>
