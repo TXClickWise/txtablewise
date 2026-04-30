@@ -79,7 +79,7 @@ Je helpt bellers met drie dingen:
 # Hoe je een reservering maakt
 1. Vraag: aantal personen, gewenste datum, gewenste tijd.
 2. Roep ALTIJD eerst de tool \`check_availability\` aan.
-3. Als beschikbaar: vraag voornaam, achternaam, telefoonnummer (mailadres alleen als gast die zelf noemt).
+3. Naam, telefoon en e-mail komen waar mogelijk uit het ClickWise-contact (\`{{contact.first_name}} {{contact.last_name}}\`, \`{{contact.phone}}\`, \`{{contact.email}}\`). Vraag alleen wat ontbreekt — vrijwel altijd minstens voornaam + achternaam, e-mail alleen als de gast die zelf noemt.
 4. Bevestig samengevat: "Dus ik noteer: {voornaam} {achternaam}, {personen} personen op {datum} om {tijd}, klopt dat?"
 5. Pas NA mondelinge bevestiging roep je \`book_reservation\` aan.
 6. Geef de gast de bevestiging: "Top, jullie tafel staat genoteerd. Je krijgt een bevestiging per sms/whatsapp."
@@ -148,10 +148,10 @@ Roep ALTIJD \`log_call\` aan met de samenvatting, outcome (booked/changed/cancel
     "time": "{{time}}",
     "party_size": {{party_size}},
     "guest": {
-      "first_name": "{{guest_first_name}}",
-      "last_name": "{{guest_last_name}}",
-      "phone": "{{caller_phone}}",
-      "email": "{{guest_email}}"
+      "first_name": "{{contact.first_name}}",
+      "last_name": "{{contact.last_name}}",
+      "phone": "{{contact.phone}}",
+      "email": "{{contact.email}}"
     },
     "notes": "{{notes}}",
     "source_metadata": {
@@ -187,7 +187,7 @@ Roep ALTIJD \`log_call\` aan met de samenvatting, outcome (booked/changed/cancel
   },
   "body": {
     "external_call_id": "{{call.id}}",
-    "caller_phone": "{{caller_phone}}",
+    "caller_phone": "{{contact.phone}}",
     "outcome": "{{outcome}}",
     "reservation_id": "{{reservation_id}}",
     "duration_seconds": {{call.duration_seconds}},
@@ -203,11 +203,14 @@ restaurant_phone = +31 20 000 0000
 restaurant_address = <adres>
 opening_hours_short = di t/m za 17:00–22:00, zondag 17:00–21:00`;
 
-  const customFields = `// Contact (custom fields op contact-niveau)
-- guest_first_name        | Text
-- guest_last_name         | Text
-- guest_email             | Text
-- caller_phone            | Phone
+  const standardFields = `// Deze velden zijn STANDAARD in ClickWise/HighLevel — NIET aanmaken.
+// Gebruik ze direct via {{contact.<veld>}} in tools, prompts en workflows.
+- voornaam            → {{contact.first_name}}
+- achternaam          → {{contact.last_name}}
+- telefoon (beller)   → {{contact.phone}}     // wordt bij inbound call automatisch gevuld
+- e-mailadres         → {{contact.email}}`;
+
+  const customFields = `// Contact (alleen TableWise-specifiek)
 - preferred_language      | Text (nl/en)
 
 // Reservering (custom fields op opportunity/conversation)
@@ -246,25 +249,25 @@ steps:
     if: "{{outcome}} == 'booked' && {{reservation_id}} != ''"
     then:
       - send_sms:
-          to: "{{caller_phone}}"
+          to: "{{contact.phone}}"
           body: "Bedankt voor je reservering bij {{custom_values.restaurant_name}} op {{reservation_date}} om {{reservation_time}}. Tot dan!"
       - add_tag: "tw_reservation_booked_via_voice"
     else: goto: 9_handoff
 
   3_cancel_done:
     type: send_sms
-    to: "{{caller_phone}}"
+    to: "{{contact.phone}}"
     body: "Je reservering bij {{custom_values.restaurant_name}} is geannuleerd. Welkom terug wanneer het uitkomt."
 
   4_change_done:
     type: send_sms
-    to: "{{caller_phone}}"
+    to: "{{contact.phone}}"
     body: "Je reservering is gewijzigd naar {{reservation_date}} {{reservation_time}}. Tot dan!"
 
   9_handoff:
     type: notify_team
     channel: internal
-    message: "Voice agent kon gast {{caller_phone}} niet helpen. Bel terug. Samenvatting: {{summary}}"
+    message: "Voice agent kon gast {{contact.phone}} niet helpen. Bel terug. Samenvatting: {{summary}}"
 `;
 
   const testCurl = `curl -X POST ${FN_BASE}/check_availability \\
@@ -409,8 +412,23 @@ steps:
             <h3 className="font-display text-base">Custom Values (Settings → Custom Values)</h3>
             <CopyBlock value={customValues} lang="env" />
           </Card>
+          <Card className="p-4 space-y-3 border-emerald-500/30 bg-emerald-500/5">
+            <div className="flex items-center gap-2">
+              <Check className="h-4 w-4 text-emerald-600" />
+              <h3 className="font-display text-base">Standaard ClickWise/HighLevel velden — NIET aanmaken</h3>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              Voor naam, telefoon en e-mail gebruiken we de standaard contactvelden van ClickWise.
+              Voordeel: automatische deduplicatie op telefoon/e-mail, contact wordt bij inbound call automatisch herkend of aangemaakt,
+              en alle native SMS/e-mail-acties werken zonder extra mapping.
+            </p>
+            <CopyBlock value={standardFields} lang="text" />
+          </Card>
           <Card className="p-4 space-y-3">
-            <h3 className="font-display text-base">Custom Fields (Settings → Custom Fields)</h3>
+            <h3 className="font-display text-base">Custom Fields die je WEL aanmaakt (Settings → Custom Fields)</h3>
+            <p className="text-sm text-muted-foreground">
+              Alleen TableWise-specifieke velden — de standaardvelden hierboven niet dupliceren.
+            </p>
             <CopyBlock value={customFields} lang="text" />
           </Card>
         </TabsContent>

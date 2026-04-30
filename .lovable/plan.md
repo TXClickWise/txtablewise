@@ -1,72 +1,61 @@
-# Bouwplan — Ronde 1 t/m 8 vereenvoudiging
+## Doel
+Vervang in de admin-setupgids voor de ClickWise Voice Agent het onnodige gebruik van custom fields voor naam/telefoon/e-mail door de **standaard contactvelden** van HighLevel/ClickWise. Dat is simpeler, voorkomt dubbele velden en zorgt dat alle bestaande HL-features (SMS, e-mail, contact-merge, deduplicatie, opt-in tracking) automatisch werken.
 
-Ik begin **deze ronde met Ronde 1**. De rest beschrijf ik per ronde zodat je vooraf weet wat erin zit; ik bouw ze één voor één in volgende rondes (na jouw seintje per ronde, of in één keer door als je dat liever hebt).
+## Wijzigingen op `AdminClickWiseVoiceSetupPage.tsx`
 
-## Ronde 1 — Fundament Advanced Mode (deze loop)
+### 1. Custom fields lijst opschonen
+**Verwijderen** uit het Custom Fields blok (zijn standaard in HL):
+- `guest_first_name` → standaard `contact.first_name`
+- `guest_last_name` → standaard `contact.last_name`
+- `guest_email` → standaard `contact.email`
+- `caller_phone` → standaard `contact.phone`
 
-**Nieuwe bestanden**
-- `src/hooks/useAdvancedMode.tsx` — leest `is_system_admin()` + `restaurants.metadata.advanced_mode`. Levert `{ enabled, isAdmin, canSeeAdvanced, setEnabled, toggle }`. Schrijft naar `restaurants.metadata` en invalidateert `my-restaurants` query.
-- `src/components/AdvancedOnly.tsx` — wrapper: `<AdvancedOnly>...</AdvancedOnly>` rendert children alleen als `canSeeAdvanced`. Optioneel `fallback` prop voor placeholder.
+**Behouden als custom fields** (echt TableWise-specifiek):
+- `preferred_language`, `reservation_id`, `reservation_code`, `reservation_date`, `reservation_time`, `party_size`, `notes`, `cancel_reason`, `outcome`, `summary`
 
-**Wijzigingen in bestaande bestanden**
-- `src/components/AppSidebar.tsx`:
-  - Voeg `advanced?: boolean` toe aan `Item`-type.
-  - Markeer als `advanced: true`: `Integraties` (in beheer-groep), en in admin-groep blijft alles admin-only zoals nu (wordt al gefilterd op `isSystemAdmin`).
-  - Filter elke groep op `canSeeAdvanced` voordat ze gerenderd worden. Items zonder `advanced`-flag blijven altijd zichtbaar.
-- `src/pages/app/settings/GeneralSettings.tsx`:
-  - Nieuwe Card "Geavanceerde modus" onderaan met `Switch` (uit/aan) + korte uitleg ("Toon technische opties zoals webhooks, integratie-logs en API-mappings. Voor de meeste restaurants niet nodig.").
-  - Gebruikt `useAdvancedMode().enabled` + `setEnabled`.
+Nieuwe sectie toevoegen boven custom fields: **"Standaard HighLevel velden die we hergebruiken"** met een korte mappingtabel:
 
-**Geen DB-migratie nodig** — `restaurants.metadata` is al `jsonb`. Geen RLS-wijziging — managers kunnen al `restaurants` updaten.
+```
+TableWise veld        → HighLevel standaardveld
+voornaam              → contact.first_name
+achternaam            → contact.last_name
+telefoon (beller)     → contact.phone
+e-mail                → contact.email
+```
 
-**Niet stuk gemaakt**
-- Routes blijven werken (alleen sidebar-link verborgen).
-- Admin-sectie blijft op `isSystemAdmin` zoals nu.
+### 2. Tool/action JSON-payloads aanpassen
+In `book_reservation` action body:
+```json
+"first_name": "{{contact.first_name}}",
+"last_name":  "{{contact.last_name}}",
+"phone":      "{{contact.phone}}",
+"email":      "{{contact.email}}"
+```
+(was: `{{guest_first_name}}`, `{{caller_phone}}`, etc.)
 
-## Ronde 2 — Simpele Koppelingen-pagina (`/app/koppelingen`)
+In `log_call` action body:
+```json
+"caller_phone": "{{contact.phone}}"
+```
 
-- Nieuwe pagina + route. Eén kaart per integratie: ClickWise, AI Voice (ClickWise), POS (Loyverse), Webhook.
-- Per kaart: status badge (Verbonden / Niet verbonden / Fout), `Test verbinding`-knop, `Aan/Uit`-switch waar van toepassing, één-zin uitleg in mensentaal.
-- Footer-link "Geavanceerd beheren →" wrapped in `<AdvancedOnly>` → leidt naar bestaande `IntegrationHubPage`.
-- Sidebar item "Integraties" laat ik **dubbel** bestaan: standaard wijst naar `/app/koppelingen` (simpel), de oude `/app/integraties` (Hub) wordt `advanced: true`.
+Toelichting toevoegen: tijdens een inbound call vult HL `contact.phone` automatisch met het nummer van de beller; bij nieuwe contacten wordt het contact automatisch aangemaakt op basis van dit nummer.
 
-## Ronde 3 — Vereenvoudigde logs
+### 3. Workflow YAML aanpassen
+Vervang in alle `send_sms`, `notify_team` en condition-stappen:
+- `{{caller_phone}}` → `{{contact.phone}}`
+- (eventuele `{{guest_email}}` → `{{contact.email}}`)
 
-- Nieuwe component `src/components/integrations/SimpleEventLog.tsx`: per event ✅/❌-badge, actienaam in mensentaal, tijdstip (relatief), bij fout een korte uitleg + "Wat te doen"-tip (uit `tw-errors` mapping).
-- `IntegrationLogsPage` toont default `SimpleEventLog`, met knop "Toon technische details" (achter `<AdvancedOnly>`) die de bestaande raw-tabel toont.
+### 4. System prompt — kleine notitie
+In de prompt toevoegen onder "Hoe je een reservering maakt": *"Naam, telefoon en e-mail komen uit het HighLevel-contact ({{contact.first_name}} {{contact.last_name}}, {{contact.phone}}, {{contact.email}}). Vraag alleen wat ontbreekt."*
 
-## Ronde 4 — ReservationService abstractie
+### 5. Stap "Custom values & velden aanmaken"
+- Eerst tonen: **"Geen actie nodig — deze velden zijn al standaard in ClickWise"** (groene check-stijl met de 4 standaardvelden).
+- Daaronder: **"Custom fields die je wél moet aanmaken"** (de afgeslankte lijst).
 
-- `src/services/reservationService.ts` met `check()`, `book()`, `cancel()`, `reschedule()` — bundelt de aanroepen naar `availability` + `book_reservation` + `manage_reservation` edge functions.
-- Centrale validatie + retry + error mapping (hergebruik `tw-errors` codes als die in client beschikbaar moeten zijn).
-- Refactor in volgorde: `WalkInDialog`, `ReservationFormSheet`, publieke booking widget. Edge functions blijven 100% ongewijzigd.
+## Bestanden
+- `src/pages/app/admin/AdminClickWiseVoiceSetupPage.tsx` — enige wijziging.
 
-## Ronde 5 — AI Voice Agent simplificatie (afmaken)
-
-- Server-deel is al af (nieuwe `/public_api/reservation-request` endpoint).
-- Restant: `/app/voice-agent` opsplitsen in twee tabs: "Status & test" (eindgebruiker, simpel) en "Configuratie" (achter `<AdvancedOnly>` — prompts, mapping, secrets).
-- `agent_api`-pad refactoren naar dezelfde simpele flow waar nog niet gedaan.
-
-## Ronde 6 — Defaults boven opties
-
-- Audit per settings-pagina (`NoShowPreventionPage`, `WaitlistPage`, deposit-secties, preorders-flags).
-- Toggles met aanbevolen-default = aan worden verstopt achter een `Accordion` "Geavanceerde instellingen" binnen elke pagina.
-
-## Ronde 7 — Eén vaste reserveringsflow
-
-- Audit publieke widget (`/r/:slug`) + interne `ReservationFormSheet`.
-- Consolideer naar één flow: datum → tijd → personen → contact → bevestig.
-- Alternatieve paden (occasion-first, pre-order-first) achter "Meer opties"-link.
-
-## Ronde 8 — UX sweep
-
-- Loop alle `/app/*` pagina's langs met test "begrijpt een ondernemer dit zonder uitleg?".
-- Versimpel headers, verwijder jargon, voeg empty-state uitleg toe.
-- Geen functionaliteit verwijderen — alleen taal en informatiehiërarchie.
-
-## Guardrails (elke ronde)
-
-- Geen routes verwijderen — alleen verbergen.
-- Geen edge functions of DB-velden verwijderen.
-- Geen RLS-wijzigingen tenzij expliciet nodig.
-- Geen kleuren hardcoded — alle styling via design tokens.
+## Resultaat
+- Korter, duidelijker setup voor de admin (4 minder velden om handmatig aan te maken).
+- Compatible met ClickWise/HL native contact-flows (deduplicatie op telefoon/e-mail, SMS/e-mail-acties zonder mapping).
+- Voice agent payloads en workflows verwijzen consistent naar `{{contact.*}}` voor identiteitsvelden en custom fields alléén voor reserveringsdata.
