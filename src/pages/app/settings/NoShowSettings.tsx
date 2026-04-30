@@ -220,16 +220,21 @@ const NoShowSettings = () => {
             title="Tegoedbon mogelijk i.p.v. boete"
             help="Bij no-show kan het bedrag als tegoedbon worden gegeven — gastvrijer dan een harde boete."
           />
-          <ToggleRow
-            checked={form.deposit_exempt_vip}
-            onChange={(v) => set("deposit_exempt_vip", v)}
-            title="VIP gasten uitzonderen"
-          />
-          <ToggleRow
-            checked={form.deposit_exempt_regulars}
-            onChange={(v) => set("deposit_exempt_regulars", v)}
-            title="Vaste gasten uitzonderen"
-          />
+          <AdvancedSection
+            title="Uitzonderingen voor specifieke gasten"
+            description="VIPs en vaste gasten standaard vrijstellen — gastvrijer dan iedereen hetzelfde behandelen."
+          >
+            <ToggleRow
+              checked={form.deposit_exempt_vip}
+              onChange={(v) => set("deposit_exempt_vip", v)}
+              title="VIP gasten uitzonderen"
+            />
+            <ToggleRow
+              checked={form.deposit_exempt_regulars}
+              onChange={(v) => set("deposit_exempt_regulars", v)}
+              title="Vaste gasten uitzonderen"
+            />
+          </AdvancedSection>
           <Field label="Tekst richting gast">
             <Textarea
               rows={3}
