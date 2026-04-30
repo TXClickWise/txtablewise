@@ -734,6 +734,97 @@ X-Agent-Api-Key: ${apiKey}`;
         </TabsContent>
 
         {/* TEST */}
+        {/* INBOUND WEBHOOKS */}
+        <TabsContent value="inbound" className="space-y-4">
+          <Card className="p-4 space-y-3">
+            <div className="flex items-center gap-2">
+              <Webhook className="h-4 w-4 text-primary" />
+              <h3 className="font-display text-base">ClickWise luistert naar TableWise</h3>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              De voice agent stuurt een gesprek <em>naar</em> TableWise. Maar voor bevestigingen, reminders, reviews en wachtlijst-meldingen
+              moet ClickWise juist <em>luisteren</em> naar events die TableWise zelf uitstuurt — bijvoorbeeld 24u voor de reservering.
+            </p>
+            <div className="grid sm:grid-cols-2 gap-3 text-sm">
+              <div className="rounded-md border border-border bg-muted/30 p-3 space-y-1">
+                <p className="font-medium flex items-center gap-1.5"><ArrowRight className="h-3.5 w-3.5 text-primary" /> Voice agent (al gedaan)</p>
+                <p className="text-xs text-muted-foreground">ClickWise → TableWise. Custom Actions roepen <code>agent_api</code> aan tijdens een belgesprek.</p>
+              </div>
+              <div className="rounded-md border border-primary/40 bg-primary/5 p-3 space-y-1">
+                <p className="font-medium flex items-center gap-1.5"><ArrowLeft className="h-3.5 w-3.5 text-primary" /> Inbound webhooks (deze tab)</p>
+                <p className="text-xs text-muted-foreground">TableWise → ClickWise. 11 event-typen via <code>dispatch_webhooks</code> naar één Inbound Webhook trigger per event.</p>
+              </div>
+            </div>
+          </Card>
+
+          <Card className="p-4 space-y-3">
+            <h3 className="font-display text-base">Universele payload-envelope</h3>
+            <p className="text-sm text-muted-foreground">
+              Elke POST van TableWise heeft dezelfde top-level structuur. <code>payload</code> verschilt per event-type.
+              Headers die je in ClickWise kunt uitlezen:
+              <code className="mx-1">X-TableWise-Event</code>,
+              <code className="mx-1">X-TableWise-Event-Id</code>,
+              <code className="mx-1">X-TableWise-Endpoint</code> en (bij gebruik van een secret) <code>X-TableWise-Signature</code>.
+            </p>
+            <CopyBlock label="Body" value={inboundEnvelope} lang="json" />
+          </Card>
+
+          <Card className="p-4 space-y-3">
+            <h3 className="font-display text-base">Stap-voor-stap: één event opzetten in ClickWise</h3>
+            <ol className="text-sm space-y-2 list-decimal pl-4">
+              <li>ClickWise → <em>Automation</em> → <em>Workflow</em> → <em>New</em> → trigger: <strong>Inbound Webhook</strong>.</li>
+              <li>Workflow-naam consistent maken: <code>TW — &lt;event_label&gt;</code> (bv. <code>TW — 24u-reminder</code>). Maakt snapshot-herkenning makkelijker.</li>
+              <li>Kopieer de unieke <strong>webhook URL</strong> die ClickWise toont na opslaan.</li>
+              <li>
+                In TableWise: ga naar <em>Settings → API & Webhooks</em> → <em>Endpoint toevoegen</em>.
+                <ul className="list-disc pl-5 mt-1 text-muted-foreground space-y-0.5">
+                  <li><strong>Label</strong>: zelfde als workflow-naam.</li>
+                  <li><strong>URL</strong>: de webhook URL uit ClickWise.</li>
+                  <li><strong>Events</strong>: alleen het matchende event-type (of <code>*</code> voor alles).</li>
+                </ul>
+              </li>
+              <li>(Optioneel) Generate webhook secret in TableWise → vul als custom value <code>tablewise_webhook_secret</code> in ClickWise. Voeg dan de HMAC-step toe (zie verderop).</li>
+              <li>Test in TableWise → <em>Stuur testevent</em> → controleer in ClickWise <em>Workflow → Execution log</em> of de trigger is afgegaan.</li>
+            </ol>
+          </Card>
+
+          <Card className="p-4 space-y-3">
+            <h3 className="font-display text-base">11 aanbevolen workflows</h3>
+            <p className="text-sm text-muted-foreground">
+              Dit zijn alle event-typen die TableWise vandaag uitstuurt. Bouw bij voorkeur voor élk type een aparte workflow — dat houdt SMS-templates beheersbaar en logs leesbaar.
+            </p>
+            <Accordion type="single" collapsible className="w-full">
+              {inboundEvents.map((ev) => (
+                <AccordionItem key={ev.key} value={ev.key}>
+                  <AccordionTrigger className="text-sm">
+                    <div className="flex items-center gap-2 text-left">
+                      <span className="font-medium">{ev.label}</span>
+                      <code className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">{ev.key}</code>
+                    </div>
+                  </AccordionTrigger>
+                  <AccordionContent className="space-y-2 text-sm">
+                    <p><strong>Doel:</strong> {ev.purpose}</p>
+                    <p><strong>Suggestie:</strong> {ev.suggestedAction}</p>
+                    <CopyBlock label="Sample payload" value={ev.samplePayload} lang="json" />
+                  </AccordionContent>
+                </AccordionItem>
+              ))}
+            </Accordion>
+          </Card>
+
+          <Card className="p-4 space-y-3 border-primary/30 bg-primary/5">
+            <h3 className="font-display text-base flex items-center gap-2">
+              <ShieldCheck className="h-4 w-4 text-primary" />
+              HMAC-validatie (optioneel maar aanbevolen)
+            </h3>
+            <p className="text-sm text-muted-foreground">
+              HighLevel valideert <code>X-TableWise-Signature</code> niet automatisch. Voeg deze Custom Code-step als 1<sup>e</sup> stap in elke inbound-workflow toe — dan weiger je gespoofte requests.
+              Vereist custom value <code>tablewise_webhook_secret</code> (per sub-account; matcht het secret in TableWise endpoint).
+            </p>
+            <CopyBlock label="Custom Code (JS)" value={hmacSnippet} lang="javascript" />
+          </Card>
+        </TabsContent>
+
         <TabsContent value="test" className="space-y-4">
           <Card className="p-4 space-y-3 border-primary/30 bg-primary/5">
             <h3 className="font-display text-base">Test 1 — Valideer de API key buiten ClickWise</h3>
