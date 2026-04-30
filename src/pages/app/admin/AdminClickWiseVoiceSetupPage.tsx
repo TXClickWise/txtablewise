@@ -925,6 +925,7 @@ X-Agent-Api-Key: ${apiKey}`;
                   <li>Custom Values (sleutels, mét waarden)</li>
                   <li>Custom Fields (definities)</li>
                   <li>Workflow "Voice Agent — Inbound call → TableWise"</li>
+                  <li>11 Inbound-webhook workflows (TW — reservation.created etc.) — logica blijft, URLs niet</li>
                   <li>SMS-templates en tags</li>
                 </ul>
               </div>
@@ -934,7 +935,8 @@ X-Agent-Api-Key: ${apiKey}`;
                   <li>De AI Voice Agent zelf (handmatig opnieuw)</li>
                   <li>Twilio telefoonnummer-koppeling</li>
                   <li>Response-mapping per Custom Action ("Trainen")</li>
-                  <li>Echte API key-waarde (gebruik placeholder!)</li>
+                  <li>Inbound webhook URLs — uniek per sub-account, per klant in TableWise plakken</li>
+                  <li>Echte API key-waarde + webhook secret (gebruik placeholder!)</li>
                 </ul>
               </div>
             </div>
