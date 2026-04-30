@@ -183,6 +183,7 @@ const ReserveWidget = () => {
   const [occasion, setOccasion] = useState<string>("");
   const [allergies, setAllergies] = useState("");
   const [requests, setRequests] = useState("");
+  const [showMorePrefs, setShowMorePrefs] = useState(false);
 
   // Pre-orders
   const [preOrders, setPreOrders] = useState<SelectedPreOrder[]>([]);
