@@ -43,7 +43,8 @@ const hospitality: Item[] = [
 
 const beheer: Item[] = [
   { title: "Rapportages", url: "/app/rapportages", icon: BarChart3 },
-  { title: "Integraties", url: "/app/integraties", icon: Plug },
+  { title: "Koppelingen", url: "/app/koppelingen", icon: Plug },
+  { title: "Integratiehub", url: "/app/integraties", icon: Plug, advanced: true },
   { title: "Instellingen", url: "/app/instellingen", icon: Settings },
 ];
 
