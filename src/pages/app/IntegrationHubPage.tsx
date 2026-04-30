@@ -113,14 +113,20 @@ export default function IntegrationHubPage() {
       />
 
       <Tabs defaultValue="overview">
-        <TabsList>
+        <TabsList className="flex-wrap h-auto">
           <TabsTrigger value="overview">Overzicht</TabsTrigger>
+          <TabsTrigger value="clickwise-voice"><Phone className="h-3 w-3 mr-1" />ClickWise AI Voice</TabsTrigger>
           <TabsTrigger value="webhooks"><Webhook className="h-3 w-3 mr-1" />Webhooks</TabsTrigger>
           <TabsTrigger value="keys"><KeyRound className="h-3 w-3 mr-1" />API-sleutels</TabsTrigger>
           <TabsTrigger value="voice"><Bot className="h-3 w-3 mr-1" />Voice Agent</TabsTrigger>
           <TabsTrigger value="public"><Plug className="h-3 w-3 mr-1" />Publieke API</TabsTrigger>
           <TabsTrigger value="test"><FlaskConical className="h-3 w-3 mr-1" />Live test</TabsTrigger>
         </TabsList>
+
+        {/* CLICKWISE AI VOICE — extreem simpele eindgebruikerlaag */}
+        <TabsContent value="clickwise-voice" className="space-y-4">
+          <ClickWiseVoiceCard restaurantId={rid} />
+        </TabsContent>
 
         {/* PUBLIEKE API */}
         <TabsContent value="public" className="space-y-4">
