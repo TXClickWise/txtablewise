@@ -275,6 +275,49 @@ steps:
   -H "X-Agent-Api-Key: ${apiKey}" \\
   -d '{"date":"2026-05-15","party_size":2}'`;
 
+  // Realistische test-payloads — gebruikt in tab "Trainen" zodat ClickWise een
+  // echte response ziet en daar custom-field-mappings op kan baseren.
+  const trainCheck = `{
+  "date": "2026-05-15",
+  "party_size": 2
+}`;
+
+  const trainBook = `{
+  "date": "2026-05-15",
+  "time": "19:30",
+  "party_size": 2,
+  "guest": {
+    "first_name": "Test",
+    "last_name": "Tester",
+    "phone": "+31600000000",
+    "email": "test@example.com"
+  },
+  "notes": "Trainingsboeking — mag verwijderd worden",
+  "source_metadata": {
+    "agent_provider": "clickwise",
+    "external_call_id": "train_001"
+  }
+}`;
+
+  const trainCancel = `{
+  "reservation_id": "<plak-reservation_id-uit-book-test-response>",
+  "reason": "training"
+}`;
+
+  const trainLog = `{
+  "external_call_id": "train_001",
+  "caller_phone": "+31600000000",
+  "outcome": "booked",
+  "reservation_id": "<plak-reservation_id-uit-book-test-response>",
+  "duration_seconds": 42,
+  "summary": "Trainingsgesprek voor response-mapping"
+}`;
+
+  const hoppscotchUrl = `${FN_BASE}/check_availability`;
+  const hoppscotchHeaders = `Content-Type: application/json
+X-Agent-Api-Key: ${apiKey}`;
+  const hoppscotchBody = `{"date":"2026-05-15","party_size":2}`;
+
   return (
     <div className="space-y-6">
       <PageHeader
