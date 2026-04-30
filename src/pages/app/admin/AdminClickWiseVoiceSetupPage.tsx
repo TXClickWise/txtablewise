@@ -439,6 +439,14 @@ X-Agent-Api-Key: ${apiKey}`;
             <p>Heb je in stap 5.5 alle 4 de tools getraind? Dan vult de end-to-end belproef de custom fields automatisch. Bel het nummer, doe een testreservering en controleer in TableWise → <code>/app/reserveringen</code> én <code>/app/admin/logs</code>. Zie tab <em>Test</em>.</p>
           </StepCard>
 
+          <StepCard n={7} title="Snapshot maken & hergebruiken voor volgende klanten" icon={Package}>
+            <p>
+              Werkt deze sub-account end-to-end? Exporteer 'm dan als <strong>HighLevel snapshot</strong>.
+              Bij elke nieuwe klant importeer je de snapshot en heb je nog ~6 handmatige stappen.
+              Volledige checklist + placeholder-template staat in tab <em>Snapshot</em>.
+            </p>
+          </StepCard>
+
         </TabsContent>
 
         {/* PROMPT */}
