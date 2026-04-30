@@ -58,7 +58,9 @@ const admin: Item[] = [
   { title: "Pilot readiness", url: "/app/admin/pilot-readiness", icon: ShieldCheck },
 ];
 
-function Group({ label, items, collapsed, pathname, accent, onNavigate }: { label: string; items: Item[]; collapsed: boolean; pathname: string; accent?: boolean; onNavigate?: () => void }) {
+function Group({ label, items, collapsed, pathname, accent, onNavigate, canSeeAdvanced }: { label: string; items: Item[]; collapsed: boolean; pathname: string; accent?: boolean; onNavigate?: () => void; canSeeAdvanced: boolean }) {
+  const visible = items.filter((i) => !i.advanced || canSeeAdvanced);
+  if (visible.length === 0) return null;
   return (
     <SidebarGroup>
       <SidebarGroupLabel className={cn(accent && "text-primary flex items-center gap-1.5")}>
@@ -66,14 +68,19 @@ function Group({ label, items, collapsed, pathname, accent, onNavigate }: { labe
       </SidebarGroupLabel>
       <SidebarGroupContent>
         <SidebarMenu>
-          {items.map((item) => {
+          {visible.map((item) => {
             const active = item.end ? pathname === item.url : pathname.startsWith(item.url);
             return (
               <SidebarMenuItem key={item.url}>
                 <SidebarMenuButton asChild isActive={active}>
                   <NavLink to={item.url} end={item.end} onClick={onNavigate}>
                     <item.icon className="h-4 w-4 shrink-0" />
-                    {!collapsed && <span>{item.title}</span>}
+                    {!collapsed && (
+                      <span className="flex items-center gap-1.5">
+                        {item.title}
+                        {item.advanced && <span className="text-[9px] uppercase tracking-wide text-muted-foreground">adv</span>}
+                      </span>
+                    )}
                   </NavLink>
                 </SidebarMenuButton>
               </SidebarMenuItem>
