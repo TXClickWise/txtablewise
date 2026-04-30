@@ -275,6 +275,9 @@ export default function IntegrationLogsPage() {
           )}
         </SheetContent>
       </Sheet>
+        </>
+      )}
     </div>
+
   );
 }
