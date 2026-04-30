@@ -1,87 +1,95 @@
 ## Doel
 
-Zorg dat de admin-setup voor ClickWise zo is opgezet dat álles wat nu in de "moeder"-subaccount gebouwd wordt, in één HighLevel snapshot past en in een nieuwe sub-account met **maximaal 6 handmatige aanpassingen** werkend is.
+Voeg de volledige inbound-webhook-zijde toe aan de ClickWise admin setup-pagina, zodat ClickWise niet alleen TableWise *belt* (voice agent) maar ook *luistert* naar alle 11 events die TableWise vandaag uitstuurt. Volledig snapshot-ready.
 
-## Achtergrond — wat HighLevel snapshots wél/niet meenemen
+## Achtergrond — wat TableWise nu al uitstuurt
 
-| Onderdeel | Snapshot-bare? | Actie nodig |
-|---|---|---|
-| Custom Values (sleutels + waarden) | Ja, mét waarden | Waarden per klant overschrijven |
-| Custom Fields (definities) | Ja | Geen |
-| Custom Actions / Workflow Actions (definitie + body + headers) | Ja | Geen, mits geen hardcoded keys |
-| Workflows | Ja | Geen |
-| Voice AI Agent | Beperkt — meestal **nee** | Per sub-account opnieuw aanmaken + tools koppelen |
-| Twilio nummer | Nee | Per klant koppelen |
-| Custom Action *response sample / field mapping* | Onbetrouwbaar | "Trainen"-stap per sub-account opnieuw uitvoeren |
+Bron: `supabase/functions/dispatch_webhooks/index.ts` + `LIVE_ALLOWED_EVENTS` in `clickwise_process_event`.
+
+TableWise POST naar elke geconfigureerde webhook URL met deze envelope:
+```json
+{ "id", "event_type", "restaurant_id", "created_at", "payload": {...} }
+```
+Headers: `X-TableWise-Event`, `X-TableWise-Event-Id`, `X-TableWise-Endpoint`, `X-TableWise-Signature` (HMAC-SHA256 met endpoint secret).
+
+De 11 events die we ondersteunen:
+- `reservation.created`, `reservation.updated`, `reservation.cancelled`
+- `reservation.reminder_24h_scheduled`, `reservation.reminder_2h_scheduled`
+- `reservation.reconfirmation_requested`, `reservation.reconfirmed`
+- `review.requested`
+- `waitlist.notification_requested`
+- `guest.created`, `guest.updated`
 
 ## Wijzigingen in `src/pages/app/admin/AdminClickWiseVoiceSetupPage.tsx`
 
-### 1. Nieuwe tab "Snapshot" (laatste tab)
+### 1. Nieuwe constants
+- `inboundEnvelope` — generiek voorbeeld van de body die TableWise altijd POST.
+- `inboundEvents[]` — array van 11 event-objects met `key, label, purpose, suggestedAction, samplePayload`.
 
-Inhoud — drie cards:
+### 2. Nieuwe tab "Inbound webhooks" (tussen Workflow en Test)
+TabsTrigger toevoegen met `Webhook` icoon (lucide-react). TabsContent bevat:
 
-**Card A: "Snapshot bouwen (eenmalig in master sub-account)"**
-- Korte uitleg: bouw alles in één 'master' sub-account, exporteer als snapshot, en hergebruik bij elke klant.
-- Checklist welke onderdelen dééél van de snapshot moeten zijn:
-  - 4 Custom Actions
-  - Custom Values (skelet met placeholders, niet echte keys)
-  - Custom Fields
-  - Workflow "Voice Agent — Inbound call → TableWise"
-- Expliciete waarschuwing: **vul in de master sub-account de Custom Values met dummy-placeholders**, niet met de echte API key van een bestaande klant — anders lekt die mee in elke import.
+**Card A — Concept ("ClickWise luistert naar TableWise")**
+- Korte uitleg van het 2-richtingen-verkeer: voice agent = ClickWise → TableWise; events = TableWise → ClickWise.
+- Diagram-achtige kaart die duidelijk maakt: één Inbound Webhook trigger per event-type in ClickWise.
 
-**Card B: "Per nieuwe klant — wat moet je nog instellen?"**
-Genummerde lijst (de "max 6 handmatige stappen"):
-1. Snapshot importeren in nieuwe sub-account.
-2. **Custom Values** vervangen: `tablewise_api_key`, `tablewise_restaurant_id`, `restaurant_name`, `restaurant_phone`, `restaurant_address`, `opening_hours_short` (`tablewise_base_url` blijft).
-3. **Voice AI Agent** opnieuw aanmaken (system prompt + first message uit tab Prompt) — kan niet via snapshot.
-4. **Tools koppelen** aan de nieuwe agent (de Custom Actions zelf zitten in de snapshot).
-5. **Telefoonnummer (Twilio)** koppelen.
-6. **Trainen** per Custom Action (eenmalige test-run met realistische payload, response sample opslaan, field mapping bevestigen).
+**Card B — Universele payload envelope**
+- `CopyBlock` met `inboundEnvelope` zodat admin de structuur snapt vóór hij workflows bouwt.
+- Uitleg headers: `X-TableWise-Event`, `X-TableWise-Signature`.
 
-**Card C: "Custom Values placeholder-template (master sub-account)"**
-Copy-block met dummy-waarden zodat de master nooit een echte klant-key bevat:
-```
-tablewise_api_key       = REPLACE_PER_CLIENT_tw_live_xxx
-tablewise_restaurant_id = REPLACE_PER_CLIENT_uuid
-tablewise_base_url      = https://lbhtztbpxmqlzhyephew.supabase.co/functions/v1
-restaurant_name         = REPLACE_PER_CLIENT
-restaurant_phone        = REPLACE_PER_CLIENT
-restaurant_address      = REPLACE_PER_CLIENT
-opening_hours_short     = REPLACE_PER_CLIENT
-```
+**Card C — Stap-voor-stap één event opzetten**
+1. ClickWise → Automation → Workflow → New → trigger **Inbound Webhook**.
+2. Workflow-naam: `TW — <event_label>` (consistent voor snapshot-herkenning).
+3. Kopieer de unieke webhook URL die ClickWise toont.
+4. Plak in TableWise → Settings → API & Webhooks → *Endpoint toevoegen*, met label = workflow-naam, event-filter = event-key.
+5. (Optioneel) Generate webhook secret in TableWise → vul in ClickWise als header-validatie in een Custom Code-step.
+6. Test via TableWise → "Stuur testevent" → controleer in ClickWise execution log.
 
-### 2. System prompt snapshot-neutraal maken (tab "Prompt")
+**Card D — Lijst van 11 aanbevolen workflows (Accordion)**
+Per event:
+- Header: label + event-key code badge.
+- Body: `purpose`, `suggestedAction`, `CopyBlock` met sample payload.
 
-- Vervang in de gegenereerde prompt elke harde `${current?.restaurants?.name}` door `{{custom_values.restaurant_name}}`.
-- Idem voor adres/telefoon/openingstijden indien die in de prompt staan.
-- Reden: een snapshot bevat de prompt-tekst zoals jij die plakt; placeholders zorgen dat dezelfde tekst in elke sub-account werkt.
+**Card E — HMAC-validatie (optioneel maar aanbevolen)**
+- Korte uitleg dat HighLevel geen native HMAC heeft.
+- Snippet voor een Custom Code-step die de `X-TableWise-Signature` header valideert tegen het endpoint secret.
 
-### 3. First-message snapshot-neutraal (tab "Prompt")
+### 3. Update Snapshot-tab (`snapshot` TabsContent)
 
-- Huidige tekst gebruikt `${current?.restaurants?.name ?? "<restaurant>"}` letterlijk → vervang in het copy-block door `{{custom_values.restaurant_name}}`.
+**Wel-snapshot lijst uitbreiden:**
+- "11 inbound-webhook workflows (logica blijft, URLs niet)"
 
-### 4. Tools-bodies via Custom Value voor base_url (tab "Actions")
+**Niet-snapshot lijst uitbreiden:**
+- "Inbound webhook URLs — uniek per sub-account, per klant kopiëren naar TableWise"
 
-- Optioneel maar aanbevolen: bouw in elke tool de URL als `{{custom_values.tablewise_base_url}}/check_availability` i.p.v. de letterlijke `https://...supabase.co/functions/v1/check_availability`.
-- Voordeel: één Custom Value omschakelen = staging/prod-split mogelijk, en geen URL hardcoded in snapshot-bodies.
-- Toon een korte toggle/uitleg "Aanbevolen voor snapshot-distributie".
+**Stappen-lijst uitbreiden van 6 naar 7:**
+Stap 7 toevoegen: "Per inbound-workflow: kopieer de unieke ClickWise webhook URL en plak in TableWise → Settings → API & Webhooks (één endpoint per event-type, of één endpoint met `*` filter voor alles)."
 
-### 5. Stappenplan-tab — voeg Step 7 toe
+**Tijdsindicatie aanpassen:** ~25-30 min per nieuwe klant.
 
-- "Snapshot maken & hergebruiken" met verwijzing naar de nieuwe Snapshot-tab.
+### 4. Stappenplan-tab — extra StepCard
 
-### 6. Banner bovenaan de pagina
+Tussen Step 7 (snapshot) en eventuele opvolgers, voeg StepCard 8 toe: "Inbound webhooks koppelen — TableWise laten praten naar ClickWise" met verwijzing naar de nieuwe Inbound webhooks tab.
 
-- Subtiele info-callout: *"Bouw deze setup eenmalig in een 'master' sub-account, exporteer als snapshot, en gebruik die voor elke nieuwe klant. Zie tab Snapshot."*
+### 5. Banner-update bovenaan
+- Update de "Wat ga je opzetten?"-card: voeg bullet toe "11 inbound webhooks zodat TableWise bevestigingen, reminders en reviews automatisch laat versturen."
+
+### 6. Memory update
+
+Update `mem://features/clickwise-snapshot`:
+- Toevoegen: 11 inbound-webhook-workflows zijn onderdeel van de snapshot; URLs niet.
+- Stappen-aantal per nieuwe klant gaat van 6 naar 7.
 
 ## Niet in scope
 
-- Geen wijziging in edge functions of database — dit is alléén documentatie en copy-blocks in de admin-pagina.
-- Geen automatische snapshot-export via API (HighLevel snapshots maak je in hun UI).
+- Geen wijzigingen aan `dispatch_webhooks`, `clickwise_process_event` of database — alleen documentatie/UI in admin-pagina.
+- Geen automatische webhook-URL-sync (HighLevel API biedt dit niet via snapshots).
+- Geen wijzigingen aan `ApiWebhooksSettings.tsx` — bestaande UI blijft de plek waar URLs ingevuld worden.
 
 ## Resultaat
 
-Na deze update kan een system admin:
-- Eén keer een master sub-account inrichten met de copy-blocks uit deze pagina.
-- Een snapshot exporteren waarvan de tekst-content (prompt, SMS, tool bodies) géén klant-specifieke data bevat.
-- Bij elke nieuwe klant precies 6 handmatige stappen doen, allemaal expliciet gedocumenteerd in tab "Snapshot".
+System admin krijgt één centrale plek met:
+- Volledige lijst van 11 events met purpose + sample payload.
+- Stap-voor-stap inbound webhook setup.
+- HMAC-validatie snippet.
+- Snapshot-tab die nu álle 7 handmatige stappen per klant correct dekt.

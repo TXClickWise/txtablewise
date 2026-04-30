@@ -8,7 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { PageHeader } from "@/components/PageHeader";
 import { toast } from "@/hooks/use-toast";
-import { Check, Copy, Phone, Workflow, Variable, Wrench, BookOpen, ListChecks, Bot, Package, AlertTriangle } from "lucide-react";
+import { Check, Copy, Phone, Workflow, Variable, Wrench, BookOpen, ListChecks, Bot, Package, AlertTriangle, Webhook, ArrowRight, ArrowLeft, ShieldCheck } from "lucide-react";
 import { useRestaurant } from "@/hooks/useRestaurant";
 
 const FN_BASE = "https://lbhtztbpxmqlzhyephew.supabase.co/functions/v1/agent_api";
@@ -327,6 +327,177 @@ steps:
   "summary": "Trainingsgesprek voor response-mapping"
 }`;
 
+
+  // ===== Inbound webhooks (TableWise → ClickWise) =====
+  const inboundEnvelope = `{
+  "id": "<event-uuid>",
+  "event_type": "reservation.reminder_24h_scheduled",
+  "restaurant_id": "<restaurant-uuid>",
+  "created_at": "2026-05-15T10:00:00Z",
+  "payload": {
+    "reservation": {
+      "id": "...",
+      "date": "2026-05-15",
+      "time": "19:30",
+      "party_size": 2,
+      "manage_token": "..."
+    },
+    "guest": {
+      "first_name": "Anna",
+      "last_name": "de Vries",
+      "phone": "+31600000000",
+      "email": "anna@example.com"
+    },
+    "manage_url": "https://app.tablewise.nl/r/<manage_token>"
+  }
+}`;
+
+  const inboundEvents: Array<{
+    key: string;
+    label: string;
+    purpose: string;
+    suggestedAction: string;
+    samplePayload: string;
+  }> = [
+    {
+      key: "reservation.created",
+      label: "Reservering aangemaakt",
+      purpose: "Stuur de gast direct een bevestigings-SMS/WhatsApp en zet hem in CRM.",
+      suggestedAction: "Workflow → SMS naar {{inboundWebhookRequest.payload.guest.phone}} + tag 'tw_reservation'.",
+      samplePayload: `"payload": {
+  "reservation": { "id": "...", "date": "2026-05-15", "time": "19:30", "party_size": 2, "manage_token": "..." },
+  "guest": { "first_name": "Anna", "phone": "+31600000000", "email": "anna@example.com" },
+  "manage_url": "https://app.tablewise.nl/r/<manage_token>"
+}`,
+    },
+    {
+      key: "reservation.updated",
+      label: "Reservering gewijzigd",
+      purpose: "Stuur een update-bevestiging met de nieuwe datum/tijd.",
+      suggestedAction: "Workflow → SMS met nieuwe details, vermeld dat de oude is vervallen.",
+      samplePayload: `"payload": {
+  "reservation": { "id": "...", "date": "2026-05-16", "time": "20:00", "party_size": 3 },
+  "previous": { "date": "2026-05-15", "time": "19:30", "party_size": 2 },
+  "guest": { "first_name": "Anna", "phone": "+31600000000" }
+}`,
+    },
+    {
+      key: "reservation.cancelled",
+      label: "Reservering geannuleerd",
+      purpose: "Bevestig de annulering gastvrij en trigger waitlist-flow.",
+      suggestedAction: "Workflow → korte SMS 'tot een volgende keer' + remove tag 'tw_reservation'.",
+      samplePayload: `"payload": {
+  "reservation": { "id": "...", "date": "2026-05-15", "time": "19:30" },
+  "guest": { "first_name": "Anna", "phone": "+31600000000" },
+  "cancellation_reason": "ziek"
+}`,
+    },
+    {
+      key: "reservation.reminder_24h_scheduled",
+      label: "24u-reminder",
+      purpose: "Stuur ~24u vooraf een herinnering met manage-link (wijzig/annuleer).",
+      suggestedAction: "Workflow → SMS met {{inboundWebhookRequest.payload.manage_url}}.",
+      samplePayload: `"payload": {
+  "reservation": { "date": "2026-05-15", "time": "19:30", "party_size": 2 },
+  "guest": { "first_name": "Anna", "phone": "+31600000000" },
+  "manage_url": "https://app.tablewise.nl/r/<manage_token>"
+}`,
+    },
+    {
+      key: "reservation.reminder_2h_scheduled",
+      label: "2u-reminder",
+      purpose: "Last-mile herinnering ~2u vooraf — kort en warm.",
+      suggestedAction: "Workflow → korte SMS 'tot zo!' (geen knoppen nodig).",
+      samplePayload: `"payload": {
+  "reservation": { "time": "19:30", "party_size": 2 },
+  "guest": { "first_name": "Anna", "phone": "+31600000000" }
+}`,
+    },
+    {
+      key: "reservation.reconfirmation_requested",
+      label: "Herbevestiging gevraagd",
+      purpose: "Vraag de gast actief te bevestigen om no-show te voorkomen.",
+      suggestedAction: "Workflow → SMS met confirm- en cancel-link uit payload.",
+      samplePayload: `"payload": {
+  "reservation": { "date": "2026-05-15", "time": "19:30" },
+  "guest": { "first_name": "Anna", "phone": "+31600000000" },
+  "confirm_url": "https://app.tablewise.nl/r/<manage_token>?action=confirm",
+  "cancel_url": "https://app.tablewise.nl/r/<manage_token>?action=cancel"
+}`,
+    },
+    {
+      key: "reservation.reconfirmed",
+      label: "Gast heeft herbevestigd",
+      purpose: "Bedank de gast en zet tag 'tw_reconfirmed' op het contact.",
+      suggestedAction: "Workflow → korte SMS bedankje + tag-update.",
+      samplePayload: `"payload": {
+  "reservation": { "date": "2026-05-15", "time": "19:30" },
+  "guest": { "first_name": "Anna", "phone": "+31600000000" }
+}`,
+    },
+    {
+      key: "review.requested",
+      label: "Reviewverzoek na bezoek",
+      purpose: "Vraag ~2u na bezoek om feedback. TableWise splitst zelf positief/negatief.",
+      suggestedAction: "Workflow → SMS met {{inboundWebhookRequest.payload.feedback_url}}.",
+      samplePayload: `"payload": {
+  "reservation": { "date": "2026-05-15" },
+  "guest": { "first_name": "Anna", "phone": "+31600000000" },
+  "feedback_url": "https://app.tablewise.nl/feedback/<token>"
+}`,
+    },
+    {
+      key: "waitlist.notification_requested",
+      label: "Wachtlijst-match",
+      purpose: "Tafel komt vrij — bied het slot direct aan de wachtlijst-gast.",
+      suggestedAction: "Workflow → SMS met accept-link, response window in payload.",
+      samplePayload: `"payload": {
+  "waitlist_entry": { "id": "...", "date": "2026-05-15", "time": "19:30", "party_size": 2 },
+  "guest": { "first_name": "Anna", "phone": "+31600000000" },
+  "accept_url": "https://app.tablewise.nl/w/<token>",
+  "response_window_minutes": 15
+}`,
+    },
+    {
+      key: "guest.created",
+      label: "Nieuwe gast aangemaakt",
+      purpose: "Auto-create contact in ClickWise + welkomstflow voor first-timers.",
+      suggestedAction: "Workflow → upsert contact via {{inboundWebhookRequest.payload.guest.*}}.",
+      samplePayload: `"payload": {
+  "guest": { "id": "...", "first_name": "Anna", "last_name": "de Vries", "phone": "+31600000000", "email": "anna@example.com", "marketing_consent": true }
+}`,
+    },
+    {
+      key: "guest.updated",
+      label: "Gast bijgewerkt",
+      purpose: "Houd ClickWise contact in sync (allergieën, voorkeuren, opt-ins).",
+      suggestedAction: "Workflow → update contact custom fields.",
+      samplePayload: `"payload": {
+  "guest": { "id": "...", "phone": "+31600000000", "allergies": "noten", "dietary_preferences": "vegetarisch" }
+}`,
+    },
+  ];
+
+  const hmacSnippet = `// ClickWise Custom Code step — valideer X-TableWise-Signature
+// (Voeg dit toe als 1e step in elke inbound-workflow)
+const secret = "{{custom_values.tablewise_webhook_secret}}";
+const received = inboundWebhookRequest.headers["x-tablewise-signature"];
+const body = JSON.stringify(inboundWebhookRequest.body);
+
+const enc = new TextEncoder();
+const key = await crypto.subtle.importKey(
+  "raw", enc.encode(secret),
+  { name: "HMAC", hash: "SHA-256" }, false, ["sign"]
+);
+const sig = await crypto.subtle.sign("HMAC", key, enc.encode(body));
+const expected = Array.from(new Uint8Array(sig))
+  .map(b => b.toString(16).padStart(2, "0")).join("");
+
+if (received !== expected) {
+  throw new Error("Invalid TableWise signature — workflow stopped");
+}
+return { valid: true };`;
+
   const hoppscotchUrl = `${FN_BASE}/check_availability`;
   const hoppscotchHeaders = `Content-Type: application/json
 X-Agent-Api-Key: ${apiKey}`;
@@ -363,7 +534,7 @@ X-Agent-Api-Key: ${apiKey}`;
             <p className="font-medium text-sm">Bouw dit eenmalig — distribueer via snapshot</p>
             <p className="text-sm text-muted-foreground">
               Bouw deze hele setup één keer in een 'master' sub-account met dummy-waarden, exporteer als HighLevel snapshot,
-              en gebruik die snapshot voor élke nieuwe klant. Per klant blijven er dan ~6 handmatige stappen over.
+              en gebruik die snapshot voor élke nieuwe klant. Per klant blijven er dan ~7 handmatige stappen over.
               Zie tab <strong>Snapshot</strong> voor de volledige checklist en placeholder-template.
             </p>
           </div>
@@ -383,6 +554,7 @@ X-Agent-Api-Key: ${apiKey}`;
           <TabsTrigger value="actions"><Wrench className="h-3.5 w-3.5 mr-1.5" />Actions</TabsTrigger>
           <TabsTrigger value="values"><Variable className="h-3.5 w-3.5 mr-1.5" />Values & Fields</TabsTrigger>
           <TabsTrigger value="workflow"><Workflow className="h-3.5 w-3.5 mr-1.5" />Workflow</TabsTrigger>
+          <TabsTrigger value="inbound"><Webhook className="h-3.5 w-3.5 mr-1.5" />Inbound webhooks</TabsTrigger>
           <TabsTrigger value="test"><Phone className="h-3.5 w-3.5 mr-1.5" />Test</TabsTrigger>
           <TabsTrigger value="snapshot"><Package className="h-3.5 w-3.5 mr-1.5" />Snapshot</TabsTrigger>
         </TabsList>
@@ -442,8 +614,16 @@ X-Agent-Api-Key: ${apiKey}`;
           <StepCard n={7} title="Snapshot maken & hergebruiken voor volgende klanten" icon={Package}>
             <p>
               Werkt deze sub-account end-to-end? Exporteer 'm dan als <strong>HighLevel snapshot</strong>.
-              Bij elke nieuwe klant importeer je de snapshot en heb je nog ~6 handmatige stappen.
+              Bij elke nieuwe klant importeer je de snapshot en heb je nog ~7 handmatige stappen.
               Volledige checklist + placeholder-template staat in tab <em>Snapshot</em>.
+            </p>
+          </StepCard>
+
+          <StepCard n={8} title="Inbound webhooks koppelen — TableWise laten praten naar ClickWise" icon={Webhook}>
+            <p>
+              De voice agent stuurt gespreksdata <em>naar</em> TableWise. Voor bevestigingen, reminders, reviews en wachtlijst-meldingen
+              moet ClickWise juist <em>luisteren</em> naar de 11 events die TableWise zelf uitstuurt.
+              Bouw per event-type een Inbound-webhook workflow en plak de unieke URL in TableWise. Volledige lijst + sample payloads in tab <em>Inbound webhooks</em>.
             </p>
           </StepCard>
 
@@ -562,6 +742,97 @@ X-Agent-Api-Key: ${apiKey}`;
         </TabsContent>
 
         {/* TEST */}
+        {/* INBOUND WEBHOOKS */}
+        <TabsContent value="inbound" className="space-y-4">
+          <Card className="p-4 space-y-3">
+            <div className="flex items-center gap-2">
+              <Webhook className="h-4 w-4 text-primary" />
+              <h3 className="font-display text-base">ClickWise luistert naar TableWise</h3>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              De voice agent stuurt een gesprek <em>naar</em> TableWise. Maar voor bevestigingen, reminders, reviews en wachtlijst-meldingen
+              moet ClickWise juist <em>luisteren</em> naar events die TableWise zelf uitstuurt — bijvoorbeeld 24u voor de reservering.
+            </p>
+            <div className="grid sm:grid-cols-2 gap-3 text-sm">
+              <div className="rounded-md border border-border bg-muted/30 p-3 space-y-1">
+                <p className="font-medium flex items-center gap-1.5"><ArrowRight className="h-3.5 w-3.5 text-primary" /> Voice agent (al gedaan)</p>
+                <p className="text-xs text-muted-foreground">ClickWise → TableWise. Custom Actions roepen <code>agent_api</code> aan tijdens een belgesprek.</p>
+              </div>
+              <div className="rounded-md border border-primary/40 bg-primary/5 p-3 space-y-1">
+                <p className="font-medium flex items-center gap-1.5"><ArrowLeft className="h-3.5 w-3.5 text-primary" /> Inbound webhooks (deze tab)</p>
+                <p className="text-xs text-muted-foreground">TableWise → ClickWise. 11 event-typen via <code>dispatch_webhooks</code> naar één Inbound Webhook trigger per event.</p>
+              </div>
+            </div>
+          </Card>
+
+          <Card className="p-4 space-y-3">
+            <h3 className="font-display text-base">Universele payload-envelope</h3>
+            <p className="text-sm text-muted-foreground">
+              Elke POST van TableWise heeft dezelfde top-level structuur. <code>payload</code> verschilt per event-type.
+              Headers die je in ClickWise kunt uitlezen:
+              <code className="mx-1">X-TableWise-Event</code>,
+              <code className="mx-1">X-TableWise-Event-Id</code>,
+              <code className="mx-1">X-TableWise-Endpoint</code> en (bij gebruik van een secret) <code>X-TableWise-Signature</code>.
+            </p>
+            <CopyBlock label="Body" value={inboundEnvelope} lang="json" />
+          </Card>
+
+          <Card className="p-4 space-y-3">
+            <h3 className="font-display text-base">Stap-voor-stap: één event opzetten in ClickWise</h3>
+            <ol className="text-sm space-y-2 list-decimal pl-4">
+              <li>ClickWise → <em>Automation</em> → <em>Workflow</em> → <em>New</em> → trigger: <strong>Inbound Webhook</strong>.</li>
+              <li>Workflow-naam consistent maken: <code>TW — &lt;event_label&gt;</code> (bv. <code>TW — 24u-reminder</code>). Maakt snapshot-herkenning makkelijker.</li>
+              <li>Kopieer de unieke <strong>webhook URL</strong> die ClickWise toont na opslaan.</li>
+              <li>
+                In TableWise: ga naar <em>Settings → API & Webhooks</em> → <em>Endpoint toevoegen</em>.
+                <ul className="list-disc pl-5 mt-1 text-muted-foreground space-y-0.5">
+                  <li><strong>Label</strong>: zelfde als workflow-naam.</li>
+                  <li><strong>URL</strong>: de webhook URL uit ClickWise.</li>
+                  <li><strong>Events</strong>: alleen het matchende event-type (of <code>*</code> voor alles).</li>
+                </ul>
+              </li>
+              <li>(Optioneel) Generate webhook secret in TableWise → vul als custom value <code>tablewise_webhook_secret</code> in ClickWise. Voeg dan de HMAC-step toe (zie verderop).</li>
+              <li>Test in TableWise → <em>Stuur testevent</em> → controleer in ClickWise <em>Workflow → Execution log</em> of de trigger is afgegaan.</li>
+            </ol>
+          </Card>
+
+          <Card className="p-4 space-y-3">
+            <h3 className="font-display text-base">11 aanbevolen workflows</h3>
+            <p className="text-sm text-muted-foreground">
+              Dit zijn alle event-typen die TableWise vandaag uitstuurt. Bouw bij voorkeur voor élk type een aparte workflow — dat houdt SMS-templates beheersbaar en logs leesbaar.
+            </p>
+            <Accordion type="single" collapsible className="w-full">
+              {inboundEvents.map((ev) => (
+                <AccordionItem key={ev.key} value={ev.key}>
+                  <AccordionTrigger className="text-sm">
+                    <div className="flex items-center gap-2 text-left">
+                      <span className="font-medium">{ev.label}</span>
+                      <code className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">{ev.key}</code>
+                    </div>
+                  </AccordionTrigger>
+                  <AccordionContent className="space-y-2 text-sm">
+                    <p><strong>Doel:</strong> {ev.purpose}</p>
+                    <p><strong>Suggestie:</strong> {ev.suggestedAction}</p>
+                    <CopyBlock label="Sample payload" value={ev.samplePayload} lang="json" />
+                  </AccordionContent>
+                </AccordionItem>
+              ))}
+            </Accordion>
+          </Card>
+
+          <Card className="p-4 space-y-3 border-primary/30 bg-primary/5">
+            <h3 className="font-display text-base flex items-center gap-2">
+              <ShieldCheck className="h-4 w-4 text-primary" />
+              HMAC-validatie (optioneel maar aanbevolen)
+            </h3>
+            <p className="text-sm text-muted-foreground">
+              HighLevel valideert <code>X-TableWise-Signature</code> niet automatisch. Voeg deze Custom Code-step als 1<sup>e</sup> stap in elke inbound-workflow toe — dan weiger je gespoofte requests.
+              Vereist custom value <code>tablewise_webhook_secret</code> (per sub-account; matcht het secret in TableWise endpoint).
+            </p>
+            <CopyBlock label="Custom Code (JS)" value={hmacSnippet} lang="javascript" />
+          </Card>
+        </TabsContent>
+
         <TabsContent value="test" className="space-y-4">
           <Card className="p-4 space-y-3 border-primary/30 bg-primary/5">
             <h3 className="font-display text-base">Test 1 — Valideer de API key buiten ClickWise</h3>
@@ -662,6 +933,7 @@ X-Agent-Api-Key: ${apiKey}`;
                   <li>Custom Values (sleutels, mét waarden)</li>
                   <li>Custom Fields (definities)</li>
                   <li>Workflow "Voice Agent — Inbound call → TableWise"</li>
+                  <li>11 Inbound-webhook workflows (TW — reservation.created etc.) — logica blijft, URLs niet</li>
                   <li>SMS-templates en tags</li>
                 </ul>
               </div>
@@ -671,7 +943,8 @@ X-Agent-Api-Key: ${apiKey}`;
                   <li>De AI Voice Agent zelf (handmatig opnieuw)</li>
                   <li>Twilio telefoonnummer-koppeling</li>
                   <li>Response-mapping per Custom Action ("Trainen")</li>
-                  <li>Echte API key-waarde (gebruik placeholder!)</li>
+                  <li>Inbound webhook URLs — uniek per sub-account, per klant in TableWise plakken</li>
+                  <li>Echte API key-waarde + webhook secret (gebruik placeholder!)</li>
                 </ul>
               </div>
             </div>
@@ -693,7 +966,7 @@ X-Agent-Api-Key: ${apiKey}`;
           <Card className="p-4 space-y-3 border-primary/30 bg-primary/5">
             <h3 className="font-display text-base flex items-center gap-2">
               <ListChecks className="h-4 w-4 text-primary" />
-              Per nieuwe klant — exact 6 handmatige stappen
+              Per nieuwe klant — exact 7 handmatige stappen
             </h3>
             <ol className="text-sm space-y-2 list-decimal pl-4">
               <li>
@@ -706,6 +979,7 @@ X-Agent-Api-Key: ${apiKey}`;
                 <ul className="list-disc pl-5 mt-1 text-muted-foreground space-y-0.5">
                   <li><code>tablewise_api_key</code> — uit TableWise → Voice Agent → Sleutel genereren (per restaurant uniek)</li>
                   <li><code>tablewise_restaurant_id</code> — uit TableWise (<code>/app/instellingen</code> of admin)</li>
+                  <li><code>tablewise_webhook_secret</code> — uit TableWise → Settings → API & Webhooks (per endpoint)</li>
                   <li><code>restaurant_name</code>, <code>restaurant_phone</code>, <code>restaurant_address</code>, <code>opening_hours_short</code></li>
                   <li><code>tablewise_base_url</code> — laat staan, is globaal</li>
                 </ul>
@@ -726,9 +1000,14 @@ X-Agent-Api-Key: ${apiKey}`;
                 klik <em>Test</em>, sla de response sample op en map de velden. Daarna body terugzetten naar de versie met <code>{`{{...}}`}</code>.
                 Zonder deze stap blijven custom fields leeg na een echte call.
               </li>
+              <li>
+                <strong>Inbound webhook URLs koppelen</strong>: open elk van de 11 <code>TW — *</code> workflows in ClickWise,
+                kopieer de unieke webhook URL en plak in TableWise → <em>Settings → API & Webhooks</em> als endpoint
+                (één per event-type, of één endpoint met <code>*</code> filter voor alles). Zie tab <em>Inbound webhooks</em>.
+              </li>
             </ol>
             <p className="text-xs text-muted-foreground pt-2 border-t border-border">
-              Stappen 1, 2 en 5 kosten ~5 minuten. Stappen 3, 4 en 6 samen ~15 minuten. Reken op ~20-25 min per nieuwe klant.
+              Stappen 1, 2 en 5 kosten ~5 minuten. Stappen 3, 4, 6 en 7 samen ~20 minuten. Reken op ~25-30 min per nieuwe klant.
             </p>
           </Card>
 
@@ -741,6 +1020,8 @@ X-Agent-Api-Key: ${apiKey}`;
               <li>SMS-bodies in workflow gebruiken <code>{`{{custom_values.restaurant_name}}`}</code>.</li>
               <li>Identity-velden komen uit native HighLevel <code>{`{{contact.*}}`}</code> — bestaan automatisch in elke sub-account.</li>
               <li>Custom Fields zijn generiek (geen restaurantnaam in de field-naam) — herbruikbaar zonder rename.</li>
+              <li>Inbound-webhook workflows hebben een vaste naam-conventie (<code>TW — &lt;event_label&gt;</code>) zodat ze in elke snapshot herkenbaar zijn.</li>
+              <li>HMAC-validatie snippet gebruikt <code>{`{{custom_values.tablewise_webhook_secret}}`}</code> — geen secret in de workflow-code.</li>
             </ul>
           </Card>
         </TabsContent>
