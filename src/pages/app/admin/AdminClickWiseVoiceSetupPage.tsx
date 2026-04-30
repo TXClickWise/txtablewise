@@ -327,6 +327,177 @@ steps:
   "summary": "Trainingsgesprek voor response-mapping"
 }`;
 
+
+  // ===== Inbound webhooks (TableWise → ClickWise) =====
+  const inboundEnvelope = `{
+  "id": "<event-uuid>",
+  "event_type": "reservation.reminder_24h_scheduled",
+  "restaurant_id": "<restaurant-uuid>",
+  "created_at": "2026-05-15T10:00:00Z",
+  "payload": {
+    "reservation": {
+      "id": "...",
+      "date": "2026-05-15",
+      "time": "19:30",
+      "party_size": 2,
+      "manage_token": "..."
+    },
+    "guest": {
+      "first_name": "Anna",
+      "last_name": "de Vries",
+      "phone": "+31600000000",
+      "email": "anna@example.com"
+    },
+    "manage_url": "https://app.tablewise.nl/r/<manage_token>"
+  }
+}`;
+
+  const inboundEvents: Array<{
+    key: string;
+    label: string;
+    purpose: string;
+    suggestedAction: string;
+    samplePayload: string;
+  }> = [
+    {
+      key: "reservation.created",
+      label: "Reservering aangemaakt",
+      purpose: "Stuur de gast direct een bevestigings-SMS/WhatsApp en zet hem in CRM.",
+      suggestedAction: "Workflow → SMS naar {{inboundWebhookRequest.payload.guest.phone}} + tag 'tw_reservation'.",
+      samplePayload: `"payload": {
+  "reservation": { "id": "...", "date": "2026-05-15", "time": "19:30", "party_size": 2, "manage_token": "..." },
+  "guest": { "first_name": "Anna", "phone": "+31600000000", "email": "anna@example.com" },
+  "manage_url": "https://app.tablewise.nl/r/<manage_token>"
+}`,
+    },
+    {
+      key: "reservation.updated",
+      label: "Reservering gewijzigd",
+      purpose: "Stuur een update-bevestiging met de nieuwe datum/tijd.",
+      suggestedAction: "Workflow → SMS met nieuwe details, vermeld dat de oude is vervallen.",
+      samplePayload: `"payload": {
+  "reservation": { "id": "...", "date": "2026-05-16", "time": "20:00", "party_size": 3 },
+  "previous": { "date": "2026-05-15", "time": "19:30", "party_size": 2 },
+  "guest": { "first_name": "Anna", "phone": "+31600000000" }
+}`,
+    },
+    {
+      key: "reservation.cancelled",
+      label: "Reservering geannuleerd",
+      purpose: "Bevestig de annulering gastvrij en trigger waitlist-flow.",
+      suggestedAction: "Workflow → korte SMS 'tot een volgende keer' + remove tag 'tw_reservation'.",
+      samplePayload: `"payload": {
+  "reservation": { "id": "...", "date": "2026-05-15", "time": "19:30" },
+  "guest": { "first_name": "Anna", "phone": "+31600000000" },
+  "cancellation_reason": "ziek"
+}`,
+    },
+    {
+      key: "reservation.reminder_24h_scheduled",
+      label: "24u-reminder",
+      purpose: "Stuur ~24u vooraf een herinnering met manage-link (wijzig/annuleer).",
+      suggestedAction: "Workflow → SMS met {{inboundWebhookRequest.payload.manage_url}}.",
+      samplePayload: `"payload": {
+  "reservation": { "date": "2026-05-15", "time": "19:30", "party_size": 2 },
+  "guest": { "first_name": "Anna", "phone": "+31600000000" },
+  "manage_url": "https://app.tablewise.nl/r/<manage_token>"
+}`,
+    },
+    {
+      key: "reservation.reminder_2h_scheduled",
+      label: "2u-reminder",
+      purpose: "Last-mile herinnering ~2u vooraf — kort en warm.",
+      suggestedAction: "Workflow → korte SMS 'tot zo!' (geen knoppen nodig).",
+      samplePayload: `"payload": {
+  "reservation": { "time": "19:30", "party_size": 2 },
+  "guest": { "first_name": "Anna", "phone": "+31600000000" }
+}`,
+    },
+    {
+      key: "reservation.reconfirmation_requested",
+      label: "Herbevestiging gevraagd",
+      purpose: "Vraag de gast actief te bevestigen om no-show te voorkomen.",
+      suggestedAction: "Workflow → SMS met confirm- en cancel-link uit payload.",
+      samplePayload: `"payload": {
+  "reservation": { "date": "2026-05-15", "time": "19:30" },
+  "guest": { "first_name": "Anna", "phone": "+31600000000" },
+  "confirm_url": "https://app.tablewise.nl/r/<manage_token>?action=confirm",
+  "cancel_url": "https://app.tablewise.nl/r/<manage_token>?action=cancel"
+}`,
+    },
+    {
+      key: "reservation.reconfirmed",
+      label: "Gast heeft herbevestigd",
+      purpose: "Bedank de gast en zet tag 'tw_reconfirmed' op het contact.",
+      suggestedAction: "Workflow → korte SMS bedankje + tag-update.",
+      samplePayload: `"payload": {
+  "reservation": { "date": "2026-05-15", "time": "19:30" },
+  "guest": { "first_name": "Anna", "phone": "+31600000000" }
+}`,
+    },
+    {
+      key: "review.requested",
+      label: "Reviewverzoek na bezoek",
+      purpose: "Vraag ~2u na bezoek om feedback. TableWise splitst zelf positief/negatief.",
+      suggestedAction: "Workflow → SMS met {{inboundWebhookRequest.payload.feedback_url}}.",
+      samplePayload: `"payload": {
+  "reservation": { "date": "2026-05-15" },
+  "guest": { "first_name": "Anna", "phone": "+31600000000" },
+  "feedback_url": "https://app.tablewise.nl/feedback/<token>"
+}`,
+    },
+    {
+      key: "waitlist.notification_requested",
+      label: "Wachtlijst-match",
+      purpose: "Tafel komt vrij — bied het slot direct aan de wachtlijst-gast.",
+      suggestedAction: "Workflow → SMS met accept-link, response window in payload.",
+      samplePayload: `"payload": {
+  "waitlist_entry": { "id": "...", "date": "2026-05-15", "time": "19:30", "party_size": 2 },
+  "guest": { "first_name": "Anna", "phone": "+31600000000" },
+  "accept_url": "https://app.tablewise.nl/w/<token>",
+  "response_window_minutes": 15
+}`,
+    },
+    {
+      key: "guest.created",
+      label: "Nieuwe gast aangemaakt",
+      purpose: "Auto-create contact in ClickWise + welkomstflow voor first-timers.",
+      suggestedAction: "Workflow → upsert contact via {{inboundWebhookRequest.payload.guest.*}}.",
+      samplePayload: `"payload": {
+  "guest": { "id": "...", "first_name": "Anna", "last_name": "de Vries", "phone": "+31600000000", "email": "anna@example.com", "marketing_consent": true }
+}`,
+    },
+    {
+      key: "guest.updated",
+      label: "Gast bijgewerkt",
+      purpose: "Houd ClickWise contact in sync (allergieën, voorkeuren, opt-ins).",
+      suggestedAction: "Workflow → update contact custom fields.",
+      samplePayload: `"payload": {
+  "guest": { "id": "...", "phone": "+31600000000", "allergies": "noten", "dietary_preferences": "vegetarisch" }
+}`,
+    },
+  ];
+
+  const hmacSnippet = `// ClickWise Custom Code step — valideer X-TableWise-Signature
+// (Voeg dit toe als 1e step in elke inbound-workflow)
+const secret = "{{custom_values.tablewise_webhook_secret}}";
+const received = inboundWebhookRequest.headers["x-tablewise-signature"];
+const body = JSON.stringify(inboundWebhookRequest.body);
+
+const enc = new TextEncoder();
+const key = await crypto.subtle.importKey(
+  "raw", enc.encode(secret),
+  { name: "HMAC", hash: "SHA-256" }, false, ["sign"]
+);
+const sig = await crypto.subtle.sign("HMAC", key, enc.encode(body));
+const expected = Array.from(new Uint8Array(sig))
+  .map(b => b.toString(16).padStart(2, "0")).join("");
+
+if (received !== expected) {
+  throw new Error("Invalid TableWise signature — workflow stopped");
+}
+return { valid: true };`;
+
   const hoppscotchUrl = `${FN_BASE}/check_availability`;
   const hoppscotchHeaders = `Content-Type: application/json
 X-Agent-Api-Key: ${apiKey}`;
