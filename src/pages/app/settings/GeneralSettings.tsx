@@ -12,6 +12,8 @@ import { ExternalLink, Copy, Wrench } from "lucide-react";
 
 export default function GeneralSettings() {
   const { current } = useRestaurant();
+  const advanced = useAdvancedMode();
+  const [advancedSaving, setAdvancedSaving] = useState(false);
   const r = current?.restaurants;
   const [form, setForm] = useState({
     name: "", phone: "", email: "", address_line1: "", postal_code: "", city: "",
