@@ -1,90 +1,62 @@
-# UI/UX-polish — consistent gebruik van het bestaande design system
+# Plan: Radicale vereenvoudiging TableWise
 
-## Uitgangspunt
+Doel: eindgebruikers (horecaondernemers) zien alleen wat ze nodig hebben. Alle technische complexiteit (webhooks, mappings, raw payloads, workflow IDs) verdwijnt achter een **Advanced Mode**. Onderliggende logica blijft 100% intact — backward compatible.
 
-Het design system is al sterk: warm-burgundy palette, status- en channel-tokens, gradient-card, shadow-soft/elegant/lifted, Fraunces display, `KpiCard`, `StatusBadge`, `StateViews` (Loading/Empty/Error/Connection) en touch-primitives. Het probleem is **inconsistente toepassing**: pagina's hebben hun eigen ad-hoc skeletons, lege states, ronde knopjes, status-pills en spacing.
+## Beslissingen
+- **Aanpak**: gefaseerd, per ronde 1-2 stappen. Geen big bang.
+- **Advanced Mode**: dubbel mechanisme.
+  - System admins (`is_system_admin()`) zien alles altijd.
+  - Restaurant managers krijgen toggle "Geavanceerde modus" in `restaurants.metadata.advanced_mode` (default `false`).
+- **Bestaande pagina's**: nieuwe simpele "Koppelingen"-pagina als hoofdingang. Bestaande uitgebreide pagina's blijven bereikbaar via "Geavanceerd beheren"-link, alleen zichtbaar in Advanced Mode of voor admins.
 
-De polish bestaat dus vooral uit **opruim- en hergebruikswerk** — niet uit nieuwe tokens of nieuwe layouts. Geen nieuwe globale styling, geen risico op kapotte andere pagina's.
+## Centrale primitives (eenmalig bouwen — Ronde 1)
+1. `useAdvancedMode()` hook → `{ enabled, isAdmin, canSeeAdvanced, toggle() }`. Leest `is_system_admin()` + `restaurants.metadata.advanced_mode`.
+2. `<AdvancedOnly>` wrapper component → rendert children alleen als `canSeeAdvanced`.
+3. Sidebar items krijgen optionele `advanced: true` flag → automatisch verborgen voor basisgebruikers.
 
-## Stap 1 — Twee nieuwe shared primitives (klein, additief)
+## Rondes
 
-### `src/components/PageHeader.tsx` (nieuw)
-Eén header voor alle `/app`-pagina's: titel (`font-display text-3xl`), optionele subtekst, optionele breadcrumb-/badge-strip en een rechterzijde voor primary/secondary actions. Tablet-first: actions worden onder de titel gestapeld < md.
+### Ronde 1 — Fundament Advanced Mode (Stap 1, 9 deels)
+- Bouw `useAdvancedMode` + `<AdvancedOnly>`.
+- Voeg toggle toe in Settings → Algemeen ("Geavanceerde modus voor technische opties").
+- Markeer in `AppSidebar.tsx` deze items als `advanced`:
+  - Integratie-hub, Integratie-logs, ClickWise-integratie (volledige pagina), API & webhooks settings.
+- Verberg ze in sidebar voor non-advanced users. Routes blijven werken (geen breaking change).
 
-```tsx
-<PageHeader
-  title="Vandaag"
-  description="Maandag 28 april 2026"
-  badge={<Badge variant="outline">Live</Badge>}
-  actions={<Button>Reservering</Button>}
-/>
-```
+### Ronde 2 — Nieuwe simpele Koppelingen-pagina (Stap 9)
+- Nieuwe route `/app/koppelingen` met kaarten per integratie (ClickWise, POS, AI Voice, Webhook).
+- Per kaart: status badge (Verbonden/Niet verbonden/Fout), `Test verbinding`-knop, `Aan/Uit`-switch, korte uitleg in mensentaal.
+- Footer-link "Geavanceerd beheren →" alleen zichtbaar in Advanced Mode → leidt naar bestaande `IntegrationHubPage`.
+- Vervang sidebar-link "Integratie-hub" door deze pagina als standaard.
 
-### `src/components/SectionCard.tsx` (nieuw)
-Dunne wrapper rond shadcn `<Card>` met `shadow-soft hover:shadow-elegant transition-smooth bg-gradient-card`, een gestandaardiseerde header met optioneel icoon + actions. Hiermee krijgen alle "secties" op alle pagina's exact dezelfde look zonder dat we elke `<Card>` afzonderlijk moeten herwerken.
+### Ronde 3 — Vereenvoudigde logs (Stap 10)
+- Nieuwe component `SimpleEventLog`: toont per event alleen `✅/❌ + actie + tijdstip + (bij fout) menselijke uitleg + "Wat te doen"-tip`.
+- Vervang default view in `IntegrationLogsPage` door deze. Knop "Toon technische details" → bestaande raw view (alleen advanced).
 
-Geen wijzigingen aan `Card` zelf — wie het niet wil gebruiken behoudt huidig gedrag.
+### Ronde 4 — ReservationService abstractie (Stap 4, 5)
+- Bundel `availability` + `book_reservation` + `manage_reservation` aanroepen in `src/services/reservationService.ts`.
+- Eén interface: `check()`, `book()`, `cancel()`, `reschedule()`. Validatie + retry + error mapping centraal.
+- Refactor `WalkInDialog`, `ReservationFormSheet`, `publicBooking` om deze service te gebruiken. Edge functions blijven ongewijzigd.
 
-## Stap 2 — `KpiCard` lichte uitbreiding
+### Ronde 5 — AI Voice Agent simplificatie (Stap 6)
+- `agent_api` edge function: AI levert alleen ruwe data (datum, tijd, party, contact). Server doet validatie + availability + booking via ReservationService.
+- UI op `/app/voice-agent` toont alleen: status, test-knop, transcript-log. Mapping/prompts verhuizen naar admin tab.
 
-`KpiCard` krijgt twee optionele props (volledig backwards-compatible):
-- `delta?: { value: string; trend: "up" | "down" | "flat" }` — kleine pill met pijltje, gebruikt status/success/destructive tokens
-- `tone?: "neutral" | "premium"` — bij `premium` tonen we een dunne brass-accentlijn boven de waarde (gebruikt bestaande `--accent`)
+### Ronde 6 — Defaults boven opties (Stap 7)
+- Audit alle settings-pagina's. Verberg toggles waarvan default = aanbevolen waarde.
+- Behoud achter "Geavanceerd"-accordeon binnen elke settings-pagina.
+- Concrete kandidaten: no-show toggles, waitlist toggles, deposit exempties, preorders flags.
 
-## Stap 3 — Per pagina toepassing (geen logica wijzigen)
+### Ronde 7 — Eén vaste reserveringsflow (Stap 2, 3)
+- Audit publieke widget + interne forms → consolideer naar 1 flow: datum → tijd → personen → contact → bevestig.
+- Verwijder/verberg alternatieve paden (occasion-first, pre-order-first, etc.) uit hoofdflow. Optioneel via "Meer opties".
 
-Per pagina exact deze drie ingrepen, niets meer:
+### Ronde 8 — UX sweep (Stap 8)
+- Loop alle `/app/*` pagina's langs met test "begrijpt een ondernemer dit zonder uitleg?".
+- Versimpel headers, verwijder jargon, voeg empty-state uitleg toe.
 
-1. Vervang ad-hoc header door `<PageHeader>`.
-2. Vervang inline `<div className="text-center py-12 …">`-leegstates door `<EmptyState>`, inline pulses door `<CardSkeletonGrid>` of `<LoadingState>`, en error-blokjes door `<ErrorRetryState>`.
-3. Vervang ruwe status-tekst door `<StatusBadge>` waar het type een reservation_status of large_group_status is.
-
-Pagina's:
-
-| Pagina | Voornaamste ingreep |
-|---|---|
-| **TodayPage** (Dashboard) | `PageHeader` met live-tijd badge; KpiCards krijgen `delta` waar zinvol; lege staat → `EmptyState`; skeleton → `CardSkeletonGrid` |
-| **ReservationsPage** | `PageHeader` met primaire CTA; KPI strip via `KpiCard`; `EmptyState`; statussen via `StatusBadge` |
-| **AgendaPage** | `PageHeader`; loading/empty primitives; legenda met `StatusBadge` mini variant |
-| **FloorPlanPage** | `PageHeader` met "Bewerken/Bekijken" toggle; `EmptyState` als nog geen tafels |
-| **FloorModePage** | `PageHeader` blijft compact (tablet); duidelijker connectiestatus via `<ConnectionStatusNotice>` bovenaan; statuspills via `StatusBadge` |
-| **WalkInsPage** | `PageHeader` + `EmptyState` + `SectionCard` voor de quick-seat tegels |
-| **WaitlistPage** | `PageHeader`; `EmptyState`; status- en kanaalbadges uniform |
-| **GuestsPage** | `PageHeader` met zoek-action; `EmptyState`; segment-kpi's via `KpiCard` (totaal gasten, VIP's, frequent, no-show risico) |
-| **NoShowPreventionPage** | `PageHeader`; KPI's krijgen `delta` (vorige periode); `EmptyState` voor "geen risico-reserveringen vandaag" |
-| **AIHostPage / VoiceAgentPage** | `PageHeader` met provider-badge; readiness-checklist binnen `SectionCard`; `EmptyState` voor "nog geen calls" |
-| **IntegrationHubPage** | `PageHeader` + per integratie een `SectionCard` met statuspil (verbonden / niet ingesteld / fout) |
-| **SettingsPage** | bovenste hero blijft, sidebar krijgt subtieler hover-state (`hover:bg-sidebar-accent/60`); leesbare actieve indicator zonder zware achtergrond |
-
-## Stap 4 — Mobiele/tablet polish
-
-- Gestapelde header-acties onder titel < md, en standaard `min-h-[44px]` op alle CTA's via een `Button size="default"` audit (geen wijziging in component zelf — dit gebeurt al via de `pointer: coarse` media query in `index.css`).
-- Sticky `<PageHeader>` op `/app` schermen met veel scroll (Reservations, Guests, NoShow): krijgt `sticky top-0 z-20 bg-background/80 backdrop-blur` als opt-in prop. Default uit.
-- KPI grid: `grid-cols-2 sm:grid-cols-2 lg:grid-cols-4` overal hetzelfde.
-
-## Stap 5 — Iconenconsistentie
-
-Eén pictogram per concept, bestaand:
-- gasten = `Users`, reservering = `CalendarDays`, walk-in = `UserPlus`, tijd/aan tafel = `Clock`, no-show/risk = `AlertTriangle`, AI = `Sparkles`/`Bot`, integratie = `Plug`, instellingen = `Settings`. Bestaande pagina's die afwijken (bv. `TrendingUp` voor no-shows in TodayPage) worden afgestemd.
-
-## Wat NIET verandert
-
-- Geen wijzigingen aan `index.css` tokens (kleuren, radius, shadows, fonts) — dus geen kans op cascade-effect op andere pagina's
-- Geen nieuwe routes
-- Geen wijziging aan `Card`, `Button`, `Badge` shadcn primitives
-- Geen wijziging in datafetching, queries of business-logica
-- Geen nieuwe animaties — bestaande `transition-smooth` blijft de enige
-
-## Bestanden
-
-**Nieuw (2)**
-- `src/components/PageHeader.tsx`
-- `src/components/SectionCard.tsx`
-
-**Aangepast (klein)**
-- `src/components/KpiCard.tsx` — twee optionele props erbij
-- 12 pagina's in `src/pages/app/` — alleen header- en state-blokken vervangen, geen logica raken
-
-## Risico
-
-Laag. Alle wijzigingen zijn additief of vervangen ad-hoc markup door bestaande, geteste primitives die al elders in de codebase werken (StatusBadge in detail-dialogen, StateViews in touch-folder). Performance verandert niet — minder DOM, niet meer.
+## Guardrails (gelden elke ronde)
+- Geen routes verwijderen — alleen verbergen.
+- Geen edge functions of DB-velden verwijderen.
+- Geen RLS-wijzigingen tenzij expliciet nodig.
+- Elke ronde: korte test in preview voor merge.
