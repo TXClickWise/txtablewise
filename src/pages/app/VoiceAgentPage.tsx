@@ -53,6 +53,7 @@ const PROVIDERS = [
 export default function VoiceAgentPage() {
   const { current } = useRestaurant();
   const { isSystemAdmin } = useIsSystemAdmin();
+  const { canSeeAdvanced } = useAdvancedMode();
   const rid = current?.restaurant_id;
 
   const [settings, setSettings] = useState<VoiceSettings | null>(null);
