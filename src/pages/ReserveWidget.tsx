@@ -587,16 +587,28 @@ const ReserveWidget = () => {
               </div>
             </div>
 
-            <div className="space-y-1.5">
-              <Label htmlFor="all">Allergieën of dieetwensen</Label>
-              <Input id="all" value={allergies} onChange={(e) => setAllergies(e.target.value)} className="h-12"
-                placeholder="Bijv. notenallergie, vegetarisch" />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="rq">Andere wensen of opmerkingen</Label>
-              <Textarea id="rq" value={requests} onChange={(e) => setRequests(e.target.value)} rows={3}
-                placeholder="Bijv. liefst tafel bij raam" />
-            </div>
+            {!showMorePrefs ? (
+              <button
+                type="button"
+                onClick={() => setShowMorePrefs(true)}
+                className="text-sm text-primary hover:underline"
+              >
+                + Allergieën of opmerkingen toevoegen
+              </button>
+            ) : (
+              <>
+                <div className="space-y-1.5">
+                  <Label htmlFor="all">Allergieën of dieetwensen</Label>
+                  <Input id="all" value={allergies} onChange={(e) => setAllergies(e.target.value)} className="h-12"
+                    placeholder="Bijv. notenallergie, vegetarisch" />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="rq">Andere wensen of opmerkingen</Label>
+                  <Textarea id="rq" value={requests} onChange={(e) => setRequests(e.target.value)} rows={3}
+                    placeholder="Bijv. liefst tafel bij raam" />
+                </div>
+              </>
+            )}
 
             <Button className="w-full h-14 text-base"
               onClick={() => setStep(restaurant.preorders_enabled ? "extras" : "guest")}>
