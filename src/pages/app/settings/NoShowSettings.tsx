@@ -165,20 +165,25 @@ const NoShowSettings = () => {
             title="Makkelijke annulering via gastlink"
             help="Geef gasten een veilige link om hun reservering zelf te bevestigen of te annuleren."
           />
-          <ToggleRow
-            checked={form.noshow_risk_signal_enabled}
-            onChange={(v) => set("noshow_risk_signal_enabled", v)}
-            title="No-show risicosignaal tonen"
-            help="Intern signaal voor medewerkers — wordt nooit aan de gast getoond."
-          />
-          <Field label="Bericht bij annulering door gast (preview)">
-            <Textarea
-              rows={3}
-              placeholder="Bijv. ‘Bedankt voor het doorgeven. We hopen je een andere keer te mogen ontvangen.’"
-              value={form.noshow_cancel_message}
-              onChange={(e) => set("noshow_cancel_message", e.target.value)}
+          <AdvancedSection
+            title="Geavanceerde opties"
+            description="Risicosignaal en eigen annuleringsbericht. Defaults werken voor de meeste restaurants."
+          >
+            <ToggleRow
+              checked={form.noshow_risk_signal_enabled}
+              onChange={(v) => set("noshow_risk_signal_enabled", v)}
+              title="No-show risicosignaal tonen"
+              help="Intern signaal voor medewerkers — wordt nooit aan de gast getoond."
             />
-          </Field>
+            <Field label="Bericht bij annulering door gast (preview)">
+              <Textarea
+                rows={3}
+                placeholder="Bijv. ‘Bedankt voor het doorgeven. We hopen je een andere keer te mogen ontvangen.’"
+                value={form.noshow_cancel_message}
+                onChange={(e) => set("noshow_cancel_message", e.target.value)}
+              />
+            </Field>
+          </AdvancedSection>
         </CardContent>
       </Card>
 
