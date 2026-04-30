@@ -12,6 +12,9 @@ import { format } from "date-fns";
 import { nl } from "date-fns/locale";
 import { CheckCircle2, AlertTriangle, XCircle, RefreshCw, Filter, ScrollText, Loader2 } from "lucide-react";
 import { listIntegrationLogs, retryIntegrationLog, type IntegrationLog, type LogFilters } from "@/services/integrationLogs";
+import { SimpleEventLog } from "@/components/integrations/SimpleEventLog";
+import { AdvancedOnly } from "@/components/AdvancedOnly";
+import { useAdvancedMode } from "@/hooks/useAdvancedMode";
 
 const SOURCES: IntegrationLog["source"][] = ["api", "voice_agent", "webhook", "clickwise", "widget", "dashboard"];
 const STATUSES: IntegrationLog["status"][] = ["success", "warning", "failed"];
