@@ -454,7 +454,7 @@ X-Agent-Api-Key: ${apiKey}`;
           <Card className="p-4 space-y-2">
             <h3 className="font-display text-base">Begroeting (first message)</h3>
             <CopyBlock
-              value={`Goedendag, je spreekt met de virtuele gastvrouw van ${current?.restaurants?.name ?? "<restaurant>"}. Waar kan ik je mee helpen — een tafel reserveren, of een bestaande reservering wijzigen?`}
+              value={`Goedendag, je spreekt met de virtuele gastvrouw van {{custom_values.restaurant_name}}. Waar kan ik je mee helpen — een tafel reserveren, of een bestaande reservering wijzigen?`}
               lang="text"
             />
           </Card>
