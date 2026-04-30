@@ -33,7 +33,8 @@ function statusIcon(s: IntegrationLog["status"]) {
 export default function IntegrationLogsPage() {
   const { current } = useRestaurant();
   const rid = current?.restaurant_id;
-
+  const { canSeeAdvanced } = useAdvancedMode();
+  const [showRaw, setShowRaw] = useState(false);
   const defaultFrom = useMemo(() => {
     const d = new Date(); d.setDate(d.getDate() - 1); return d.toISOString().slice(0, 16);
   }, []);
