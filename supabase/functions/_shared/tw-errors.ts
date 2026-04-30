@@ -38,6 +38,7 @@ const META: Record<TwCode, { http: number; message: string; suggestedFix: string
   TW_400_MISSING_PARTY_SIZE:  { http: 400, message: "Aantal personen ontbreekt.",              suggestedFix: "Voeg 'partySize' toe als geheel getal ≥ 1." },
   TW_400_MISSING_NAME:        { http: 400, message: "Naam van de gast ontbreekt.",             suggestedFix: "Voeg 'contact.fullName' of 'contact.firstName' + 'contact.lastName' toe." },
   TW_400_MISSING_PHONE:       { http: 400, message: "Telefoonnummer ontbreekt.",               suggestedFix: "Voeg 'contact.phone' toe in internationaal formaat (bv. +31612345678)." },
+  TW_400_MISSING_CONTACT:     { http: 400, message: "Telefoon of e-mail van de gast ontbreekt.", suggestedFix: "Vraag de gast om een telefoonnummer of e-mailadres en voeg deze toe als 'contact.phone' of 'contact.email'." },
   TW_400_INVALID_PHONE:       { http: 400, message: "Telefoonnummer is ongeldig.",             suggestedFix: "Gebruik internationaal formaat zoals +31612345678 (7–20 cijfers)." },
   TW_400_INVALID_EMAIL:       { http: 400, message: "E-mailadres is ongeldig.",                suggestedFix: "Geef een geldig e-mailadres of laat 'contact.email' weg." },
   TW_400_INVALID_DATE:        { http: 400, message: "Datum is ongeldig.",                      suggestedFix: "Gebruik formaat YYYY-MM-DD." },
