@@ -458,6 +458,3 @@ steps:
     </div>
   );
 }
-
-// Local Bot icon import shim (lucide already imported elsewhere)
-import { Bot } from "lucide-react";
