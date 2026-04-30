@@ -356,6 +356,20 @@ X-Agent-Api-Key: ${apiKey}`;
         </div>
       </Card>
 
+      <Card className="p-4 bg-amber-500/5 border-amber-500/30">
+        <div className="flex items-start gap-3">
+          <Package className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
+          <div className="space-y-1">
+            <p className="font-medium text-sm">Bouw dit eenmalig — distribueer via snapshot</p>
+            <p className="text-sm text-muted-foreground">
+              Bouw deze hele setup één keer in een 'master' sub-account met dummy-waarden, exporteer als HighLevel snapshot,
+              en gebruik die snapshot voor élke nieuwe klant. Per klant blijven er dan ~6 handmatige stappen over.
+              Zie tab <strong>Snapshot</strong> voor de volledige checklist en placeholder-template.
+            </p>
+          </div>
+        </div>
+      </Card>
+
       <div className="space-y-3 border border-border rounded-lg p-4 bg-card">
         <Label className="text-xs uppercase tracking-wide text-muted-foreground">Plak hier je Agent API key (uit TableWise → Voice Agent → Sleutel aanmaken)</Label>
         <Input value={apiKey} onChange={(e) => setApiKey(e.target.value)} className="font-mono text-sm" />
