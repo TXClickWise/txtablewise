@@ -8,10 +8,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { PageHeader } from "@/components/PageHeader";
 import { toast } from "@/hooks/use-toast";
-import { Check, Copy, Phone, Workflow, Variable, Wrench, BookOpen, ListChecks, Bot } from "lucide-react";
+import { Check, Copy, Phone, Workflow, Variable, Wrench, BookOpen, ListChecks, Bot, Package, AlertTriangle } from "lucide-react";
 import { useRestaurant } from "@/hooks/useRestaurant";
 
 const FN_BASE = "https://lbhtztbpxmqlzhyephew.supabase.co/functions/v1/agent_api";
+// Snapshot-veilige URL via custom value — wordt in elke nieuwe sub-account
+// automatisch gevuld vanuit de geïmporteerde custom values.
+const FN_BASE_VAR = "{{custom_values.tablewise_base_url}}";
 
 function CopyBlock({ label, value, lang = "text" }: { label?: string; value: string; lang?: string }) {
   const [copied, setCopied] = useState(false);
@@ -67,7 +70,7 @@ export default function AdminClickWiseVoiceSetupPage() {
   const restaurantId = current?.restaurants?.id ?? "<RESTAURANT_ID>";
   const [apiKey, setApiKey] = useState("tw_live_PLAK_HIER_DE_AGENT_API_KEY");
 
-  const systemPrompt = useMemo(() => `Je bent de AI telefoonhost van {{restaurant.name}}, een restaurant in Nederland.
+  const systemPrompt = useMemo(() => `Je bent de AI telefoonhost van {{custom_values.restaurant_name}}, een restaurant in Nederland.
 Je spreekt Nederlands, bent gastvrij, kort en duidelijk. Geen lange uitweidingen.
 
 # Wat je doet
@@ -122,7 +125,7 @@ Roep ALTIJD \`log_call\` aan met de samenvatting, outcome (booked/changed/cancel
   const checkAvailJson = `{
   "name": "check_availability",
   "description": "Controleer of een tafel beschikbaar is op een datum/tijd voor een aantal personen. Roep dit aan VOORDAT je gaat boeken.",
-  "url": "${FN_BASE}/check_availability",
+  "url": "${FN_BASE_VAR}/check_availability",
   "method": "POST",
   "headers": {
     "Content-Type": "application/json",
@@ -137,7 +140,7 @@ Roep ALTIJD \`log_call\` aan met de samenvatting, outcome (booked/changed/cancel
   const bookJson = `{
   "name": "book_reservation",
   "description": "Boek een reservering. Roep dit pas aan NA mondelinge bevestiging door de gast.",
-  "url": "${FN_BASE}/book_reservation",
+  "url": "${FN_BASE_VAR}/book_reservation",
   "method": "POST",
   "headers": {
     "Content-Type": "application/json",
@@ -164,7 +167,7 @@ Roep ALTIJD \`log_call\` aan met de samenvatting, outcome (booked/changed/cancel
   const cancelJson = `{
   "name": "cancel_reservation",
   "description": "Annuleer een bestaande reservering op basis van reservation_id of manage_token.",
-  "url": "${FN_BASE}/cancel_reservation",
+  "url": "${FN_BASE_VAR}/cancel_reservation",
   "method": "POST",
   "headers": {
     "Content-Type": "application/json",
@@ -179,7 +182,7 @@ Roep ALTIJD \`log_call\` aan met de samenvatting, outcome (booked/changed/cancel
   const logCallJson = `{
   "name": "log_call",
   "description": "Log de afronding van het gesprek (samenvatting, outcome). Roep dit ALTIJD aan aan het einde.",
-  "url": "${FN_BASE}/log_call",
+  "url": "${FN_BASE_VAR}/log_call",
   "method": "POST",
   "headers": {
     "Content-Type": "application/json",
@@ -195,6 +198,7 @@ Roep ALTIJD \`log_call\` aan met de samenvatting, outcome (booked/changed/cancel
   }
 }`;
 
+  // Custom values voor de HUIDIGE klant — handig om direct in zijn sub-account te plakken.
   const customValues = `tablewise_api_key = ${apiKey}
 tablewise_restaurant_id = ${restaurantId}
 tablewise_base_url = ${FN_BASE}
@@ -202,6 +206,16 @@ restaurant_name = ${current?.restaurants?.name ?? "<NAAM_RESTAURANT>"}
 restaurant_phone = +31 20 000 0000
 restaurant_address = <adres>
 opening_hours_short = di t/m za 17:00–22:00, zondag 17:00–21:00`;
+
+  // Snapshot-template — gebruik DEZE waarden in de master sub-account waaruit je de
+  // snapshot exporteert. Zo lekt er nooit een echte klant-API-key in de snapshot.
+  const customValuesSnapshot = `tablewise_api_key = REPLACE_PER_CLIENT_tw_live_xxx
+tablewise_restaurant_id = REPLACE_PER_CLIENT_uuid
+tablewise_base_url = ${FN_BASE}
+restaurant_name = REPLACE_PER_CLIENT
+restaurant_phone = REPLACE_PER_CLIENT
+restaurant_address = REPLACE_PER_CLIENT
+opening_hours_short = REPLACE_PER_CLIENT`;
 
   const standardFields = `// Deze velden zijn STANDAARD in ClickWise/HighLevel — NIET aanmaken.
 // Gebruik ze direct via {{contact.<veld>}} in tools, prompts en workflows.
@@ -342,6 +356,20 @@ X-Agent-Api-Key: ${apiKey}`;
         </div>
       </Card>
 
+      <Card className="p-4 bg-amber-500/5 border-amber-500/30">
+        <div className="flex items-start gap-3">
+          <Package className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
+          <div className="space-y-1">
+            <p className="font-medium text-sm">Bouw dit eenmalig — distribueer via snapshot</p>
+            <p className="text-sm text-muted-foreground">
+              Bouw deze hele setup één keer in een 'master' sub-account met dummy-waarden, exporteer als HighLevel snapshot,
+              en gebruik die snapshot voor élke nieuwe klant. Per klant blijven er dan ~6 handmatige stappen over.
+              Zie tab <strong>Snapshot</strong> voor de volledige checklist en placeholder-template.
+            </p>
+          </div>
+        </div>
+      </Card>
+
       <div className="space-y-3 border border-border rounded-lg p-4 bg-card">
         <Label className="text-xs uppercase tracking-wide text-muted-foreground">Plak hier je Agent API key (uit TableWise → Voice Agent → Sleutel aanmaken)</Label>
         <Input value={apiKey} onChange={(e) => setApiKey(e.target.value)} className="font-mono text-sm" />
@@ -356,6 +384,7 @@ X-Agent-Api-Key: ${apiKey}`;
           <TabsTrigger value="values"><Variable className="h-3.5 w-3.5 mr-1.5" />Values & Fields</TabsTrigger>
           <TabsTrigger value="workflow"><Workflow className="h-3.5 w-3.5 mr-1.5" />Workflow</TabsTrigger>
           <TabsTrigger value="test"><Phone className="h-3.5 w-3.5 mr-1.5" />Test</TabsTrigger>
+          <TabsTrigger value="snapshot"><Package className="h-3.5 w-3.5 mr-1.5" />Snapshot</TabsTrigger>
         </TabsList>
 
         {/* OVERVIEW */}
@@ -410,6 +439,14 @@ X-Agent-Api-Key: ${apiKey}`;
             <p>Heb je in stap 5.5 alle 4 de tools getraind? Dan vult de end-to-end belproef de custom fields automatisch. Bel het nummer, doe een testreservering en controleer in TableWise → <code>/app/reserveringen</code> én <code>/app/admin/logs</code>. Zie tab <em>Test</em>.</p>
           </StepCard>
 
+          <StepCard n={7} title="Snapshot maken & hergebruiken voor volgende klanten" icon={Package}>
+            <p>
+              Werkt deze sub-account end-to-end? Exporteer 'm dan als <strong>HighLevel snapshot</strong>.
+              Bij elke nieuwe klant importeer je de snapshot en heb je nog ~6 handmatige stappen.
+              Volledige checklist + placeholder-template staat in tab <em>Snapshot</em>.
+            </p>
+          </StepCard>
+
         </TabsContent>
 
         {/* PROMPT */}
@@ -425,7 +462,7 @@ X-Agent-Api-Key: ${apiKey}`;
           <Card className="p-4 space-y-2">
             <h3 className="font-display text-base">Begroeting (first message)</h3>
             <CopyBlock
-              value={`Goedendag, je spreekt met de virtuele gastvrouw van ${current?.restaurants?.name ?? "<restaurant>"}. Waar kan ik je mee helpen — een tafel reserveren, of een bestaande reservering wijzigen?`}
+              value={`Goedendag, je spreekt met de virtuele gastvrouw van {{custom_values.restaurant_name}}. Waar kan ik je mee helpen — een tafel reserveren, of een bestaande reservering wijzigen?`}
               lang="text"
             />
           </Card>
@@ -602,6 +639,110 @@ X-Agent-Api-Key: ${apiKey}`;
             </ul>
           </Card>
 
+        </TabsContent>
+
+        {/* SNAPSHOT */}
+        <TabsContent value="snapshot" className="space-y-4">
+          <Card className="p-4 space-y-3">
+            <div className="flex items-center gap-2">
+              <Package className="h-4 w-4 text-primary" />
+              <h3 className="font-display text-base">Hoe werkt de snapshot-strategie?</h3>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              Bouw deze hele setup éénmalig in een 'master' sub-account in ClickWise (HighLevel). Exporteer dan een snapshot
+              en koppel die aan elke nieuwe of bestaande klant-sub-account. Snapshots nemen
+              <strong> Custom Actions, Custom Values, Custom Fields én Workflows </strong>
+              mee — maar <strong>niet</strong> de Voice AI Agent zelf, het Twilio-nummer of de response-mapping per Custom Action.
+            </p>
+            <div className="grid sm:grid-cols-2 gap-3 text-sm">
+              <div className="rounded-md border border-emerald-500/30 bg-emerald-500/5 p-3 space-y-1">
+                <p className="font-medium text-emerald-700 dark:text-emerald-400 flex items-center gap-1.5"><Check className="h-3.5 w-3.5" /> Wel in de snapshot</p>
+                <ul className="list-disc pl-4 text-muted-foreground space-y-0.5">
+                  <li>4 Custom Actions (tool definities + bodies)</li>
+                  <li>Custom Values (sleutels, mét waarden)</li>
+                  <li>Custom Fields (definities)</li>
+                  <li>Workflow "Voice Agent — Inbound call → TableWise"</li>
+                  <li>SMS-templates en tags</li>
+                </ul>
+              </div>
+              <div className="rounded-md border border-amber-500/30 bg-amber-500/5 p-3 space-y-1">
+                <p className="font-medium text-amber-700 dark:text-amber-500 flex items-center gap-1.5"><AlertTriangle className="h-3.5 w-3.5" /> Niet in de snapshot</p>
+                <ul className="list-disc pl-4 text-muted-foreground space-y-0.5">
+                  <li>De AI Voice Agent zelf (handmatig opnieuw)</li>
+                  <li>Twilio telefoonnummer-koppeling</li>
+                  <li>Response-mapping per Custom Action ("Trainen")</li>
+                  <li>Echte API key-waarde (gebruik placeholder!)</li>
+                </ul>
+              </div>
+            </div>
+          </Card>
+
+          <Card className="p-4 space-y-3">
+            <h3 className="font-display text-base">Master sub-account — placeholder Custom Values</h3>
+            <p className="text-sm text-muted-foreground">
+              Vul in de master sub-account de Custom Values met deze <strong>dummy-waarden</strong>. Zo lekt er nooit een echte klant-API-key
+              of restaurant-ID in je snapshot. <code>tablewise_base_url</code> blijft wel echt — die is voor alle klanten gelijk.
+            </p>
+            <CopyBlock value={customValuesSnapshot} lang="env" />
+            <div className="rounded-md border border-destructive/30 bg-destructive/5 p-3 text-xs text-muted-foreground">
+              <strong className="text-destructive">Belangrijk:</strong> bouw de snapshot NOOIT in een sub-account die een echte klant bedient.
+              De Custom Values worden mét waarden meegenomen. Alleen via deze placeholders blijft de snapshot veilig deelbaar.
+            </div>
+          </Card>
+
+          <Card className="p-4 space-y-3 border-primary/30 bg-primary/5">
+            <h3 className="font-display text-base flex items-center gap-2">
+              <ListChecks className="h-4 w-4 text-primary" />
+              Per nieuwe klant — exact 6 handmatige stappen
+            </h3>
+            <ol className="text-sm space-y-2 list-decimal pl-4">
+              <li>
+                <strong>Snapshot importeren</strong> in de nieuwe (of bestaande) sub-account van de klant.
+                Agency-account → Sub-Accounts → klant → <em>Load Snapshot</em>.
+              </li>
+              <li>
+                <strong>Custom Values vervangen</strong>: open Settings → Custom Values en zet alle <code>REPLACE_PER_CLIENT_*</code>
+                waarden om naar de echte data van deze klant.
+                <ul className="list-disc pl-5 mt-1 text-muted-foreground space-y-0.5">
+                  <li><code>tablewise_api_key</code> — uit TableWise → Voice Agent → Sleutel genereren (per restaurant uniek)</li>
+                  <li><code>tablewise_restaurant_id</code> — uit TableWise (<code>/app/instellingen</code> of admin)</li>
+                  <li><code>restaurant_name</code>, <code>restaurant_phone</code>, <code>restaurant_address</code>, <code>opening_hours_short</code></li>
+                  <li><code>tablewise_base_url</code> — laat staan, is globaal</li>
+                </ul>
+              </li>
+              <li>
+                <strong>Voice AI Agent opnieuw aanmaken</strong> (Voice AI → Agents → New Agent). Plak de system prompt en first message uit tab <em>Prompt</em>.
+                Die teksten gebruiken al <code>{`{{custom_values.restaurant_name}}`}</code>, dus werken meteen voor élke klant.
+              </li>
+              <li>
+                <strong>Tools koppelen</strong> aan de nieuwe agent: selecteer de 4 Custom Actions die uit de snapshot komen
+                (<code>check_availability</code>, <code>book_reservation</code>, <code>cancel_reservation</code>, <code>log_call</code>).
+              </li>
+              <li>
+                <strong>Telefoonnummer (Twilio) koppelen</strong> aan de agent of doorschakelen vanaf het bestaande restaurantnummer.
+              </li>
+              <li>
+                <strong>"Trainen" per Custom Action</strong>: open elke action, plak tijdelijk de test-payload uit tab <em>Actions → Trainen</em>,
+                klik <em>Test</em>, sla de response sample op en map de velden. Daarna body terugzetten naar de versie met <code>{`{{...}}`}</code>.
+                Zonder deze stap blijven custom fields leeg na een echte call.
+              </li>
+            </ol>
+            <p className="text-xs text-muted-foreground pt-2 border-t border-border">
+              Stappen 1, 2 en 5 kosten ~5 minuten. Stappen 3, 4 en 6 samen ~15 minuten. Reken op ~20-25 min per nieuwe klant.
+            </p>
+          </Card>
+
+          <Card className="p-4 space-y-3">
+            <h3 className="font-display text-base">Wat je in deze pagina al hebt gedaan om snapshot-ready te zijn</h3>
+            <ul className="text-sm space-y-1.5 list-disc pl-4 text-muted-foreground">
+              <li>Tool URLs gebruiken <code>{`{{custom_values.tablewise_base_url}}`}</code> i.p.v. een hardcoded URL — staging/prod-split mogelijk.</li>
+              <li>Tool headers gebruiken <code>{`{{custom_values.tablewise_api_key}}`}</code> — geen sleutel in de Custom Action body.</li>
+              <li>System prompt + first message gebruiken <code>{`{{custom_values.restaurant_name}}`}</code> — zelfde tekst werkt in elke sub-account.</li>
+              <li>SMS-bodies in workflow gebruiken <code>{`{{custom_values.restaurant_name}}`}</code>.</li>
+              <li>Identity-velden komen uit native HighLevel <code>{`{{contact.*}}`}</code> — bestaan automatisch in elke sub-account.</li>
+              <li>Custom Fields zijn generiek (geen restaurantnaam in de field-naam) — herbruikbaar zonder rename.</li>
+            </ul>
+          </Card>
         </TabsContent>
       </Tabs>
     </div>

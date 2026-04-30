@@ -1,42 +1,87 @@
 ## Doel
-Twee verduidelijkingen toevoegen aan `src/pages/app/admin/AdminClickWiseVoiceSetupPage.tsx` zodat het voor system admins glashelder is:
-1. **Waar/hoe** de curl-test uitgevoerd hoort te worden (en dat dit *niet* in ClickWise gebeurt).
-2. **Hoe** je in ClickWise de response van de TableWise API "vastlegt" door een eenmalige test met **echte waarden** uit te voeren, zodat custom fields automatisch gevuld kunnen worden.
 
-## Wijzigingen in `AdminClickWiseVoiceSetupPage.tsx`
+Zorg dat de admin-setup voor ClickWise zo is opgezet dat álles wat nu in de "moeder"-subaccount gebouwd wordt, in één HighLevel snapshot past en in een nieuwe sub-account met **maximaal 6 handmatige aanpassingen** werkend is.
 
-### A. Tab "Test" — herschrijf "Test 1" sectie
-- Hernoem naar **"Test 1 — Valideer de API key buiten ClickWise"**.
-- Korte uitleg: dit doe je vóórdat je in ClickWise gaat klikken, om te bewijzen dat de sleutel + endpoint werken.
-- Drie copy-paste-opties bieden:
-  1. **Terminal (curl)** — bestaande copy-block, met note "Mac/Linux Terminal of Windows PowerShell/WSL".
-  2. **Browser (hoppscotch.io)** — copy-blokken voor URL, headers, body.
-  3. **Postman / Insomnia** — copy-blokken voor URL, headers, body, plus stappen.
-- Expliciet kader: "ClickWise/HighLevel heeft geen losse curl-knop. De Custom Action die je later bouwt dóét feitelijk hetzelfde als deze curl. Deze test is alleen voor jouw eigen zekerheid vooraf."
+## Achtergrond — wat HighLevel snapshots wél/niet meenemen
 
-### B. Nieuwe StepCard #5b in tab "Stappenplan" + nieuwe sub-sectie in tab "Actions"
-**Titel:** "Trainen: laat ClickWise de response leren herkennen"
+| Onderdeel | Snapshot-bare? | Actie nodig |
+|---|---|---|
+| Custom Values (sleutels + waarden) | Ja, mét waarden | Waarden per klant overschrijven |
+| Custom Fields (definities) | Ja | Geen |
+| Custom Actions / Workflow Actions (definitie + body + headers) | Ja | Geen, mits geen hardcoded keys |
+| Workflows | Ja | Geen |
+| Voice AI Agent | Beperkt — meestal **nee** | Per sub-account opnieuw aanmaken + tools koppelen |
+| Twilio nummer | Nee | Per klant koppelen |
+| Custom Action *response sample / field mapping* | Onbetrouwbaar | "Trainen"-stap per sub-account opnieuw uitvoeren |
 
-Inhoud:
-- Uitleg waarom dit moet: zonder echte response weet ClickWise niet welke velden er bestaan om naar custom fields te mappen.
-- Per tool één copy-block met **realistische testwaarden** (vervangen van `{{...}}` placeholders), bv:
-  - `check_availability`: `{"date":"2026-05-15","party_size":2}`
-  - `book_reservation`: volledig object met test-naam "Test Tester", telefoon "+31600000000", etc.
-  - `cancel_reservation`: `{"reservation_id":"<plak-id-uit-vorige-test>","reason":"test"}`
-  - `log_call`: idem met test external_call_id.
-- Stappen: 
-  1. Open de Custom Action in ClickWise.
-  2. Klik "Test" / "Run test".
-  3. Plak het test-body, klik run.
-  4. ClickWise toont de response — klik "Save response sample" / "Map fields".
-  5. Map de gewenste responsevelden naar de custom fields uit tab "Values & Fields" (bv. `response.reservation_id` → custom field `reservation_id`).
-- Waarschuwing: **na het trainen, zet de body terug** naar de versie met `{{...}}` variabelen, anders boekt elke beller "Test Tester".
+## Wijzigingen in `src/pages/app/admin/AdminClickWiseVoiceSetupPage.tsx`
 
-### C. Kleine update tab "Stappenplan"
-- Step 6 (Testen) krijgt verwijzing: "Heb je in stap 5b al de tools getraind? Dan zou de end-to-end belproef nu de custom fields automatisch moeten vullen."
+### 1. Nieuwe tab "Snapshot" (laatste tab)
+
+Inhoud — drie cards:
+
+**Card A: "Snapshot bouwen (eenmalig in master sub-account)"**
+- Korte uitleg: bouw alles in één 'master' sub-account, exporteer als snapshot, en hergebruik bij elke klant.
+- Checklist welke onderdelen dééél van de snapshot moeten zijn:
+  - 4 Custom Actions
+  - Custom Values (skelet met placeholders, niet echte keys)
+  - Custom Fields
+  - Workflow "Voice Agent — Inbound call → TableWise"
+- Expliciete waarschuwing: **vul in de master sub-account de Custom Values met dummy-placeholders**, niet met de echte API key van een bestaande klant — anders lekt die mee in elke import.
+
+**Card B: "Per nieuwe klant — wat moet je nog instellen?"**
+Genummerde lijst (de "max 6 handmatige stappen"):
+1. Snapshot importeren in nieuwe sub-account.
+2. **Custom Values** vervangen: `tablewise_api_key`, `tablewise_restaurant_id`, `restaurant_name`, `restaurant_phone`, `restaurant_address`, `opening_hours_short` (`tablewise_base_url` blijft).
+3. **Voice AI Agent** opnieuw aanmaken (system prompt + first message uit tab Prompt) — kan niet via snapshot.
+4. **Tools koppelen** aan de nieuwe agent (de Custom Actions zelf zitten in de snapshot).
+5. **Telefoonnummer (Twilio)** koppelen.
+6. **Trainen** per Custom Action (eenmalige test-run met realistische payload, response sample opslaan, field mapping bevestigen).
+
+**Card C: "Custom Values placeholder-template (master sub-account)"**
+Copy-block met dummy-waarden zodat de master nooit een echte klant-key bevat:
+```
+tablewise_api_key       = REPLACE_PER_CLIENT_tw_live_xxx
+tablewise_restaurant_id = REPLACE_PER_CLIENT_uuid
+tablewise_base_url      = https://lbhtztbpxmqlzhyephew.supabase.co/functions/v1
+restaurant_name         = REPLACE_PER_CLIENT
+restaurant_phone        = REPLACE_PER_CLIENT
+restaurant_address      = REPLACE_PER_CLIENT
+opening_hours_short     = REPLACE_PER_CLIENT
+```
+
+### 2. System prompt snapshot-neutraal maken (tab "Prompt")
+
+- Vervang in de gegenereerde prompt elke harde `${current?.restaurants?.name}` door `{{custom_values.restaurant_name}}`.
+- Idem voor adres/telefoon/openingstijden indien die in de prompt staan.
+- Reden: een snapshot bevat de prompt-tekst zoals jij die plakt; placeholders zorgen dat dezelfde tekst in elke sub-account werkt.
+
+### 3. First-message snapshot-neutraal (tab "Prompt")
+
+- Huidige tekst gebruikt `${current?.restaurants?.name ?? "<restaurant>"}` letterlijk → vervang in het copy-block door `{{custom_values.restaurant_name}}`.
+
+### 4. Tools-bodies via Custom Value voor base_url (tab "Actions")
+
+- Optioneel maar aanbevolen: bouw in elke tool de URL als `{{custom_values.tablewise_base_url}}/check_availability` i.p.v. de letterlijke `https://...supabase.co/functions/v1/check_availability`.
+- Voordeel: één Custom Value omschakelen = staging/prod-split mogelijk, en geen URL hardcoded in snapshot-bodies.
+- Toon een korte toggle/uitleg "Aanbevolen voor snapshot-distributie".
+
+### 5. Stappenplan-tab — voeg Step 7 toe
+
+- "Snapshot maken & hergebruiken" met verwijzing naar de nieuwe Snapshot-tab.
+
+### 6. Banner bovenaan de pagina
+
+- Subtiele info-callout: *"Bouw deze setup eenmalig in een 'master' sub-account, exporteer als snapshot, en gebruik die voor elke nieuwe klant. Zie tab Snapshot."*
+
+## Niet in scope
+
+- Geen wijziging in edge functions of database — dit is alléén documentatie en copy-blocks in de admin-pagina.
+- Geen automatische snapshot-export via API (HighLevel snapshots maak je in hun UI).
 
 ## Resultaat
-System admin weet:
-- De curl-test hoort thuis op zijn eigen machine, niet in ClickWise.
-- Voor elke tool moet er één keer een testaanroep met échte waarden gebeuren in ClickWise om response-mapping mogelijk te maken — en hij heeft de exacte test-payloads kant-en-klaar om te kopiëren.
-- Hij moet daarna terug-switchen naar de variabele-versie van de body.
+
+Na deze update kan een system admin:
+- Eén keer een master sub-account inrichten met de copy-blocks uit deze pagina.
+- Een snapshot exporteren waarvan de tekst-content (prompt, SMS, tool bodies) géén klant-specifieke data bevat.
+- Bij elke nieuwe klant precies 6 handmatige stappen doen, allemaal expliciet gedocumenteerd in tab "Snapshot".
