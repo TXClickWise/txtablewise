@@ -8,10 +8,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { PageHeader } from "@/components/PageHeader";
 import { toast } from "@/hooks/use-toast";
-import { Check, Copy, Phone, Workflow, Variable, Wrench, BookOpen, ListChecks, Bot } from "lucide-react";
+import { Check, Copy, Phone, Workflow, Variable, Wrench, BookOpen, ListChecks, Bot, Package, AlertTriangle } from "lucide-react";
 import { useRestaurant } from "@/hooks/useRestaurant";
 
 const FN_BASE = "https://lbhtztbpxmqlzhyephew.supabase.co/functions/v1/agent_api";
+// Snapshot-veilige URL via custom value — wordt in elke nieuwe sub-account
+// automatisch gevuld vanuit de geïmporteerde custom values.
+const FN_BASE_VAR = "{{custom_values.tablewise_base_url}}";
 
 function CopyBlock({ label, value, lang = "text" }: { label?: string; value: string; lang?: string }) {
   const [copied, setCopied] = useState(false);
