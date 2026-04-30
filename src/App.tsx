@@ -46,6 +46,7 @@ import AIHostPage from "./pages/app/AIHostPage.tsx";
 import VoiceAgentPage from "./pages/app/VoiceAgentPage.tsx";
 import VoiceAgentHelp from "./pages/app/help/VoiceAgentHelp.tsx";
 import IntegrationsPage from "./pages/app/IntegrationsPage.tsx";
+import KoppelingenPage from "./pages/app/KoppelingenPage.tsx";
 import IntegrationHubPage from "./pages/app/IntegrationHubPage.tsx";
 import IntegrationLogsPage from "./pages/app/IntegrationLogsPage.tsx";
 import ClickWiseIntegrationPage from "./pages/app/ClickWiseIntegrationPage.tsx";
@@ -94,6 +95,7 @@ const App = () => (
               <Route path="help/voice-agent" element={<VoiceAgentHelp />} />
               <Route path="rapportages" element={<ReportsPage />} />
               <Route path="integraties" element={<IntegrationsPage />} />
+              <Route path="koppelingen" element={<KoppelingenPage />} />
 
               {/* Admin-only routes (system admin) */}
               <Route path="admin/voice-agent" element={<RequireSystemAdmin><AdminVoiceAgentPage /></RequireSystemAdmin>} />

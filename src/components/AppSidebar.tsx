@@ -11,11 +11,12 @@ import {
 import { useAuth } from "@/hooks/useAuth";
 import { useRestaurant } from "@/hooks/useRestaurant";
 import { useIsSystemAdmin } from "@/hooks/useIsSystemAdmin";
+import { useAdvancedMode } from "@/hooks/useAdvancedMode";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
-type Item = { title: string; url: string; icon: typeof LayoutDashboard; end?: boolean };
+type Item = { title: string; url: string; icon: typeof LayoutDashboard; end?: boolean; advanced?: boolean };
 
 const operatie: Item[] = [
   { title: "Vandaag", url: "/app", icon: LayoutDashboard, end: true },
@@ -42,7 +43,8 @@ const hospitality: Item[] = [
 
 const beheer: Item[] = [
   { title: "Rapportages", url: "/app/rapportages", icon: BarChart3 },
-  { title: "Integraties", url: "/app/integraties", icon: Plug },
+  { title: "Koppelingen", url: "/app/koppelingen", icon: Plug },
+  { title: "Integratiehub", url: "/app/integraties", icon: Plug, advanced: true },
   { title: "Instellingen", url: "/app/instellingen", icon: Settings },
 ];
 
@@ -57,7 +59,9 @@ const admin: Item[] = [
   { title: "Pilot readiness", url: "/app/admin/pilot-readiness", icon: ShieldCheck },
 ];
 
-function Group({ label, items, collapsed, pathname, accent, onNavigate }: { label: string; items: Item[]; collapsed: boolean; pathname: string; accent?: boolean; onNavigate?: () => void }) {
+function Group({ label, items, collapsed, pathname, accent, onNavigate, canSeeAdvanced }: { label: string; items: Item[]; collapsed: boolean; pathname: string; accent?: boolean; onNavigate?: () => void; canSeeAdvanced: boolean }) {
+  const visible = items.filter((i) => !i.advanced || canSeeAdvanced);
+  if (visible.length === 0) return null;
   return (
     <SidebarGroup>
       <SidebarGroupLabel className={cn(accent && "text-primary flex items-center gap-1.5")}>
@@ -65,14 +69,19 @@ function Group({ label, items, collapsed, pathname, accent, onNavigate }: { labe
       </SidebarGroupLabel>
       <SidebarGroupContent>
         <SidebarMenu>
-          {items.map((item) => {
+          {visible.map((item) => {
             const active = item.end ? pathname === item.url : pathname.startsWith(item.url);
             return (
               <SidebarMenuItem key={item.url}>
                 <SidebarMenuButton asChild isActive={active}>
                   <NavLink to={item.url} end={item.end} onClick={onNavigate}>
                     <item.icon className="h-4 w-4 shrink-0" />
-                    {!collapsed && <span>{item.title}</span>}
+                    {!collapsed && (
+                      <span className="flex items-center gap-1.5">
+                        {item.title}
+                        {item.advanced && <span className="text-[9px] uppercase tracking-wide text-muted-foreground">adv</span>}
+                      </span>
+                    )}
                   </NavLink>
                 </SidebarMenuButton>
               </SidebarMenuItem>
@@ -90,6 +99,7 @@ export function AppSidebar() {
   const { signOut, user } = useAuth();
   const { current } = useRestaurant();
   const { isSystemAdmin } = useIsSystemAdmin();
+  const { canSeeAdvanced } = useAdvancedMode();
   const location = useLocation();
 
   const handleNavigate = isMobile ? () => setOpenMobile(false) : undefined;
@@ -113,12 +123,12 @@ export function AppSidebar() {
       </SidebarHeader>
 
       <SidebarContent>
-        <Group label="Operatie" items={operatie} collapsed={collapsed} pathname={location.pathname} onNavigate={handleNavigate} />
-        <Group label="Gasten" items={gasten} collapsed={collapsed} pathname={location.pathname} onNavigate={handleNavigate} />
-        <Group label="Hospitality" items={hospitality} collapsed={collapsed} pathname={location.pathname} onNavigate={handleNavigate} />
-        <Group label="Beheer" items={beheer} collapsed={collapsed} pathname={location.pathname} onNavigate={handleNavigate} />
+        <Group label="Operatie" items={operatie} collapsed={collapsed} pathname={location.pathname} onNavigate={handleNavigate} canSeeAdvanced={canSeeAdvanced} />
+        <Group label="Gasten" items={gasten} collapsed={collapsed} pathname={location.pathname} onNavigate={handleNavigate} canSeeAdvanced={canSeeAdvanced} />
+        <Group label="Hospitality" items={hospitality} collapsed={collapsed} pathname={location.pathname} onNavigate={handleNavigate} canSeeAdvanced={canSeeAdvanced} />
+        <Group label="Beheer" items={beheer} collapsed={collapsed} pathname={location.pathname} onNavigate={handleNavigate} canSeeAdvanced={canSeeAdvanced} />
         {isSystemAdmin && (
-          <Group label="Admin" items={admin} collapsed={collapsed} pathname={location.pathname} accent onNavigate={handleNavigate} />
+          <Group label="Admin" items={admin} collapsed={collapsed} pathname={location.pathname} accent onNavigate={handleNavigate} canSeeAdvanced={canSeeAdvanced} />
         )}
       </SidebarContent>
 

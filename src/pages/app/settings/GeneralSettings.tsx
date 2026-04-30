@@ -1,15 +1,19 @@
 import { useEffect, useState } from "react";
 import { useRestaurant } from "@/hooks/useRestaurant";
+import { useAdvancedMode } from "@/hooks/useAdvancedMode";
 import { supabase } from "@/integrations/supabase/client";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
-import { ExternalLink, Copy } from "lucide-react";
+import { ExternalLink, Copy, Wrench } from "lucide-react";
 
 export default function GeneralSettings() {
   const { current } = useRestaurant();
+  const advanced = useAdvancedMode();
+  const [advancedSaving, setAdvancedSaving] = useState(false);
   const r = current?.restaurants;
   const [form, setForm] = useState({
     name: "", phone: "", email: "", address_line1: "", postal_code: "", city: "",
@@ -98,6 +102,43 @@ export default function GeneralSettings() {
           {numField("large_group_threshold", "Grote groep vanaf", "Stuurt naar aanvraag-formulier")}
           {numField("booking_lead_time_minutes", "Lead time (min)", "Min. tijd voor reservering")}
           {numField("booking_horizon_days", "Horizon (dagen)", "Hoe ver vooruit boeken")}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="font-display text-lg flex items-center gap-2">
+            <Wrench className="h-4 w-4" /> Geavanceerde modus
+          </CardTitle>
+          <CardDescription>
+            Toon technische opties zoals webhooks, integratie-logs, API-mappings en raw payloads.
+            Voor de meeste restaurants niet nodig.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-between gap-4 rounded-md border p-3">
+            <div className="space-y-0.5">
+              <Label className="text-sm font-medium">Geavanceerde opties tonen</Label>
+              <p className="text-xs text-muted-foreground">
+                {advanced.isAdmin
+                  ? "Je bent system admin — je ziet altijd alles, ongeacht deze schakelaar."
+                  : advanced.enabled
+                    ? "Aan: technische menu's en knoppen zijn zichtbaar."
+                    : "Uit: TableWise toont alleen wat je dagelijks nodig hebt."}
+              </p>
+            </div>
+            <Switch
+              checked={advanced.enabled}
+              disabled={advancedSaving}
+              onCheckedChange={async (next) => {
+                setAdvancedSaving(true);
+                const res = await advanced.setEnabled(next);
+                setAdvancedSaving(false);
+                if (!res.ok) toast.error("Opslaan mislukt: " + res.error);
+                else toast.success(next ? "Geavanceerde modus aan" : "Geavanceerde modus uit");
+              }}
+            />
+          </div>
         </CardContent>
       </Card>
 
