@@ -56,6 +56,7 @@ const admin: Item[] = [
   { title: "ClickWise beheer", url: "/app/admin/clickwise", icon: Plug },
   { title: "POS-beheer", url: "/app/admin/pos", icon: CreditCard },
   { title: "Voice Agent debug", url: "/app/admin/voice-agent", icon: Bot },
+  { title: "ClickWise Voice setup", url: "/app/admin/clickwise-voice-setup", icon: GraduationCap },
   { title: "Pilot readiness", url: "/app/admin/pilot-readiness", icon: ShieldCheck },
 ];
 
