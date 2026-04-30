@@ -105,6 +105,43 @@ export default function GeneralSettings() {
         </CardContent>
       </Card>
 
+      <Card>
+        <CardHeader>
+          <CardTitle className="font-display text-lg flex items-center gap-2">
+            <Wrench className="h-4 w-4" /> Geavanceerde modus
+          </CardTitle>
+          <CardDescription>
+            Toon technische opties zoals webhooks, integratie-logs, API-mappings en raw payloads.
+            Voor de meeste restaurants niet nodig.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-between gap-4 rounded-md border p-3">
+            <div className="space-y-0.5">
+              <Label className="text-sm font-medium">Geavanceerde opties tonen</Label>
+              <p className="text-xs text-muted-foreground">
+                {advanced.isAdmin
+                  ? "Je bent system admin — je ziet altijd alles, ongeacht deze schakelaar."
+                  : advanced.enabled
+                    ? "Aan: technische menu's en knoppen zijn zichtbaar."
+                    : "Uit: TableWise toont alleen wat je dagelijks nodig hebt."}
+              </p>
+            </div>
+            <Switch
+              checked={advanced.enabled}
+              disabled={advancedSaving}
+              onCheckedChange={async (next) => {
+                setAdvancedSaving(true);
+                const res = await advanced.setEnabled(next);
+                setAdvancedSaving(false);
+                if (!res.ok) toast.error("Opslaan mislukt: " + res.error);
+                else toast.success(next ? "Geavanceerde modus aan" : "Geavanceerde modus uit");
+              }}
+            />
+          </div>
+        </CardContent>
+      </Card>
+
       <div className="flex justify-end">
         <Button onClick={onSave} disabled={saving}>{saving ? "Opslaan…" : "Opslaan"}</Button>
       </div>
