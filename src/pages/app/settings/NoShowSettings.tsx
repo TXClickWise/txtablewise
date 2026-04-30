@@ -13,6 +13,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import { ShieldCheck, Wallet, MailCheck, Info } from "lucide-react";
+import { AdvancedSection } from "@/components/AdvancedSection";
 
 type Form = {
   // Confirmation & reminders
@@ -164,20 +165,25 @@ const NoShowSettings = () => {
             title="Makkelijke annulering via gastlink"
             help="Geef gasten een veilige link om hun reservering zelf te bevestigen of te annuleren."
           />
-          <ToggleRow
-            checked={form.noshow_risk_signal_enabled}
-            onChange={(v) => set("noshow_risk_signal_enabled", v)}
-            title="No-show risicosignaal tonen"
-            help="Intern signaal voor medewerkers — wordt nooit aan de gast getoond."
-          />
-          <Field label="Bericht bij annulering door gast (preview)">
-            <Textarea
-              rows={3}
-              placeholder="Bijv. ‘Bedankt voor het doorgeven. We hopen je een andere keer te mogen ontvangen.’"
-              value={form.noshow_cancel_message}
-              onChange={(e) => set("noshow_cancel_message", e.target.value)}
+          <AdvancedSection
+            title="Geavanceerde opties"
+            description="Risicosignaal en eigen annuleringsbericht. Defaults werken voor de meeste restaurants."
+          >
+            <ToggleRow
+              checked={form.noshow_risk_signal_enabled}
+              onChange={(v) => set("noshow_risk_signal_enabled", v)}
+              title="No-show risicosignaal tonen"
+              help="Intern signaal voor medewerkers — wordt nooit aan de gast getoond."
             />
-          </Field>
+            <Field label="Bericht bij annulering door gast (preview)">
+              <Textarea
+                rows={3}
+                placeholder="Bijv. ‘Bedankt voor het doorgeven. We hopen je een andere keer te mogen ontvangen.’"
+                value={form.noshow_cancel_message}
+                onChange={(e) => set("noshow_cancel_message", e.target.value)}
+              />
+            </Field>
+          </AdvancedSection>
         </CardContent>
       </Card>
 
@@ -214,16 +220,21 @@ const NoShowSettings = () => {
             title="Tegoedbon mogelijk i.p.v. boete"
             help="Bij no-show kan het bedrag als tegoedbon worden gegeven — gastvrijer dan een harde boete."
           />
-          <ToggleRow
-            checked={form.deposit_exempt_vip}
-            onChange={(v) => set("deposit_exempt_vip", v)}
-            title="VIP gasten uitzonderen"
-          />
-          <ToggleRow
-            checked={form.deposit_exempt_regulars}
-            onChange={(v) => set("deposit_exempt_regulars", v)}
-            title="Vaste gasten uitzonderen"
-          />
+          <AdvancedSection
+            title="Uitzonderingen voor specifieke gasten"
+            description="VIPs en vaste gasten standaard vrijstellen — gastvrijer dan iedereen hetzelfde behandelen."
+          >
+            <ToggleRow
+              checked={form.deposit_exempt_vip}
+              onChange={(v) => set("deposit_exempt_vip", v)}
+              title="VIP gasten uitzonderen"
+            />
+            <ToggleRow
+              checked={form.deposit_exempt_regulars}
+              onChange={(v) => set("deposit_exempt_regulars", v)}
+              title="Vaste gasten uitzonderen"
+            />
+          </AdvancedSection>
           <Field label="Tekst richting gast">
             <Textarea
               rows={3}
