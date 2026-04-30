@@ -17,6 +17,9 @@ import { Copy, Phone, Bot, BookOpen, KeyRound, Link2, ShieldCheck, Eye, EyeOff }
 import { Link } from "react-router-dom";
 import { format } from "date-fns";
 import { nl } from "date-fns/locale";
+import { AdvancedOnly } from "@/components/AdvancedOnly";
+import { useAdvancedMode } from "@/hooks/useAdvancedMode";
+import { SimpleEventLog } from "@/components/integrations/SimpleEventLog";
 
 type VoiceSettings = {
   id?: string;
@@ -50,6 +53,7 @@ const PROVIDERS = [
 export default function VoiceAgentPage() {
   const { current } = useRestaurant();
   const { isSystemAdmin } = useIsSystemAdmin();
+  const { canSeeAdvanced } = useAdvancedMode();
   const rid = current?.restaurant_id;
 
   const [settings, setSettings] = useState<VoiceSettings | null>(null);
@@ -146,15 +150,60 @@ export default function VoiceAgentPage() {
         }
       />
 
-      <Tabs defaultValue="api">
+      <Tabs defaultValue="status">
         <TabsList>
+          <TabsTrigger value="status">Status & test</TabsTrigger>
           <TabsTrigger value="api">
             <Link2 className="h-3.5 w-3.5 mr-1.5" />
             API-koppeling
           </TabsTrigger>
-          <TabsTrigger value="setup">Configuratie</TabsTrigger>
-          <TabsTrigger value="howto">Hoe koppelen</TabsTrigger>
+          {canSeeAdvanced && <TabsTrigger value="setup">Configuratie</TabsTrigger>}
+          {canSeeAdvanced && <TabsTrigger value="howto">Hoe koppelen</TabsTrigger>}
         </TabsList>
+
+        {/* Status & test — standaard zichtbaar voor eindgebruiker */}
+        <TabsContent value="status" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg font-display flex items-center gap-2">
+                <Bot className="h-5 w-5 text-primary" /> Status van je voice-agent
+              </CardTitle>
+              <CardDescription>
+                In één oogopslag of de koppeling werkt en wat er recent via de telefoon binnenkwam.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid sm:grid-cols-3 gap-3">
+                <div className="rounded-md border p-3">
+                  <div className="text-xs text-muted-foreground">Modus</div>
+                  <div className="text-sm font-medium mt-1">
+                    {settings.mode === "live" ? "🟢 Live" : "🟡 Sandbox (test)"}
+                  </div>
+                </div>
+                <div className="rounded-md border p-3">
+                  <div className="text-xs text-muted-foreground">Provider</div>
+                  <div className="text-sm font-medium mt-1">
+                    {PROVIDERS.find((p) => p.value === settings.provider)?.label ?? settings.provider}
+                  </div>
+                </div>
+                <div className="rounded-md border p-3">
+                  <div className="text-xs text-muted-foreground">API-sleutel</div>
+                  <div className="text-sm font-medium mt-1">
+                    {activeKey ? "✅ Actief" : "⚠️ Ontbreekt"}
+                  </div>
+                </div>
+              </div>
+              {settings.phone_number && (
+                <div className="rounded-md border bg-muted/30 p-3 text-sm flex items-center gap-2">
+                  <Phone className="h-4 w-4 text-primary" />
+                  Telefoonnummer: <strong>{settings.phone_number}</strong>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          <SimpleEventLog limit={20} />
+        </TabsContent>
 
         {/* API koppeling — voor eindgebruiker */}
         <TabsContent value="api" className="space-y-4">

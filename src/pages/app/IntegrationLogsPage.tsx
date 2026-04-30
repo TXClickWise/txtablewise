@@ -12,6 +12,9 @@ import { format } from "date-fns";
 import { nl } from "date-fns/locale";
 import { CheckCircle2, AlertTriangle, XCircle, RefreshCw, Filter, ScrollText, Loader2 } from "lucide-react";
 import { listIntegrationLogs, retryIntegrationLog, type IntegrationLog, type LogFilters } from "@/services/integrationLogs";
+import { SimpleEventLog } from "@/components/integrations/SimpleEventLog";
+import { AdvancedOnly } from "@/components/AdvancedOnly";
+import { useAdvancedMode } from "@/hooks/useAdvancedMode";
 
 const SOURCES: IntegrationLog["source"][] = ["api", "voice_agent", "webhook", "clickwise", "widget", "dashboard"];
 const STATUSES: IntegrationLog["status"][] = ["success", "warning", "failed"];
@@ -30,7 +33,8 @@ function statusIcon(s: IntegrationLog["status"]) {
 export default function IntegrationLogsPage() {
   const { current } = useRestaurant();
   const rid = current?.restaurant_id;
-
+  const { canSeeAdvanced } = useAdvancedMode();
+  const [showRaw, setShowRaw] = useState(false);
   const defaultFrom = useMemo(() => {
     const d = new Date(); d.setDate(d.getDate() - 1); return d.toISOString().slice(0, 16);
   }, []);
@@ -84,13 +88,23 @@ export default function IntegrationLogsPage() {
     <div className="p-6 space-y-6 max-w-6xl">
       <div className="flex items-center gap-3">
         <ScrollText className="h-7 w-7 text-primary" />
-        <div>
+        <div className="flex-1">
           <h1 className="font-display text-2xl">Integratie-logs</h1>
           <p className="text-sm text-muted-foreground">
-            Inkomende API-, voice-agent-, ClickWise- en webhook-calls met automatische foutanalyse.
+            Live overzicht van wat er via ClickWise, AI Voice, de widget en de API gebeurt.
           </p>
         </div>
+        <AdvancedOnly>
+          <Button variant="outline" size="sm" onClick={() => setShowRaw((v) => !v)}>
+            {showRaw ? "Toon eenvoudige weergave" : "Toon technische details"}
+          </Button>
+        </AdvancedOnly>
       </div>
+
+      {!showRaw || !canSeeAdvanced ? (
+        <SimpleEventLog limit={50} />
+      ) : (
+        <>
 
       <Card>
         <CardHeader>
@@ -261,6 +275,9 @@ export default function IntegrationLogsPage() {
           )}
         </SheetContent>
       </Sheet>
+        </>
+      )}
     </div>
+
   );
 }
