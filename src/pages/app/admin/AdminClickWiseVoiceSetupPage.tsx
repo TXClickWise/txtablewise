@@ -140,7 +140,7 @@ Roep ALTIJD \`log_call\` aan met de samenvatting, outcome (booked/changed/cancel
   const bookJson = `{
   "name": "book_reservation",
   "description": "Boek een reservering. Roep dit pas aan NA mondelinge bevestiging door de gast.",
-  "url": "${FN_BASE}/book_reservation",
+  "url": "${FN_BASE_VAR}/book_reservation",
   "method": "POST",
   "headers": {
     "Content-Type": "application/json",
