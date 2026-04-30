@@ -98,6 +98,7 @@ export function AppSidebar() {
   const { signOut, user } = useAuth();
   const { current } = useRestaurant();
   const { isSystemAdmin } = useIsSystemAdmin();
+  const { canSeeAdvanced } = useAdvancedMode();
   const location = useLocation();
 
   const handleNavigate = isMobile ? () => setOpenMobile(false) : undefined;
@@ -121,12 +122,12 @@ export function AppSidebar() {
       </SidebarHeader>
 
       <SidebarContent>
-        <Group label="Operatie" items={operatie} collapsed={collapsed} pathname={location.pathname} onNavigate={handleNavigate} />
-        <Group label="Gasten" items={gasten} collapsed={collapsed} pathname={location.pathname} onNavigate={handleNavigate} />
-        <Group label="Hospitality" items={hospitality} collapsed={collapsed} pathname={location.pathname} onNavigate={handleNavigate} />
-        <Group label="Beheer" items={beheer} collapsed={collapsed} pathname={location.pathname} onNavigate={handleNavigate} />
+        <Group label="Operatie" items={operatie} collapsed={collapsed} pathname={location.pathname} onNavigate={handleNavigate} canSeeAdvanced={canSeeAdvanced} />
+        <Group label="Gasten" items={gasten} collapsed={collapsed} pathname={location.pathname} onNavigate={handleNavigate} canSeeAdvanced={canSeeAdvanced} />
+        <Group label="Hospitality" items={hospitality} collapsed={collapsed} pathname={location.pathname} onNavigate={handleNavigate} canSeeAdvanced={canSeeAdvanced} />
+        <Group label="Beheer" items={beheer} collapsed={collapsed} pathname={location.pathname} onNavigate={handleNavigate} canSeeAdvanced={canSeeAdvanced} />
         {isSystemAdmin && (
-          <Group label="Admin" items={admin} collapsed={collapsed} pathname={location.pathname} accent onNavigate={handleNavigate} />
+          <Group label="Admin" items={admin} collapsed={collapsed} pathname={location.pathname} accent onNavigate={handleNavigate} canSeeAdvanced={canSeeAdvanced} />
         )}
       </SidebarContent>
 
