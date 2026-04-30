@@ -526,13 +526,62 @@ X-Agent-Api-Key: ${apiKey}`;
 
         {/* TEST */}
         <TabsContent value="test" className="space-y-4">
-          <Card className="p-4 space-y-3">
-            <h3 className="font-display text-base">Test 1 — API key direct (curl)</h3>
-            <p className="text-sm text-muted-foreground">Verwacht een 200 met <code>availableSlots</code>.</p>
-            <CopyBlock value={testCurl} lang="bash" />
+          <Card className="p-4 space-y-3 border-primary/30 bg-primary/5">
+            <h3 className="font-display text-base">Test 1 — Valideer de API key buiten ClickWise</h3>
+            <p className="text-sm text-muted-foreground">
+              Doe deze test <strong>vóórdat</strong> je in ClickWise gaat klikken. Hiermee bewijs je dat je sleutel werkt en dat de TableWise-endpoint bereikbaar is.
+              Verwacht een <code>200</code> met <code>availableSlots</code>. Lukt dit niet? Dan ligt het aan TableWise/sleutel — niet aan ClickWise.
+            </p>
+            <div className="rounded-md border border-amber-500/30 bg-amber-500/5 p-3 text-xs text-muted-foreground">
+              <strong className="text-foreground">Let op:</strong> ClickWise/HighLevel heeft géén losse "curl-knop". De Custom Actions die je later in ClickWise bouwt
+              dóén feitelijk hetzelfde als deze curl onder de motorkap. Deze test is dus alleen voor jouw eigen zekerheid vooraf, op je eigen machine of in een browsertool.
+            </div>
+
+            <Accordion type="single" collapsible defaultValue="curl">
+              <AccordionItem value="curl">
+                <AccordionTrigger>Optie A — Terminal (curl)</AccordionTrigger>
+                <AccordionContent className="space-y-2">
+                  <p className="text-sm text-muted-foreground">Mac/Linux: open <em>Terminal</em>. Windows: open <em>PowerShell</em> of <em>WSL</em>. Plak en run:</p>
+                  <CopyBlock value={testCurl} lang="bash" />
+                </AccordionContent>
+              </AccordionItem>
+              <AccordionItem value="hopp">
+                <AccordionTrigger>Optie B — Browser (hoppscotch.io, gratis)</AccordionTrigger>
+                <AccordionContent className="space-y-3">
+                  <ol className="text-sm space-y-1 list-decimal pl-4">
+                    <li>Ga naar <a href="https://hoppscotch.io" target="_blank" rel="noreferrer" className="text-primary underline">hoppscotch.io</a>.</li>
+                    <li>Methode = <strong>POST</strong>. Plak de URL hieronder.</li>
+                    <li>Tab <em>Headers</em>: voeg de twee headers hieronder toe.</li>
+                    <li>Tab <em>Body</em> → <em>Raw input</em> → <em>application/json</em>: plak de body.</li>
+                    <li>Klik <em>Send</em>. Verwacht <code>200</code>.</li>
+                  </ol>
+                  <CopyBlock label="URL" value={hoppscotchUrl} lang="text" />
+                  <CopyBlock label="Headers" value={hoppscotchHeaders} lang="text" />
+                  <CopyBlock label="Body (JSON)" value={hoppscotchBody} lang="json" />
+                </AccordionContent>
+              </AccordionItem>
+              <AccordionItem value="postman">
+                <AccordionTrigger>Optie C — Postman / Insomnia</AccordionTrigger>
+                <AccordionContent className="space-y-3">
+                  <ol className="text-sm space-y-1 list-decimal pl-4">
+                    <li>Nieuwe request → methode <strong>POST</strong> → URL plakken.</li>
+                    <li>Headers tab: beide headers plakken.</li>
+                    <li>Body → raw → JSON: body plakken.</li>
+                    <li>Send. Verwacht <code>200</code>.</li>
+                  </ol>
+                  <CopyBlock label="URL" value={hoppscotchUrl} lang="text" />
+                  <CopyBlock label="Headers" value={hoppscotchHeaders} lang="text" />
+                  <CopyBlock label="Body (JSON)" value={hoppscotchBody} lang="json" />
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>
           </Card>
+
           <Card className="p-4 space-y-2">
             <h3 className="font-display text-base">Test 2 — End-to-end belscript</h3>
+            <p className="text-sm text-muted-foreground">
+              Pas uitvoeren als je tools getraind hebt (zie tab <em>Actions → Trainen</em>). Anders blijven de custom fields leeg na de call.
+            </p>
             <ol className="text-sm space-y-1.5 list-decimal pl-4">
               <li>Bel het gekoppelde nummer.</li>
               <li>"Ik wil graag reserveren voor 2 personen, vrijdag om 19:30."</li>
@@ -549,8 +598,10 @@ X-Agent-Api-Key: ${apiKey}`;
               <li><strong>403 auth_scope_missing</strong> — sleutel mist scope. Maak nieuwe sleutel met scopes <code>availability, book, cancel</code>.</li>
               <li><strong>409 timeslot_unavailable</strong> — verwacht gedrag bij vol; agent moet dan alternatieven voorstellen.</li>
               <li><strong>Agent boekt zonder bevestiging</strong> — versterk in prompt: "Pas NA mondelinge bevestiging".</li>
+              <li><strong>Custom fields blijven leeg na call</strong> — tools zijn nog niet getraind. Zie tab <em>Actions → Trainen</em>.</li>
             </ul>
           </Card>
+
         </TabsContent>
       </Tabs>
     </div>
