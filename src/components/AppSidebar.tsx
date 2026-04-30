@@ -57,7 +57,7 @@ const admin: Item[] = [
   { title: "Pilot readiness", url: "/app/admin/pilot-readiness", icon: ShieldCheck },
 ];
 
-function Group({ label, items, collapsed, pathname, accent }: { label: string; items: Item[]; collapsed: boolean; pathname: string; accent?: boolean }) {
+function Group({ label, items, collapsed, pathname, accent, onNavigate }: { label: string; items: Item[]; collapsed: boolean; pathname: string; accent?: boolean; onNavigate?: () => void }) {
   return (
     <SidebarGroup>
       <SidebarGroupLabel className={cn(accent && "text-primary flex items-center gap-1.5")}>
@@ -70,7 +70,7 @@ function Group({ label, items, collapsed, pathname, accent }: { label: string; i
             return (
               <SidebarMenuItem key={item.url}>
                 <SidebarMenuButton asChild isActive={active}>
-                  <NavLink to={item.url} end={item.end}>
+                  <NavLink to={item.url} end={item.end} onClick={onNavigate}>
                     <item.icon className="h-4 w-4 shrink-0" />
                     {!collapsed && <span>{item.title}</span>}
                   </NavLink>
@@ -85,12 +85,14 @@ function Group({ label, items, collapsed, pathname, accent }: { label: string; i
 }
 
 export function AppSidebar() {
-  const { state } = useSidebar();
+  const { state, isMobile, setOpenMobile } = useSidebar();
   const collapsed = state === "collapsed";
   const { signOut, user } = useAuth();
   const { current } = useRestaurant();
   const { isSystemAdmin } = useIsSystemAdmin();
   const location = useLocation();
+
+  const handleNavigate = isMobile ? () => setOpenMobile(false) : undefined;
 
   return (
     <Sidebar collapsible="icon">
@@ -111,12 +113,12 @@ export function AppSidebar() {
       </SidebarHeader>
 
       <SidebarContent>
-        <Group label="Operatie" items={operatie} collapsed={collapsed} pathname={location.pathname} />
-        <Group label="Gasten" items={gasten} collapsed={collapsed} pathname={location.pathname} />
-        <Group label="Hospitality" items={hospitality} collapsed={collapsed} pathname={location.pathname} />
-        <Group label="Beheer" items={beheer} collapsed={collapsed} pathname={location.pathname} />
+        <Group label="Operatie" items={operatie} collapsed={collapsed} pathname={location.pathname} onNavigate={handleNavigate} />
+        <Group label="Gasten" items={gasten} collapsed={collapsed} pathname={location.pathname} onNavigate={handleNavigate} />
+        <Group label="Hospitality" items={hospitality} collapsed={collapsed} pathname={location.pathname} onNavigate={handleNavigate} />
+        <Group label="Beheer" items={beheer} collapsed={collapsed} pathname={location.pathname} onNavigate={handleNavigate} />
         {isSystemAdmin && (
-          <Group label="Admin" items={admin} collapsed={collapsed} pathname={location.pathname} accent />
+          <Group label="Admin" items={admin} collapsed={collapsed} pathname={location.pathname} accent onNavigate={handleNavigate} />
         )}
       </SidebarContent>
 
