@@ -11,11 +11,12 @@ import {
 import { useAuth } from "@/hooks/useAuth";
 import { useRestaurant } from "@/hooks/useRestaurant";
 import { useIsSystemAdmin } from "@/hooks/useIsSystemAdmin";
+import { useAdvancedMode } from "@/hooks/useAdvancedMode";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
-type Item = { title: string; url: string; icon: typeof LayoutDashboard; end?: boolean };
+type Item = { title: string; url: string; icon: typeof LayoutDashboard; end?: boolean; advanced?: boolean };
 
 const operatie: Item[] = [
   { title: "Vandaag", url: "/app", icon: LayoutDashboard, end: true },
