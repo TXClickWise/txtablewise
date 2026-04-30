@@ -554,6 +554,7 @@ X-Agent-Api-Key: ${apiKey}`;
           <TabsTrigger value="actions"><Wrench className="h-3.5 w-3.5 mr-1.5" />Actions</TabsTrigger>
           <TabsTrigger value="values"><Variable className="h-3.5 w-3.5 mr-1.5" />Values & Fields</TabsTrigger>
           <TabsTrigger value="workflow"><Workflow className="h-3.5 w-3.5 mr-1.5" />Workflow</TabsTrigger>
+          <TabsTrigger value="inbound"><Webhook className="h-3.5 w-3.5 mr-1.5" />Inbound webhooks</TabsTrigger>
           <TabsTrigger value="test"><Phone className="h-3.5 w-3.5 mr-1.5" />Test</TabsTrigger>
           <TabsTrigger value="snapshot"><Package className="h-3.5 w-3.5 mr-1.5" />Snapshot</TabsTrigger>
         </TabsList>
