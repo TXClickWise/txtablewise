@@ -509,6 +509,159 @@ async function handleCreateReservation(req: Request, keyRow: KeyRow): Promise<Re
   }, 201);
 }
 
+// --- Reservation request (ultra-simple AI Voice / ClickWise endpoint) --------
+//
+// POST /public_api/reservation-request
+// Eén call die intern: valideert → availability checkt → boekt.
+// Bij vol: retourneert TW_409_TIMESLOT_UNAVAILABLE met `suggestedAlternatives`
+// zodat de AI Voice agent meteen alternatieven kan voorlezen.
+//
+// Payload:
+// {
+//   "localDate": "YYYY-MM-DD", "localTime": "HH:mm", "partySize": 4,
+//   "notes": "optioneel",
+//   "source": "clickwise_voice" | "voice_agent" | "phone_ai" | ...,
+//   "contact": { "fullName": "...", "phone": "+316...", "email": "optioneel", "language": "nl" }
+// }
+async function handleReservationRequest(req: Request, keyRow: KeyRow): Promise<Response> {
+  if (!keyRow.scopes.includes("book")) return errResp("TW_403_SCOPE_MISSING", "book");
+
+  let body: any;
+  try { body = await req.json(); } catch { return errResp("TW_400_INVALID_BODY"); }
+
+  const { localDate, localTime, partySize, notes, source, externalReference } = body || {};
+  const c = body?.contact || {};
+
+  // Validatie
+  const dtErr = validateDateTime(localDate, localTime);
+  if (dtErr) return errResp(dtErr, dtErr.includes("DATE") ? "localDate" : "localTime");
+  if (!partySize || typeof partySize !== "number" || partySize < 1) {
+    return errResp("TW_400_MISSING_PARTY_SIZE", "partySize");
+  }
+  const todayIso = new Date().toISOString().slice(0, 10);
+  if (localDate < todayIso) return errResp("TW_400_DATE_IN_PAST", "localDate");
+
+  // Naam
+  let firstName: string | undefined = c.firstName;
+  let lastName: string | undefined = c.lastName;
+  if (!firstName && c.fullName) {
+    const parts = splitFullName(String(c.fullName));
+    firstName = parts.first_name;
+    lastName = parts.last_name;
+  }
+  if (!firstName) return errResp("TW_400_MISSING_NAME", "contact.fullName");
+
+  // Contact: telefoon OF email verplicht
+  const hasPhone = !!c.phone;
+  const hasEmail = !!c.email;
+  if (!hasPhone && !hasEmail) return errResp("TW_400_MISSING_CONTACT", "contact");
+  if (hasPhone && !PHONE_RE.test(String(c.phone))) return errResp("TW_400_INVALID_PHONE", "contact.phone");
+  if (hasEmail && !EMAIL_RE.test(String(c.email))) return errResp("TW_400_INVALID_EMAIL", "contact.email");
+
+  // Stap 1: availability check + alternatieven verzamelen
+  const availResp = await callInternal("availability", {
+    restaurant_id: keyRow.restaurant_id,
+    date: localDate,
+    party_size: partySize,
+  });
+
+  if (availResp.status >= 400) {
+    return errResp(mapInternalError(availResp.body?.error_code), undefined, availResp.body?.error);
+  }
+
+  const availData = availResp.body || {};
+  if (availData.closed) return errResp("TW_423_RESTAURANT_CLOSED", "localDate");
+  if (availData.large_group) return errResp("TW_409_PARTY_TOO_LARGE", "partySize");
+
+  const slots: Array<{ time: string; available: boolean; peak_warning?: boolean; reason?: string }> = availData.slots || [];
+  const requested = slots.find((s) => s.time === localTime);
+
+  if (!requested?.available) {
+    // Bouw 3 dichtstbijzijnde alternatieven
+    const reqMinutes = toMinutes(localTime);
+    const alts = slots
+      .filter((s) => s.available && s.time !== localTime)
+      .sort((a, b) => Math.abs(toMinutes(a.time) - reqMinutes) - Math.abs(toMinutes(b.time) - reqMinutes))
+      .slice(0, 3)
+      .map((s) => ({ localTime: s.time, peakWarning: !!s.peak_warning }));
+
+    const code: TwCode = !requested
+      ? "TW_423_RESTAURANT_CLOSED"
+      : (requested.reason === "no_table" ? "TW_409_TIMESLOT_UNAVAILABLE" : "TW_409_PACING_FULL");
+
+    const baseError = twError(code, "localTime");
+    const suggestedFix = alts.length > 0
+      ? `Bied de gast een alternatief tijdstip aan: ${alts.map((a) => a.localTime).join(", ")}.`
+      : `Geen alternatieven binnen deze dag. Vraag de gast voor een andere datum.`;
+
+    return jsonResp({
+      error: { ...baseError.error, suggestedFix },
+      suggestedAlternatives: alts,
+    }, twHttp(code));
+  }
+
+  // Stap 2: boek via book_reservation
+  const guestEmail = hasEmail
+    ? String(c.email)
+    : `noemail+${keyRow.restaurant_id.slice(0, 8)}-${Date.now()}@public.tablewise.local`;
+
+  const channel = mapSourceToChannel(source);
+
+  const internalPayload = {
+    restaurant_id: keyRow.restaurant_id,
+    date: localDate,
+    time: localTime,
+    party_size: partySize,
+    guest: {
+      first_name: firstName,
+      last_name: lastName,
+      phone: c.phone || null,
+      email: guestEmail,
+      language: c.language || "nl",
+    },
+    special_requests: notes ?? null,
+    channel,
+    source_metadata: {
+      via: "public_api/reservation-request",
+      source: source || null,
+      external_reference: externalReference || null,
+      email_provided: hasEmail,
+      phone_provided: hasPhone,
+      api_key_id: keyRow.id,
+      provider: keyRow.provider || null,
+    },
+  };
+
+  const internal = await callInternal("book_reservation", internalPayload);
+  if (internal.status >= 400) {
+    const tw = mapInternalError(internal.body?.error_code);
+    return errResp(tw, internal.body?.field, internal.body?.error);
+  }
+
+  const r = internal.body?.reservation;
+  if (!r) return errResp("TW_500_INTERNAL");
+
+  if (externalReference) {
+    const sb = admin();
+    await sb.from("reservations").update({ external_reference: String(externalReference) }).eq("id", r.id);
+  }
+
+  return jsonResp({
+    success: true,
+    reservationId: r.id,
+    reservationCode: r.confirmation_code,
+    status: r.status,
+    localDate,
+    localTime,
+    partySize,
+    guest: {
+      fullName: [firstName, lastName].filter(Boolean).join(" "),
+      phone: hasPhone ? c.phone : null,
+      email: hasEmail ? c.email : null,
+    },
+  }, 201);
+}
+
 // --- Update reservation -------------------------------------------------------
 
 async function handleUpdateReservation(req: Request, keyRow: KeyRow, reservationId: string): Promise<Response> {
