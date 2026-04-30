@@ -958,7 +958,7 @@ X-Agent-Api-Key: ${apiKey}`;
           <Card className="p-4 space-y-3 border-primary/30 bg-primary/5">
             <h3 className="font-display text-base flex items-center gap-2">
               <ListChecks className="h-4 w-4 text-primary" />
-              Per nieuwe klant — exact 6 handmatige stappen
+              Per nieuwe klant — exact 7 handmatige stappen
             </h3>
             <ol className="text-sm space-y-2 list-decimal pl-4">
               <li>
@@ -971,6 +971,7 @@ X-Agent-Api-Key: ${apiKey}`;
                 <ul className="list-disc pl-5 mt-1 text-muted-foreground space-y-0.5">
                   <li><code>tablewise_api_key</code> — uit TableWise → Voice Agent → Sleutel genereren (per restaurant uniek)</li>
                   <li><code>tablewise_restaurant_id</code> — uit TableWise (<code>/app/instellingen</code> of admin)</li>
+                  <li><code>tablewise_webhook_secret</code> — uit TableWise → Settings → API & Webhooks (per endpoint)</li>
                   <li><code>restaurant_name</code>, <code>restaurant_phone</code>, <code>restaurant_address</code>, <code>opening_hours_short</code></li>
                   <li><code>tablewise_base_url</code> — laat staan, is globaal</li>
                 </ul>
@@ -991,9 +992,14 @@ X-Agent-Api-Key: ${apiKey}`;
                 klik <em>Test</em>, sla de response sample op en map de velden. Daarna body terugzetten naar de versie met <code>{`{{...}}`}</code>.
                 Zonder deze stap blijven custom fields leeg na een echte call.
               </li>
+              <li>
+                <strong>Inbound webhook URLs koppelen</strong>: open elk van de 11 <code>TW — *</code> workflows in ClickWise,
+                kopieer de unieke webhook URL en plak in TableWise → <em>Settings → API & Webhooks</em> als endpoint
+                (één per event-type, of één endpoint met <code>*</code> filter voor alles). Zie tab <em>Inbound webhooks</em>.
+              </li>
             </ol>
             <p className="text-xs text-muted-foreground pt-2 border-t border-border">
-              Stappen 1, 2 en 5 kosten ~5 minuten. Stappen 3, 4 en 6 samen ~15 minuten. Reken op ~20-25 min per nieuwe klant.
+              Stappen 1, 2 en 5 kosten ~5 minuten. Stappen 3, 4, 6 en 7 samen ~20 minuten. Reken op ~25-30 min per nieuwe klant.
             </p>
           </Card>
 
