@@ -392,9 +392,24 @@ X-Agent-Api-Key: ${apiKey}`;
             <p>Maak een workflow met trigger <em>Inbound Call</em> die de agent activeert en na afloop SMS verstuurt. Zie tab <em>Workflow</em> voor de YAML-structuur.</p>
           </StepCard>
 
-          <StepCard n={6} title="Testen" icon={Phone}>
-            <p>Bel het nummer, doe een testreservering, controleer in TableWise → <code>/app/reserveringen</code> én in <code>/app/admin/logs</code> dat de events binnenkomen. Zie tab <em>Test</em>.</p>
+          <StepCard n={5.5 as unknown as number} title="Trainen — laat ClickWise de response herkennen" icon={Wrench}>
+            <p>
+              ClickWise weet pas welke velden uit de TableWise-response (zoals <code>reservation_id</code>, <code>availableSlots</code>) bestaan
+              <strong> nadat het één keer een echte response heeft gezien</strong>. Dat doe je per Custom Action met een testaanroep met écht ingevulde waarden.
+            </p>
+            <ol className="list-decimal pl-4 space-y-1.5">
+              <li>Open een Custom Action (bv. <code>book_reservation</code>) in ClickWise.</li>
+              <li>Vervang het body-veld tijdelijk door de <strong>test-payload</strong> uit tab <em>Actions → Trainen</em>.</li>
+              <li>Klik <em>Test</em> / <em>Run test</em>. Je ziet de echte JSON-response.</li>
+              <li>Klik <em>Save response sample</em> (of <em>Map fields</em>) en koppel velden zoals <code>response.reservation_id</code> → custom field <code>reservation_id</code>.</li>
+              <li><strong>Belangrijk:</strong> zet de body daarna terug naar de versie met <code>{`{{...}}`}</code> placeholders, anders boekt elke beller "Test Tester".</li>
+            </ol>
           </StepCard>
+
+          <StepCard n={6} title="Testen" icon={Phone}>
+            <p>Heb je in stap 5.5 alle 4 de tools getraind? Dan vult de end-to-end belproef de custom fields automatisch. Bel het nummer, doe een testreservering en controleer in TableWise → <code>/app/reserveringen</code> én <code>/app/admin/logs</code>. Zie tab <em>Test</em>.</p>
+          </StepCard>
+
         </TabsContent>
 
         {/* PROMPT */}
