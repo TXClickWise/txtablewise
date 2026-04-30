@@ -614,8 +614,16 @@ X-Agent-Api-Key: ${apiKey}`;
           <StepCard n={7} title="Snapshot maken & hergebruiken voor volgende klanten" icon={Package}>
             <p>
               Werkt deze sub-account end-to-end? Exporteer 'm dan als <strong>HighLevel snapshot</strong>.
-              Bij elke nieuwe klant importeer je de snapshot en heb je nog ~6 handmatige stappen.
+              Bij elke nieuwe klant importeer je de snapshot en heb je nog ~7 handmatige stappen.
               Volledige checklist + placeholder-template staat in tab <em>Snapshot</em>.
+            </p>
+          </StepCard>
+
+          <StepCard n={8} title="Inbound webhooks koppelen — TableWise laten praten naar ClickWise" icon={Webhook}>
+            <p>
+              De voice agent stuurt gespreksdata <em>naar</em> TableWise. Voor bevestigingen, reminders, reviews en wachtlijst-meldingen
+              moet ClickWise juist <em>luisteren</em> naar de 11 events die TableWise zelf uitstuurt.
+              Bouw per event-type een Inbound-webhook workflow en plak de unieke URL in TableWise. Volledige lijst + sample payloads in tab <em>Inbound webhooks</em>.
             </p>
           </StepCard>
 
