@@ -534,7 +534,7 @@ X-Agent-Api-Key: ${apiKey}`;
             <p className="font-medium text-sm">Bouw dit eenmalig — distribueer via snapshot</p>
             <p className="text-sm text-muted-foreground">
               Bouw deze hele setup één keer in een 'master' sub-account met dummy-waarden, exporteer als HighLevel snapshot,
-              en gebruik die snapshot voor élke nieuwe klant. Per klant blijven er dan ~6 handmatige stappen over.
+              en gebruik die snapshot voor élke nieuwe klant. Per klant blijven er dan ~7 handmatige stappen over.
               Zie tab <strong>Snapshot</strong> voor de volledige checklist en placeholder-template.
             </p>
           </div>
