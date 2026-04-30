@@ -92,9 +92,9 @@ async function book(input: BookInput): Promise<BookResult> {
         start_time_local: input.time,
         party_size: input.partySize,
         guest_full_name:
-          input.contact.fullName ??
-          [input.contact.firstName, input.contact.lastName].filter(Boolean).join(" ").trim() ||
-          undefined,
+          input.contact.fullName ||
+          ([input.contact.firstName, input.contact.lastName].filter(Boolean).join(" ").trim() ||
+            undefined),
         guest_phone: input.contact.phone,
         guest_email: input.contact.email,
         special_requests: input.specialRequests,
