@@ -57,7 +57,7 @@ const admin: Item[] = [
   { title: "Pilot readiness", url: "/app/admin/pilot-readiness", icon: ShieldCheck },
 ];
 
-function Group({ label, items, collapsed, pathname, accent }: { label: string; items: Item[]; collapsed: boolean; pathname: string; accent?: boolean }) {
+function Group({ label, items, collapsed, pathname, accent, onNavigate }: { label: string; items: Item[]; collapsed: boolean; pathname: string; accent?: boolean; onNavigate?: () => void }) {
   return (
     <SidebarGroup>
       <SidebarGroupLabel className={cn(accent && "text-primary flex items-center gap-1.5")}>
@@ -70,7 +70,7 @@ function Group({ label, items, collapsed, pathname, accent }: { label: string; i
             return (
               <SidebarMenuItem key={item.url}>
                 <SidebarMenuButton asChild isActive={active}>
-                  <NavLink to={item.url} end={item.end}>
+                  <NavLink to={item.url} end={item.end} onClick={onNavigate}>
                     <item.icon className="h-4 w-4 shrink-0" />
                     {!collapsed && <span>{item.title}</span>}
                   </NavLink>
