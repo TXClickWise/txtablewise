@@ -182,7 +182,7 @@ Roep ALTIJD \`log_call\` aan met de samenvatting, outcome (booked/changed/cancel
   const logCallJson = `{
   "name": "log_call",
   "description": "Log de afronding van het gesprek (samenvatting, outcome). Roep dit ALTIJD aan aan het einde.",
-  "url": "${FN_BASE}/log_call",
+  "url": "${FN_BASE_VAR}/log_call",
   "method": "POST",
   "headers": {
     "Content-Type": "application/json",
