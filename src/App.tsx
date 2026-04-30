@@ -56,6 +56,7 @@ import OnboardingWizardPage from "./pages/app/OnboardingWizardPage.tsx";
 import PilotReadinessPage from "./pages/app/PilotReadinessPage.tsx";
 import AdminVoiceAgentPage from "./pages/app/admin/AdminVoiceAgentPage.tsx";
 import AdminPlanRequestsPage from "./pages/app/admin/AdminPlanRequestsPage.tsx";
+import AdminClickWiseVoiceSetupPage from "./pages/app/admin/AdminClickWiseVoiceSetupPage.tsx";
 import { RequireSystemAdmin } from "./components/RequireSystemAdmin";
 import NotFound from "./pages/NotFound.tsx";
 
