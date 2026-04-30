@@ -95,6 +95,7 @@ const App = () => (
               <Route path="help/voice-agent" element={<VoiceAgentHelp />} />
               <Route path="rapportages" element={<ReportsPage />} />
               <Route path="integraties" element={<IntegrationsPage />} />
+              <Route path="koppelingen" element={<KoppelingenPage />} />
 
               {/* Admin-only routes (system admin) */}
               <Route path="admin/voice-agent" element={<RequireSystemAdmin><AdminVoiceAgentPage /></RequireSystemAdmin>} />
