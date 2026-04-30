@@ -1020,6 +1020,8 @@ X-Agent-Api-Key: ${apiKey}`;
               <li>SMS-bodies in workflow gebruiken <code>{`{{custom_values.restaurant_name}}`}</code>.</li>
               <li>Identity-velden komen uit native HighLevel <code>{`{{contact.*}}`}</code> — bestaan automatisch in elke sub-account.</li>
               <li>Custom Fields zijn generiek (geen restaurantnaam in de field-naam) — herbruikbaar zonder rename.</li>
+              <li>Inbound-webhook workflows hebben een vaste naam-conventie (<code>TW — &lt;event_label&gt;</code>) zodat ze in elke snapshot herkenbaar zijn.</li>
+              <li>HMAC-validatie snippet gebruikt <code>{`{{custom_values.tablewise_webhook_secret}}`}</code> — geen secret in de workflow-code.</li>
             </ul>
           </Card>
         </TabsContent>
