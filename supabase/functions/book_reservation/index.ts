@@ -39,11 +39,11 @@ Deno.serve(async (req) => {
     if (!body?.time) missing.push("time");
     if (!body?.party_size) missing.push("party_size");
     if (!body?.guest?.first_name) missing.push("guest.first_name");
-    if (!body?.guest?.email) missing.push("guest.email");
+    if (!body?.guest?.email && !body?.guest?.phone) missing.push("guest.phone");
     if (missing.length) return json({ error: `Missing required fields: ${missing.join(", ")}`, error_code: "missing_field", field: missing[0] }, 400);
     if (!(body.restaurant_id || body.restaurant_slug)) return json({ error: "Restaurant required", error_code: "missing_field", field: "restaurant_id" }, 400);
     if (body.party_size < 1 || body.party_size > 50) return json({ error: "Invalid party_size", error_code: "invalid_field", field: "party_size" }, 400);
-    if (!/^\S+@\S+\.\S+$/.test(body.guest.email)) return json({ error: "Invalid email", error_code: "invalid_email", field: "guest.email" }, 400);
+    if (body.guest.email && !/^\S+@\S+\.\S+$/.test(body.guest.email)) return json({ error: "Invalid email", error_code: "invalid_email", field: "guest.email" }, 400);
 
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL")!,
@@ -147,17 +147,21 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Upsert guest by (restaurant_id, email)
+    // Upsert guest by (restaurant_id, email) when email provided, otherwise by phone
     let guestId: string | null = null;
-    const { data: existingGuest } = await supabase
-      .from("guests").select("id")
-      .eq("restaurant_id", restaurant.id).eq("email", body.guest.email).maybeSingle();
+    const lookup = supabase.from("guests").select("id").eq("restaurant_id", restaurant.id);
+    const { data: existingGuest } = body.guest.email
+      ? await lookup.eq("email", body.guest.email).maybeSingle()
+      : body.guest.phone
+        ? await lookup.eq("phone", body.guest.phone).maybeSingle()
+        : { data: null as { id: string } | null };
     if (existingGuest) {
       guestId = existingGuest.id;
       await supabase.from("guests").update({
         first_name: body.guest.first_name,
         last_name: body.guest.last_name ?? null,
         phone: body.guest.phone ?? null,
+        email: body.guest.email ?? null,
         language: body.guest.language ?? "nl",
         marketing_consent: body.marketing_consent ?? false,
       }).eq("id", guestId);
@@ -167,7 +171,7 @@ Deno.serve(async (req) => {
         first_name: body.guest.first_name,
         last_name: body.guest.last_name ?? null,
         phone: body.guest.phone ?? null,
-        email: body.guest.email,
+        email: body.guest.email ?? null,
         language: body.guest.language ?? "nl",
         marketing_consent: body.marketing_consent ?? false,
       }).select("id").single();
@@ -278,7 +282,7 @@ Deno.serve(async (req) => {
         channel,
         party_size: body.party_size,
         start_time: start_iso,
-        guest: { email: body.guest.email, first_name: body.guest.first_name },
+        guest: { email: body.guest.email ?? null, phone: body.guest.phone ?? null, first_name: body.guest.first_name },
       },
     });
 
