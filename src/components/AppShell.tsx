@@ -23,7 +23,7 @@ const AppShellInner = ({ children }: { children?: ReactNode }) => {
   const isWizard = location.pathname.startsWith("/app/onboarding");
 
   return (
-    <SidebarProvider defaultOpen={false}>
+    <SidebarProvider>
       <div className="min-h-screen flex w-full bg-background">
         <AppSidebar />
         <div className="flex-1 flex flex-col min-w-0">
