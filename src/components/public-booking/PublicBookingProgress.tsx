@@ -1,25 +1,12 @@
 // Step indicator for the public booking flow.
-// Mobile-first: compact dots with label of the current step.
+// Guestplan-style: only 2 visible steps (Tijd kiezen → Gegevens & bevestigen).
 import { cn } from "@/lib/utils";
 
-export type BookingStepId =
-  | "party"
-  | "date"
-  | "time"
-  | "preferences"
-  | "extras"
-  | "guest"
-  | "review"
-  | "confirmed";
+export type BookingStepId = "select" | "details" | "confirmed";
 
 const VISIBLE_STEPS: { id: BookingStepId; label: string }[] = [
-  { id: "party", label: "Gasten" },
-  { id: "date", label: "Datum" },
-  { id: "time", label: "Tijd" },
-  { id: "preferences", label: "Wensen" },
-  { id: "extras", label: "Extra's" },
-  { id: "guest", label: "Gegevens" },
-  { id: "review", label: "Bevestigen" },
+  { id: "select", label: "Tijd kiezen" },
+  { id: "details", label: "Gegevens & bevestigen" },
 ];
 
 export const PublicBookingProgress = ({ current }: { current: BookingStepId }) => {
