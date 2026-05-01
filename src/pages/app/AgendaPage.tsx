@@ -1,7 +1,7 @@
-import { useMemo, useState } from "react";
-import { format, addDays, subDays } from "date-fns";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { format, addDays, subDays, isSameDay } from "date-fns";
 import { nl } from "date-fns/locale";
-import { ChevronLeft, ChevronRight, Calendar as CalendarIcon } from "lucide-react";
+import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, ZoomIn, ZoomOut } from "lucide-react";
 import { useRestaurant } from "@/hooks/useRestaurant";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -10,16 +10,18 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { ReservationDetailDialog } from "@/components/ReservationDetailDialog";
-import { PacingIndicator, pacingLevelFromCovers } from "@/components/reservations/PacingIndicator";
 import { PageHeader } from "@/components/PageHeader";
 import { EmptyState } from "@/components/touch/StateViews";
 import { cn } from "@/lib/utils";
 
-// time grid 11:00 → 23:30 every 30 min
+// time grid 11:00 → 24:00 every 30 min
 const START_HOUR = 11;
 const END_HOUR = 24;
 const SLOT_MIN = 30;
-const PX_PER_MIN = 2; // 60 px per uur
+const PX_MIN = 1;
+const PX_MAX = 6;
+const PX_STEP = 0.5;
+const PX_DEFAULT = 2;
 
 const STATUS_BG: Record<string, string> = {
   pending: "bg-status-pending/30 border-status-pending/60",
@@ -36,7 +38,17 @@ const AgendaPage = () => {
   const rid = current?.restaurant_id;
   const [date, setDate] = useState<Date>(new Date());
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [pxPerMin, setPxPerMin] = useState(PX_DEFAULT);
+  const [now, setNow] = useState(new Date());
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const didInitialScroll = useRef(false);
   const dateStr = format(date, "yyyy-MM-dd");
+
+  // tick "nu" elke 30s
+  useEffect(() => {
+    const id = setInterval(() => setNow(new Date()), 30_000);
+    return () => clearInterval(id);
+  }, []);
 
   const { data: tables = [] } = useQuery({
     queryKey: ["agenda-tables", rid],
@@ -71,7 +83,7 @@ const AgendaPage = () => {
   }, []);
 
   const totalMinutes = (END_HOUR - START_HOUR) * 60;
-  const totalWidth = totalMinutes * PX_PER_MIN;
+  const totalWidth = totalMinutes * pxPerMin;
 
   // group reservations by table_id
   const byTable = useMemo(() => {
@@ -85,21 +97,103 @@ const AgendaPage = () => {
     return map;
   }, [reservations]);
 
-  const dayStart = new Date(date);
-  dayStart.setHours(START_HOUR, 0, 0, 0);
-
   const minutesFromStart = (iso: string) => {
     const d = new Date(iso);
     return (d.getHours() - START_HOUR) * 60 + d.getMinutes();
   };
 
+  const isToday = isSameDay(date, now);
+  const nowMin = (now.getHours() - START_HOUR) * 60 + now.getMinutes();
+  const showNowLine = isToday && nowMin >= 0 && nowMin <= totalMinutes;
+
+  // Auto-scroll naar nu bij eerste render of dagwissel naar vandaag
+  useEffect(() => {
+    if (!scrollRef.current || tables.length === 0) return;
+    const el = scrollRef.current;
+    if (isToday) {
+      const target = Math.max(0, nowMin * pxPerMin - el.clientWidth / 3);
+      el.scrollTo({ left: target, behavior: didInitialScroll.current ? "smooth" : "auto" });
+    } else if (!didInitialScroll.current) {
+      el.scrollTo({ left: 0 });
+    }
+    didInitialScroll.current = true;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dateStr, tables.length]);
+
+  // Zoom met behoud van centerTime
+  const zoomBy = (delta: number) => {
+    const el = scrollRef.current;
+    const oldPx = pxPerMin;
+    const next = Math.max(PX_MIN, Math.min(PX_MAX, +(oldPx + delta).toFixed(2)));
+    if (next === oldPx) return;
+    let centerMin = nowMin;
+    if (el) {
+      centerMin = (el.scrollLeft + el.clientWidth / 2) / oldPx;
+    }
+    setPxPerMin(next);
+    requestAnimationFrame(() => {
+      const e2 = scrollRef.current;
+      if (!e2) return;
+      e2.scrollLeft = Math.max(0, centerMin * next - e2.clientWidth / 2);
+    });
+  };
+
+  // Pinch-zoom op touch
+  const pointers = useRef<Map<number, { x: number; y: number }>>(new Map());
+  const pinchStart = useRef<{ dist: number; px: number; centerMin: number } | null>(null);
+
+  const onPointerDown = (e: React.PointerEvent) => {
+    if (e.pointerType !== "touch") return;
+    pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (pointers.current.size === 2) {
+      const [a, b] = Array.from(pointers.current.values());
+      const dist = Math.hypot(a.x - b.x, a.y - b.y);
+      const el = scrollRef.current;
+      const centerMin = el ? (el.scrollLeft + el.clientWidth / 2) / pxPerMin : nowMin;
+      pinchStart.current = { dist, px: pxPerMin, centerMin };
+    }
+  };
+  const onPointerMove = (e: React.PointerEvent) => {
+    if (e.pointerType !== "touch" || !pointers.current.has(e.pointerId)) return;
+    pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (pointers.current.size === 2 && pinchStart.current) {
+      const [a, b] = Array.from(pointers.current.values());
+      const dist = Math.hypot(a.x - b.x, a.y - b.y);
+      const ratio = dist / pinchStart.current.dist;
+      const next = Math.max(PX_MIN, Math.min(PX_MAX, pinchStart.current.px * ratio));
+      if (Math.abs(next - pxPerMin) > 0.05) {
+        setPxPerMin(+next.toFixed(2));
+        requestAnimationFrame(() => {
+          const el = scrollRef.current;
+          if (!el || !pinchStart.current) return;
+          el.scrollLeft = Math.max(0, pinchStart.current.centerMin * next - el.clientWidth / 2);
+        });
+      }
+    }
+  };
+  const onPointerEnd = (e: React.PointerEvent) => {
+    pointers.current.delete(e.pointerId);
+    if (pointers.current.size < 2) pinchStart.current = null;
+  };
+
+  const zoomPct = Math.round((pxPerMin / PX_DEFAULT) * 100);
+
   return (
-    <div className="p-6 max-w-[1600px] mx-auto space-y-6">
+    <div className="p-4 sm:p-6 max-w-[1600px] mx-auto space-y-6">
       <PageHeader
         title="Agenda"
         description={<span className="capitalize">{format(date, "EEEE d MMMM yyyy", { locale: nl })}</span>}
         actions={
           <>
+            <div className="hidden sm:flex items-center gap-1 mr-1">
+              <Button variant="outline" size="icon" className="h-11 w-11" onClick={() => zoomBy(-PX_STEP)} disabled={pxPerMin <= PX_MIN} aria-label="Uitzoomen">
+                <ZoomOut className="h-4 w-4" />
+              </Button>
+              <span className="text-xs text-muted-foreground tabular-nums w-12 text-center">{zoomPct}%</span>
+              <Button variant="outline" size="icon" className="h-11 w-11" onClick={() => zoomBy(PX_STEP)} disabled={pxPerMin >= PX_MAX} aria-label="Inzoomen">
+                <ZoomIn className="h-4 w-4" />
+              </Button>
+            </div>
             <Button variant="outline" size="icon" className="h-11 w-11" onClick={() => setDate(subDays(date, 1))} aria-label="Vorige dag">
               <ChevronLeft className="h-4 w-4" />
             </Button>
@@ -117,12 +211,28 @@ const AgendaPage = () => {
             <Button variant="outline" size="icon" className="h-11 w-11" onClick={() => setDate(addDays(date, 1))} aria-label="Volgende dag">
               <ChevronRight className="h-4 w-4" />
             </Button>
+            {!isToday && (
+              <Button variant="outline" className="h-11" onClick={() => setDate(new Date())}>
+                Vandaag
+              </Button>
+            )}
           </>
         }
       />
 
+      {/* Mobile zoom-knoppen */}
+      <div className="flex sm:hidden items-center justify-end gap-1">
+        <Button variant="outline" size="icon" className="h-10 w-10" onClick={() => zoomBy(-PX_STEP)} disabled={pxPerMin <= PX_MIN} aria-label="Uitzoomen">
+          <ZoomOut className="h-4 w-4" />
+        </Button>
+        <span className="text-xs text-muted-foreground tabular-nums w-12 text-center">{zoomPct}%</span>
+        <Button variant="outline" size="icon" className="h-10 w-10" onClick={() => zoomBy(PX_STEP)} disabled={pxPerMin >= PX_MAX} aria-label="Inzoomen">
+          <ZoomIn className="h-4 w-4" />
+        </Button>
+      </div>
+
       <Card className="bg-gradient-card shadow-soft">
-        <CardContent className="p-0 overflow-x-auto">
+        <CardContent className="p-0">
           {tables.length === 0 ? (
             <div className="p-6">
               <EmptyState
@@ -132,69 +242,95 @@ const AgendaPage = () => {
               />
             </div>
           ) : (
-            <div className="relative" style={{ minWidth: totalWidth + 120 }}>
-              {/* Header row */}
-              <div className="sticky top-0 z-10 bg-card border-b border-border flex">
-                <div className="w-[120px] shrink-0 p-2 text-xs font-medium text-muted-foreground border-r border-border">Tafel</div>
-                <div className="relative flex-1" style={{ width: totalWidth }}>
-                  {slots.map((s, i) => (
-                    <div
-                      key={s}
-                      className={cn("absolute top-0 h-full text-[10px] text-muted-foreground border-l border-border/50", i % 2 === 0 ? "" : "border-l-dashed")}
-                      style={{ left: i * SLOT_MIN * PX_PER_MIN, width: SLOT_MIN * PX_PER_MIN }}
-                    >
-                      {i % 2 === 0 && <span className="px-1">{s}</span>}
-                    </div>
-                  ))}
-                  <div className="h-6" />
+            <div
+              ref={scrollRef}
+              className="overflow-x-auto"
+              style={{ touchAction: "pan-x pan-y" }}
+              onPointerDown={onPointerDown}
+              onPointerMove={onPointerMove}
+              onPointerUp={onPointerEnd}
+              onPointerCancel={onPointerEnd}
+              onPointerLeave={onPointerEnd}
+            >
+              <div className="relative" style={{ minWidth: totalWidth + 120 }}>
+                {/* Header row */}
+                <div className="sticky top-0 z-10 bg-card border-b border-border flex">
+                  <div className="w-[120px] shrink-0 p-2 text-xs font-medium text-muted-foreground border-r border-border">Tafel</div>
+                  <div className="relative flex-1" style={{ width: totalWidth }}>
+                    {slots.map((s, i) => (
+                      <div
+                        key={s}
+                        className={cn("absolute top-0 h-full text-[10px] text-muted-foreground border-l border-border/50", i % 2 === 0 ? "" : "border-l-dashed")}
+                        style={{ left: i * SLOT_MIN * pxPerMin, width: SLOT_MIN * pxPerMin }}
+                      >
+                        {i % 2 === 0 && <span className="px-1">{s}</span>}
+                      </div>
+                    ))}
+                    <div className="h-6" />
+                  </div>
                 </div>
-              </div>
 
-              {/* Rows */}
-              {(tables as any[]).map((t) => {
-                const items = byTable[t.id] ?? [];
-                return (
-                  <div key={t.id} className="flex border-b border-border hover:bg-muted/20">
-                    <div className="w-[120px] shrink-0 p-3 border-r border-border">
-                      <div className="font-medium text-sm">{t.label}</div>
-                      {t.zones?.name && <div className="text-xs text-muted-foreground">{t.zones.name}</div>}
+                {/* Rows */}
+                {(tables as any[]).map((t) => {
+                  const items = byTable[t.id] ?? [];
+                  return (
+                    <div key={t.id} className="flex border-b border-border hover:bg-muted/20">
+                      <div className="w-[120px] shrink-0 p-3 border-r border-border">
+                        <div className="font-medium text-sm">{t.label}</div>
+                        {t.zones?.name && <div className="text-xs text-muted-foreground">{t.zones.name}</div>}
+                      </div>
+                      <div className="relative" style={{ width: totalWidth, height: 56 }}>
+                        {/* slot grid lines */}
+                        {slots.map((_, i) => (
+                          <div
+                            key={i}
+                            className="absolute top-0 h-full border-l border-border/30"
+                            style={{ left: i * SLOT_MIN * pxPerMin }}
+                          />
+                        ))}
+                        {/* reservations */}
+                        {items.map((r) => {
+                          const startMin = minutesFromStart(r.start_time);
+                          const endMin = minutesFromStart(r.end_time);
+                          const left = Math.max(0, startMin) * pxPerMin;
+                          const width = Math.max(20, (endMin - startMin) * pxPerMin - 2);
+                          return (
+                            <button
+                              key={r.id}
+                              onClick={() => setSelectedId(r.id)}
+                              className={cn(
+                                "absolute top-2 bottom-2 rounded-md border px-2 text-left text-xs overflow-hidden hover:brightness-110 transition-all",
+                                STATUS_BG[r.status] ?? "bg-muted border-border"
+                              )}
+                              style={{ left, width }}
+                            >
+                              <div className="font-medium truncate">
+                                {format(new Date(r.start_time), "HH:mm")} · {r.guests?.first_name ?? "Gast"} {r.guests?.last_name ?? ""}
+                              </div>
+                              <div className="text-[10px] opacity-80">{r.party_size}p</div>
+                            </button>
+                          );
+                        })}
+                      </div>
                     </div>
-                    <div className="relative" style={{ width: totalWidth, height: 56 }}>
-                      {/* slot grid lines */}
-                      {slots.map((_, i) => (
-                        <div
-                          key={i}
-                          className="absolute top-0 h-full border-l border-border/30"
-                          style={{ left: i * SLOT_MIN * PX_PER_MIN }}
-                        />
-                      ))}
-                      {/* reservations */}
-                      {items.map((r) => {
-                        const startMin = minutesFromStart(r.start_time);
-                        const endMin = minutesFromStart(r.end_time);
-                        const left = Math.max(0, startMin) * PX_PER_MIN;
-                        const width = Math.max(20, (endMin - startMin) * PX_PER_MIN - 2);
-                        return (
-                          <button
-                            key={r.id}
-                            onClick={() => setSelectedId(r.id)}
-                            className={cn(
-                              "absolute top-2 bottom-2 rounded-md border px-2 text-left text-xs overflow-hidden hover:brightness-110 transition-all",
-                              STATUS_BG[r.status] ?? "bg-muted border-border"
-                            )}
-                            style={{ left, width }}
-                          >
-                            <div className="font-medium truncate">
-                              {format(new Date(r.start_time), "HH:mm")} · {r.guests?.first_name ?? "Gast"} {r.guests?.last_name ?? ""}
-                            </div>
-                            <div className="text-[10px] opacity-80">{r.party_size}p</div>
-                          </button>
-                        );
-                      })}
+                  );
+                })}
+
+                {/* Live "nu"-lijn */}
+                {showNowLine && (
+                  <div
+                    className="pointer-events-none absolute top-0 bottom-0 z-20"
+                    style={{ left: 120 + nowMin * pxPerMin }}
+                    aria-hidden
+                  >
+                    <div className="absolute top-0 bottom-0 w-[2px] bg-primary" />
+                    <div className="absolute -top-1 -left-1 h-2 w-2 rounded-full bg-primary shadow" />
+                    <div className="absolute top-1 left-2 px-1.5 py-0.5 text-[10px] font-medium rounded bg-primary text-primary-foreground tabular-nums whitespace-nowrap">
+                      {format(now, "HH:mm")}
                     </div>
                   </div>
-                );
-              })}
+                )}
+              </div>
             </div>
           )}
         </CardContent>

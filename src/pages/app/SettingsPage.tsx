@@ -73,11 +73,11 @@ const SettingsPage = () => {
         <p className="text-muted-foreground">Beheer hoe TableWise voor jouw restaurant werkt.</p>
       </div>
 
-      <div className="grid lg:grid-cols-[240px_1fr] gap-6">
+      <div className="grid md:grid-cols-[220px_1fr] xl:grid-cols-[240px_1fr] gap-6">
         {/* Sidebar nav */}
-        <aside className="lg:sticky lg:top-4 lg:self-start">
-          {/* Mobile: horizontal scroll fallback */}
-          <div className="lg:hidden -mx-4 px-4 overflow-x-auto pb-2 mb-2">
+        <aside className="md:sticky md:top-4 md:self-start md:max-h-[calc(100vh-7rem)] md:overflow-y-auto">
+          {/* Mobile (<md): horizontal scroll fallback */}
+          <div className="md:hidden -mx-4 px-4 overflow-x-auto pb-2 mb-2">
             <div className="flex gap-1 min-w-max">
               {GROUPS.flatMap((g) => g.items).map((item) => {
                 const active = item.end
@@ -102,8 +102,8 @@ const SettingsPage = () => {
             </div>
           </div>
 
-          {/* Desktop: grouped vertical nav */}
-          <nav className="hidden lg:block space-y-5">
+          {/* Tablet+desktop: grouped vertical nav */}
+          <nav className="hidden md:block space-y-5">
             {GROUPS.map((g) => (
               <div key={g.label}>
                 <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-1.5 px-2">

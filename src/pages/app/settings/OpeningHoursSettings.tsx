@@ -80,18 +80,17 @@ export default function OpeningHoursSettings() {
         <CardHeader><CardTitle className="font-display text-lg">Openingstijden</CardTitle></CardHeader>
         <CardContent className="space-y-3">
           {rows.map((r, i) => (
-            <div key={r.weekday} className="grid grid-cols-12 gap-3 items-center py-2 border-b border-border last:border-b-0">
-              <div className="col-span-3 font-medium">{WEEKDAYS[i].label}</div>
-              <div className="col-span-3 flex items-center gap-2">
+            <div
+              key={r.weekday}
+              className="grid grid-cols-1 sm:grid-cols-[110px_auto_1fr_1fr] gap-2 sm:gap-3 items-center py-2 border-b border-border last:border-b-0"
+            >
+              <div className="font-medium">{WEEKDAYS[i].label}</div>
+              <div className="flex items-center gap-2">
                 <Switch checked={!r.is_closed} onCheckedChange={(v) => update(i, { is_closed: !v })} />
                 <span className="text-xs text-muted-foreground">{r.is_closed ? "Gesloten" : "Open"}</span>
               </div>
-              <div className="col-span-3">
-                <Input type="time" disabled={r.is_closed} value={r.open_time} onChange={(e) => update(i, { open_time: e.target.value })} />
-              </div>
-              <div className="col-span-3">
-                <Input type="time" disabled={r.is_closed} value={r.close_time} onChange={(e) => update(i, { close_time: e.target.value })} />
-              </div>
+              <Input type="time" disabled={r.is_closed} value={r.open_time} onChange={(e) => update(i, { open_time: e.target.value })} />
+              <Input type="time" disabled={r.is_closed} value={r.close_time} onChange={(e) => update(i, { close_time: e.target.value })} />
             </div>
           ))}
         </CardContent>
