@@ -89,7 +89,10 @@ function Group({ label, items, collapsed, pathname, accent, onNavigate, canSeeAd
 
 export function AppSidebar() {
   const { state, isMobile, setOpenMobile } = useSidebar();
-  const collapsed = state === "collapsed";
+  // In mobile/tablet (sheet) modus is de sidebar altijd volledig zichtbaar,
+  // dus negeer de "collapsed" desktop-state — anders krijg je alleen iconen
+  // in een uitgeklapte sheet.
+  const collapsed = !isMobile && state === "collapsed";
   const { signOut, user } = useAuth();
   const { current } = useRestaurant();
   const { isSystemAdmin } = useIsSystemAdmin();
