@@ -282,7 +282,7 @@ Deno.serve(async (req) => {
         channel,
         party_size: body.party_size,
         start_time: start_iso,
-        guest: { email: body.guest.email, first_name: body.guest.first_name },
+        guest: { email: body.guest.email ?? null, phone: body.guest.phone ?? null, first_name: body.guest.first_name },
       },
     });
 
