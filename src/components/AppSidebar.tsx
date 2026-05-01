@@ -1,6 +1,6 @@
 import {
-  LayoutDashboard, CalendarDays, Map, Users, Settings, BookOpen,
-  Hand, ListChecks, UsersRound, BellOff, Wine, Star, Bot, BarChart3, Plug, Tablet, ShieldCheck, Phone,
+  LayoutDashboard, CalendarDays, Users, Settings, MessageSquare,
+  Hand, ListChecks, BarChart3, Plug, Tablet, ShieldCheck, Bot,
   Database, FileText, CreditCard, Shield, Crown, GraduationCap,
 } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
@@ -20,31 +20,24 @@ type Item = { title: string; url: string; icon: typeof LayoutDashboard; end?: bo
 
 const operatie: Item[] = [
   { title: "Vandaag", url: "/app", icon: LayoutDashboard, end: true },
-  { title: "Reserveringen", url: "/app/reserveringen", icon: BookOpen },
   { title: "Agenda", url: "/app/agenda", icon: CalendarDays },
-  { title: "Tafelplan", url: "/app/tafelplan", icon: Map },
-  { title: "Floor Mode", url: "/app/floor", icon: Tablet },
+  { title: "Vloer", url: "/app/vloer", icon: Tablet },
   { title: "Walk-ins", url: "/app/walk-ins", icon: Hand },
   { title: "Wachtlijst", url: "/app/wachtlijst", icon: ListChecks },
 ];
 
 const gasten: Item[] = [
   { title: "Gasten", url: "/app/gasten", icon: Users },
-  { title: "Grote groepen", url: "/app/grote-groepen", icon: UsersRound },
 ];
 
 const hospitality: Item[] = [
-  { title: "No-show preventie", url: "/app/no-show", icon: BellOff },
-  { title: "Drankjes vooraf", url: "/app/drankjes", icon: Wine },
-  { title: "Reviews & aftercare", url: "/app/reviews", icon: Star },
-  { title: "AI Host", url: "/app/ai-host", icon: Bot },
-  { title: "Voice Agent", url: "/app/voice-agent", icon: Phone },
+  { title: "Gastcommunicatie", url: "/app/gastcommunicatie", icon: MessageSquare },
+  { title: "AI Host & Voice", url: "/app/ai-voice", icon: Bot },
 ];
 
 const beheer: Item[] = [
   { title: "Rapportages", url: "/app/rapportages", icon: BarChart3 },
   { title: "Koppelingen", url: "/app/koppelingen", icon: Plug },
-  { title: "Integratiehub", url: "/app/integraties", icon: Plug, advanced: true },
   { title: "Instellingen", url: "/app/instellingen", icon: Settings },
 ];
 
