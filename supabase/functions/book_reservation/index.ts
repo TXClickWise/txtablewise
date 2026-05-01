@@ -147,17 +147,21 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Upsert guest by (restaurant_id, email)
+    // Upsert guest by (restaurant_id, email) when email provided, otherwise by phone
     let guestId: string | null = null;
-    const { data: existingGuest } = await supabase
-      .from("guests").select("id")
-      .eq("restaurant_id", restaurant.id).eq("email", body.guest.email).maybeSingle();
+    const lookup = supabase.from("guests").select("id").eq("restaurant_id", restaurant.id);
+    const { data: existingGuest } = body.guest.email
+      ? await lookup.eq("email", body.guest.email).maybeSingle()
+      : body.guest.phone
+        ? await lookup.eq("phone", body.guest.phone).maybeSingle()
+        : { data: null as { id: string } | null };
     if (existingGuest) {
       guestId = existingGuest.id;
       await supabase.from("guests").update({
         first_name: body.guest.first_name,
         last_name: body.guest.last_name ?? null,
         phone: body.guest.phone ?? null,
+        email: body.guest.email ?? null,
         language: body.guest.language ?? "nl",
         marketing_consent: body.marketing_consent ?? false,
       }).eq("id", guestId);
@@ -167,7 +171,7 @@ Deno.serve(async (req) => {
         first_name: body.guest.first_name,
         last_name: body.guest.last_name ?? null,
         phone: body.guest.phone ?? null,
-        email: body.guest.email,
+        email: body.guest.email ?? null,
         language: body.guest.language ?? "nl",
         marketing_consent: body.marketing_consent ?? false,
       }).select("id").single();
