@@ -271,11 +271,13 @@ const AgendaPage = () => {
               ref={scrollRef}
               className="overflow-x-auto"
               style={{ touchAction: "pan-x pan-y" }}
-              onPointerDown={onPointerDown}
+              onPointerDown={(e) => { resetInactivity(); onPointerDown(e); }}
               onPointerMove={onPointerMove}
               onPointerUp={onPointerEnd}
               onPointerCancel={onPointerEnd}
               onPointerLeave={onPointerEnd}
+              onScroll={resetInactivity}
+              onWheel={resetInactivity}
             >
               <div className="relative" style={{ minWidth: totalWidth + 120 }}>
                 {/* Header row */}
