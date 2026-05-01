@@ -1,7 +1,8 @@
-// Public booking widget — mobile-first multi-step reservation flow.
+// Public booking widget — Guestplan-style 2-step flow.
 //
-// Steps: party → date → time → preferences → extras → guest → review → confirmed
-//        (waitlist + large_group are dedicated sub-flows reachable from the slot step)
+// Steps: select (party + date + time on one screen) → details (contact + optional
+//        preferences + extras + inline summary, single confirm tap) → confirmed.
+// Sub-flows: waitlist + large_group reachable from the select step.
 //
 // Engine safety: all availability and reservation creation goes through the
 // edge functions `availability` + `book_reservation`. The widget never invents
@@ -17,7 +18,7 @@ import { useParams, useSearchParams, Link } from "react-router-dom";
 import { format } from "date-fns";
 import { nl } from "date-fns/locale";
 import {
-  CalendarIcon, Users, Clock, ChevronRight, Check, ArrowLeft, MapPin, Heart, Sparkles, ListPlus,
+  CalendarIcon, Users, Clock, ChevronRight, Check, ArrowLeft, MapPin, Heart, Sparkles, ListPlus, ChevronDown,
 } from "lucide-react";
 import { z } from "zod";
 import { supabase } from "@/integrations/supabase/client";
@@ -30,14 +31,14 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { toast } from "sonner";
 import {
-  bookReservation, getAvailability, pickAlternatives, resolveSourceChannel,
+  bookReservation, getAvailability, resolveSourceChannel,
   Slot, SelectedPreOrder, SourceChannel,
 } from "@/services/publicBooking";
 import { PublicBookingProgress, BookingStepId } from "@/components/public-booking/PublicBookingProgress";
 import { PublicBookingNotice } from "@/components/public-booking/PublicBookingNotice";
-import { PublicAlternativeTimes } from "@/components/public-booking/PublicAlternativeTimes";
 import { PublicWaitlistFallback } from "@/components/public-booking/PublicWaitlistFallback";
 import { PreOrderSelectionStep } from "@/components/public-booking/PreOrderSelectionStep";
 
@@ -105,21 +106,6 @@ const OCCASIONS = [
   { id: "other", label: "Anders" },
 ] as const;
 
-const PartyButton = ({ n, selected, onClick, label }: { n: number; selected: boolean; onClick: () => void; label?: string }) => (
-  <button
-    type="button"
-    onClick={onClick}
-    className={cn(
-      "h-14 rounded-lg border-2 font-medium text-base transition-all touch-manipulation active:scale-95",
-      selected
-        ? "border-primary bg-primary text-primary-foreground shadow-md"
-        : "border-border bg-card hover:border-primary/40",
-    )}
-  >
-    {label ?? n}
-  </button>
-);
-
 const Chip = ({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) => (
   <button
     type="button"
@@ -144,7 +130,7 @@ const ReserveWidget = () => {
   );
 
   const [restaurant, setRestaurant] = useState<RestaurantInfo | null>(null);
-  const [step, setStep] = useState<Step>("party");
+  const [step, setStep] = useState<Step>("select");
 
   // URL prefill helpers
   const initialParty = useMemo(() => {
@@ -153,9 +139,12 @@ const ReserveWidget = () => {
   }, [searchParams]);
   const initialDate = useMemo(() => {
     const raw = searchParams.get("date");
-    if (!raw) return undefined;
-    const d = new Date(raw);
-    return Number.isNaN(d.getTime()) ? undefined : d;
+    if (raw) {
+      const d = new Date(raw);
+      if (!Number.isNaN(d.getTime())) return d;
+    }
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    return today;
   }, [searchParams]);
   const initialTime = useMemo(() => {
     const raw = searchParams.get("time");
@@ -171,7 +160,6 @@ const ReserveWidget = () => {
 
   // Booking state
   const [partySize, setPartySize] = useState<number>(initialParty);
-  const [customParty, setCustomParty] = useState<string>("");
   const [date, setDate] = useState<Date | undefined>(initialDate);
   const [slots, setSlots] = useState<Slot[]>([]);
   const [loadingSlots, setLoadingSlots] = useState(false);
@@ -183,7 +171,8 @@ const ReserveWidget = () => {
   const [occasion, setOccasion] = useState<string>("");
   const [allergies, setAllergies] = useState("");
   const [requests, setRequests] = useState("");
-  const [showMorePrefs, setShowMorePrefs] = useState(false);
+  const [showExtras, setShowExtras] = useState(false);
+  const [showPreOrders, setShowPreOrders] = useState(false);
 
   // Pre-orders
   const [preOrders, setPreOrders] = useState<SelectedPreOrder[]>([]);
@@ -227,6 +216,7 @@ const ReserveWidget = () => {
     setLoadingSlots(true);
     setSlots([]);
     setClosedReason(null);
+    setSelectedSlot(null);
     try {
       const data = await getAvailability({
         restaurant_id: restaurant.id,
@@ -248,28 +238,29 @@ const ReserveWidget = () => {
     }
   };
 
-  // Refetch when entering time step or when party/date change while on it
+  // Refetch on select-step whenever party/date change
   useEffect(() => {
-    if (step === "time") fetchSlots();
+    if (step === "select" && restaurant && date) fetchSlots();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [step, partySize, date]);
+  }, [step, partySize, date, restaurant?.id]);
 
   // Preselect slot from URL when slots load
   useEffect(() => {
-    if (!initialTime || step !== "time" || selectedSlot) return;
+    if (!initialTime || step !== "select" || selectedSlot) return;
     const match = slots.find((s) => s.time === initialTime || s.time.startsWith(initialTime));
-    if (match) setSelectedSlot(match);
+    if (match && match.available) setSelectedSlot(match);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [slots, step, initialTime]);
 
-  // Auto-route to large group if party crosses online max
-  const goToTimeFromDate = () => {
-    if (!date) return toast.error("Kies een datum");
-    if (restaurant && partySize > restaurant.max_party_size_online) {
+  const goToDetails = () => {
+    if (!restaurant) return;
+    if (partySize > restaurant.max_party_size_online) {
       setStep("large_group");
       return;
     }
-    setStep("time");
+    if (!date) return toast.error("Kies een datum");
+    if (!selectedSlot) return toast.error("Kies een tijd");
+    setStep("details");
   };
 
   const handleBook = async () => {
@@ -313,10 +304,9 @@ const ReserveWidget = () => {
     if (result.ok === false) {
       setBookingError(result.error);
       if (result.retry) {
-        // Slot was just taken — refresh and bring user back to time step
+        // Slot was just taken — refresh and bring user back to select step
         await fetchSlots();
-        setSelectedSlot(null);
-        setStep("time");
+        setStep("select");
       }
       return;
     }
@@ -329,14 +319,9 @@ const ReserveWidget = () => {
   };
 
   const partyOptions = useMemo(() => {
-    const max = Math.min(5, restaurant?.max_party_size_online ?? 5);
+    const max = Math.min(8, restaurant?.max_party_size_online ?? 8);
     return Array.from({ length: max }, (_, i) => i + 1);
   }, [restaurant]);
-
-  const alternatives = useMemo(
-    () => (selectedSlot ? pickAlternatives(slots, selectedSlot.time) : []),
-    [slots, selectedSlot],
-  );
 
   if (!restaurant) {
     return (
@@ -349,9 +334,10 @@ const ReserveWidget = () => {
   const showProgress = !["confirmed", "large_group", "waitlist"].includes(step);
 
   const reset = () => {
-    setStep("party"); setConfirmation(null); setSelectedSlot(null);
+    setStep("select"); setConfirmation(null); setSelectedSlot(null);
     setFirstName(""); setLastName(""); setEmail(""); setPhone(""); setRequests(""); setAllergies("");
     setMarketing(false); setOccasion(""); setZone("no_pref"); setPreOrders([]); setBookingError(null);
+    setShowExtras(false); setShowPreOrders(false);
   };
 
   return (
@@ -382,272 +368,174 @@ const ReserveWidget = () => {
           </div>
         )}
 
-        {/* STEP: party */}
-        {step === "party" && (
-          <div className="space-y-8 animate-in fade-in duration-300">
+        {/* STEP 1: select (party + date + time) */}
+        {step === "select" && (
+          <div className="space-y-6 animate-in fade-in duration-300">
             <div>
               <h1 className="font-display text-3xl sm:text-4xl mb-2">Reserveer een tafel</h1>
               <p className="text-muted-foreground">Bij {restaurant.name}.</p>
             </div>
 
-            <div className="space-y-3">
-              <Label className="text-base flex items-center gap-2">
-                <Users className="h-4 w-4" /> Met hoeveel personen wil je reserveren?
+            {/* Party size */}
+            <div className="space-y-2">
+              <Label className="text-sm flex items-center gap-2">
+                <Users className="h-4 w-4" /> Aantal gasten
               </Label>
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-4 sm:grid-cols-8 gap-2">
                 {partyOptions.map((n) => (
-                  <PartyButton key={n} n={n} selected={partySize === n && !customParty} onClick={() => { setPartySize(n); setCustomParty(""); }} />
+                  <button
+                    key={n}
+                    type="button"
+                    onClick={() => setPartySize(n)}
+                    className={cn(
+                      "h-12 rounded-lg border-2 font-medium text-base transition-all touch-manipulation active:scale-95",
+                      partySize === n
+                        ? "border-primary bg-primary text-primary-foreground shadow-sm"
+                        : "border-border bg-card hover:border-primary/40",
+                    )}
+                  >
+                    {n}
+                  </button>
                 ))}
-                <PartyButton n={6} label="6+" selected={!!customParty || partySize >= 6} onClick={() => { setCustomParty(String(Math.max(6, partySize))); setPartySize(Math.max(6, partySize)); }} />
               </div>
-              {customParty !== "" && (
-                <div className="space-y-1.5 pt-2">
-                  <Label htmlFor="customN">Exact aantal</Label>
-                  <Input id="customN" type="number" min={6} max={50} value={customParty} className="h-12"
-                    onChange={(e) => {
-                      const v = e.target.value;
-                      setCustomParty(v);
-                      const n = parseInt(v || "0", 10);
-                      if (!Number.isNaN(n) && n > 0) setPartySize(n);
-                    }} />
-                  {restaurant && partySize >= restaurant.large_group_threshold && (
-                    <p className="text-xs text-muted-foreground">
-                      Vanaf {restaurant.large_group_threshold} personen wordt dit mogelijk een aanvraag.
-                    </p>
-                  )}
-                </div>
+              {restaurant && partySize > restaurant.max_party_size_online && (
+                <p className="text-xs text-muted-foreground">
+                  Vanaf {restaurant.large_group_threshold} personen wordt dit een aanvraag.
+                </p>
               )}
             </div>
 
-            <Button className="w-full h-14 text-base" onClick={() => setStep("date")} disabled={partySize < 1}>
-              Verder <ChevronRight className="ml-1 h-4 w-4" />
-            </Button>
-          </div>
-        )}
-
-        {/* STEP: date */}
-        {step === "date" && (
-          <div className="space-y-6 animate-in fade-in duration-300">
-            <button onClick={() => setStep("party")} className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
-              <ArrowLeft className="h-4 w-4" /> Wijzig aantal
-            </button>
-            <div>
-              <h2 className="font-display text-2xl mb-1">Wanneer wil je komen?</h2>
-              <p className="text-sm text-muted-foreground">{partySize} {partySize === 1 ? "gast" : "gasten"}</p>
+            {/* Date */}
+            <div className="space-y-2">
+              <Label className="text-sm flex items-center gap-2">
+                <CalendarIcon className="h-4 w-4" /> Datum
+              </Label>
+              <div className="grid grid-cols-3 gap-2">
+                {[
+                  { label: "Vandaag", offset: 0 },
+                  { label: "Morgen", offset: 1 },
+                  { label: "Overmorgen", offset: 2 },
+                ].map((q) => {
+                  const d = new Date(); d.setDate(d.getDate() + q.offset); d.setHours(0, 0, 0, 0);
+                  const sel = date && format(date, "yyyy-MM-dd") === format(d, "yyyy-MM-dd");
+                  return (
+                    <button key={q.label} type="button" onClick={() => setDate(d)}
+                      className={cn(
+                        "h-12 rounded-lg border-2 font-medium text-sm transition-all active:scale-95 touch-manipulation",
+                        sel ? "border-primary bg-primary text-primary-foreground" : "border-border bg-card hover:border-primary/40",
+                      )}>
+                      {q.label}
+                    </button>
+                  );
+                })}
+              </div>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" className="w-full h-12 justify-start text-base font-normal">
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {date ? format(date, "EEEE d MMMM yyyy", { locale: nl }) : "Andere datum kiezen"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar mode="single" selected={date} onSelect={(d) => d && setDate(d)} initialFocus locale={nl}
+                    disabled={(d) => d < new Date(new Date().setHours(0, 0, 0, 0)) || d > new Date(Date.now() + 90 * 24 * 60 * 60 * 1000)}
+                    className={cn("p-3 pointer-events-auto")} />
+                </PopoverContent>
+              </Popover>
             </div>
 
-            <div className="grid grid-cols-3 gap-2">
-              {[
-                { label: "Vandaag", offset: 0 },
-                { label: "Morgen", offset: 1 },
-                { label: "Overmorgen", offset: 2 },
-              ].map((q) => {
-                const d = new Date(); d.setDate(d.getDate() + q.offset); d.setHours(0, 0, 0, 0);
-                const sel = date && format(date, "yyyy-MM-dd") === format(d, "yyyy-MM-dd");
-                return (
-                  <button key={q.label} type="button" onClick={() => setDate(d)}
-                    className={cn(
-                      "h-14 rounded-lg border-2 font-medium text-sm transition-all active:scale-95",
-                      sel ? "border-primary bg-primary text-primary-foreground" : "border-border bg-card hover:border-primary/40",
-                    )}>
-                    {q.label}
-                  </button>
-                );
-              })}
-            </div>
-
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button variant="outline" className="w-full h-14 justify-start text-base font-normal">
-                  <CalendarIcon className="mr-2 h-4 w-4" />
-                  {date ? format(date, "EEEE d MMMM yyyy", { locale: nl }) : "Kies een datum"}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="start">
-                <Calendar mode="single" selected={date} onSelect={setDate} initialFocus locale={nl}
-                  disabled={(d) => d < new Date(new Date().setHours(0, 0, 0, 0)) || d > new Date(Date.now() + 90 * 24 * 60 * 60 * 1000)}
-                  className={cn("p-3 pointer-events-auto")} />
-              </PopoverContent>
-            </Popover>
-
-            <p className="text-xs text-muted-foreground">
-              Dagen waarop het restaurant gesloten is, zie je verderop als geen tijden beschikbaar.
-            </p>
-
-            <Button className="w-full h-14 text-base" onClick={goToTimeFromDate} disabled={!date}>
-              Bekijk tijden <ChevronRight className="ml-1 h-4 w-4" />
-            </Button>
-          </div>
-        )}
-
-        {/* STEP: time */}
-        {step === "time" && (
-          <div className="space-y-6 animate-in fade-in duration-300">
-            <button onClick={() => setStep("date")} className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
-              <ArrowLeft className="h-4 w-4" /> Wijzig datum
-            </button>
-            <div>
-              <h2 className="font-display text-2xl mb-1">Welke tijd past het beste?</h2>
-              <p className="text-sm text-muted-foreground">
-                {date && format(date, "EEEE d MMMM", { locale: nl })} · {partySize} {partySize === 1 ? "gast" : "gasten"}
-              </p>
-            </div>
-
-            {loadingSlots ? (
-              <>
-                <div className="text-sm text-muted-foreground">Beschikbaarheid controleren…</div>
+            {/* Time slots */}
+            <div className="space-y-2">
+              <Label className="text-sm flex items-center gap-2">
+                <Clock className="h-4 w-4" /> Tijd
+              </Label>
+              {loadingSlots ? (
                 <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
-                  {Array.from({ length: 12 }).map((_, i) => (
+                  {Array.from({ length: 8 }).map((_, i) => (
                     <div key={i} className="h-12 rounded-lg bg-muted animate-pulse" />
                   ))}
                 </div>
-              </>
-            ) : closedReason ? (
-              <Card>
-                <CardContent className="py-10 text-center space-y-4">
-                  <Clock className="h-8 w-8 mx-auto text-muted-foreground" />
-                  <p className="text-muted-foreground">{closedReason}</p>
-                  <Button variant="outline" onClick={() => setStep("date")}>Andere datum kiezen</Button>
-                </CardContent>
-              </Card>
-            ) : slots.length === 0 ? (
-              <Card>
-                <CardContent className="py-10 text-center space-y-4">
-                  <Clock className="h-8 w-8 mx-auto text-muted-foreground" />
-                  <p className="text-muted-foreground">Er zijn op deze dag helaas geen tijden beschikbaar.</p>
-                  <div className="flex gap-2 justify-center">
-                    <Button variant="outline" onClick={() => setStep("date")}>Andere datum</Button>
-                    <Button onClick={() => setStep("waitlist")}>Op de wachtlijst</Button>
+              ) : closedReason ? (
+                <Card>
+                  <CardContent className="py-6 text-center space-y-3">
+                    <Clock className="h-7 w-7 mx-auto text-muted-foreground" />
+                    <p className="text-sm text-muted-foreground">{closedReason}</p>
+                  </CardContent>
+                </Card>
+              ) : slots.length === 0 ? (
+                <Card>
+                  <CardContent className="py-6 text-center space-y-3">
+                    <p className="text-sm text-muted-foreground">Er zijn op deze dag helaas geen tijden beschikbaar.</p>
+                    <Button size="sm" variant="outline" onClick={() => setStep("waitlist")}>
+                      Op de wachtlijst
+                    </Button>
+                  </CardContent>
+                </Card>
+              ) : (
+                <>
+                  <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+                    {slots.map((s) => (
+                      <button
+                        key={s.start_iso}
+                        disabled={!s.available}
+                        onClick={() => setSelectedSlot(s)}
+                        className={cn(
+                          "h-12 rounded-lg border-2 font-medium text-sm transition-all touch-manipulation active:scale-95",
+                          selectedSlot?.start_iso === s.start_iso
+                            ? "border-primary bg-primary text-primary-foreground shadow-sm"
+                            : s.available
+                              ? "border-border bg-card hover:border-primary hover:bg-primary/5"
+                              : "border-border/40 bg-muted text-muted-foreground/50 cursor-not-allowed",
+                          s.available && s.peak_warning && selectedSlot?.start_iso !== s.start_iso && "ring-1 ring-warning/40",
+                        )}
+                        title={!s.available ? "Vol" : s.peak_warning ? "Beperkt beschikbaar" : "Beschikbaar"}
+                      >
+                        {s.time}
+                      </button>
+                    ))}
                   </div>
-                </CardContent>
-              </Card>
-            ) : (
-              <>
-                <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
-                  {slots.map((s) => (
-                    <button
-                      key={s.start_iso}
-                      disabled={!s.available}
-                      onClick={() => { setSelectedSlot(s); setStep("preferences"); }}
-                      className={cn(
-                        "h-12 rounded-lg border-2 font-medium text-sm transition-all touch-manipulation",
-                        s.available
-                          ? "border-border bg-card hover:border-primary hover:bg-primary/5 active:scale-95"
-                          : "border-border/40 bg-muted text-muted-foreground/50 cursor-not-allowed",
-                        s.available && s.peak_warning && "ring-1 ring-warning/40",
-                      )}
-                      title={!s.available ? "Vol" : s.peak_warning ? "Beperkt beschikbaar" : "Beschikbaar"}
-                    >
-                      {s.time}
-                    </button>
-                  ))}
-                </div>
-                {slots.every((s) => !s.available) && (
-                  <PublicBookingNotice variant="warning" title="Geen plek meer op deze dag">
-                    <div className="space-y-3">
-                      <p>Wil je op de wachtlijst voor dit tijdstip? Dan nemen we contact op als er iets vrijkomt.</p>
-                      <Button size="sm" onClick={() => setStep("waitlist")}>Op de wachtlijst</Button>
-                    </div>
-                  </PublicBookingNotice>
-                )}
-              </>
-            )}
+                  {slots.every((s) => !s.available) && (
+                    <PublicBookingNotice variant="warning" title="Geen plek meer op deze dag">
+                      <div className="space-y-3">
+                        <p>Wil je op de wachtlijst? We nemen contact op zodra er iets vrijkomt.</p>
+                        <Button size="sm" onClick={() => setStep("waitlist")}>Op de wachtlijst</Button>
+                      </div>
+                    </PublicBookingNotice>
+                  )}
+                </>
+              )}
+            </div>
+
+            <Button
+              className="w-full h-14 text-base"
+              onClick={goToDetails}
+              disabled={!selectedSlot || !date || loadingSlots}
+            >
+              Tafel reserveren <ChevronRight className="ml-1 h-4 w-4" />
+            </Button>
           </div>
         )}
 
-        {/* STEP: preferences */}
-        {step === "preferences" && selectedSlot && (
+        {/* STEP 2: details (contact + optional preferences/extras + confirm) */}
+        {step === "details" && selectedSlot && date && (
           <div className="space-y-6 animate-in fade-in duration-300">
-            <button onClick={() => setStep("time")} className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
+            <button onClick={() => setStep("select")} className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
               <ArrowLeft className="h-4 w-4" /> Wijzig tijd
             </button>
 
-            <div>
-              <h2 className="font-display text-2xl mb-1">Heb je voorkeuren?</h2>
-              <p className="text-sm text-muted-foreground">Optioneel — alles helpt het restaurant.</p>
+            {/* Compact summary chips */}
+            <div className="flex flex-wrap gap-2 text-sm">
+              <span className="px-3 h-9 inline-flex items-center rounded-full bg-muted font-medium">
+                {partySize} {partySize === 1 ? "gast" : "gasten"}
+              </span>
+              <span className="px-3 h-9 inline-flex items-center rounded-full bg-muted font-medium">
+                {format(date, "EEE d MMM", { locale: nl })}
+              </span>
+              <span className="px-3 h-9 inline-flex items-center rounded-full bg-primary/10 text-primary font-semibold">
+                {selectedSlot.time}
+              </span>
             </div>
 
-            {restaurant.allow_zone_preference && (
-              <div className="space-y-2">
-                <Label className="text-sm flex items-center gap-2"><MapPin className="h-4 w-4" /> Waar zit je het liefst?</Label>
-                <div className="flex flex-wrap gap-2">
-                  {ZONES.map((z) => (
-                    <Chip key={z.id} active={zone === z.id} onClick={() => setZone(z.id)}>{z.label}</Chip>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            <div className="space-y-2">
-              <Label className="text-sm flex items-center gap-2"><Heart className="h-4 w-4" /> Speciale gelegenheid?</Label>
-              <div className="flex flex-wrap gap-2">
-                {OCCASIONS.map((o) => (
-                  <Chip key={o.id} active={occasion === o.id} onClick={() => setOccasion(o.id)}>{o.label}</Chip>
-                ))}
-              </div>
-            </div>
-
-            {!showMorePrefs ? (
-              <button
-                type="button"
-                onClick={() => setShowMorePrefs(true)}
-                className="text-sm text-primary hover:underline"
-              >
-                + Allergieën of opmerkingen toevoegen
-              </button>
-            ) : (
-              <>
-                <div className="space-y-1.5">
-                  <Label htmlFor="all">Allergieën of dieetwensen</Label>
-                  <Input id="all" value={allergies} onChange={(e) => setAllergies(e.target.value)} className="h-12"
-                    placeholder="Bijv. notenallergie, vegetarisch" />
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="rq">Andere wensen of opmerkingen</Label>
-                  <Textarea id="rq" value={requests} onChange={(e) => setRequests(e.target.value)} rows={3}
-                    placeholder="Bijv. liefst tafel bij raam" />
-                </div>
-              </>
-            )}
-
-            <Button className="w-full h-14 text-base"
-              onClick={() => setStep(restaurant.preorders_enabled ? "extras" : "guest")}>
-              Verder <ChevronRight className="ml-1 h-4 w-4" />
-            </Button>
-          </div>
-        )}
-
-        {/* STEP: extras */}
-        {step === "extras" && selectedSlot && (
-          <div className="space-y-6 animate-in fade-in duration-300">
-            <button onClick={() => setStep("preferences")} className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
-              <ArrowLeft className="h-4 w-4" /> Wijzig wensen
-            </button>
-            <div>
-              <h2 className="font-display text-2xl mb-1 flex items-center gap-2">
-                <Sparkles className="h-5 w-5 text-primary" /> Iets klaarzetten?
-              </h2>
-              <p className="text-sm text-muted-foreground">Optioneel — sla deze stap gerust over.</p>
-            </div>
-            <PreOrderSelectionStep
-              restaurantId={restaurant.id}
-              allowFreeText={restaurant.preorders_allow_free_text}
-              selected={preOrders}
-              onChange={setPreOrders}
-            />
-            <Button className="w-full h-14 text-base" onClick={() => setStep("guest")}>
-              Verder <ChevronRight className="ml-1 h-4 w-4" />
-            </Button>
-          </div>
-        )}
-
-        {/* STEP: guest */}
-        {step === "guest" && selectedSlot && (
-          <div className="space-y-6 animate-in fade-in duration-300">
-            <button onClick={() => setStep(restaurant.preorders_enabled ? "extras" : "preferences")}
-              className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
-              <ArrowLeft className="h-4 w-4" /> Terug
-            </button>
             <div>
               <h2 className="font-display text-2xl mb-1">Jouw gegevens</h2>
               <p className="text-sm text-muted-foreground">Zo kunnen we je bereiken over je reservering.</p>
@@ -667,87 +555,106 @@ const ReserveWidget = () => {
               <div className="space-y-1.5">
                 <Label htmlFor="ph">Telefoon *</Label>
                 <Input id="ph" type="tel" required value={phone} onChange={(e) => setPhone(e.target.value)} className="h-12" placeholder="06 12345678" />
-                <p className="text-xs text-muted-foreground">
-                  We gebruiken je nummer om je reservering te bevestigen of te bereiken als er iets verandert.
-                </p>
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="em">E-mail</Label>
+                <Label htmlFor="em">E-mail (optioneel)</Label>
                 <Input id="em" type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="h-12" />
               </div>
+            </div>
 
-              <label className="flex items-start gap-3 cursor-pointer pt-2">
-                <Checkbox checked={marketing} onCheckedChange={(v) => setMarketing(!!v)} className="mt-1" />
-                <span className="text-sm text-muted-foreground">
-                  Ik wil updates of acties van {restaurant.name} ontvangen.
+            {/* Optional preferences (collapsible) */}
+            <Collapsible open={showExtras} onOpenChange={setShowExtras}>
+              <CollapsibleTrigger className="flex items-center justify-between w-full text-sm text-primary hover:underline">
+                <span className="flex items-center gap-2">
+                  <Heart className="h-4 w-4" /> Voorkeuren of allergieën toevoegen
                 </span>
-              </label>
-
-              <p className="text-xs text-muted-foreground">
-                Je gegevens worden gebruikt om deze reservering te verwerken en contact met je op te nemen.
-              </p>
-            </div>
-
-            <Button className="w-full h-14 text-base" onClick={() => setStep("review")}>
-              Naar overzicht <ChevronRight className="ml-1 h-4 w-4" />
-            </Button>
-          </div>
-        )}
-
-        {/* STEP: review */}
-        {step === "review" && selectedSlot && date && (
-          <div className="space-y-6 animate-in fade-in duration-300">
-            <button onClick={() => setStep("guest")} className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
-              <ArrowLeft className="h-4 w-4" /> Wijzig gegevens
-            </button>
-            <div>
-              <h2 className="font-display text-2xl mb-1">Controleer je reservering</h2>
-              <p className="text-sm text-muted-foreground">Klopt alles? Dan bevestigen we je reservering.</p>
-            </div>
-
-            <Card>
-              <CardContent className="py-5 space-y-3 text-sm">
-                <Row label="Restaurant" value={restaurant.name} />
-                <Row label="Datum" value={format(date, "EEEE d MMMM yyyy", { locale: nl })} />
-                <Row label="Tijd" value={selectedSlot.time} />
-                <Row label="Aantal gasten" value={String(partySize)} />
-                {zone !== "no_pref" && <Row label="Voorkeur" value={ZONES.find((z) => z.id === zone)?.label ?? ""} />}
-                {occasion && <Row label="Gelegenheid" value={OCCASIONS.find((o) => o.id === occasion)?.label ?? ""} />}
-                {allergies && <Row label="Allergieën" value={allergies} />}
-                {requests && <Row label="Wensen" value={requests} />}
-                {preOrders.length > 0 && (
-                  <div className="pt-2 border-t border-border">
-                    <div className="text-muted-foreground mb-1 flex items-center gap-1">
-                      <ListPlus className="h-3.5 w-3.5" /> Vooraf klaarzetten
-                    </div>
-                    <ul className="space-y-1">
-                      {preOrders.map((p, i) => (
-                        <li key={i} className="flex justify-between">
-                          <span>{p.quantity}× {p.item_name}{p.note ? ` — ${p.note}` : ""}</span>
-                          {p.unit_price_cents > 0 && (
-                            <span className="text-muted-foreground">€ {((p.unit_price_cents * p.quantity) / 100).toFixed(2)}</span>
-                          )}
-                        </li>
+                <ChevronDown className={cn("h-4 w-4 transition-transform", showExtras && "rotate-180")} />
+              </CollapsibleTrigger>
+              <CollapsibleContent className="space-y-4 pt-4">
+                {restaurant.allow_zone_preference && (
+                  <div className="space-y-2">
+                    <Label className="text-sm flex items-center gap-2"><MapPin className="h-4 w-4" /> Waar zit je het liefst?</Label>
+                    <div className="flex flex-wrap gap-2">
+                      {ZONES.map((z) => (
+                        <Chip key={z.id} active={zone === z.id} onClick={() => setZone(z.id)}>{z.label}</Chip>
                       ))}
-                    </ul>
+                    </div>
                   </div>
                 )}
-                <div className="pt-2 border-t border-border space-y-1">
-                  <Row label="Naam" value={`${firstName} ${lastName}`.trim()} />
-                  <Row label="Telefoon" value={phone} />
-                  {email && <Row label="E-mail" value={email} />}
+                <div className="space-y-2">
+                  <Label className="text-sm">Speciale gelegenheid?</Label>
+                  <div className="flex flex-wrap gap-2">
+                    {OCCASIONS.map((o) => (
+                      <Chip key={o.id} active={occasion === o.id} onClick={() => setOccasion(o.id)}>{o.label}</Chip>
+                    ))}
+                  </div>
                 </div>
-              </CardContent>
-            </Card>
+                <div className="space-y-1.5">
+                  <Label htmlFor="all">Allergieën of dieetwensen</Label>
+                  <Input id="all" value={allergies} onChange={(e) => setAllergies(e.target.value)} className="h-12"
+                    placeholder="Bijv. notenallergie, vegetarisch" />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="rq">Andere wensen</Label>
+                  <Textarea id="rq" value={requests} onChange={(e) => setRequests(e.target.value)} rows={3}
+                    placeholder="Bijv. liefst tafel bij raam" />
+                </div>
+              </CollapsibleContent>
+            </Collapsible>
+
+            {/* Optional pre-orders (collapsible) */}
+            {restaurant.preorders_enabled && (
+              <Collapsible open={showPreOrders} onOpenChange={setShowPreOrders}>
+                <CollapsibleTrigger className="flex items-center justify-between w-full text-sm text-primary hover:underline">
+                  <span className="flex items-center gap-2">
+                    <Sparkles className="h-4 w-4" /> Iets vooraf klaarzetten
+                    {preOrders.length > 0 && (
+                      <span className="text-xs text-muted-foreground">({preOrders.length})</span>
+                    )}
+                  </span>
+                  <ChevronDown className={cn("h-4 w-4 transition-transform", showPreOrders && "rotate-180")} />
+                </CollapsibleTrigger>
+                <CollapsibleContent className="pt-4">
+                  <PreOrderSelectionStep
+                    restaurantId={restaurant.id}
+                    allowFreeText={restaurant.preorders_allow_free_text}
+                    selected={preOrders}
+                    onChange={setPreOrders}
+                  />
+                </CollapsibleContent>
+              </Collapsible>
+            )}
+
+            {preOrders.length > 0 && !showPreOrders && (
+              <Card>
+                <CardContent className="py-3 text-sm">
+                  <div className="text-muted-foreground mb-1 flex items-center gap-1">
+                    <ListPlus className="h-3.5 w-3.5" /> Vooraf klaarzetten
+                  </div>
+                  <ul className="space-y-1">
+                    {preOrders.map((p, i) => (
+                      <li key={i} className="flex justify-between">
+                        <span>{p.quantity}× {p.item_name}</span>
+                        {p.unit_price_cents > 0 && (
+                          <span className="text-muted-foreground">€ {((p.unit_price_cents * p.quantity) / 100).toFixed(2)}</span>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                </CardContent>
+              </Card>
+            )}
+
+            <label className="flex items-start gap-3 cursor-pointer">
+              <Checkbox checked={marketing} onCheckedChange={(v) => setMarketing(!!v)} className="mt-1" />
+              <span className="text-sm text-muted-foreground">
+                Ik wil updates of acties van {restaurant.name} ontvangen.
+              </span>
+            </label>
 
             {bookingError && (
               <PublicBookingNotice variant="error" title="Er ging iets mis">{bookingError}</PublicBookingNotice>
             )}
-
-            <PublicBookingNotice>
-              Na bevestiging wordt je reservering opgeslagen. Berichten via e-mail of WhatsApp volgen later
-              zodra het restaurant zijn communicatie heeft gekoppeld.
-            </PublicBookingNotice>
 
             <Button className="w-full h-14 text-base" onClick={handleBook} disabled={submitting}>
               {submitting ? "Beschikbaarheid controleren…" : "Reservering bevestigen"}
@@ -795,7 +702,7 @@ const ReserveWidget = () => {
             initialPartySize={Math.max(restaurant.large_group_threshold, partySize)}
             initialDate={date}
             sourceChannel={sourceInfo.source_channel}
-            onBack={() => setStep("party")}
+            onBack={() => setStep("select")}
           />
         )}
 
@@ -811,7 +718,7 @@ const ReserveWidget = () => {
             initialEmail={email}
             initialPhone={phone}
             sourceChannel={sourceInfo.source_channel}
-            onBack={() => setStep("time")}
+            onBack={() => setStep("select")}
           />
         )}
       </main>
