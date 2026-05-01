@@ -39,11 +39,11 @@ Deno.serve(async (req) => {
     if (!body?.time) missing.push("time");
     if (!body?.party_size) missing.push("party_size");
     if (!body?.guest?.first_name) missing.push("guest.first_name");
-    if (!body?.guest?.email) missing.push("guest.email");
+    if (!body?.guest?.email && !body?.guest?.phone) missing.push("guest.phone");
     if (missing.length) return json({ error: `Missing required fields: ${missing.join(", ")}`, error_code: "missing_field", field: missing[0] }, 400);
     if (!(body.restaurant_id || body.restaurant_slug)) return json({ error: "Restaurant required", error_code: "missing_field", field: "restaurant_id" }, 400);
     if (body.party_size < 1 || body.party_size > 50) return json({ error: "Invalid party_size", error_code: "invalid_field", field: "party_size" }, 400);
-    if (!/^\S+@\S+\.\S+$/.test(body.guest.email)) return json({ error: "Invalid email", error_code: "invalid_email", field: "guest.email" }, 400);
+    if (body.guest.email && !/^\S+@\S+\.\S+$/.test(body.guest.email)) return json({ error: "Invalid email", error_code: "invalid_email", field: "guest.email" }, 400);
 
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL")!,
