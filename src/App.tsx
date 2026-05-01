@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Route, Routes } from "react-router-dom";
+import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -58,6 +58,12 @@ import AdminVoiceAgentPage from "./pages/app/admin/AdminVoiceAgentPage.tsx";
 import AdminPlanRequestsPage from "./pages/app/admin/AdminPlanRequestsPage.tsx";
 import AdminClickWiseVoiceSetupPage from "./pages/app/admin/AdminClickWiseVoiceSetupPage.tsx";
 import { RequireSystemAdmin } from "./components/RequireSystemAdmin";
+import AgendaTabsPage from "./pages/app/AgendaTabsPage.tsx";
+import VloerTabsPage from "./pages/app/VloerTabsPage.tsx";
+import GastenTabsPage from "./pages/app/GastenTabsPage.tsx";
+import GastcommunicatiePage from "./pages/app/GastcommunicatiePage.tsx";
+import AIHostVoicePage from "./pages/app/AIHostVoicePage.tsx";
+import KoppelingenTabsPage from "./pages/app/KoppelingenTabsPage.tsx";
 import NotFound from "./pages/NotFound.tsx";
 
 const queryClient = new QueryClient();
@@ -80,23 +86,32 @@ const App = () => (
             <Route path="/app" element={<RequireAuth><AppShell /></RequireAuth>}>
               <Route index element={<TodayPage />} />
               <Route path="onboarding" element={<OnboardingWizardPage />} />
-              <Route path="reserveringen" element={<ReservationsPage />} />
-              <Route path="tafelplan" element={<FloorPlanPage />} />
-              <Route path="floor" element={<FloorModePage />} />
+
+              {/* Geconsolideerde schermen */}
+              <Route path="agenda" element={<AgendaTabsPage />} />
+              <Route path="vloer" element={<VloerTabsPage />} />
+              <Route path="gasten" element={<GastenTabsPage />} />
+              <Route path="gastcommunicatie" element={<GastcommunicatiePage />} />
+              <Route path="ai-voice" element={<AIHostVoicePage />} />
+              <Route path="koppelingen" element={<KoppelingenTabsPage />} />
+
+              {/* Operatie — losse schermen */}
               <Route path="walk-ins" element={<WalkInsPage />} />
               <Route path="wachtlijst" element={<WaitlistPage />} />
-              <Route path="gasten" element={<GuestsPage />} />
-              <Route path="grote-groepen" element={<LargeGroupsPage />} />
-              <Route path="agenda" element={<AgendaPage />} />
-              <Route path="no-show" element={<NoShowPreventionPage />} />
-              <Route path="drankjes" element={<PreOrderDrinksPage />} />
-              <Route path="reviews" element={<ReviewsAftercarePage />} />
-              <Route path="ai-host" element={<AIHostPage />} />
-              <Route path="voice-agent" element={<VoiceAgentPage />} />
-              <Route path="help/voice-agent" element={<VoiceAgentHelp />} />
               <Route path="rapportages" element={<ReportsPage />} />
-              <Route path="integraties" element={<IntegrationsPage />} />
-              <Route path="koppelingen" element={<KoppelingenPage />} />
+              <Route path="help/voice-agent" element={<VoiceAgentHelp />} />
+
+              {/* Legacy redirects naar nieuwe tab-locaties */}
+              <Route path="reserveringen" element={<Navigate to="/app/agenda?tab=lijst" replace />} />
+              <Route path="tafelplan" element={<Navigate to="/app/vloer?tab=bewerken" replace />} />
+              <Route path="floor" element={<Navigate to="/app/vloer?tab=live" replace />} />
+              <Route path="grote-groepen" element={<Navigate to="/app/gasten?tab=grote-groepen" replace />} />
+              <Route path="no-show" element={<Navigate to="/app/gastcommunicatie?tab=no-show" replace />} />
+              <Route path="drankjes" element={<Navigate to="/app/gastcommunicatie?tab=drankjes" replace />} />
+              <Route path="reviews" element={<Navigate to="/app/gastcommunicatie?tab=reviews" replace />} />
+              <Route path="ai-host" element={<Navigate to="/app/ai-voice?tab=ai-host" replace />} />
+              <Route path="voice-agent" element={<Navigate to="/app/ai-voice?tab=voice" replace />} />
+              <Route path="integraties" element={<Navigate to="/app/koppelingen?tab=hub" replace />} />
 
               {/* Admin-only routes (system admin) */}
               <Route path="admin/voice-agent" element={<RequireSystemAdmin><AdminVoiceAgentPage /></RequireSystemAdmin>} />
