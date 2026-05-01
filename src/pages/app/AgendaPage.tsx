@@ -44,11 +44,36 @@ const AgendaPage = () => {
   const didInitialScroll = useRef(false);
   const dateStr = format(date, "yyyy-MM-dd");
 
-  // tick "nu" elke 30s
+  // tick "nu" elke 60s
   useEffect(() => {
-    const id = setInterval(() => setNow(new Date()), 30_000);
+    const id = setInterval(() => setNow(new Date()), 60_000);
     return () => clearInterval(id);
   }, []);
+
+  // Auto-recenter rond actuele tijd na 2 min inactiviteit (alleen op vandaag)
+  const inactivityTimer = useRef<number | null>(null);
+  const recenterToNow = (smooth = true) => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const n = new Date();
+    const m = (n.getHours() - START_HOUR) * 60 + n.getMinutes();
+    if (m < 0 || m > (END_HOUR - START_HOUR) * 60) return;
+    const target = Math.max(0, m * pxPerMin - el.clientWidth / 3);
+    el.scrollTo({ left: target, behavior: smooth ? "smooth" : "auto" });
+  };
+  const resetInactivity = () => {
+    if (inactivityTimer.current) window.clearTimeout(inactivityTimer.current);
+    if (!isSameDay(date, new Date())) return;
+    inactivityTimer.current = window.setTimeout(() => recenterToNow(true), 2 * 60_000);
+  };
+  useEffect(() => {
+    resetInactivity();
+    return () => {
+      if (inactivityTimer.current) window.clearTimeout(inactivityTimer.current);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dateStr, pxPerMin]);
+
 
   const { data: tables = [] } = useQuery({
     queryKey: ["agenda-tables", rid],
