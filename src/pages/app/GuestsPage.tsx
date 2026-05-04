@@ -336,7 +336,7 @@ function GuestDetailSheet({
                 <CardTitle className="text-sm font-display">Notities</CardTitle>
               </CardHeader>
               <CardContent className="pt-0">
-                <GuestNotesSection restaurantId={restaurantId} guestId={guest.id} />
+                <GuestNotesSection restaurantId={restaurantId} guestId={guest.id} readOnly={readOnly} />
               </CardContent>
             </Card>
 
