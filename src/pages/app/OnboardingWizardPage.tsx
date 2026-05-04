@@ -401,9 +401,16 @@ const TestReservationStep = ({ restaurantId }: StepCtx) => {
           )}
         </Card>
       )}
-      <Button asChild variant="outline">
-        <Link to="/app/integraties/logs">Bekijk integratie-logs</Link>
-      </Button>
+      {!result && (
+        <p className="text-xs text-muted-foreground">
+          Tip: na een geslaagde test vind je de reservering terug in de agenda.
+        </p>
+      )}
+      {result && !result.ok && (
+        <p className="text-xs text-muted-foreground">
+          Controleer je instellingen en probeer opnieuw. Blijft het misgaan? Neem contact op met support.
+        </p>
+      )}
     </div>
   );
 };
