@@ -265,7 +265,7 @@ const AIHostPage = () => {
           <TabsTrigger value="console">Sandbox console</TabsTrigger>
           <TabsTrigger value="live-test">Live testconsole</TabsTrigger>
           <TabsTrigger value="logs">Logs</TabsTrigger>
-          <TabsTrigger value="highlevel">HighLevel setup</TabsTrigger>
+          <TabsTrigger value="highlevel">ClickWise setup</TabsTrigger>
           <TabsTrigger value="rules">Veiligheidsregels</TabsTrigger>
         </TabsList>
 
