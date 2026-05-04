@@ -84,16 +84,12 @@ Deno.serve(async (req) => {
       return json({ error: "Slot too soon", error_code: "slot_too_soon", field: "time" }, 400);
     }
 
-    // Find fitting tables
+    // Find fitting individual tables
     const { data: tables } = await supabase
       .from("tables").select("id, capacity_min, capacity_max")
       .eq("restaurant_id", restaurant.id).eq("is_active", true)
       .lte("capacity_min", body.party_size).gte("capacity_max", body.party_size)
       .order("capacity_max", { ascending: true });
-
-    if (!tables || tables.length === 0) {
-      return json({ error: "Geen passende tafel beschikbaar voor deze groepsgrootte", error_code: "no_table_available", field: "party_size" }, 409);
-    }
 
     // Existing active reservations overlapping window
     const { data: existing } = await supabase
@@ -114,8 +110,23 @@ Deno.serve(async (req) => {
         for (const rt of (r.reservation_tables ?? [])) occupied.add(rt.table_id);
       }
     }
-    const candidate = tables.find((t) => !occupied.has(t.id));
-    if (!candidate) return json({ error: "Geen tafel meer beschikbaar voor dit moment", error_code: "slot_unavailable", field: "time", retry: true }, 409);
+
+    // Prefer single fitting table; fall back to a combination if none fits
+    const candidate = (tables ?? []).find((t) => !occupied.has(t.id)) ?? null;
+    let chosenTableIds: string[] = [];
+    let chosenCombinationId: string | null = null;
+    if (candidate) {
+      chosenTableIds = [candidate.id];
+    } else {
+      const combo = await findAvailableCombination(
+        supabase, restaurant.id, body.party_size, start_iso, end_iso,
+      );
+      if (!combo) {
+        return json({ error: "Geen tafel of combinatie beschikbaar voor deze groepsgrootte op dit moment", error_code: "no_table_available", field: "party_size" }, 409);
+      }
+      chosenTableIds = combo.tableIds;
+      chosenCombinationId = combo.combinationId;
+    }
 
     // Pacing check (skip for operator-driven walk-ins / manager bookings)
     const skipPacing = channel === "walk_in" || channel === "manager";
