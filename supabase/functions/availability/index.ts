@@ -4,7 +4,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { corsHeaders } from "../_shared/cors.ts";
 import {
   WEEKDAY_KEYS, getWeekdayKey, zonedDateTimeToUtcIso, addMinutesIso,
-  intervalsOverlap, ACTIVE_STATUSES,
+  intervalsOverlap, ACTIVE_STATUSES, findAvailableCombination,
 } from "../_shared/reservation-utils.ts";
 import { evaluatePacing, durationFor, type PacingReservation } from "../_shared/pacing.ts";
 
