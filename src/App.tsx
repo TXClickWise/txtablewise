@@ -77,20 +77,20 @@ const App = () => (
             <Route path="/onboarding" element={<RequireAuth><Onboarding /></RequireAuth>} />
             <Route path="/app" element={<RequireAuth><AppShell /></RequireAuth>}>
               <Route index element={<ErrorBoundary label="TodayPage"><TodayPage /></ErrorBoundary>} />
-              <Route path="onboarding" element={<OnboardingWizardPage />} />
+              <Route path="onboarding" element={<RequireRole allow={["owner"]}><OnboardingWizardPage /></RequireRole>} />
 
               {/* Geconsolideerde schermen */}
               <Route path="agenda" element={<ErrorBoundary label="AgendaTabsPage"><AgendaTabsPage /></ErrorBoundary>} />
               <Route path="vloer" element={<ErrorBoundary label="VloerTabsPage"><VloerTabsPage /></ErrorBoundary>} />
               <Route path="gasten" element={<ErrorBoundary label="GastenTabsPage"><GastenTabsPage /></ErrorBoundary>} />
-              <Route path="gastcommunicatie" element={<GastcommunicatiePage />} />
-              <Route path="ai-voice" element={<AIHostVoicePage />} />
-              <Route path="koppelingen" element={<KoppelingenTabsPage />} />
+              <Route path="gastcommunicatie" element={<RequireRole allow={["owner","manager"]}><GastcommunicatiePage /></RequireRole>} />
+              <Route path="ai-voice" element={<RequireRole allow={["owner","manager"]}><AIHostVoicePage /></RequireRole>} />
+              <Route path="koppelingen" element={<RequireRole allow={["owner","manager"]}><KoppelingenTabsPage /></RequireRole>} />
 
               {/* Operatie — losse schermen */}
               <Route path="walk-ins" element={<ErrorBoundary label="WalkInsPage"><WalkInsPage /></ErrorBoundary>} />
               <Route path="wachtlijst" element={<ErrorBoundary label="WaitlistPage"><WaitlistPage /></ErrorBoundary>} />
-              <Route path="rapportages" element={<ReportsPage />} />
+              <Route path="rapportages" element={<RequireRole allow={["owner","manager"]}><ReportsPage /></RequireRole>} />
               <Route path="help/voice-agent" element={<VoiceAgentHelp />} />
 
               {/* Legacy redirects naar nieuwe tab-locaties */}
