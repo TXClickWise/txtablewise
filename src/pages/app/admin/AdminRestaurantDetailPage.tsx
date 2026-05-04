@@ -7,6 +7,9 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ArrowLeft, ArrowRightLeft, ExternalLink, CheckCircle2, XCircle } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { useState } from "react";
 import { usePilotReadiness } from "@/hooks/usePilotReadiness";
 import { format, formatDistanceToNow } from "date-fns";
 import { nl } from "date-fns/locale";
@@ -166,6 +169,11 @@ export default function AdminRestaurantDetailPage() {
           </CardContent>
         </Card>
 
+        <PlatformBaseUrlCard
+          restaurantId={restaurant.id}
+          initial={(restaurant as any).public_base_url ?? ""}
+        />
+
         <Card>
           <CardHeader><CardTitle className="text-base">Statistieken</CardTitle></CardHeader>
           <CardContent className="grid grid-cols-2 gap-3 text-sm">
@@ -278,5 +286,47 @@ function Stat({ label, value }: { label: string; value: number | string }) {
       <div className="text-xs text-muted-foreground">{label}</div>
       <div className="text-xl font-display tabular-nums">{value}</div>
     </div>
+  );
+}
+
+function PlatformBaseUrlCard({ restaurantId, initial }: { restaurantId: string; initial: string }) {
+  const [value, setValue] = useState(initial);
+  const [saving, setSaving] = useState(false);
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base">Platform widget basis-URL</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <div className="space-y-1">
+          <Label className="text-xs">Basis-URL</Label>
+          <Input
+            value={value}
+            onChange={(e) => setValue(e.target.value)}
+            placeholder="https://txtablewise.nl"
+          />
+          <p className="text-xs text-muted-foreground">
+            De basis-URL die wordt gebruikt voor alle widget-links van dit restaurant. Standaard: https://txtablewise.nl. Alleen bewerkbaar door system admin.
+          </p>
+        </div>
+        <Button
+          size="sm"
+          disabled={saving}
+          onClick={async () => {
+            setSaving(true);
+            const v = value.trim() ? value.trim().replace(/\/+$/, "") : null;
+            const { error } = await supabase
+              .from("restaurants")
+              .update({ public_base_url: v })
+              .eq("id", restaurantId);
+            setSaving(false);
+            if (error) toast.error(error.message);
+            else toast.success("Opgeslagen");
+          }}
+        >
+          {saving ? "Opslaan…" : "Opslaan"}
+        </Button>
+      </CardContent>
+    </Card>
   );
 }

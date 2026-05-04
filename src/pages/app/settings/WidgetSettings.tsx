@@ -15,6 +15,8 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getWidgetBaseUrl } from "@/lib/widgetUrl";
+import { usePlan } from "@/hooks/usePlan";
+import { Sparkles, Lock } from "lucide-react";
 
 type RestaurantBrand = {
   id: string;
@@ -23,14 +25,19 @@ type RestaurantBrand = {
   brand_primary: string | null;
   logo_url: string | null;
   public_base_url: string | null;
+  custom_widget_domain: string | null;
 };
 
 const HEX_RE = /^#[0-9a-fA-F]{6}$/;
 
 const WidgetSettings = () => {
   const { current } = useRestaurant();
+  const { plan } = usePlan();
+  const isPro = plan === "pro";
   const restaurant = current?.restaurants;
   const [brand, setBrand] = useState<RestaurantBrand | null>(null);
+  const [customDomain, setCustomDomain] = useState<string>("");
+  const [savingDomain, setSavingDomain] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -54,7 +61,7 @@ const WidgetSettings = () => {
       setLoading(true);
       const { data, error } = await supabase
         .from("restaurants")
-        .select("id, slug, name, brand_primary, logo_url, public_base_url")
+        .select("id, slug, name, brand_primary, logo_url, public_base_url, custom_widget_domain")
         .eq("id", restaurant.id)
         .maybeSingle();
       if (cancelled) return;
@@ -66,12 +73,16 @@ const WidgetSettings = () => {
       setBrand(data as RestaurantBrand);
       if (data.brand_primary && HEX_RE.test(data.brand_primary)) setBrandPrimary(data.brand_primary);
       setLogoUrl(data.logo_url ?? "");
+      setCustomDomain((data as any).custom_widget_domain ?? "");
       setLoading(false);
     })();
     return () => { cancelled = true; };
   }, [restaurant?.id]);
 
-  const origin = getWidgetBaseUrl(brand?.public_base_url);
+  const origin = getWidgetBaseUrl({
+    customWidgetDomain: brand?.custom_widget_domain,
+    publicBaseUrl: brand?.public_base_url,
+  });
   const slug = brand?.slug ?? "";
 
   const widgetUrl = useMemo(() => {
@@ -155,6 +166,76 @@ const WidgetSettings = () => {
           Deel je reserveringswidget op je website, in mails of via een QR-code. Gasten boeken direct in jouw eigen omgeving.
         </p>
       </div>
+
+      {/* White-label custom domein (Pro-only) */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <Sparkles className="h-4 w-4 text-primary" /> Eigen domein (white-label)
+            {!isPro && <span className="ml-2 text-xs font-normal rounded-full bg-primary/10 text-primary px-2 py-0.5">Pro</span>}
+          </CardTitle>
+          <CardDescription>
+            {isPro
+              ? "Koppel je eigen (sub-)domein aan je reserveringswidget voor een volledig professionele uitstraling."
+              : "Beschikbaar op het Pro-plan: gebruik je eigen (sub-)domein voor je reserveringswidget."}
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {isPro ? (
+            <>
+              <div className="space-y-2">
+                <Label htmlFor="custom-domain">Custom widget-domein</Label>
+                <Input
+                  id="custom-domain"
+                  value={customDomain}
+                  onChange={(e) => setCustomDomain(e.target.value)}
+                  placeholder="reserveer.mijnrestaurant.nl"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Voeg een CNAME-record toe in je DNS dat verwijst naar <code className="font-mono">txtablewise.nl</code>.
+                </p>
+              </div>
+              {brand?.custom_widget_domain && (
+                <div className="text-xs inline-flex items-center gap-2 rounded-full border border-border px-2.5 py-1">
+                  <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground" />
+                  DNS-verificatie nog niet actief
+                </div>
+              )}
+              <Button
+                disabled={savingDomain}
+                onClick={async () => {
+                  if (!brand) return;
+                  setSavingDomain(true);
+                  const value = customDomain.trim() ? customDomain.trim().replace(/^https?:\/\//i, "").replace(/\/+$/, "") : null;
+                  const { error } = await supabase
+                    .from("restaurants")
+                    .update({ custom_widget_domain: value } as any)
+                    .eq("id", brand.id);
+                  setSavingDomain(false);
+                  if (error) { toast.error("Opslaan mislukt"); return; }
+                  setBrand({ ...brand, custom_widget_domain: value });
+                  toast.success(value ? "Eigen domein opgeslagen" : "Eigen domein verwijderd");
+                }}
+              >
+                {savingDomain && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+                Opslaan
+              </Button>
+            </>
+          ) : (
+            <div className="rounded-md border border-dashed border-border p-4 flex items-start gap-3">
+              <Lock className="h-4 w-4 text-muted-foreground mt-0.5" />
+              <div className="flex-1 space-y-2">
+                <p className="text-sm">
+                  <strong>Eigen domein beschikbaar op het Pro-plan.</strong> Gebruik je eigen (sub-)domein voor een volledig professionele uitstraling.
+                </p>
+                <Button variant="outline" size="sm" asChild>
+                  <a href="/app/instellingen/abonnement">Bekijk Pro-plan</a>
+                </Button>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       <div className="grid lg:grid-cols-2 gap-6">
         {/* LEFT: configuration */}

@@ -35,7 +35,10 @@ export default function PilotLaunchSettings() {
 
   const widgetUrl = useMemo(() => {
     if (!current) return "";
-    return getWidgetUrl(current.restaurants.slug, (current.restaurants as any).public_base_url);
+    return getWidgetUrl(current.restaurants.slug, {
+      customWidgetDomain: (current.restaurants as any).custom_widget_domain,
+      publicBaseUrl: (current.restaurants as any).public_base_url,
+    });
   }, [current]);
 
   const { data: liveStatus } = useQuery({

@@ -1466,6 +1466,7 @@ export type Database = {
           city: string | null
           country: string
           created_at: string
+          custom_widget_domain: string | null
           default_language: string
           default_reservation_minutes: number
           deleted_at: string | null
@@ -1552,6 +1553,7 @@ export type Database = {
           city?: string | null
           country?: string
           created_at?: string
+          custom_widget_domain?: string | null
           default_language?: string
           default_reservation_minutes?: number
           deleted_at?: string | null
@@ -1638,6 +1640,7 @@ export type Database = {
           city?: string | null
           country?: string
           created_at?: string
+          custom_widget_domain?: string | null
           default_language?: string
           default_reservation_minutes?: number
           deleted_at?: string | null
