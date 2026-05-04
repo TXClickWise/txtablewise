@@ -442,6 +442,11 @@ Deno.serve(async (req) => {
       check_availability: "check_availability",
       book_reservation: "create_reservation",
       cancel_reservation: "cancel_reservation",
+      find_reservation: "find_reservation",
+      update_reservation: "update_reservation",
+      create_waitlist_entry: "create_waitlist_entry",
+      get_opening_hours: "get_opening_hours",
+      reconfirm_reservation: "reconfirm_reservation",
       log_call: "log_call",
     };
     logIntegration({
