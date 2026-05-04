@@ -155,7 +155,7 @@ export function ReservationDetailSheet({ reservationId, open, onOpenChange, onOp
           <>
             <div className="p-4 border-b border-border space-y-2">
               <div className="flex items-center gap-2 flex-wrap">
-                <StatusBadge status={data.status} />
+                <StatusBadge status={data.status === "finished" ? "completed" : data.status} />,
                 <ChannelBadge channel={data.channel as never} />
                 {data.no_show_risk && data.no_show_risk !== "low" && (
                   <Badge className={cn("border-0", RISK_BADGE[data.no_show_risk])}>
