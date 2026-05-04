@@ -379,11 +379,55 @@ async function processEvent(
     return { ok: true, skipped: true, reason: "test_mode_or_event_gated" };
   }
 
+  // Mark processing early
+  await admin.from("integration_events").update({
+    status: "processing", attempts: (ev.attempts || 0) + 1,
+  }).eq("id", ev.id);
+
+  // Optional contact upsert. Voor guest.* en reservation.* events met guest_id.
+  let contactId: string | null = (ev.payload?.clickwise_contact_id as string | undefined) ?? null;
+  let contactUpsertResult: Json | null = null;
+  if (settings?.contact_sync_enabled) {
+    const isGuestEvent = ev.event_type.startsWith("guest.");
+    const isReservationEvent = ev.event_type.startsWith("reservation.");
+    if (isGuestEvent || isReservationEvent) {
+      const guest = await loadGuestForEvent(admin, ev);
+      if (guest) {
+        const r = await upsertContact(admin, settings, guest, ev.payload);
+        contactUpsertResult = { ok: r.ok, status: r.status ?? null, contact_id: r.contact_id ?? null };
+        if (r.ok && r.contact_id) contactId = r.contact_id;
+        if (!r.ok && isGuestEvent) {
+          // Voor pure guest events is upsert het hele doel — markeer als failed.
+          await admin.from("integration_events").update({
+            status: "failed",
+            last_error: `Contact upsert mislukt (${r.status ?? 0}): ${JSON.stringify(r.body ?? {}).slice(0, 200)}`,
+            metadata: { ...(ev.metadata || {}), contact_upsert: contactUpsertResult, mode: "live" },
+          }).eq("id", ev.id);
+          await audit(admin, ev.restaurant_id, "clickwise.contact_upsert_failed", ev.id, { event_type: ev.event_type, status: r.status });
+          return { ok: false, error: "contact_upsert_failed", status: r.status };
+        }
+      }
+    }
+  }
+
+  // Pure contact-sync events (guest.created/updated zonder workflow) → markeer sent na upsert.
+  if (ev.event_type === "guest.created" || ev.event_type === "guest.updated") {
+    if (!wfEnabled || !wfId) {
+      await admin.from("integration_events").update({
+        status: "sent",
+        processed_at: new Date().toISOString(),
+        last_error: null,
+        metadata: { ...(ev.metadata || {}), contact_upsert: contactUpsertResult, mode: "live" },
+      }).eq("id", ev.id);
+      await audit(admin, ev.restaurant_id, "clickwise.contact_synced", ev.id, { event_type: ev.event_type, contact_id: contactId });
+      return { ok: true, contact_id: contactId };
+    }
+  }
+
   if (!wfEnabled || !wfId) {
     await admin.from("integration_events").update({
       status: "failed",
       last_error: "Geen ClickWise workflow gekoppeld aan dit eventtype.",
-      attempts: (ev.attempts || 0) + 1,
     }).eq("id", ev.id);
     await audit(admin, ev.restaurant_id, "clickwise.event_failed", ev.id, {
       event_type: ev.event_type, reason: "workflow_mapping_missing",
@@ -391,16 +435,11 @@ async function processEvent(
     return { ok: false, error: "workflow_mapping_missing" };
   }
 
-  // Mark processing
-  await admin.from("integration_events").update({
-    status: "processing", attempts: (ev.attempts || 0) + 1,
-  }).eq("id", ev.id);
-
   // Call: workflow trigger pattern (HighLevel: POST /workflows/{id}/trigger)
   const locationId = settings?.location_id || CLICKWISE_LOCATION_ID;
   const result = await callClickWise(`/workflows/${wfId}/trigger`, {
     locationId,
-    contactId: (ev.payload?.clickwise_contact_id as string | undefined) ?? null,
+    contactId,
     payload: ev.payload,
   });
 
@@ -409,17 +448,24 @@ async function processEvent(
       status: "sent",
       processed_at: new Date().toISOString(),
       last_error: null,
-      metadata: { ...(ev.metadata || {}), response: result.body, http_status: result.status },
+      metadata: {
+        ...(ev.metadata || {}),
+        response: result.body,
+        http_status: result.status,
+        contact_upsert: contactUpsertResult,
+        mode: "live",
+      },
     }).eq("id", ev.id);
     await audit(admin, ev.restaurant_id, "clickwise.workflow_triggered", ev.id, {
-      event_type: ev.event_type, http_status: result.status,
+      event_type: ev.event_type, http_status: result.status, contact_id: contactId,
     });
-    return { ok: true };
+    return { ok: true, contact_id: contactId };
   }
 
   await admin.from("integration_events").update({
     status: "failed",
     last_error: `ClickWise API fout (${result.status}): ${JSON.stringify(result.body).slice(0, 200)}`,
+    metadata: { ...(ev.metadata || {}), contact_upsert: contactUpsertResult, http_status: result.status, mode: "live" },
   }).eq("id", ev.id);
   await audit(admin, ev.restaurant_id, "clickwise.event_failed", ev.id, {
     event_type: ev.event_type, http_status: result.status,
