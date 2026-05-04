@@ -95,6 +95,50 @@ async function callInternalFn(name: string, body: unknown, extraHeaders: Record<
   return { status: res.status, body: parsed };
 }
 
+// ---- Guest-safe response wrapper ----
+const INTERNAL_KEYS = [
+  "internal_notes", "no_show_count", "no_show_risk", "no_show_risk_factors",
+  "magic_token", "manage_token", "cancel_token", "clickwise_contact_id",
+  "clickwise_workflow_status", "audit_log", "metadata", "source_metadata",
+  "webhook_secret", "api_key", "key_hash",
+];
+function stripInternal<T extends Record<string, unknown>>(obj: T | null | undefined): Record<string, unknown> {
+  if (!obj || typeof obj !== "object") return {};
+  const out: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(obj)) {
+    if (INTERNAL_KEYS.includes(k)) continue;
+    out[k] = v;
+  }
+  return out;
+}
+function guestSafeResponse(action: string, success: boolean, data: Record<string, unknown>) {
+  return { success, action, ...stripInternal(data) };
+}
+
+// ---- Per-channel permission check ----
+type ChannelKey = "voice" | "whatsapp" | "sms" | "webchat";
+const CHANNEL_KEYS: ChannelKey[] = ["voice", "whatsapp", "sms", "webchat"];
+async function checkChannelPermission(restaurantId: string, channel: string | undefined, action: string) {
+  if (!channel) return { ok: true as const };
+  if (!CHANNEL_KEYS.includes(channel as ChannelKey)) {
+    return { ok: false as const, error: `Unknown channel '${channel}'`, error_code: "unknown_channel", status: 400 };
+  }
+  const sb = admin();
+  const { data } = await sb.from("voice_agent_settings")
+    .select("settings").eq("restaurant_id", restaurantId).maybeSingle();
+  const settings = (data?.settings ?? {}) as Record<string, any>;
+  const channels = settings.channels ?? {};
+  const cfg = channels[channel];
+  if (!cfg) return { ok: true as const }; // not yet configured: don't block
+  if (cfg.enabled === false) {
+    return { ok: false as const, error: `Channel '${channel}' is disabled`, error_code: "channel_disabled", status: 403 };
+  }
+  if (Array.isArray(cfg.allowed_actions) && !cfg.allowed_actions.includes(action)) {
+    return { ok: false as const, error: `Action '${action}' not allowed for channel '${channel}'`, error_code: "channel_action_not_allowed", status: 403 };
+  }
+  return { ok: true as const, testMode: cfg.test_mode !== false };
+}
+
 async function handle(
   req: Request,
   ctx: { action: string; rawBody: any; setReservationId: (id: string | null) => void; setRestaurantId: (id: string) => void; setKeyPrefix: (p: string | null) => void; setProvider: (p: string | null) => void; },
