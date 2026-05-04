@@ -89,7 +89,7 @@ const SettingsPage = () => {
           {/* Mobile (<md): horizontal scroll fallback */}
           <div className="md:hidden -mx-4 px-4 overflow-x-auto pb-2 mb-2">
             <div className="flex gap-1 min-w-max">
-              {GROUPS.flatMap((g) => g.items).map((item) => {
+              {groups.flatMap((g) => g.items).map((item) => {
                 const active = item.end
                   ? location.pathname === item.to
                   : location.pathname.startsWith(item.to);
@@ -114,7 +114,7 @@ const SettingsPage = () => {
 
           {/* Tablet+desktop: grouped vertical nav */}
           <nav className="hidden md:block space-y-5">
-            {GROUPS.map((g) => (
+            {groups.map((g) => (
               <div key={g.label}>
                 <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-1.5 px-2">
                   {g.label}
