@@ -315,37 +315,16 @@ const AIHostPage = () => {
           </div>
         </TabsContent>
 
+        <TabsContent value="live-test">
+          <AIActionTestConsole restaurantId={restaurantId} />
+        </TabsContent>
+
         <TabsContent value="logs">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Recente AI-acties (sessie)</CardTitle>
-              <CardDescription>
-                Acties tijdens deze sessie. Volledige logs worden opgeslagen in audit_log + integration_events.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {history.length === 0 ? (
-                <p className="text-sm text-muted-foreground">Nog geen acties uitgevoerd.</p>
-              ) : (
-                <div className="space-y-2">
-                  {history.map((h, i) => (
-                    <div key={i} className="rounded-md border p-3 text-sm">
-                      <div className="flex items-center gap-2">
-                        <StatusIcon res={h.res} />
-                        <code className="text-xs">{h.action}</code>
-                        <span className="ml-auto text-xs text-muted-foreground">
-                          {new Date(h.at).toLocaleTimeString("nl-NL")}
-                        </span>
-                      </div>
-                      <div className="mt-1 text-muted-foreground text-xs">
-                        {h.res.message_for_guest}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
+          <AIActionLogs restaurantId={restaurantId} />
+        </TabsContent>
+
+        <TabsContent value="highlevel">
+          <HighLevelToolSetupPanel />
         </TabsContent>
 
         <TabsContent value="rules">
