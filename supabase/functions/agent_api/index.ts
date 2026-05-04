@@ -68,7 +68,7 @@ async function authenticate(req: Request) {
   return { keyRow: data };
 }
 
-async function callInternalFn(name: string, body: unknown) {
+async function callInternalFn(name: string, body: unknown, extraHeaders: Record<string, string> = {}) {
   const url = `${SUPABASE_URL}/functions/v1/${name}`;
   const res = await fetch(url, {
     method: "POST",
@@ -76,6 +76,7 @@ async function callInternalFn(name: string, body: unknown) {
       "Content-Type": "application/json",
       Authorization: `Bearer ${SERVICE_ROLE}`,
       apikey: SERVICE_ROLE,
+      ...extraHeaders,
     },
     body: JSON.stringify(body),
   });
