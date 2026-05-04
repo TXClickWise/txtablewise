@@ -13,9 +13,9 @@ import {
   type GuestNote, type GuestNoteType,
 } from "@/services/guests";
 
-type Props = { restaurantId: string; guestId: string };
+type Props = { restaurantId: string; guestId: string; readOnly?: boolean };
 
-export function GuestNotesSection({ restaurantId, guestId }: Props) {
+export function GuestNotesSection({ restaurantId, guestId, readOnly = false }: Props) {
   const [notes, setNotes] = useState<GuestNote[]>([]);
   const [loading, setLoading] = useState(true);
   const [adding, setAdding] = useState(false);
@@ -45,14 +45,14 @@ export function GuestNotesSection({ restaurantId, guestId }: Props) {
     <div className="space-y-3">
       <div className="flex items-center justify-between">
         <h3 className="font-display text-sm uppercase tracking-wide text-muted-foreground">Notities</h3>
-        {!adding && (
+        {!adding && !readOnly && (
           <Button size="sm" variant="outline" className="h-8" onClick={() => setAdding(true)}>
             <Plus className="h-3.5 w-3.5 mr-1" /> Notitie toevoegen
           </Button>
         )}
       </div>
 
-      {adding && (
+      {adding && !readOnly && (
         <div className="rounded-lg border bg-muted/30 p-3 space-y-2">
           <div className="grid grid-cols-2 gap-2">
             <div>
