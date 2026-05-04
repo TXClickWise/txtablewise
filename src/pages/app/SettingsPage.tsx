@@ -1,5 +1,6 @@
 import { NavLink, Outlet, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
+import { useRestaurant } from "@/hooks/useRestaurant";
 import {
   Settings as SettingsIcon,
   Clock,
@@ -13,6 +14,7 @@ import {
   UserCog,
   Crown,
   Globe,
+  Rocket,
 } from "lucide-react";
 
 type Item = {
@@ -59,6 +61,7 @@ const GROUPS: Group[] = [
     items: [
       { to: "/app/instellingen/gebruikers", label: "Gebruikers & rollen", icon: UserCog },
       { to: "/app/instellingen/abonnement", label: "Abonnement", icon: Crown },
+      { to: "/app/instellingen/pilot-launch", label: "Pilot lancering", icon: Rocket, ownerOnly: true },
     ],
   },
 ];
