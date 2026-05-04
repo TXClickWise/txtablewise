@@ -649,12 +649,25 @@ export default function OnboardingWizard() {
   const Icon = step.icon;
   const totalSteps = STEPS.length;
 
-  // Progress = % completed (done) of the 12 real steps
+  // Progress = % completed (done or skipped) of the 12 real steps
   const completedCount = useMemo(() => {
     if (!statuses) return 0;
-    return Object.values(statuses).filter((s) => s === "done").length;
+    return Object.values(statuses).filter((s) => s === "done" || s === "skipped").length;
   }, [statuses]);
   const progress = (completedCount / 12) * 100;
+
+  const skipCurrentStep = async () => {
+    if (step.key === "welcome" || step.key === "done") return;
+    const prev = (settings as any)?.metadata?.onboarding_skipped ?? {};
+    await patch({
+      metadata: {
+        ...((settings as any)?.metadata ?? {}),
+        onboarding_skipped: { ...prev, [step.key]: true },
+      },
+    });
+    toast.success("Stap overgeslagen — je kunt dit later instellen.");
+    goNext();
+  };
 
   const goNext = () => {
     if (stepIndex < totalSteps - 1) setStepIndex((i) => i + 1);
