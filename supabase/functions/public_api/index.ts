@@ -743,25 +743,46 @@ async function handleUpdateReservation(req: Request, keyRow: KeyRow, reservation
       if (finalParty < totalMin || finalParty > totalMax) {
         // Probeer een passende vrije tafel te vinden
         const newTable = await findFreeTable(sb, restaurant.id, finalParty, start_iso, end_iso, current.id);
-        if (!newTable) return errResp("TW_409_TIMESLOT_UNAVAILABLE", "partySize");
-        // Vervang reservation_tables
-        await sb.from("reservation_tables").delete().eq("reservation_id", current.id);
-        await sb.from("reservation_tables").insert({ reservation_id: current.id, table_id: newTable });
+        if (newTable) {
+          await sb.from("reservation_tables").delete().eq("reservation_id", current.id);
+          await sb.from("reservation_tables").insert({ reservation_id: current.id, table_id: newTable });
+          patch.table_combination_id = null;
+        } else {
+          const combo = await findAvailableCombination(sb, restaurant.id, finalParty, start_iso, end_iso, current.id);
+          if (!combo) return errResp("TW_409_TIMESLOT_UNAVAILABLE", "partySize");
+          await sb.from("reservation_tables").delete().eq("reservation_id", current.id);
+          await sb.from("reservation_tables").insert(combo.tableIds.map((tid) => ({ reservation_id: current.id, table_id: tid })));
+          patch.table_combination_id = combo.combinationId;
+        }
       } else {
         // Zelfde tafel houden — check vrije slot
         const conflict = await tableHasConflict(sb, currentTableIds, start_iso, end_iso, current.id);
         if (conflict) {
-          // Zoek alternatief
           const newTable = await findFreeTable(sb, restaurant.id, finalParty, start_iso, end_iso, current.id);
-          if (!newTable) return errResp("TW_409_TIMESLOT_UNAVAILABLE", "localTime");
-          await sb.from("reservation_tables").delete().eq("reservation_id", current.id);
-          await sb.from("reservation_tables").insert({ reservation_id: current.id, table_id: newTable });
+          if (newTable) {
+            await sb.from("reservation_tables").delete().eq("reservation_id", current.id);
+            await sb.from("reservation_tables").insert({ reservation_id: current.id, table_id: newTable });
+            patch.table_combination_id = null;
+          } else {
+            const combo = await findAvailableCombination(sb, restaurant.id, finalParty, start_iso, end_iso, current.id);
+            if (!combo) return errResp("TW_409_TIMESLOT_UNAVAILABLE", "localTime");
+            await sb.from("reservation_tables").delete().eq("reservation_id", current.id);
+            await sb.from("reservation_tables").insert(combo.tableIds.map((tid) => ({ reservation_id: current.id, table_id: tid })));
+            patch.table_combination_id = combo.combinationId;
+          }
         }
       }
     } else {
       const newTable = await findFreeTable(sb, restaurant.id, finalParty, start_iso, end_iso, current.id);
-      if (!newTable) return errResp("TW_409_TIMESLOT_UNAVAILABLE", "localTime");
-      await sb.from("reservation_tables").insert({ reservation_id: current.id, table_id: newTable });
+      if (newTable) {
+        await sb.from("reservation_tables").insert({ reservation_id: current.id, table_id: newTable });
+        patch.table_combination_id = null;
+      } else {
+        const combo = await findAvailableCombination(sb, restaurant.id, finalParty, start_iso, end_iso, current.id);
+        if (!combo) return errResp("TW_409_TIMESLOT_UNAVAILABLE", "localTime");
+        await sb.from("reservation_tables").insert(combo.tableIds.map((tid) => ({ reservation_id: current.id, table_id: tid })));
+        patch.table_combination_id = combo.combinationId;
+      }
     }
 
     patch.reservation_date = finalDate;
