@@ -253,24 +253,15 @@ const AIHostPage = () => {
         }
       />
 
-      <Card>
-        <CardHeader><CardTitle className="text-base">Kanalen</CardTitle></CardHeader>
-        <CardContent className="grid gap-3 md:grid-cols-3">
-          {CHANNELS.map((c) => (
-            <div key={c.t} className="rounded-lg border p-4">
-              <c.Icon className="h-5 w-5 text-primary mb-2" />
-              <div className="font-medium text-sm">{c.t}</div>
-              <div className="text-xs text-muted-foreground">{c.d}</div>
-            </div>
-          ))}
-        </CardContent>
-      </Card>
+      <ChannelReadinessCards restaurantId={restaurantId} />
 
       <Tabs defaultValue="catalog" className="space-y-4">
         <TabsList>
           <TabsTrigger value="catalog">Action catalog</TabsTrigger>
-          <TabsTrigger value="console">Testconsole</TabsTrigger>
-          <TabsTrigger value="logs">Recente acties</TabsTrigger>
+          <TabsTrigger value="console">Sandbox console</TabsTrigger>
+          <TabsTrigger value="live-test">Live testconsole</TabsTrigger>
+          <TabsTrigger value="logs">Logs</TabsTrigger>
+          <TabsTrigger value="highlevel">HighLevel setup</TabsTrigger>
           <TabsTrigger value="rules">Veiligheidsregels</TabsTrigger>
         </TabsList>
 
