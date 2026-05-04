@@ -122,13 +122,20 @@ export function AppSidebar() {
       </SidebarHeader>
 
       <SidebarContent>
-        <Group label="Operatie" items={operatie} collapsed={collapsed} pathname={location.pathname} onNavigate={handleNavigate} canSeeAdvanced={canSeeAdvanced} />
-        <Group label="Gasten" items={gasten} collapsed={collapsed} pathname={location.pathname} onNavigate={handleNavigate} canSeeAdvanced={canSeeAdvanced} />
-        <Group label="Hospitality" items={hospitality} collapsed={collapsed} pathname={location.pathname} onNavigate={handleNavigate} canSeeAdvanced={canSeeAdvanced} />
-        <Group label="Beheer" items={beheer} collapsed={collapsed} pathname={location.pathname} onNavigate={handleNavigate} canSeeAdvanced={canSeeAdvanced} />
-        {isSystemAdmin && (
-          <Group label="Admin" items={admin} collapsed={collapsed} pathname={location.pathname} accent onNavigate={handleNavigate} canSeeAdvanced={canSeeAdvanced} />
-        )}
+        {(() => {
+          const role = (current?.role as Role | undefined) ?? null;
+          return (
+            <>
+              <Group label="Operatie" items={operatie} collapsed={collapsed} pathname={location.pathname} onNavigate={handleNavigate} canSeeAdvanced={canSeeAdvanced} role={role} />
+              <Group label="Gasten" items={gasten} collapsed={collapsed} pathname={location.pathname} onNavigate={handleNavigate} canSeeAdvanced={canSeeAdvanced} role={role} />
+              <Group label="Hospitality" items={hospitality} collapsed={collapsed} pathname={location.pathname} onNavigate={handleNavigate} canSeeAdvanced={canSeeAdvanced} role={role} />
+              <Group label="Beheer" items={beheer} collapsed={collapsed} pathname={location.pathname} onNavigate={handleNavigate} canSeeAdvanced={canSeeAdvanced} role={role} />
+              {isSystemAdmin && (
+                <Group label="Admin" items={admin} collapsed={collapsed} pathname={location.pathname} accent onNavigate={handleNavigate} canSeeAdvanced={canSeeAdvanced} role={role} />
+              )}
+            </>
+          );
+        })()}
       </SidebarContent>
 
       <SidebarFooter className="border-t border-sidebar-border">
