@@ -76,14 +76,27 @@ export default function GeneralSettings() {
     <div className="space-y-6">
       <Card>
         <CardHeader><CardTitle className="font-display text-lg">Publieke reserveringspagina</CardTitle></CardHeader>
-        <CardContent className="flex items-center gap-2">
-          <Input readOnly value={url} className="font-mono text-xs" />
-          <Button variant="outline" size="icon" onClick={() => { navigator.clipboard.writeText(url); toast.success("Gekopieerd"); }}>
-            <Copy className="h-4 w-4" />
-          </Button>
-          <Button variant="outline" size="icon" asChild>
-            <a href={url} target="_blank" rel="noopener noreferrer"><ExternalLink className="h-4 w-4" /></a>
-          </Button>
+        <CardContent className="space-y-4">
+          <div className="flex items-center gap-2">
+            <Input readOnly value={url} className="font-mono text-xs" />
+            <Button variant="outline" size="icon" onClick={() => { navigator.clipboard.writeText(url); toast.success("Gekopieerd"); }}>
+              <Copy className="h-4 w-4" />
+            </Button>
+            <Button variant="outline" size="icon" asChild>
+              <a href={url} target="_blank" rel="noopener noreferrer"><ExternalLink className="h-4 w-4" /></a>
+            </Button>
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs">Publieke widget-URL</Label>
+            <Input
+              value={form.public_base_url}
+              onChange={(e) => setForm({ ...form, public_base_url: e.target.value })}
+              placeholder="https://txtablewise.lovable.app"
+            />
+            <p className="text-xs text-muted-foreground">
+              De basis-URL voor je reserveringswidget. Laat leeg om het huidige domein te gebruiken. Vul in als je een eigen domein gebruikt.
+            </p>
+          </div>
         </CardContent>
       </Card>
 
