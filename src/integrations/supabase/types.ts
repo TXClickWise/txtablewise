@@ -313,6 +313,39 @@ export type Database = {
           },
         ]
       }
+      demo_requests: {
+        Row: {
+          contact_name: string
+          created_at: string
+          email: string
+          id: string
+          phone: string | null
+          restaurant_name: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          contact_name: string
+          created_at?: string
+          email: string
+          id?: string
+          phone?: string | null
+          restaurant_name: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          contact_name?: string
+          created_at?: string
+          email?: string
+          id?: string
+          phone?: string | null
+          restaurant_name?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       deposit_policies: {
         Row: {
           amount_cents_per_guest: number
