@@ -1267,6 +1267,7 @@ export type Database = {
           special_requests: string | null
           start_time: string
           status: Database["public"]["Enums"]["reservation_status"]
+          table_combination_id: string | null
           updated_at: string
         }
         Insert: {
@@ -1319,6 +1320,7 @@ export type Database = {
           special_requests?: string | null
           start_time: string
           status?: Database["public"]["Enums"]["reservation_status"]
+          table_combination_id?: string | null
           updated_at?: string
         }
         Update: {
@@ -1371,6 +1373,7 @@ export type Database = {
           special_requests?: string | null
           start_time?: string
           status?: Database["public"]["Enums"]["reservation_status"]
+          table_combination_id?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -1386,6 +1389,13 @@ export type Database = {
             columns: ["restaurant_id"]
             isOneToOne: false
             referencedRelation: "restaurants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reservations_table_combination_id_fkey"
+            columns: ["table_combination_id"]
+            isOneToOne: false
+            referencedRelation: "table_combinations"
             referencedColumns: ["id"]
           },
         ]

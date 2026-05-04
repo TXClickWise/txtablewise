@@ -4,6 +4,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { corsHeaders } from "../_shared/cors.ts";
 import {
   zonedDateTimeToUtcIso, addMinutesIso, intervalsOverlap, ACTIVE_STATUSES,
+  findAvailableCombination,
 } from "../_shared/reservation-utils.ts";
 import { evaluatePacing, type PacingReservation } from "../_shared/pacing.ts";
 
@@ -83,16 +84,12 @@ Deno.serve(async (req) => {
       return json({ error: "Slot too soon", error_code: "slot_too_soon", field: "time" }, 400);
     }
 
-    // Find fitting tables
+    // Find fitting individual tables
     const { data: tables } = await supabase
       .from("tables").select("id, capacity_min, capacity_max")
       .eq("restaurant_id", restaurant.id).eq("is_active", true)
       .lte("capacity_min", body.party_size).gte("capacity_max", body.party_size)
       .order("capacity_max", { ascending: true });
-
-    if (!tables || tables.length === 0) {
-      return json({ error: "Geen passende tafel beschikbaar voor deze groepsgrootte", error_code: "no_table_available", field: "party_size" }, 409);
-    }
 
     // Existing active reservations overlapping window
     const { data: existing } = await supabase
@@ -113,8 +110,23 @@ Deno.serve(async (req) => {
         for (const rt of (r.reservation_tables ?? [])) occupied.add(rt.table_id);
       }
     }
-    const candidate = tables.find((t) => !occupied.has(t.id));
-    if (!candidate) return json({ error: "Geen tafel meer beschikbaar voor dit moment", error_code: "slot_unavailable", field: "time", retry: true }, 409);
+
+    // Prefer single fitting table; fall back to a combination if none fits
+    const candidate = (tables ?? []).find((t) => !occupied.has(t.id)) ?? null;
+    let chosenTableIds: string[] = [];
+    let chosenCombinationId: string | null = null;
+    if (candidate) {
+      chosenTableIds = [candidate.id];
+    } else {
+      const combo = await findAvailableCombination(
+        supabase, restaurant.id, body.party_size, start_iso, end_iso,
+      );
+      if (!combo) {
+        return json({ error: "Geen tafel of combinatie beschikbaar voor deze groepsgrootte op dit moment", error_code: "no_table_available", field: "party_size" }, 409);
+      }
+      chosenTableIds = combo.tableIds;
+      chosenCombinationId = combo.combinationId;
+    }
 
     // Pacing check (skip for operator-driven walk-ins / manager bookings)
     const skipPacing = channel === "walk_in" || channel === "manager";
@@ -234,27 +246,28 @@ Deno.serve(async (req) => {
       source_metadata: body.source_metadata ?? {},
       requires_manual_approval: requiresManualApproval,
       large_group_status: largeGroupStatus,
+      table_combination_id: chosenCombinationId,
     }).select("*").single();
 
     if (resErr) return json({ error: resErr.message }, 500);
 
-    // Link table
-    const { error: rtErr } = await supabase.from("reservation_tables").insert({
-      reservation_id: reservation.id, table_id: candidate.id,
-    });
+    // Link table(s) — single table or all tables of the chosen combination
+    const { error: rtErr } = await supabase.from("reservation_tables").insert(
+      chosenTableIds.map((tid) => ({ reservation_id: reservation.id, table_id: tid })),
+    );
     if (rtErr) {
-      // Rollback the reservation
       await supabase.from("reservations").delete().eq("id", reservation.id);
       return json({ error: "Failed to assign table: " + rtErr.message }, 500);
     }
 
-    // Re-check for race condition: did another reservation take this table in the same window?
+    // Re-check race condition across ALL chosen tables
     const { data: doubleCheck } = await supabase
       .from("reservation_tables")
-      .select("reservation_id, reservations!inner(start_time, end_time, status, hold_expires_at)")
-      .eq("table_id", candidate.id);
+      .select("reservation_id, table_id, reservations!inner(start_time, end_time, status, hold_expires_at)")
+      .in("table_id", chosenTableIds);
     const conflicts = ((doubleCheck ?? []) as unknown as Array<{
       reservation_id: string;
+      table_id: string;
       reservations: { start_time: string; end_time: string; status: string; hold_expires_at: string | null } | null;
     }>).filter((row) => {
       if (row.reservation_id === reservation.id) return false;
@@ -265,7 +278,6 @@ Deno.serve(async (req) => {
       return intervalsOverlap(start_iso, end_iso, r.start_time, r.end_time);
     });
     if (conflicts.length > 0) {
-      // Rollback
       await supabase.from("reservation_tables").delete().eq("reservation_id", reservation.id);
       await supabase.from("reservations").delete().eq("id", reservation.id);
       return json({ error: "Slot net bezet door een andere reservering, probeer opnieuw", error_code: "slot_unavailable", field: "time", retry: true }, 409);
@@ -295,7 +307,9 @@ Deno.serve(async (req) => {
         start_time: start_iso,
         end_time: end_iso,
         party_size: body.party_size,
-        table_id: candidate.id,
+        table_id: chosenTableIds[0],
+        table_ids: chosenTableIds,
+        table_combination_id: chosenCombinationId,
         hold_expires_at: holdExpires,
       },
     });

@@ -1,0 +1,2 @@
+ALTER TABLE public.reservations ADD COLUMN IF NOT EXISTS table_combination_id uuid REFERENCES public.table_combinations(id) ON DELETE SET NULL;
+CREATE INDEX IF NOT EXISTS idx_reservations_table_combination_id ON public.reservations(table_combination_id) WHERE table_combination_id IS NOT NULL;
