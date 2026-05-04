@@ -48,9 +48,8 @@ const MODE_META: Record<string, { label: string; cls: string }> = {
 const EVENT_FILTERS: { v: EventFilter; l: string }[] = [
   { v: "all", l: "Alle" },
   { v: "pending", l: "Pending" },
-  { v: "processing", l: "Processing" },
+  { v: "failed", l: "Alleen mislukt" },
   { v: "sent", l: "Verwerkt" },
-  { v: "failed", l: "Mislukt" },
   { v: "skipped", l: "Overgeslagen" },
   { v: "reservations", l: "Reserveringen" },
   { v: "guests", l: "Gasten" },
