@@ -1,15 +1,15 @@
 const pains = [
   {
     title: "Gasten die niet komen opdagen",
-    body: "Je hebt een tafel geblokkeerd, mise-en-place klaar, bediening ingedeeld. En dan: geen gast. Geen bericht. Geen excuus.",
+    body: "Vier couverts ingepland, mise-en-place draait, bediening staat klaar. Half acht, niemand. Geen telefoontje, geen berichtje. Dat doet meer dan alleen omzet mislopen — het vreet aan je planning, je team en je humeur.",
   },
   {
     title: "Drie systemen, nul overzicht",
-    body: "WhatsApp-reserveringen in je telefoon, telefonische boekingen op een briefje, online via een platform dat commissie rekent.",
+    body: "Reserveringen via de website in het ene systeem, telefonische boekingen op een kladblok, WhatsApp-berichten in je privételefoon. En dan vraagt een gast: 'Is er vrijdag nog plek voor zes?' En jij weet het niet zeker.",
   },
   {
     title: "Geen tijd voor opvolging",
-    body: "Je wilt gasten terugbrengen, reviews opvolgen, nieuwe gasten herkennen. Maar na een drukke avond wil je vooral naar huis.",
+    body: "Mooie avond gehad, tevreden gasten — maar niemand die ze een bedankje stuurt, om een review vraagt of ze over drie maanden herinnert. Je weet dat het omzet oplevert, maar na een dubbele shift wil je vooral je schoenen uit.",
   },
 ];
 

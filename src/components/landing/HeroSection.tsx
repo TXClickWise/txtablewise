@@ -27,8 +27,8 @@ export function HeroSection() {
           </h1>
 
           <p className="mt-6 max-w-xl text-base leading-relaxed text-primary-foreground/85 sm:text-lg md:text-xl">
-            TX TableWise is het reserveringssysteem voor restaurants die hun eigen gasten willen
-            beheren — zonder commissie, zonder gedoe.
+            Het premium reserveringssysteem dat meedenkt. Van slimme tafelverdeling tot
+            AI-reserveringen — zonder commissie, zonder extern platform.
           </p>
 
           <div className="mt-10 flex flex-col gap-3 sm:flex-row">
@@ -60,6 +60,10 @@ export function HeroSection() {
             <li className="flex items-center gap-2">
               <span className="h-1.5 w-1.5 rounded-full bg-accent" />
               Eigen gastdata
+            </li>
+            <li className="flex items-center gap-2">
+              <span className="h-1.5 w-1.5 rounded-full bg-accent" />
+              AI-reserveringen 24/7
             </li>
             <li className="flex items-center gap-2">
               <span className="h-1.5 w-1.5 rounded-full bg-accent" />
