@@ -15,6 +15,8 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getWidgetBaseUrl } from "@/lib/widgetUrl";
+import { usePlan } from "@/hooks/usePlan";
+import { Sparkles, Lock } from "lucide-react";
 
 type RestaurantBrand = {
   id: string;
