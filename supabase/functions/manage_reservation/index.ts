@@ -65,6 +65,10 @@ Deno.serve(async (req) => {
 
     // Use auth token to enforce RLS (operator must be member of restaurant)
     const authHeader = req.headers.get("Authorization") ?? "";
+    const systemActor = req.headers.get("x-system-actor") ?? "";
+    const serviceRole = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const isSystemCall = systemActor.length > 0 && authHeader === `Bearer ${serviceRole}`;
+
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_ANON_KEY")!,
@@ -73,20 +77,28 @@ Deno.serve(async (req) => {
     // Service-role client for writes that bypass RLS where needed (audit/integration logs).
     const admin = createClient(
       Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+      serviceRole,
     );
 
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return json({ error: "Niet ingelogd" }, 401);
+    let userId: string;
+    if (isSystemCall) {
+      userId = "00000000-0000-0000-0000-000000000000";
+    } else {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return json({ error: "Niet ingelogd" }, 401);
+      userId = user.id;
+    }
 
-    // Load current reservation (RLS ensures membership)
-    const { data: current, error: cErr } = await supabase
+    // Load current reservation (RLS ensures membership for operator calls; system uses admin)
+    const reader = isSystemCall ? admin : supabase;
+    const { data: current, error: cErr } = await reader
       .from("reservations")
       .select("*, reservation_tables(table_id)")
       .eq("id", body.reservation_id)
       .maybeSingle();
     if (cErr) return json({ error: cErr.message }, 500);
     if (!current) return json({ error: "Reservering niet gevonden" }, 404);
+
 
     // Load restaurant settings
     const { data: restaurant } = await admin
