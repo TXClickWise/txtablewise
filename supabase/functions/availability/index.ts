@@ -180,8 +180,9 @@ Deno.serve(async (req) => {
       hold_expires_at: r.hold_expires_at,
     }));
 
-    // For each slot determine free fitting tables AND pacing
-    const slots: Slot[] = slotCandidates.map((slot) => {
+    // For each slot determine free fitting tables AND pacing.
+    // If no individual table fits, try a table combination (best-fit fallback).
+    const slots: Slot[] = await Promise.all(slotCandidates.map(async (slot) => {
       const conflicting = new Set<string>();
       for (const r of liveRes) {
         if (intervalsOverlap(slot.start_iso, slot.end_iso, r.start_time, r.end_time)) {
@@ -194,7 +195,14 @@ Deno.serve(async (req) => {
         pacingRows,
         pacingConfig,
       );
-      const tableAvailable = free.length > 0;
+      let tableAvailable = free.length > 0;
+      let isCombination = false;
+      if (!tableAvailable) {
+        const combo = await findAvailableCombination(
+          supabase, restaurant.id, body.party_size, slot.start_iso, slot.end_iso,
+        );
+        if (combo) { tableAvailable = true; isCombination = true; }
+      }
       const available = tableAvailable && pacing.ok;
       return {
         time: slot.time,
@@ -202,10 +210,11 @@ Deno.serve(async (req) => {
         end_iso: slot.end_iso,
         available,
         available_table_count: free.length,
+        is_combination: isCombination || undefined,
         peak_warning: pacing.peak_warning,
         reason: !tableAvailable ? "no_table" : (!pacing.ok ? pacing.reason : undefined),
       };
-    });
+    }));
 
 
     return json({
