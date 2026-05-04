@@ -15,6 +15,7 @@ import { usePilotReadiness } from "@/hooks/usePilotReadiness";
 import { PilotReadinessChecklist } from "@/components/pilot/PilotReadinessChecklist";
 import { DemoDataResetCard } from "@/components/pilot/DemoDataResetCard";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { getWidgetUrl } from "@/lib/widgetUrl";
 
 const MANUAL_CHECKS = [
   "Openingstijden kloppen voor komende week",
