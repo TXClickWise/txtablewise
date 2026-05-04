@@ -65,6 +65,10 @@ Deno.serve(async (req) => {
 
     // Use auth token to enforce RLS (operator must be member of restaurant)
     const authHeader = req.headers.get("Authorization") ?? "";
+    const systemActor = req.headers.get("x-system-actor") ?? "";
+    const serviceRole = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const isSystemCall = systemActor.length > 0 && authHeader === `Bearer ${serviceRole}`;
+
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_ANON_KEY")!,
@@ -73,20 +77,28 @@ Deno.serve(async (req) => {
     // Service-role client for writes that bypass RLS where needed (audit/integration logs).
     const admin = createClient(
       Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+      serviceRole,
     );
 
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return json({ error: "Niet ingelogd" }, 401);
+    let userId: string;
+    if (isSystemCall) {
+      userId = "00000000-0000-0000-0000-000000000000";
+    } else {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return json({ error: "Niet ingelogd" }, 401);
+      userId = user.id;
+    }
 
-    // Load current reservation (RLS ensures membership)
-    const { data: current, error: cErr } = await supabase
+    // Load current reservation (RLS ensures membership for operator calls; system uses admin)
+    const reader = isSystemCall ? admin : supabase;
+    const { data: current, error: cErr } = await reader
       .from("reservations")
       .select("*, reservation_tables(table_id)")
       .eq("id", body.reservation_id)
       .maybeSingle();
     if (cErr) return json({ error: cErr.message }, 500);
     if (!current) return json({ error: "Reservering niet gevonden" }, 404);
+
 
     // Load restaurant settings
     const { data: restaurant } = await admin
@@ -98,30 +110,30 @@ Deno.serve(async (req) => {
     // Branch by action
     switch (body.action) {
       case "cancel":
-        return await doCancel(admin, current, body, user.id);
+        return await doCancel(admin, current, body, userId);
       case "mark_no_show":
-        return await doStatusChange(admin, current, "no_show", user.id, body.cancellation_reason);
+        return await doStatusChange(admin, current, "no_show", userId, body.cancellation_reason);
       case "mark_completed":
-        return await doStatusChange(admin, current, "completed", user.id);
+        return await doStatusChange(admin, current, "completed", userId);
       case "mark_seated":
-        return await doStatusChange(admin, current, "seated", user.id);
+        return await doStatusChange(admin, current, "seated", userId);
       case "change_status":
         if (!body.new_status) return json({ error: "new_status vereist" }, 400);
-        return await doStatusChange(admin, current, body.new_status, user.id, body.cancellation_reason);
+        return await doStatusChange(admin, current, body.new_status, userId, body.cancellation_reason);
       case "update":
-        return await doUpdate(admin, current, restaurant, body, tz, user.id);
+        return await doUpdate(admin, current, restaurant, body, tz, userId);
       case "approve_large_group":
-        return await doLargeGroupDecision(admin, current, "approve", user.id, body.cancellation_reason);
+        return await doLargeGroupDecision(admin, current, "approve", userId, body.cancellation_reason);
       case "decline_large_group":
-        return await doLargeGroupDecision(admin, current, "decline", user.id, body.cancellation_reason);
+        return await doLargeGroupDecision(admin, current, "decline", userId, body.cancellation_reason);
       case "mark_reconfirmed":
-        return await doReconfirmation(admin, current, "confirmed", user.id);
+        return await doReconfirmation(admin, current, "confirmed", userId);
       case "mark_reconfirmation_declined":
-        return await doReconfirmation(admin, current, "declined", user.id, body.cancellation_reason);
+        return await doReconfirmation(admin, current, "declined", userId, body.cancellation_reason);
       case "request_reconfirmation":
-        return await doReconfirmation(admin, current, "requested", user.id);
+        return await doReconfirmation(admin, current, "requested", userId);
       case "set_deposit_status":
-        return await doSetDepositStatus(admin, current, body, user.id);
+        return await doSetDepositStatus(admin, current, body, userId);
       default:
         return json({ error: "Onbekende actie" }, 400);
     }

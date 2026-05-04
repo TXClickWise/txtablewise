@@ -79,6 +79,7 @@ type Settings = {
   contact_sync_enabled: boolean;
   workflow_mapping: Record<string, { workflowName?: string; enabled?: boolean; workflowId?: string }>;
   custom_field_mapping: Record<string, { clickWise?: string; enabled?: boolean }>;
+  tag_mapping: Record<string, { label?: string; enabled?: boolean; tag?: string }>;
   privacy_options: Record<string, boolean>;
   location_id: string | null;
 };
@@ -127,21 +128,21 @@ async function audit(
 }
 
 // Voer de daadwerkelijke ClickWise API call uit. Retourneert {ok, status, body}.
-// Houd dit minimaal en defensief — in deze fase voornamelijk workflow trigger payload.
-async function callClickWise(path: string, body: Json) {
+async function callClickWise(path: string, body: Json, method: "POST" | "PUT" | "GET" = "POST") {
   if (!SECRETS_PRESENT) {
     return { ok: false, status: 0, body: { error: "secrets_missing" } as Json };
   }
   const url = `${CLICKWISE_BASE_URL.replace(/\/$/, "")}${path}`;
   try {
     const res = await fetch(url, {
-      method: "POST",
+      method,
       headers: {
         "Authorization": `Bearer ${CLICKWISE_API_KEY}`,
         "Content-Type": "application/json",
         "Version": "2021-07-28",
+        "Accept": "application/json",
       },
-      body: JSON.stringify(body),
+      body: method === "GET" ? undefined : JSON.stringify(body),
     });
     const text = await res.text();
     let parsed: Json = {};
@@ -150,6 +151,187 @@ async function callClickWise(path: string, body: Json) {
   } catch (e) {
     return { ok: false, status: 0, body: { error: e instanceof Error ? e.message : "network_error" } };
   }
+}
+
+// ---------- Contact / fields / tags helpers ----------
+
+type GuestRow = {
+  id: string;
+  first_name: string | null;
+  last_name: string | null;
+  email: string | null;
+  phone: string | null;
+  language: string | null;
+  allergies: string | null;
+  dietary_preferences: string | null;
+  seating_preferences: string | null;
+  hospitality_notes: string | null;
+  marketing_consent: boolean | null;
+  is_vip: boolean | null;
+  visit_count: number | null;
+  no_show_count: number | null;
+  preferred_channel: string | null;
+  source_channel: string | null;
+  last_visit_at: string | null;
+  clickwise_contact_id: string | null;
+};
+
+function priv(settings: Settings | null, key: string, defaultValue = false): boolean {
+  const v = settings?.privacy_options?.[key];
+  return typeof v === "boolean" ? v : defaultValue;
+}
+
+function buildCustomFields(
+  settings: Settings | null,
+  guest: GuestRow,
+  reservationContext: Json | null,
+): Array<{ key: string; field_value: unknown }> {
+  const map = settings?.custom_field_mapping ?? {};
+  const out: Array<{ key: string; field_value: unknown }> = [];
+
+  const allowAllergies = priv(settings, "share_allergies", true);
+  const allowVisitCount = priv(settings, "share_visit_count", true);
+  const allowNoShow = priv(settings, "share_no_show_count", true);
+  const allowHospitality = priv(settings, "share_hospitality_notes", false);
+
+  const guestValues: Record<string, unknown> = {
+    visit_count: allowVisitCount ? (guest.visit_count ?? 0) : undefined,
+    no_show_count: allowNoShow ? (guest.no_show_count ?? 0) : undefined,
+    preferred_channel: guest.preferred_channel ?? undefined,
+    preferred_language: guest.language ?? undefined,
+    seating_preferences: allowHospitality ? guest.seating_preferences ?? undefined : undefined,
+    allergies: allowAllergies ? guest.allergies ?? undefined : undefined,
+    dietary_preferences: allowAllergies ? guest.dietary_preferences ?? undefined : undefined,
+    marketing_opt_in: guest.marketing_consent === true ? "true" : guest.marketing_consent === false ? "false" : undefined,
+    is_vip: guest.is_vip ? "true" : "false",
+    last_visit_at: guest.last_visit_at ?? undefined,
+    source_channel: guest.source_channel ?? undefined,
+  };
+
+  const ctx = (reservationContext ?? {}) as Record<string, unknown>;
+  const reservationValues: Record<string, unknown> = {
+    next_reservation_date: ctx.reservation_date ?? ctx.date,
+    next_reservation_time: ctx.start_time_local ?? ctx.time,
+    next_reservation_party_size: ctx.party_size,
+    next_reservation_status: ctx.status,
+    next_reservation_source: ctx.source_channel ?? ctx.channel,
+    next_reservation_zone: ctx.zone,
+    next_reservation_special_occasion: ctx.occasion,
+    next_reservation_pre_orders: ctx.pre_orders,
+  };
+
+  const all: Record<string, unknown> = { ...guestValues, ...reservationValues };
+  for (const [tableWiseKey, def] of Object.entries(map)) {
+    if (!def?.enabled) continue;
+    const cwKey = def.clickWise ?? tableWiseKey;
+    const value = all[tableWiseKey];
+    if (value === undefined || value === null || value === "") continue;
+    out.push({ key: cwKey, field_value: value });
+  }
+  return out;
+}
+
+function buildTags(settings: Settings | null, guest: GuestRow, ctx: Json | null): string[] {
+  const map = settings?.tag_mapping ?? {};
+  const tags: string[] = [];
+  const allowMarketing = guest.marketing_consent === true;
+  const channel = (ctx as Record<string, unknown> | null)?.channel as string | undefined;
+
+  const rules: Record<string, boolean> = {
+    vip_guest: !!guest.is_vip,
+    returning_guest: (guest.visit_count ?? 0) > 1,
+    allergy: !!(guest.allergies && guest.allergies.trim()),
+    dietary_preference: !!(guest.dietary_preferences && guest.dietary_preferences.trim()),
+    no_show_history: (guest.no_show_count ?? 0) > 0,
+    walk_in_guest: channel === "walk_in",
+    marketing_opt_in: allowMarketing,
+    high_no_show_attention: (guest.no_show_count ?? 0) >= 2,
+  };
+
+  for (const [key, def] of Object.entries(map)) {
+    if (!def?.enabled) continue;
+    if (!rules[key]) continue;
+    if (def.tag) tags.push(def.tag);
+  }
+  return tags;
+}
+
+async function upsertContact(
+  admin: ReturnType<typeof createClient>,
+  settings: Settings | null,
+  guest: GuestRow,
+  ctx: Json | null,
+): Promise<{ ok: boolean; contact_id?: string; status?: number; body?: Json }> {
+  const locationId = settings?.location_id || CLICKWISE_LOCATION_ID;
+  if (!locationId) return { ok: false, body: { error: "location_missing" } };
+
+  const customFields = buildCustomFields(settings, guest, ctx);
+  const tags = buildTags(settings, guest, ctx);
+
+  const basePayload: Json = {
+    locationId,
+    firstName: guest.first_name ?? "",
+    lastName: guest.last_name ?? "",
+    email: guest.email ?? undefined,
+    phone: guest.phone ?? undefined,
+    tags,
+    customFields,
+  };
+
+  if (guest.clickwise_contact_id) {
+    const r = await callClickWise(`/contacts/${guest.clickwise_contact_id}`, basePayload, "PUT");
+    if (r.ok) return { ok: true, contact_id: guest.clickwise_contact_id, status: r.status, body: r.body };
+  }
+
+  const tryParams: string[] = [];
+  if (guest.phone) tryParams.push(`number=${encodeURIComponent(guest.phone)}`);
+  if (guest.email) tryParams.push(`email=${encodeURIComponent(guest.email)}`);
+  let foundId: string | null = null;
+  for (const param of tryParams) {
+    const search = await callClickWise(
+      `/contacts/search/duplicate?locationId=${encodeURIComponent(locationId)}&${param}`,
+      {}, "GET",
+    );
+    if (search.ok) {
+      const c = (search.body as Record<string, unknown>)?.contact as Record<string, unknown> | undefined;
+      const id = (c?.id as string | undefined) ?? ((search.body as Record<string, unknown>)?.id as string | undefined);
+      if (id) { foundId = id; break; }
+    }
+  }
+
+  if (foundId) {
+    const r = await callClickWise(`/contacts/${foundId}`, basePayload, "PUT");
+    if (r.ok) {
+      await admin.from("guests").update({ clickwise_contact_id: foundId }).eq("id", guest.id);
+      return { ok: true, contact_id: foundId, status: r.status, body: r.body };
+    }
+    return { ok: false, status: r.status, body: r.body };
+  }
+
+  const created = await callClickWise(`/contacts/`, basePayload, "POST");
+  if (created.ok) {
+    const c = (created.body as Record<string, unknown>)?.contact as Record<string, unknown> | undefined;
+    const id = (c?.id as string | undefined) ?? ((created.body as Record<string, unknown>)?.id as string | undefined);
+    if (id) {
+      await admin.from("guests").update({ clickwise_contact_id: id }).eq("id", guest.id);
+      return { ok: true, contact_id: id, status: created.status, body: created.body };
+    }
+  }
+  return { ok: false, status: created.status, body: created.body };
+}
+
+async function loadGuestForEvent(
+  admin: ReturnType<typeof createClient>,
+  ev: EventRow,
+): Promise<GuestRow | null> {
+  const guestId =
+    (ev.payload?.guest_id as string | undefined) ??
+    ((ev.payload?.guest as Record<string, unknown> | undefined)?.id as string | undefined);
+  if (!guestId) return null;
+  const { data } = await admin.from("guests").select(
+    "id, first_name, last_name, email, phone, language, allergies, dietary_preferences, seating_preferences, hospitality_notes, marketing_consent, is_vip, visit_count, no_show_count, preferred_channel, source_channel, last_visit_at, clickwise_contact_id",
+  ).eq("id", guestId).maybeSingle();
+  return (data ?? null) as GuestRow | null;
 }
 
 type EventRow = {
@@ -197,11 +379,55 @@ async function processEvent(
     return { ok: true, skipped: true, reason: "test_mode_or_event_gated" };
   }
 
+  // Mark processing early
+  await admin.from("integration_events").update({
+    status: "processing", attempts: (ev.attempts || 0) + 1,
+  }).eq("id", ev.id);
+
+  // Optional contact upsert. Voor guest.* en reservation.* events met guest_id.
+  let contactId: string | null = (ev.payload?.clickwise_contact_id as string | undefined) ?? null;
+  let contactUpsertResult: Json | null = null;
+  if (settings?.contact_sync_enabled) {
+    const isGuestEvent = ev.event_type.startsWith("guest.");
+    const isReservationEvent = ev.event_type.startsWith("reservation.");
+    if (isGuestEvent || isReservationEvent) {
+      const guest = await loadGuestForEvent(admin, ev);
+      if (guest) {
+        const r = await upsertContact(admin, settings, guest, ev.payload);
+        contactUpsertResult = { ok: r.ok, status: r.status ?? null, contact_id: r.contact_id ?? null };
+        if (r.ok && r.contact_id) contactId = r.contact_id;
+        if (!r.ok && isGuestEvent) {
+          // Voor pure guest events is upsert het hele doel — markeer als failed.
+          await admin.from("integration_events").update({
+            status: "failed",
+            last_error: `Contact upsert mislukt (${r.status ?? 0}): ${JSON.stringify(r.body ?? {}).slice(0, 200)}`,
+            metadata: { ...(ev.metadata || {}), contact_upsert: contactUpsertResult, mode: "live" },
+          }).eq("id", ev.id);
+          await audit(admin, ev.restaurant_id, "clickwise.contact_upsert_failed", ev.id, { event_type: ev.event_type, status: r.status });
+          return { ok: false, error: "contact_upsert_failed", status: r.status };
+        }
+      }
+    }
+  }
+
+  // Pure contact-sync events (guest.created/updated zonder workflow) → markeer sent na upsert.
+  if (ev.event_type === "guest.created" || ev.event_type === "guest.updated") {
+    if (!wfEnabled || !wfId) {
+      await admin.from("integration_events").update({
+        status: "sent",
+        processed_at: new Date().toISOString(),
+        last_error: null,
+        metadata: { ...(ev.metadata || {}), contact_upsert: contactUpsertResult, mode: "live" },
+      }).eq("id", ev.id);
+      await audit(admin, ev.restaurant_id, "clickwise.contact_synced", ev.id, { event_type: ev.event_type, contact_id: contactId });
+      return { ok: true, contact_id: contactId };
+    }
+  }
+
   if (!wfEnabled || !wfId) {
     await admin.from("integration_events").update({
       status: "failed",
       last_error: "Geen ClickWise workflow gekoppeld aan dit eventtype.",
-      attempts: (ev.attempts || 0) + 1,
     }).eq("id", ev.id);
     await audit(admin, ev.restaurant_id, "clickwise.event_failed", ev.id, {
       event_type: ev.event_type, reason: "workflow_mapping_missing",
@@ -209,16 +435,11 @@ async function processEvent(
     return { ok: false, error: "workflow_mapping_missing" };
   }
 
-  // Mark processing
-  await admin.from("integration_events").update({
-    status: "processing", attempts: (ev.attempts || 0) + 1,
-  }).eq("id", ev.id);
-
   // Call: workflow trigger pattern (HighLevel: POST /workflows/{id}/trigger)
   const locationId = settings?.location_id || CLICKWISE_LOCATION_ID;
   const result = await callClickWise(`/workflows/${wfId}/trigger`, {
     locationId,
-    contactId: (ev.payload?.clickwise_contact_id as string | undefined) ?? null,
+    contactId,
     payload: ev.payload,
   });
 
@@ -227,17 +448,24 @@ async function processEvent(
       status: "sent",
       processed_at: new Date().toISOString(),
       last_error: null,
-      metadata: { ...(ev.metadata || {}), response: result.body, http_status: result.status },
+      metadata: {
+        ...(ev.metadata || {}),
+        response: result.body,
+        http_status: result.status,
+        contact_upsert: contactUpsertResult,
+        mode: "live",
+      },
     }).eq("id", ev.id);
     await audit(admin, ev.restaurant_id, "clickwise.workflow_triggered", ev.id, {
-      event_type: ev.event_type, http_status: result.status,
+      event_type: ev.event_type, http_status: result.status, contact_id: contactId,
     });
-    return { ok: true };
+    return { ok: true, contact_id: contactId };
   }
 
   await admin.from("integration_events").update({
     status: "failed",
     last_error: `ClickWise API fout (${result.status}): ${JSON.stringify(result.body).slice(0, 200)}`,
+    metadata: { ...(ev.metadata || {}), contact_upsert: contactUpsertResult, http_status: result.status, mode: "live" },
   }).eq("id", ev.id);
   await audit(admin, ev.restaurant_id, "clickwise.event_failed", ev.id, {
     event_type: ev.event_type, http_status: result.status,
