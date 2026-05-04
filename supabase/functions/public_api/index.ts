@@ -821,6 +821,24 @@ async function handleUpdateReservation(req: Request, keyRow: KeyRow, reservation
   if (Object.keys(patch).length > 0) {
     const { error: updErr } = await sb.from("reservations").update(patch).eq("id", current.id);
     if (updErr) return errResp("TW_500_INTERNAL", undefined, updErr.message);
+
+    // Audit log
+    await sb.from("audit_log").insert({
+      restaurant_id: keyRow.restaurant_id,
+      action: "reservation.updated",
+      entity: "reservation",
+      entity_id: current.id,
+      actor_user_id: null,
+      actor_label: `public_api:${keyRow.key_prefix ?? "key"}`,
+      before_data: {
+        reservation_date: current.reservation_date,
+        start_time: current.start_time,
+        end_time: current.end_time,
+        party_size: current.party_size,
+        status: current.status,
+      },
+      after_data: { via: "public_api", changes: patch },
+    });
   }
 
   // Contact-update via guests-tabel
