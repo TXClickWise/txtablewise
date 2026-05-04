@@ -87,9 +87,11 @@ const GuestsPage = () => {
             <Button variant="outline" size="icon" className="h-11 w-11" onClick={() => refetch()} disabled={isLoading} aria-label="Vernieuwen">
               <RefreshCw className={isLoading ? "h-4 w-4 animate-spin" : "h-4 w-4"} />
             </Button>
-            <Button size="lg" className="h-11" onClick={() => setCreateOpen(true)}>
-              <Plus className="mr-1 h-4 w-4" /> Gast
-            </Button>
+            {!readOnly && (
+              <Button size="lg" className="h-11" onClick={() => setCreateOpen(true)}>
+                <Plus className="mr-1 h-4 w-4" /> Gast
+              </Button>
+            )}
           </>
         }
       />
