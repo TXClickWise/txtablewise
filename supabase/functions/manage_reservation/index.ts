@@ -110,30 +110,30 @@ Deno.serve(async (req) => {
     // Branch by action
     switch (body.action) {
       case "cancel":
-        return await doCancel(admin, current, body, user.id);
+        return await doCancel(admin, current, body, userId);
       case "mark_no_show":
-        return await doStatusChange(admin, current, "no_show", user.id, body.cancellation_reason);
+        return await doStatusChange(admin, current, "no_show", userId, body.cancellation_reason);
       case "mark_completed":
-        return await doStatusChange(admin, current, "completed", user.id);
+        return await doStatusChange(admin, current, "completed", userId);
       case "mark_seated":
-        return await doStatusChange(admin, current, "seated", user.id);
+        return await doStatusChange(admin, current, "seated", userId);
       case "change_status":
         if (!body.new_status) return json({ error: "new_status vereist" }, 400);
-        return await doStatusChange(admin, current, body.new_status, user.id, body.cancellation_reason);
+        return await doStatusChange(admin, current, body.new_status, userId, body.cancellation_reason);
       case "update":
-        return await doUpdate(admin, current, restaurant, body, tz, user.id);
+        return await doUpdate(admin, current, restaurant, body, tz, userId);
       case "approve_large_group":
-        return await doLargeGroupDecision(admin, current, "approve", user.id, body.cancellation_reason);
+        return await doLargeGroupDecision(admin, current, "approve", userId, body.cancellation_reason);
       case "decline_large_group":
-        return await doLargeGroupDecision(admin, current, "decline", user.id, body.cancellation_reason);
+        return await doLargeGroupDecision(admin, current, "decline", userId, body.cancellation_reason);
       case "mark_reconfirmed":
-        return await doReconfirmation(admin, current, "confirmed", user.id);
+        return await doReconfirmation(admin, current, "confirmed", userId);
       case "mark_reconfirmation_declined":
-        return await doReconfirmation(admin, current, "declined", user.id, body.cancellation_reason);
+        return await doReconfirmation(admin, current, "declined", userId, body.cancellation_reason);
       case "request_reconfirmation":
-        return await doReconfirmation(admin, current, "requested", user.id);
+        return await doReconfirmation(admin, current, "requested", userId);
       case "set_deposit_status":
-        return await doSetDepositStatus(admin, current, body, user.id);
+        return await doSetDepositStatus(admin, current, body, userId);
       default:
         return json({ error: "Onbekende actie" }, 400);
     }
