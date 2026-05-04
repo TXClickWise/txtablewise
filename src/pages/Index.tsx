@@ -2,6 +2,7 @@ import { LandingHeader } from "@/components/landing/LandingHeader";
 import { HeroSection } from "@/components/landing/HeroSection";
 import { PainPointsSection } from "@/components/landing/PainPointsSection";
 import { SolutionGrid } from "@/components/landing/SolutionGrid";
+import { WhyTableWiseSection } from "@/components/landing/WhyTableWiseSection";
 import { TrustSection } from "@/components/landing/TrustSection";
 import { PricingSection } from "@/components/landing/PricingSection";
 import { DemoRequestForm } from "@/components/landing/DemoRequestForm";
@@ -15,6 +16,7 @@ const Index = () => {
         <HeroSection />
         <PainPointsSection />
         <SolutionGrid />
+        <WhyTableWiseSection />
         <TrustSection />
         <PricingSection />
 

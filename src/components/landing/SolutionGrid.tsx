@@ -11,32 +11,32 @@ const features = [
   {
     icon: CalendarCheck,
     title: "Reserveringen",
-    body: "Online, telefoon, WhatsApp, walk-in — alles in één overzicht.",
+    body: "Online, telefoon, WhatsApp, walk-in en AI — elk kanaal direct in je dashboard. Nooit meer dubbel boeken.",
   },
   {
     icon: Tablet,
     title: "Tafelplan op tablet",
-    body: "Sleep, tik, zet om. Gemaakt voor de vloer, niet voor achter een bureau.",
+    body: "Grote knoppen, kleurcodes, één tik per actie. Zie in een oogopslag welke tafel vrij is, wie bijna klaar is en waar de walk-in kan zitten.",
   },
   {
     icon: BellRing,
     title: "No-show preventie",
-    body: "Automatische bevestigingen en herinneringen via WhatsApp en SMS.",
+    body: "Automatische bevestiging, herinnering 24 uur van tevoren, herbevestiging via WhatsApp. Bij risicogasten of grote groepen: een vriendelijke aanbetaling.",
   },
   {
     icon: ListChecks,
     title: "Wachtlijst",
-    body: "Annulering? De volgende gast krijgt direct bericht.",
+    body: "Annulering? Het systeem matcht automatisch met wachtende gasten en stuurt een uitnodiging. Lege tafels worden weer volle tafels.",
   },
   {
     icon: Users,
     title: "Gastprofielen",
-    body: "Allergieën, voorkeuren, bezoekhistorie — zonder dat je het hoeft te onthouden.",
+    body: "Weet bij elk bezoek wie er komt. Allergieën, tafelvoorkeuren, VIP-status, bezoekhistorie — automatisch opgebouwd, altijd bij de hand.",
   },
   {
     icon: PhoneCall,
     title: "AI-host",
-    body: "Gasten bellen buiten openingstijd? De AI neemt op en boekt correct.",
+    body: "Gast belt om 23:00 voor een tafel morgenavond? De AI-host neemt op, checkt beschikbaarheid, boekt de tafel en stuurt de bevestiging. Jij slaapt.",
   },
 ];
 

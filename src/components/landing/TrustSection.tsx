@@ -17,6 +17,14 @@ const points = [
     title: "Direct live, geen lange implementatie",
     body: "In 15 minuten ingericht. We helpen je persoonlijk bij de eerste service.",
   },
+  {
+    title: "Geen marketplace, geen vergelijkingssite",
+    body: "TX TableWise stuurt jouw gasten niet naar de concurrent. Het is jouw systeem, op jouw website, onder jouw naam.",
+  },
+  {
+    title: "Groeit mee met je zaak",
+    body: "Start simpel met reserveringen. Voeg later AI, wachtlijst, gastprofielen en rapportages toe wanneer jij er klaar voor bent.",
+  },
 ];
 
 const demoRows = [
