@@ -27,7 +27,7 @@ const STATUS_BG: Record<string, string> = {
   pending: "bg-status-pending/30 border-status-pending/60",
   confirmed: "bg-status-confirmed/30 border-status-confirmed/60",
   seated: "bg-status-seated/30 border-status-seated/60",
-  finished: "bg-status-completed/30 border-status-completed/60",
+  completed: "bg-status-completed/30 border-status-completed/60",
   cancelled: "bg-status-cancelled/20 border-status-cancelled/40 line-through opacity-60",
   no_show: "bg-status-noshow/20 border-status-noshow/40",
   hold: "bg-muted border-border",
