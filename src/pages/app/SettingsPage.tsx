@@ -22,6 +22,7 @@ type Item = {
   label: string;
   icon: typeof SettingsIcon;
   end?: boolean;
+  ownerOnly?: boolean;
 };
 type Group = { label: string; items: Item[] };
 
@@ -68,6 +69,12 @@ const GROUPS: Group[] = [
 
 const SettingsPage = () => {
   const location = useLocation();
+  const { current } = useRestaurant();
+  const isOwner = current?.role === "owner";
+  const groups = GROUPS.map((g) => ({
+    ...g,
+    items: g.items.filter((i) => !i.ownerOnly || isOwner),
+  })).filter((g) => g.items.length > 0);
 
   return (
     <div className="p-4 sm:p-6 max-w-7xl mx-auto">
