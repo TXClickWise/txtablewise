@@ -200,7 +200,7 @@ export default function IntegrationHubPage() {
             </Card>
             <Card>
               <CardHeader><CardTitle className="text-base">AI Voice Agent</CardTitle>
-                <CardDescription>Telefonische reserveringen via Vapi, Retell of ClickWise.</CardDescription></CardHeader>
+                <CardDescription>Telefonische reserveringen via ClickWise Voice AI.</CardDescription></CardHeader>
               <CardContent className="flex justify-between items-center">
                 <Badge variant="outline">Sleutels + provider-config</Badge>
                 <Button size="sm" asChild><Link to="/app/voice-agent">Openen</Link></Button>

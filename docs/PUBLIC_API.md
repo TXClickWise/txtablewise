@@ -1,7 +1,7 @@
 # TableWise Public API
 
 Een eenvoudige, Guestplan-stijl API om reserveringen te beheren vanuit externe systemen
-zoals **ClickWise**, **AI Voice Agents** (Vapi/Retell/HighLevel), **WhatsApp/SMS-bots** en **CRM's**.
+zoals **ClickWise**, **AI Voice Agents**, **WhatsApp/SMS-bots** en **CRM's**.
 
 > Belangrijk: dit is een **dunne buitenlaag** bovenop de bestaande TableWise-engine.
 > Alle echte logica (beschikbaarheid, tafeltoewijzing, pacing, no-show flow, webhooks)
@@ -92,7 +92,7 @@ POST /reservations
   },
   "notes": "Hoekje graag",
   "source": "voice_agent",
-  "externalReference": "vapi_call_abc123"
+  "externalReference": "voice_call_abc123"
 }
 ```
 
@@ -100,7 +100,7 @@ Verplicht: `localDate`, `localTime`, `partySize`, `contact.fullName` (of `contac
 Optioneel: `contact.email`, `notes`, `language`, `source`, `externalReference`.
 
 `source` mapt naar het interne `channel`:
-- `voice_agent`, `phone_ai`, `vapi`, `retell`, `highlevel` → `ai_host`
+- `voice_agent`, `phone_ai`, `clickwise` → `ai_host`
 - `whatsapp`, `sms`, `webchat`, `clickwise` → `clickwise`
 - `phone`, `manual_phone` → `phone`
 - `walk_in` → `walk_in`
@@ -206,7 +206,7 @@ curl -X POST https://lbhtztbpxmqlzhyephew.supabase.co/functions/v1/public_api/re
   -d '{
     "localDate":"2026-05-01","localTime":"19:30","partySize":4,
     "contact":{"fullName":"Willem van Oranje","phone":"+31612345678"},
-    "source":"voice_agent","externalReference":"vapi_call_abc123"
+    "source":"voice_agent","externalReference":"voice_call_abc123"
   }'
 ```
 

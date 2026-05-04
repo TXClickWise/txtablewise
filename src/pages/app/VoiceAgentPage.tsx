@@ -43,11 +43,7 @@ type ApiKeyRow = {
 };
 
 const PROVIDERS = [
-  { value: "vapi", label: "Vapi (aanbevolen)" },
-  { value: "retell", label: "Retell AI" },
-  { value: "highlevel", label: "ClickWise Voice Agent" },
-  { value: "elevenlabs", label: "ElevenLabs Agents" },
-  { value: "other", label: "Anders" },
+  { value: "highlevel", label: "ClickWise Voice AI" },
 ];
 
 export default function VoiceAgentPage() {
@@ -82,7 +78,7 @@ export default function VoiceAgentPage() {
     setSettings(
       (s.data as VoiceSettings | null) ?? {
         restaurant_id: rid,
-        provider: "vapi",
+        provider: "highlevel",
         agent_id: "",
         phone_number: "",
         mode: "sandbox",
@@ -135,7 +131,7 @@ export default function VoiceAgentPage() {
     <div className="p-6 space-y-6 max-w-5xl">
       <PageHeader
         title="AI Voice Agent"
-        description="Koppel een AI voice-agent (ClickWise, Vapi, Retell) aan TableWise voor telefonische reserveringen."
+        description="Koppel de ClickWise Voice AI aan TX TableWise voor telefonische reserveringen."
         badge={
           <Badge variant="outline" className="gap-1.5">
             <Bot className="h-3 w-3 text-primary" /> Voice
@@ -214,7 +210,7 @@ export default function VoiceAgentPage() {
                 Jouw koppelgegevens
               </CardTitle>
               <CardDescription>
-                Plak deze gegevens in je voice-platform (ClickWise, Vapi of Retell). De voice-agent
+                Plak deze gegevens in ClickWise. De voice-agent
                 gebruikt ze om beschikbaarheid te checken en reserveringen te boeken in TableWise.
               </CardDescription>
             </CardHeader>
@@ -354,7 +350,7 @@ export default function VoiceAgentPage() {
                 <div className="space-y-1.5">
                   <Label>Agent / Assistant ID</Label>
                   <Input
-                    placeholder="bv. asst_abc123 (Vapi)"
+                    placeholder="bv. asst_abc123"
                     value={settings.agent_id ?? ""}
                     onChange={(e) => setSettings({ ...settings, agent_id: e.target.value })}
                   />
@@ -421,7 +417,7 @@ export default function VoiceAgentPage() {
                   API-sleutel.
                 </li>
                 <li>
-                  Maak in je voice-platform (ClickWise, Vapi of Retell) een nieuwe assistant aan met
+                  Maak in ClickWise een nieuwe Voice AI assistant aan met
                   Nederlands als taal.
                 </li>
                 <li>

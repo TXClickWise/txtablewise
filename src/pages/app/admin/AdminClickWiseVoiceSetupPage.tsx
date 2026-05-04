@@ -217,7 +217,7 @@ restaurant_phone = REPLACE_PER_CLIENT
 restaurant_address = REPLACE_PER_CLIENT
 opening_hours_short = REPLACE_PER_CLIENT`;
 
-  const standardFields = `// Deze velden zijn STANDAARD in ClickWise/HighLevel — NIET aanmaken.
+  const standardFields = `// Deze velden zijn STANDAARD in ClickWise — NIET aanmaken.
 // Gebruik ze direct via {{contact.<veld>}} in tools, prompts en workflows.
 - voornaam            → {{contact.first_name}}
 - achternaam          → {{contact.last_name}}
@@ -507,7 +507,7 @@ X-Agent-Api-Key: ${apiKey}`;
     <div className="space-y-6">
       <PageHeader
         title="ClickWise Voice Agent — Setup gids"
-        description="Stap-voor-stap instructies voor system admins om in ClickWise (HighLevel) een voice agent op te zetten die boekt, wijzigt en annuleert via TableWise."
+        description="Stap-voor-stap instructies voor system admins om in ClickWise een voice agent op te zetten die boekt, wijzigt en annuleert via TableWise."
         badge={<Badge variant="outline" className="border-primary/40 text-primary">SYSTEM ADMIN</Badge>}
       />
 
@@ -533,7 +533,7 @@ X-Agent-Api-Key: ${apiKey}`;
           <div className="space-y-1">
             <p className="font-medium text-sm">Bouw dit eenmalig — distribueer via snapshot</p>
             <p className="text-sm text-muted-foreground">
-              Bouw deze hele setup één keer in een 'master' sub-account met dummy-waarden, exporteer als HighLevel snapshot,
+              Bouw deze hele setup één keer in een 'master' sub-account met dummy-waarden, exporteer als ClickWise snapshot,
               en gebruik die snapshot voor élke nieuwe klant. Per klant blijven er dan ~7 handmatige stappen over.
               Zie tab <strong>Snapshot</strong> voor de volledige checklist en placeholder-template.
             </p>
@@ -613,7 +613,7 @@ X-Agent-Api-Key: ${apiKey}`;
 
           <StepCard n={7} title="Snapshot maken & hergebruiken voor volgende klanten" icon={Package}>
             <p>
-              Werkt deze sub-account end-to-end? Exporteer 'm dan als <strong>HighLevel snapshot</strong>.
+              Werkt deze sub-account end-to-end? Exporteer 'm dan als <strong>ClickWise snapshot</strong>.
               Bij elke nieuwe klant importeer je de snapshot en heb je nog ~7 handmatige stappen.
               Volledige checklist + placeholder-template staat in tab <em>Snapshot</em>.
             </p>
@@ -712,7 +712,7 @@ X-Agent-Api-Key: ${apiKey}`;
           <Card className="p-4 space-y-3 border-emerald-500/30 bg-emerald-500/5">
             <div className="flex items-center gap-2">
               <Check className="h-4 w-4 text-emerald-600" />
-              <h3 className="font-display text-base">Standaard ClickWise/HighLevel velden — NIET aanmaken</h3>
+              <h3 className="font-display text-base">Standaard ClickWise velden — NIET aanmaken</h3>
             </div>
             <p className="text-sm text-muted-foreground">
               Voor naam, telefoon en e-mail gebruiken we de standaard contactvelden van ClickWise.
@@ -826,7 +826,7 @@ X-Agent-Api-Key: ${apiKey}`;
               HMAC-validatie (optioneel maar aanbevolen)
             </h3>
             <p className="text-sm text-muted-foreground">
-              HighLevel valideert <code>X-TableWise-Signature</code> niet automatisch. Voeg deze Custom Code-step als 1<sup>e</sup> stap in elke inbound-workflow toe — dan weiger je gespoofte requests.
+              ClickWise valideert <code>X-TableWise-Signature</code> niet automatisch. Voeg deze Custom Code-step als 1<sup>e</sup> stap in elke inbound-workflow toe — dan weiger je gespoofte requests.
               Vereist custom value <code>tablewise_webhook_secret</code> (per sub-account; matcht het secret in TableWise endpoint).
             </p>
             <CopyBlock label="Custom Code (JS)" value={hmacSnippet} lang="javascript" />
@@ -841,7 +841,7 @@ X-Agent-Api-Key: ${apiKey}`;
               Verwacht een <code>200</code> met <code>availableSlots</code>. Lukt dit niet? Dan ligt het aan TableWise/sleutel — niet aan ClickWise.
             </p>
             <div className="rounded-md border border-amber-500/30 bg-amber-500/5 p-3 text-xs text-muted-foreground">
-              <strong className="text-foreground">Let op:</strong> ClickWise/HighLevel heeft géén losse "curl-knop". De Custom Actions die je later in ClickWise bouwt
+              <strong className="text-foreground">Let op:</strong> ClickWise heeft géén losse "curl-knop". De Custom Actions die je later in ClickWise bouwt
               dóén feitelijk hetzelfde als deze curl onder de motorkap. Deze test is dus alleen voor jouw eigen zekerheid vooraf, op je eigen machine of in een browsertool.
             </div>
 
@@ -920,7 +920,7 @@ X-Agent-Api-Key: ${apiKey}`;
               <h3 className="font-display text-base">Hoe werkt de snapshot-strategie?</h3>
             </div>
             <p className="text-sm text-muted-foreground">
-              Bouw deze hele setup éénmalig in een 'master' sub-account in ClickWise (HighLevel). Exporteer dan een snapshot
+              Bouw deze hele setup éénmalig in een 'master' sub-account in ClickWise. Exporteer dan een snapshot
               en koppel die aan elke nieuwe of bestaande klant-sub-account. Snapshots nemen
               <strong> Custom Actions, Custom Values, Custom Fields én Workflows </strong>
               mee — maar <strong>niet</strong> de Voice AI Agent zelf, het Twilio-nummer of de response-mapping per Custom Action.
@@ -1018,7 +1018,7 @@ X-Agent-Api-Key: ${apiKey}`;
               <li>Tool headers gebruiken <code>{`{{custom_values.tablewise_api_key}}`}</code> — geen sleutel in de Custom Action body.</li>
               <li>System prompt + first message gebruiken <code>{`{{custom_values.restaurant_name}}`}</code> — zelfde tekst werkt in elke sub-account.</li>
               <li>SMS-bodies in workflow gebruiken <code>{`{{custom_values.restaurant_name}}`}</code>.</li>
-              <li>Identity-velden komen uit native HighLevel <code>{`{{contact.*}}`}</code> — bestaan automatisch in elke sub-account.</li>
+              <li>Identity-velden komen uit standaard ClickWise <code>{`{{contact.*}}`}</code> — bestaan automatisch in elke sub-account.</li>
               <li>Custom Fields zijn generiek (geen restaurantnaam in de field-naam) — herbruikbaar zonder rename.</li>
               <li>Inbound-webhook workflows hebben een vaste naam-conventie (<code>TW — &lt;event_label&gt;</code>) zodat ze in elke snapshot herkenbaar zijn.</li>
               <li>HMAC-validatie snippet gebruikt <code>{`{{custom_values.tablewise_webhook_secret}}`}</code> — geen secret in de workflow-code.</li>

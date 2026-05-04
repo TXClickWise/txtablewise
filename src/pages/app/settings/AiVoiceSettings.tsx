@@ -69,7 +69,7 @@ export default function AiVoiceSettings() {
                 <StepStatusBadge status={voiceStatus as any} />
               </h2>
               <p className="text-sm text-muted-foreground mt-1">
-                Vapi, Retell of ClickWise — koppel via een agent API-key.{" "}
+                ClickWise Voice AI — koppel via een agent API-key.{" "}
                 {(agentKeys ?? 0) === 0
                   ? "Nog geen actieve agent-key ingesteld."
                   : `${agentKeys} actieve agent-key(s).`}

@@ -27,7 +27,7 @@ import { useRestaurant } from "@/hooks/useRestaurant";
 import { ChannelReadinessCards } from "@/components/ai-host/ChannelReadinessCards";
 import { AIActionTestConsole } from "@/components/ai-host/AIActionTestConsole";
 import { AIActionLogs } from "@/components/ai-host/AIActionLogs";
-import { HighLevelToolSetupPanel } from "@/components/ai-host/HighLevelToolSetupPanel";
+import { ClickWiseToolSetupPanel } from "@/components/ai-host/ClickWiseToolSetupPanel";
 
 const CHANNELS = [
   { Icon: Phone, t: "Voice AI", d: "Neemt op wanneer je kookt" },
@@ -265,7 +265,7 @@ const AIHostPage = () => {
           <TabsTrigger value="console">Sandbox console</TabsTrigger>
           <TabsTrigger value="live-test">Live testconsole</TabsTrigger>
           <TabsTrigger value="logs">Logs</TabsTrigger>
-          <TabsTrigger value="highlevel">HighLevel setup</TabsTrigger>
+          <TabsTrigger value="highlevel">ClickWise setup</TabsTrigger>
           <TabsTrigger value="rules">Veiligheidsregels</TabsTrigger>
         </TabsList>
 
@@ -324,7 +324,7 @@ const AIHostPage = () => {
         </TabsContent>
 
         <TabsContent value="highlevel">
-          <HighLevelToolSetupPanel />
+          <ClickWiseToolSetupPanel />
         </TabsContent>
 
         <TabsContent value="rules">
