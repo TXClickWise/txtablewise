@@ -24,6 +24,10 @@ import {
   dispatchAIAction,
 } from "@/services/aiHost";
 import { useRestaurant } from "@/hooks/useRestaurant";
+import { ChannelReadinessCards } from "@/components/ai-host/ChannelReadinessCards";
+import { AIActionTestConsole } from "@/components/ai-host/AIActionTestConsole";
+import { AIActionLogs } from "@/components/ai-host/AIActionLogs";
+import { HighLevelToolSetupPanel } from "@/components/ai-host/HighLevelToolSetupPanel";
 
 const CHANNELS = [
   { Icon: Phone, t: "Voice AI", d: "Neemt op wanneer je kookt" },
@@ -253,24 +257,15 @@ const AIHostPage = () => {
         }
       />
 
-      <Card>
-        <CardHeader><CardTitle className="text-base">Kanalen</CardTitle></CardHeader>
-        <CardContent className="grid gap-3 md:grid-cols-3">
-          {CHANNELS.map((c) => (
-            <div key={c.t} className="rounded-lg border p-4">
-              <c.Icon className="h-5 w-5 text-primary mb-2" />
-              <div className="font-medium text-sm">{c.t}</div>
-              <div className="text-xs text-muted-foreground">{c.d}</div>
-            </div>
-          ))}
-        </CardContent>
-      </Card>
+      <ChannelReadinessCards restaurantId={restaurantId} />
 
       <Tabs defaultValue="catalog" className="space-y-4">
         <TabsList>
           <TabsTrigger value="catalog">Action catalog</TabsTrigger>
-          <TabsTrigger value="console">Testconsole</TabsTrigger>
-          <TabsTrigger value="logs">Recente acties</TabsTrigger>
+          <TabsTrigger value="console">Sandbox console</TabsTrigger>
+          <TabsTrigger value="live-test">Live testconsole</TabsTrigger>
+          <TabsTrigger value="logs">Logs</TabsTrigger>
+          <TabsTrigger value="highlevel">HighLevel setup</TabsTrigger>
           <TabsTrigger value="rules">Veiligheidsregels</TabsTrigger>
         </TabsList>
 
@@ -320,37 +315,16 @@ const AIHostPage = () => {
           </div>
         </TabsContent>
 
+        <TabsContent value="live-test">
+          <AIActionTestConsole restaurantId={restaurantId} />
+        </TabsContent>
+
         <TabsContent value="logs">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Recente AI-acties (sessie)</CardTitle>
-              <CardDescription>
-                Acties tijdens deze sessie. Volledige logs worden opgeslagen in audit_log + integration_events.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {history.length === 0 ? (
-                <p className="text-sm text-muted-foreground">Nog geen acties uitgevoerd.</p>
-              ) : (
-                <div className="space-y-2">
-                  {history.map((h, i) => (
-                    <div key={i} className="rounded-md border p-3 text-sm">
-                      <div className="flex items-center gap-2">
-                        <StatusIcon res={h.res} />
-                        <code className="text-xs">{h.action}</code>
-                        <span className="ml-auto text-xs text-muted-foreground">
-                          {new Date(h.at).toLocaleTimeString("nl-NL")}
-                        </span>
-                      </div>
-                      <div className="mt-1 text-muted-foreground text-xs">
-                        {h.res.message_for_guest}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
+          <AIActionLogs restaurantId={restaurantId} />
+        </TabsContent>
+
+        <TabsContent value="highlevel">
+          <HighLevelToolSetupPanel />
         </TabsContent>
 
         <TabsContent value="rules">
