@@ -43,6 +43,7 @@ import POSIntegrationPage from "./pages/app/POSIntegrationPage.tsx";
 import ReportsPage from "./pages/app/ReportsPage.tsx";
 import OnboardingWizardPage from "./pages/app/OnboardingWizardPage.tsx";
 import PilotReadinessPage from "./pages/app/PilotReadinessPage.tsx";
+import PilotLaunchSettings from "./pages/app/settings/PilotLaunchSettings.tsx";
 import AdminVoiceAgentPage from "./pages/app/admin/AdminVoiceAgentPage.tsx";
 import AdminPlanRequestsPage from "./pages/app/admin/AdminPlanRequestsPage.tsx";
 import AdminClickWiseVoiceSetupPage from "./pages/app/admin/AdminClickWiseVoiceSetupPage.tsx";
@@ -67,26 +68,26 @@ const App = () => (
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/auth" element={<Auth />} />
-            <Route path="/r/:slug" element={<ReserveWidget />} />
-            <Route path="/reserveer/:slug" element={<ReserveWidget />} />
-            <Route path="/book/:slug" element={<ReserveWidget />} />
+            <Route path="/r/:slug" element={<ErrorBoundary label="ReserveWidget"><ReserveWidget /></ErrorBoundary>} />
+            <Route path="/reserveer/:slug" element={<ErrorBoundary label="ReserveWidget"><ReserveWidget /></ErrorBoundary>} />
+            <Route path="/book/:slug" element={<ErrorBoundary label="ReserveWidget"><ReserveWidget /></ErrorBoundary>} />
             <Route path="/r/manage/:token" element={<GuestManageReservation />} />
             <Route path="/onboarding" element={<RequireAuth><Onboarding /></RequireAuth>} />
             <Route path="/app" element={<RequireAuth><AppShell /></RequireAuth>}>
-              <Route index element={<TodayPage />} />
+              <Route index element={<ErrorBoundary label="TodayPage"><TodayPage /></ErrorBoundary>} />
               <Route path="onboarding" element={<OnboardingWizardPage />} />
 
               {/* Geconsolideerde schermen */}
-              <Route path="agenda" element={<AgendaTabsPage />} />
-              <Route path="vloer" element={<VloerTabsPage />} />
-              <Route path="gasten" element={<GastenTabsPage />} />
+              <Route path="agenda" element={<ErrorBoundary label="AgendaTabsPage"><AgendaTabsPage /></ErrorBoundary>} />
+              <Route path="vloer" element={<ErrorBoundary label="VloerTabsPage"><VloerTabsPage /></ErrorBoundary>} />
+              <Route path="gasten" element={<ErrorBoundary label="GastenTabsPage"><GastenTabsPage /></ErrorBoundary>} />
               <Route path="gastcommunicatie" element={<GastcommunicatiePage />} />
               <Route path="ai-voice" element={<AIHostVoicePage />} />
               <Route path="koppelingen" element={<KoppelingenTabsPage />} />
 
               {/* Operatie — losse schermen */}
-              <Route path="walk-ins" element={<WalkInsPage />} />
-              <Route path="wachtlijst" element={<WaitlistPage />} />
+              <Route path="walk-ins" element={<ErrorBoundary label="WalkInsPage"><WalkInsPage /></ErrorBoundary>} />
+              <Route path="wachtlijst" element={<ErrorBoundary label="WaitlistPage"><WaitlistPage /></ErrorBoundary>} />
               <Route path="rapportages" element={<ReportsPage />} />
               <Route path="help/voice-agent" element={<VoiceAgentHelp />} />
 
