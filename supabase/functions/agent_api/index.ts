@@ -138,14 +138,25 @@ async function handle(
         if (!keyRow.scopes.includes("cancel")) return json({ error: "Scope missing: cancel", error_code: "auth_scope_missing", field: "cancel" }, 403);
         const { reservation_id, manage_token, reason } = payload as { reservation_id?: string; manage_token?: string; reason?: string };
         if (!reservation_id && !manage_token) return json({ error: "reservation_id or manage_token required", error_code: "missing_field", field: "reservation_id" }, 400);
-        let q = sb.from("reservations").update({ status: "cancelled", cancelled_at: new Date().toISOString(), cancellation_reason: reason || "Geannuleerd via voice-agent" });
-        if (reservation_id) q = q.eq("id", reservation_id).eq("restaurant_id", keyRow.restaurant_id);
-        else if (manage_token) q = q.eq("manage_token", manage_token).eq("restaurant_id", keyRow.restaurant_id);
-        const { data, error } = await q.select("id").maybeSingle();
-        if (error) return json({ error: error.message, error_code: "internal" }, 400);
-        if (!data) return json({ error: "Reservation not found", error_code: "not_found", field: "reservation_id" }, 404);
-        ctx.setReservationId(data.id);
-        return json({ ok: true, reservation_id: data.id });
+
+        // Resolve reservation id from manage_token if needed
+        let resolvedId = reservation_id ?? null;
+        if (!resolvedId && manage_token) {
+          const { data: row } = await sb
+            .from("reservations").select("id")
+            .eq("manage_token", manage_token).eq("restaurant_id", keyRow.restaurant_id).maybeSingle();
+          if (!row) return json({ error: "Reservation not found", error_code: "not_found", field: "manage_token" }, 404);
+          resolvedId = row.id;
+        }
+
+        // Delegate to manage_reservation for proper transition validation, audit logging and event emission.
+        const r = await callInternalFn("manage_reservation", {
+          action: "cancel",
+          reservation_id: resolvedId,
+          cancellation_reason: reason || "Geannuleerd via voice-agent",
+        });
+        if (r.status >= 200 && r.status < 300) ctx.setReservationId(resolvedId);
+        return json(r.body, r.status);
       }
       case "log_call": {
         const { external_call_id, caller_phone, callee_phone, outcome, reservation_id, duration_seconds, cost_cents, transcript_url, summary, agent_id, metadata } = payload as Record<string, unknown>;
