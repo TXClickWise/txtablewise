@@ -155,7 +155,7 @@ async function handle(
           action: "cancel",
           reservation_id: resolvedId,
           cancellation_reason: reason || "Geannuleerd via voice-agent",
-        });
+        }, { "x-system-actor": `agent_api:${keyRow.provider ?? "voice"}` });
         if (r.status >= 200 && r.status < 300) ctx.setReservationId(resolvedId);
         return json(r.body, r.status);
       }
