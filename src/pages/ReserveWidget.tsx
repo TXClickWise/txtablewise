@@ -461,7 +461,7 @@ const ReserveWidget = () => {
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0" align="start">
                   <Calendar mode="single" selected={date} onSelect={(d) => d && setDate(d)} initialFocus locale={nl}
-                    disabled={(d) => d < new Date(new Date().setHours(0, 0, 0, 0)) || d > new Date(Date.now() + 90 * 24 * 60 * 60 * 1000)}
+                    disabled={(d) => d < new Date(new Date().setHours(0, 0, 0, 0)) || d > new Date(Date.now() + (restaurant.booking_horizon_days ?? 30) * 24 * 60 * 60 * 1000)}
                     className={cn("p-3 pointer-events-auto")} />
                 </PopoverContent>
               </Popover>
