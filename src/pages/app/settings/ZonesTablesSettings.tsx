@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { FloorPlanEditor } from "@/components/floor-plan/FloorPlanEditor";
+import { TableCombinationsManager } from "@/components/floor-plan/TableCombinationsManager";
 
 type Zone = { id: string; name: string; sort_order: number; is_active: boolean };
 type TableRow = {
