@@ -731,6 +731,30 @@ async function handleUpdateReservation(req: Request, keyRow: KeyRow, reservation
       return errResp("TW_400_DATE_IN_PAST", "localTime");
     }
 
+    // Pacing check voor het nieuwe tijdslot (excludeert huidige reservering)
+    const { data: existingForPacing } = await sb
+      .from("reservations")
+      .select("id, start_time, end_time, party_size, status, hold_expires_at")
+      .eq("restaurant_id", restaurant.id)
+      .gte("start_time", addMinutesIso(start_iso, -durationMinutes))
+      .lte("start_time", addMinutesIso(end_iso, durationMinutes))
+      .in("status", ACTIVE_STATUSES as unknown as string[]);
+    const pacingRows: PacingReservation[] = (existingForPacing ?? []).map((r: any) => ({
+      id: r.id, start_time: r.start_time, end_time: r.end_time,
+      party_size: r.party_size ?? 0, status: r.status, hold_expires_at: r.hold_expires_at,
+    }));
+    const pacing = evaluatePacing(
+      { start_iso, end_iso, party_size: finalParty },
+      pacingRows,
+      {
+        max_covers_per_slot: restaurant.max_covers_per_slot ?? null,
+        max_new_reservations_per_15min: restaurant.max_new_reservations_per_15min ?? null,
+        peak_warning_threshold_pct: restaurant.peak_warning_threshold_pct ?? 85,
+      },
+      current.id,
+    );
+    if (!pacing.ok) return errResp("TW_409_TIMESLOT_UNAVAILABLE", "localTime");
+
     // Conflict-check: zelfde tafel(s) vrij?
     const currentTableIds: string[] = (current.reservation_tables ?? []).map((rt: any) => rt.table_id);
 
