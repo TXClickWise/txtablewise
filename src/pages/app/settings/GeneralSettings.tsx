@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import { ExternalLink, Copy, Wrench } from "lucide-react";
+import { getWidgetUrl } from "@/lib/widgetUrl";
 
 export default function GeneralSettings() {
   const { current } = useRestaurant();
@@ -20,6 +21,7 @@ export default function GeneralSettings() {
     slot_duration_minutes: 15, default_reservation_minutes: 105,
     max_party_size_online: 8, large_group_threshold: 9,
     booking_lead_time_minutes: 60, hold_minutes: 10, booking_horizon_days: 90,
+    public_base_url: "",
   });
   const [saving, setSaving] = useState(false);
 
@@ -39,15 +41,20 @@ export default function GeneralSettings() {
       booking_lead_time_minutes: r.booking_lead_time_minutes ?? 60,
       hold_minutes: r.hold_minutes ?? 10,
       booking_horizon_days: r.booking_horizon_days ?? 90,
+      public_base_url: (r as any).public_base_url ?? "",
     });
   }, [r]);
 
   if (!r) return null;
-  const url = `${window.location.origin}/r/${r.slug}`;
+  const url = getWidgetUrl(r.slug, form.public_base_url || (r as any).public_base_url);
 
   const onSave = async () => {
     setSaving(true);
-    const { error } = await supabase.from("restaurants").update(form).eq("id", r.id);
+    const payload = {
+      ...form,
+      public_base_url: form.public_base_url?.trim() ? form.public_base_url.trim().replace(/\/+$/, "") : null,
+    };
+    const { error } = await supabase.from("restaurants").update(payload).eq("id", r.id);
     setSaving(false);
     if (error) toast.error(error.message);
     else toast.success("Opgeslagen");
