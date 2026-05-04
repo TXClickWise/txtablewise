@@ -21,7 +21,6 @@ export default function GeneralSettings() {
     slot_duration_minutes: 15, default_reservation_minutes: 105,
     max_party_size_online: 8, large_group_threshold: 9,
     booking_lead_time_minutes: 60, hold_minutes: 10, booking_horizon_days: 90,
-    public_base_url: "",
   });
   const [saving, setSaving] = useState(false);
 
@@ -41,20 +40,18 @@ export default function GeneralSettings() {
       booking_lead_time_minutes: r.booking_lead_time_minutes ?? 60,
       hold_minutes: r.hold_minutes ?? 10,
       booking_horizon_days: r.booking_horizon_days ?? 90,
-      public_base_url: (r as any).public_base_url ?? "",
     });
   }, [r]);
 
   if (!r) return null;
-  const url = getWidgetUrl(r.slug, form.public_base_url || (r as any).public_base_url);
+  const url = getWidgetUrl(r.slug, {
+    customWidgetDomain: (r as any).custom_widget_domain,
+    publicBaseUrl: (r as any).public_base_url,
+  });
 
   const onSave = async () => {
     setSaving(true);
-    const payload = {
-      ...form,
-      public_base_url: form.public_base_url?.trim() ? form.public_base_url.trim().replace(/\/+$/, "") : null,
-    };
-    const { error } = await supabase.from("restaurants").update(payload).eq("id", r.id);
+    const { error } = await supabase.from("restaurants").update(form).eq("id", r.id);
     setSaving(false);
     if (error) toast.error(error.message);
     else toast.success("Opgeslagen");
@@ -85,17 +82,6 @@ export default function GeneralSettings() {
             <Button variant="outline" size="icon" asChild>
               <a href={url} target="_blank" rel="noopener noreferrer"><ExternalLink className="h-4 w-4" /></a>
             </Button>
-          </div>
-          <div className="space-y-1">
-            <Label className="text-xs">Publieke widget-URL</Label>
-            <Input
-              value={form.public_base_url}
-              onChange={(e) => setForm({ ...form, public_base_url: e.target.value })}
-              placeholder="https://txtablewise.lovable.app"
-            />
-            <p className="text-xs text-muted-foreground">
-              De basis-URL voor je reserveringswidget. Laat leeg om het huidige domein te gebruiken. Vul in als je een eigen domein gebruikt.
-            </p>
           </div>
         </CardContent>
       </Card>
