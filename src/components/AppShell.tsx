@@ -17,7 +17,8 @@ const AppShellInner = ({ children }: { children?: ReactNode }) => {
   if (loading) {
     return <div className="min-h-screen flex items-center justify-center text-muted-foreground">Laden…</div>;
   }
-  if (!current) {
+  const isAdminRoute = location.pathname.startsWith("/app/admin");
+  if (!current && !isAdminRoute) {
     return <Navigate to="/onboarding" replace />;
   }
 
