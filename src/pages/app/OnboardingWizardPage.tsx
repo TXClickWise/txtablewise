@@ -775,15 +775,22 @@ export default function OnboardingWizard() {
             {step.key !== "welcome" && step.key !== "done" && (
               <>
                 <Separator className="my-6" />
-                <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center justify-between gap-3 flex-wrap">
                   <Button variant="ghost" onClick={goBack} disabled={stepIndex === 0}>
                     <ArrowLeft className="h-4 w-4 mr-1.5" />
                     Vorige
                   </Button>
-                  <Button onClick={goNext} size="lg">
-                    Volgende
-                    <ArrowRight className="h-4 w-4 ml-1.5" />
-                  </Button>
+                  <div className="flex items-center gap-2">
+                    {(step.key === "clickwise" || step.key === "api_webhooks" || step.key === "ai_voice") && (
+                      <Button variant="outline" onClick={skipCurrentStep}>
+                        Overslaan — ik stel dit later in
+                      </Button>
+                    )}
+                    <Button onClick={goNext} size="lg">
+                      Volgende
+                      <ArrowRight className="h-4 w-4 ml-1.5" />
+                    </Button>
+                  </div>
                 </div>
               </>
             )}
