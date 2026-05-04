@@ -134,7 +134,7 @@ const EmbedSection = ({ children }: { children: ReactNode }) => (
 const WidgetStep = ({ settings }: StepCtx) => {
   const slug = settings?.slug;
   const url = slug
-    ? `${window.location.origin}/r/${slug}`
+    ? getWidgetUrl(slug, settings?.public_base_url)
     : null;
   const embed = url
     ? `<iframe src="${url}" style="border:0;width:100%;height:760px" loading="lazy"></iframe>`
