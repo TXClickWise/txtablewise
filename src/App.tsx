@@ -123,7 +123,7 @@ const App = () => (
               <Route path="integraties/pos" element={<RequireSystemAdmin><POSIntegrationPage /></RequireSystemAdmin>} />
               <Route path="integraties/hub" element={<RequireSystemAdmin><IntegrationHubPage /></RequireSystemAdmin>} />
               <Route path="integraties/logs" element={<RequireSystemAdmin><IntegrationLogsPage /></RequireSystemAdmin>} />
-              <Route path="instellingen" element={<SettingsPage />}>
+              <Route path="instellingen" element={<RequireRole allow={["owner","manager"]}><SettingsPage /></RequireRole>}>
                 <Route index element={<GeneralSettings />} />
                 {/* New grouped sections */}
                 <Route path="openingstijden" element={<HoursClosuresSettings />} />
@@ -133,9 +133,9 @@ const App = () => (
                 <Route path="gasten" element={<GuestsSettings />} />
                 <Route path="berichten" element={<MessagesSettings />} />
                 <Route path="ai-voice" element={<AiVoiceSettings />} />
-                <Route path="integraties" element={<IntegrationsSettings />} />
-                <Route path="api" element={<ApiWebhooksSettings />} />
-                <Route path="gebruikers" element={<UsersRolesSettings />} />
+                <Route path="integraties" element={<RequireRole allow={["owner"]}><IntegrationsSettings /></RequireRole>} />
+                <Route path="api" element={<RequireRole allow={["owner"]}><ApiWebhooksSettings /></RequireRole>} />
+                <Route path="gebruikers" element={<RequireRole allow={["owner"]}><UsersRolesSettings /></RequireRole>} />
                 <Route path="abonnement" element={<RequireRole allow={["owner"]}><SubscriptionSettings /></RequireRole>} />
                 <Route path="pilot-launch" element={<RequireRole allow={["owner"]}><PilotLaunchSettings /></RequireRole>} />
                 {/* Legacy routes — preserved for old links */}
