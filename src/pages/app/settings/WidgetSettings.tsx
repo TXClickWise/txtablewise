@@ -17,6 +17,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { getWidgetBaseUrl } from "@/lib/widgetUrl";
 import { usePlan } from "@/hooks/usePlan";
 import { Sparkles, Lock } from "lucide-react";
+import { LogoUploader } from "@/components/branding/LogoUploader";
 
 type RestaurantBrand = {
   id: string;
