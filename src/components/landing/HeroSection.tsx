@@ -18,6 +18,9 @@ export function HeroSection() {
 
       <div className="container relative flex min-h-[88vh] flex-col justify-center pb-20 pt-32 md:min-h-[80vh] md:pb-28 md:pt-40">
         <div className="max-w-3xl animate-fade-in-up">
+          <div className="mb-5 text-xs font-medium uppercase tracking-[0.2em] text-primary-foreground/50">
+            Vanaf Texel, voor heel Nederland
+          </div>
           <h1 className="font-display text-[2.5rem] font-semibold leading-[1.05] text-primary-foreground sm:text-5xl md:text-6xl lg:text-7xl">
             Minder no-shows.
             <br />
