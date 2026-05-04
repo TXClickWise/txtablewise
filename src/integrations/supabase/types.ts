@@ -1479,6 +1479,7 @@ export type Database = {
           hold_minutes: number
           id: string
           is_active: boolean
+          is_live: boolean
           large_group_auto_book_max: number
           large_group_cancellation_terms: string | null
           large_group_confirmation_text: string | null
@@ -1492,6 +1493,7 @@ export type Database = {
           locale: string
           logo_url: string | null
           manual_approval_from_party_size: number | null
+          marked_live_at: string | null
           max_covers_per_slot: number | null
           max_new_reservations_per_15min: number | null
           max_party_size_online: number
@@ -1562,6 +1564,7 @@ export type Database = {
           hold_minutes?: number
           id?: string
           is_active?: boolean
+          is_live?: boolean
           large_group_auto_book_max?: number
           large_group_cancellation_terms?: string | null
           large_group_confirmation_text?: string | null
@@ -1575,6 +1578,7 @@ export type Database = {
           locale?: string
           logo_url?: string | null
           manual_approval_from_party_size?: number | null
+          marked_live_at?: string | null
           max_covers_per_slot?: number | null
           max_new_reservations_per_15min?: number | null
           max_party_size_online?: number
@@ -1645,6 +1649,7 @@ export type Database = {
           hold_minutes?: number
           id?: string
           is_active?: boolean
+          is_live?: boolean
           large_group_auto_book_max?: number
           large_group_cancellation_terms?: string | null
           large_group_confirmation_text?: string | null
@@ -1658,6 +1663,7 @@ export type Database = {
           locale?: string
           logo_url?: string | null
           manual_approval_from_party_size?: number | null
+          marked_live_at?: string | null
           max_covers_per_slot?: number | null
           max_new_reservations_per_15min?: number | null
           max_party_size_online?: number
@@ -2242,6 +2248,10 @@ export type Database = {
         Returns: boolean
       }
       is_system_admin: { Args: never; Returns: boolean }
+      purge_restaurant_operational_data: {
+        Args: { _restaurant_id: string }
+        Returns: Json
+      }
       restaurant_plan: {
         Args: { _restaurant_id: string }
         Returns: Database["public"]["Enums"]["subscription_plan"]

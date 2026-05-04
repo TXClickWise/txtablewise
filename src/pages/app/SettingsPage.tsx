@@ -1,5 +1,6 @@
 import { NavLink, Outlet, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
+import { useRestaurant } from "@/hooks/useRestaurant";
 import {
   Settings as SettingsIcon,
   Clock,
@@ -13,6 +14,7 @@ import {
   UserCog,
   Crown,
   Globe,
+  Rocket,
 } from "lucide-react";
 
 type Item = {
@@ -20,6 +22,7 @@ type Item = {
   label: string;
   icon: typeof SettingsIcon;
   end?: boolean;
+  ownerOnly?: boolean;
 };
 type Group = { label: string; items: Item[] };
 
@@ -59,12 +62,19 @@ const GROUPS: Group[] = [
     items: [
       { to: "/app/instellingen/gebruikers", label: "Gebruikers & rollen", icon: UserCog },
       { to: "/app/instellingen/abonnement", label: "Abonnement", icon: Crown },
+      { to: "/app/instellingen/pilot-launch", label: "Pilot lancering", icon: Rocket, ownerOnly: true },
     ],
   },
 ];
 
 const SettingsPage = () => {
   const location = useLocation();
+  const { current } = useRestaurant();
+  const isOwner = current?.role === "owner";
+  const groups = GROUPS.map((g) => ({
+    ...g,
+    items: g.items.filter((i) => !i.ownerOnly || isOwner),
+  })).filter((g) => g.items.length > 0);
 
   return (
     <div className="p-4 sm:p-6 max-w-7xl mx-auto">
@@ -79,7 +89,7 @@ const SettingsPage = () => {
           {/* Mobile (<md): horizontal scroll fallback */}
           <div className="md:hidden -mx-4 px-4 overflow-x-auto pb-2 mb-2">
             <div className="flex gap-1 min-w-max">
-              {GROUPS.flatMap((g) => g.items).map((item) => {
+              {groups.flatMap((g) => g.items).map((item) => {
                 const active = item.end
                   ? location.pathname === item.to
                   : location.pathname.startsWith(item.to);
@@ -104,7 +114,7 @@ const SettingsPage = () => {
 
           {/* Tablet+desktop: grouped vertical nav */}
           <nav className="hidden md:block space-y-5">
-            {GROUPS.map((g) => (
+            {groups.map((g) => (
               <div key={g.label}>
                 <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-1.5 px-2">
                   {g.label}

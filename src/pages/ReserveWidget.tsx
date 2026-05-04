@@ -23,6 +23,7 @@ import {
 import { z } from "zod";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
+import { canAttemptBooking, recordBookingAttempt } from "@/lib/widgetRateLimit";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -54,6 +55,7 @@ type RestaurantInfo = {
   allow_zone_preference: boolean;
   brand_primary: string | null;
   logo_url: string | null;
+  booking_horizon_days: number;
 };
 
 // Convert #RRGGBB hex to "h s% l%" string for CSS HSL custom properties.
@@ -188,16 +190,18 @@ const ReserveWidget = () => {
   const [confirmation, setConfirmation] = useState<{ code: string; start: string; status: string } | null>(null);
   const [bookingError, setBookingError] = useState<string | null>(null);
 
+  const [restaurantError, setRestaurantError] = useState<string | null>(null);
+
   // Load restaurant
   useEffect(() => {
     if (!slug) return;
     (async () => {
       const { data, error } = await supabase
         .from("restaurants")
-        .select("id, name, slug, timezone, max_party_size_online, large_group_threshold, preorders_enabled, preorders_allow_free_text, allow_zone_preference, brand_primary, logo_url")
+        .select("id, name, slug, timezone, max_party_size_online, large_group_threshold, preorders_enabled, preorders_allow_free_text, allow_zone_preference, brand_primary, logo_url, booking_horizon_days")
         .eq("slug", slug).maybeSingle();
       if (error || !data) {
-        toast.error("Restaurant niet gevonden");
+        setRestaurantError("Reserveren is op dit moment niet mogelijk. Probeer het later opnieuw of bel het restaurant.");
         return;
       }
       setRestaurant(data as RestaurantInfo);
@@ -268,6 +272,16 @@ const ReserveWidget = () => {
     const parsed = guestSchema.safeParse({ first_name: firstName, last_name: lastName, email, phone });
     if (!parsed.success) return toast.error(parsed.error.errors[0].message);
 
+    const gate = canAttemptBooking();
+    if (!gate.allowed) {
+      const mins = Math.ceil((gate.retryInSeconds ?? 60) / 60);
+      toast.error("Te veel pogingen", {
+        description: `Je hebt het maximale aantal pogingen bereikt. Probeer het over ${mins} minuut${mins === 1 ? "" : "en"} opnieuw.`,
+      });
+      return;
+    }
+    recordBookingAttempt();
+
     setBookingError(null);
     setSubmitting(true);
 
@@ -323,6 +337,15 @@ const ReserveWidget = () => {
     return Array.from({ length: max }, (_, i) => i + 1);
   }, [restaurant]);
 
+  if (restaurantError) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-6">
+        <div className="max-w-sm text-center space-y-2">
+          <p className="text-foreground font-medium">{restaurantError}</p>
+        </div>
+      </div>
+    );
+  }
   if (!restaurant) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -438,7 +461,7 @@ const ReserveWidget = () => {
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0" align="start">
                   <Calendar mode="single" selected={date} onSelect={(d) => d && setDate(d)} initialFocus locale={nl}
-                    disabled={(d) => d < new Date(new Date().setHours(0, 0, 0, 0)) || d > new Date(Date.now() + 90 * 24 * 60 * 60 * 1000)}
+                    disabled={(d) => d < new Date(new Date().setHours(0, 0, 0, 0)) || d > new Date(Date.now() + (restaurant.booking_horizon_days ?? 30) * 24 * 60 * 60 * 1000)}
                     className={cn("p-3 pointer-events-auto")} />
                 </PopoverContent>
               </Popover>
