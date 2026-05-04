@@ -79,6 +79,7 @@ type Settings = {
   contact_sync_enabled: boolean;
   workflow_mapping: Record<string, { workflowName?: string; enabled?: boolean; workflowId?: string }>;
   custom_field_mapping: Record<string, { clickWise?: string; enabled?: boolean }>;
+  tag_mapping: Record<string, { label?: string; enabled?: boolean; tag?: string }>;
   privacy_options: Record<string, boolean>;
   location_id: string | null;
 };
