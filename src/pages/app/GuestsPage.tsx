@@ -132,9 +132,11 @@ const GuestsPage = () => {
               title="Nog geen gastprofielen"
               description="Voeg een eerste gast toe of laat reserveringen automatisch profielen aanmaken."
               action={
-                <Button onClick={() => setCreateOpen(true)}>
-                  <Plus className="h-4 w-4 mr-1" /> Gast toevoegen
-                </Button>
+                readOnly ? undefined : (
+                  <Button onClick={() => setCreateOpen(true)}>
+                    <Plus className="h-4 w-4 mr-1" /> Gast toevoegen
+                  </Button>
+                )
               }
             />
           ) : (
@@ -179,25 +181,30 @@ const GuestsPage = () => {
       <GuestDetailSheet
         guestId={selectedId}
         restaurantId={restaurantId}
+        readOnly={readOnly}
         onOpenEdit={(g) => setEditing(g)}
         onOpenReservation={(id) => setReservationOpen(id)}
         onClose={() => setSelectedId(null)}
       />
 
-      {/* Create */}
-      <GuestFormSheet
-        open={createOpen} onOpenChange={setCreateOpen}
-        restaurantId={restaurantId}
-        onSaved={() => { refreshAll(); }}
-        onUseExisting={(g) => { setSelectedId(g.id); }}
-      />
-      {/* Edit */}
-      <GuestFormSheet
-        open={!!editing} onOpenChange={(o) => !o && setEditing(null)}
-        restaurantId={restaurantId}
-        guest={editing}
-        onSaved={() => { refreshAll(); setEditing(null); }}
-      />
+      {!readOnly && (
+        <>
+          {/* Create */}
+          <GuestFormSheet
+            open={createOpen} onOpenChange={setCreateOpen}
+            restaurantId={restaurantId}
+            onSaved={() => { refreshAll(); }}
+            onUseExisting={(g) => { setSelectedId(g.id); }}
+          />
+          {/* Edit */}
+          <GuestFormSheet
+            open={!!editing} onOpenChange={(o) => !o && setEditing(null)}
+            restaurantId={restaurantId}
+            guest={editing}
+            onSaved={() => { refreshAll(); setEditing(null); }}
+          />
+        </>
+      )}
 
       <ReservationDetailDialog
         reservationId={reservationOpen}
