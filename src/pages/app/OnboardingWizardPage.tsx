@@ -349,7 +349,7 @@ const TestReservationStep = ({ restaurantId }: StepCtx) => {
           end_time: end.toISOString(),
           party_size: 2,
           status: "pending",
-          channel: "manual",
+          channel: "manager",
           source_label: "wizard_test",
           source_metadata: { test: true, source: "onboarding_wizard" },
           internal_notes: "Test-reservering vanuit setup-wizard",
