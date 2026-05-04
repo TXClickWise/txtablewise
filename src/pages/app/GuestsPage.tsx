@@ -216,13 +216,14 @@ const GuestsPage = () => {
 };
 
 function GuestDetailSheet({
-  guestId, restaurantId, onClose, onOpenEdit, onOpenReservation,
+  guestId, restaurantId, onClose, onOpenEdit, onOpenReservation, readOnly = false,
 }: {
   guestId: string | null;
   restaurantId: string;
   onClose: () => void;
   onOpenEdit: (g: Guest) => void;
   onOpenReservation: (id: string) => void;
+  readOnly?: boolean;
 }) {
   const [guest, setGuest] = useState<Guest | null>(null);
   const [loading, setLoading] = useState(false);
