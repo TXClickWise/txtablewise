@@ -9,6 +9,7 @@ import { OnboardingBanner } from "./onboarding/OnboardingBanner";
 import { ConnectionStatusNotice } from "./touch";
 import { TrialBanner } from "./plan/TrialBanner";
 import { PilotWarningBanner } from "./pilot/PilotWarningBanner";
+import { AdminOverrideBanner } from "./admin/AdminOverrideBanner";
 
 const AppShellInner = ({ children }: { children?: ReactNode }) => {
   const { current, loading } = useRestaurant();
@@ -17,7 +18,8 @@ const AppShellInner = ({ children }: { children?: ReactNode }) => {
   if (loading) {
     return <div className="min-h-screen flex items-center justify-center text-muted-foreground">Laden…</div>;
   }
-  if (!current) {
+  const isAdminRoute = location.pathname.startsWith("/app/admin");
+  if (!current && !isAdminRoute) {
     return <Navigate to="/onboarding" replace />;
   }
 
@@ -32,6 +34,7 @@ const AppShellInner = ({ children }: { children?: ReactNode }) => {
             <SidebarTrigger />
             <div className="flex-1" />
           </header>
+          <AdminOverrideBanner />
           <ConnectionStatusNotice />
           <TrialBanner />
           {!isWizard && <PilotWarningBanner />}

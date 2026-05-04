@@ -1,7 +1,7 @@
 import {
   LayoutDashboard, CalendarDays, Users, Settings, MessageSquare,
   Hand, ListChecks, BarChart3, Plug, Tablet, ShieldCheck, Bot,
-  Database, FileText, CreditCard, Shield, Crown, GraduationCap,
+  Database, FileText, CreditCard, Shield, Crown, GraduationCap, Store,
 } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import {
@@ -43,6 +43,7 @@ const beheer: Item[] = [
 
 // System admin only
 const admin: Item[] = [
+  { title: "Restaurants", url: "/app/admin/restaurants", icon: Store },
   { title: "Plan-aanvragen", url: "/app/admin/plan-requests", icon: Crown },
   { title: "Integratiebeheer", url: "/app/admin/integraties", icon: Database },
   { title: "Integratie-logs", url: "/app/admin/logs", icon: FileText },
