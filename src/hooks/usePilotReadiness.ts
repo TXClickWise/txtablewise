@@ -36,8 +36,8 @@ export function usePilotReadiness(restaurantId: string | undefined) {
         supabase.from("restaurants").select("*").eq("id", rid).maybeSingle(),
         supabase.from("opening_hours").select("id", { count: "exact", head: true }).eq("restaurant_id", rid).eq("is_closed", false),
         supabase.from("shifts").select("id", { count: "exact", head: true }).eq("restaurant_id", rid).eq("is_active", true),
-        supabase.from("zones" as never).select("id", { count: "exact", head: true }).eq("restaurant_id" as never, rid).then((res: any) => res).catch(() => ({ count: 0 })),
-        supabase.from("tables" as never).select("id", { count: "exact", head: true }).eq("restaurant_id" as never, rid).eq("is_active" as never, true).then((res: any) => res).catch(() => ({ count: 0 })),
+        supabase.from("zones").select("id", { count: "exact", head: true }).eq("restaurant_id", rid),
+        supabase.from("tables").select("id", { count: "exact", head: true }).eq("restaurant_id", rid).eq("is_active", true),
         supabase.from("restaurant_members").select("id", { count: "exact", head: true }).eq("restaurant_id", rid).eq("role", "owner"),
       ]);
 
