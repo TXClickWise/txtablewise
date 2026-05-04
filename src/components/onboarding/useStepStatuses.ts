@@ -94,23 +94,27 @@ export function useStepStatuses(restaurantId: string | undefined) {
       const apiDone = (apiTokenCount ?? 0) > 0 || webhookConfigured;
       const testDone = !!lastTestRes;
 
+      const skipped: Record<string, boolean> =
+        (r.metadata?.onboarding_skipped as Record<string, boolean>) ?? {};
+      const withSkip = (key: WizardStepKey, status: StepStatus): StepStatus =>
+        status === "done" ? "done" : skipped[key] ? "skipped" : status;
+
       return {
-        restaurant: restaurantDone ? "done" : r.name ? "in_progress" : "not_started",
-        hours: hoursDone ? "done" : "not_started",
-        tables_zones: tablesDone ? "done" : "not_started",
-        rules: rulesDone ? "done" : "not_started",
-        online_widget: widgetDone ? "done" : "not_started",
-        walkins_waitlist: walkinsDone ? "done" : "not_started",
-        noshow: noshowDone ? "done" : "not_started",
-        messages: messagesDone ? "done" : noshowDone ? "in_progress" : "not_started",
-        ai_voice: aiVoiceDone ? "done" : "not_started",
-        clickwise: clickwiseConfigured ? "done" : "not_started",
-        api_webhooks: webhookFailing
-          ? "attention"
-          : apiDone
-            ? "done"
-            : "not_started",
-        test_reservation: testDone ? "done" : "not_started",
+        restaurant: withSkip("restaurant", restaurantDone ? "done" : r.name ? "in_progress" : "not_started"),
+        hours: withSkip("hours", hoursDone ? "done" : "not_started"),
+        tables_zones: withSkip("tables_zones", tablesDone ? "done" : "not_started"),
+        rules: withSkip("rules", rulesDone ? "done" : "not_started"),
+        online_widget: withSkip("online_widget", widgetDone ? "done" : "not_started"),
+        walkins_waitlist: withSkip("walkins_waitlist", walkinsDone ? "done" : "not_started"),
+        noshow: withSkip("noshow", noshowDone ? "done" : "not_started"),
+        messages: withSkip("messages", messagesDone ? "done" : noshowDone ? "in_progress" : "not_started"),
+        ai_voice: withSkip("ai_voice", aiVoiceDone ? "done" : "not_started"),
+        clickwise: withSkip("clickwise", clickwiseConfigured ? "done" : "not_started"),
+        api_webhooks: withSkip(
+          "api_webhooks",
+          webhookFailing ? "attention" : apiDone ? "done" : "not_started",
+        ),
+        test_reservation: withSkip("test_reservation", testDone ? "done" : "not_started"),
       };
     },
   });
