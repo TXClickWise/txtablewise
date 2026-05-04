@@ -82,7 +82,7 @@ export default function SubscriptionSettings() {
       <div>
         <h1 className="font-display text-2xl mb-1">Abonnement</h1>
         <p className="text-sm text-muted-foreground">
-          TableWise is commissie-vrij. Eén vast tarief per maand, geen kosten per reservering.
+          TX TableWise is commissie-vrij. Eén vast tarief per maand, geen kosten per reservering.
         </p>
       </div>
 

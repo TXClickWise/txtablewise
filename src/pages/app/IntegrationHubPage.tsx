@@ -132,7 +132,7 @@ export default function IntegrationHubPage() {
         <TabsContent value="public" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">TableWise Public API</CardTitle>
+              <CardTitle className="text-base">TX TableWise Public API</CardTitle>
               <CardDescription>
                 Eén schone laag voor ClickWise, voice-agents, WhatsApp/SMS-bots en CRM's.
                 Gebruikt dezelfde reserveringen als de app — geen tweede systeem.

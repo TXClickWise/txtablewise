@@ -327,7 +327,7 @@ const WidgetSettings = () => {
 
               <div className="flex items-center justify-between pt-2 border-t border-border">
                 <div>
-                  <Label htmlFor="show-tw-logo" className="text-sm">Toon "powered by TableWise"</Label>
+                  <Label htmlFor="show-tw-logo" className="text-sm">Toon "powered by TX TableWise"</Label>
                   <p className="text-xs text-muted-foreground">Subtiel onderaan de header.</p>
                 </div>
                 <Switch id="show-tw-logo" checked={showTableWiseLogo} onCheckedChange={setShowTableWiseLogo} />

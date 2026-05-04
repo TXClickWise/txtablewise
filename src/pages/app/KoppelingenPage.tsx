@@ -223,7 +223,7 @@ export default function KoppelingenPage() {
       key: "voice",
       icon: Phone,
       title: "AI Voice (telefoon)",
-      description: "Telefonische reserveringen — gast belt, AI verzamelt, TableWise boekt.",
+      description: "Telefonische reserveringen — gast belt, AI verzamelt, TX TableWise boekt.",
       state: voice,
       detail: voiceDetail,
       manageHref: "/app/voice-agent",
@@ -252,7 +252,7 @@ export default function KoppelingenPage() {
     <div className="p-4 sm:p-6 space-y-6 max-w-5xl mx-auto">
       <PageHeader
         title="Koppelingen"
-        description="Eén overzicht van wat verbonden is. TableWise blijft werken — ook zonder externe systemen."
+        description="Eén overzicht van wat verbonden is. TX TableWise blijft werken — ook zonder externe systemen."
       />
 
       {loading ? (

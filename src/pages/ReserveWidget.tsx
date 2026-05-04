@@ -378,7 +378,7 @@ const ReserveWidget = () => {
           </div>
           {!hideTableWiseLogo && (
             <Link to="/" className="text-xs text-muted-foreground hover:text-foreground whitespace-nowrap">
-              powered by <span className="font-display text-primary">TableWise</span>
+              powered by <span className="font-display text-primary">TX TableWise</span>
             </Link>
           )}
         </div>

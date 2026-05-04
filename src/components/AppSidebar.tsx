@@ -108,7 +108,7 @@ export function AppSidebar() {
       <SidebarHeader className="border-b border-sidebar-border">
         <div className={cn("px-2 py-2", collapsed && "px-0 text-center")}>
           <div className="font-display text-lg text-sidebar-primary leading-tight flex items-center gap-1.5">
-            {collapsed ? "TW" : "TableWise"}
+            {collapsed ? "TX" : "TX TableWise"}
             {!collapsed && isSystemAdmin && (
               <Badge variant="outline" className="text-[9px] px-1.5 py-0 h-4 border-primary/40 text-primary">
                 ADMIN

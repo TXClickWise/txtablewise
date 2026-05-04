@@ -69,7 +69,7 @@ const Onboarding = () => {
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <div className="w-full max-w-lg">
         <div className="text-center mb-8">
-          <h1 className="font-display text-3xl text-primary">Welkom bij TableWise</h1>
+          <h1 className="font-display text-3xl text-primary">Welkom bij TX TableWise</h1>
           <p className="text-sm text-muted-foreground mt-2">Laten we je restaurant opzetten</p>
         </div>
 
