@@ -24,6 +24,10 @@ import {
   dispatchAIAction,
 } from "@/services/aiHost";
 import { useRestaurant } from "@/hooks/useRestaurant";
+import { ChannelReadinessCards } from "@/components/ai-host/ChannelReadinessCards";
+import { AIActionTestConsole } from "@/components/ai-host/AIActionTestConsole";
+import { AIActionLogs } from "@/components/ai-host/AIActionLogs";
+import { HighLevelToolSetupPanel } from "@/components/ai-host/HighLevelToolSetupPanel";
 
 const CHANNELS = [
   { Icon: Phone, t: "Voice AI", d: "Neemt op wanneer je kookt" },
