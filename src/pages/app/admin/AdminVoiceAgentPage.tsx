@@ -174,7 +174,7 @@ export default function AdminVoiceAgentPage() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex gap-2">
-                <Input placeholder="Naam, bv. 'Vapi productie'" value={newKeyLabel} onChange={(e) => setNewKeyLabel(e.target.value)} />
+                <Input placeholder="Naam, bv. 'ClickWise Voice'" value={newKeyLabel} onChange={(e) => setNewKeyLabel(e.target.value)} />
                 <Button onClick={createKey}><Plus className="h-4 w-4 mr-1" /> Genereer</Button>
               </div>
 
@@ -285,7 +285,7 @@ export default function AdminVoiceAgentPage() {
               <div className="flex items-start justify-between gap-2">
                 <div>
                   <CardTitle className="text-lg font-display">Prompt template</CardTitle>
-                  <CardDescription>Kopieer naar Vapi/Retell/ClickWise. Dwingt 6-staps flow af.</CardDescription>
+                  <CardDescription>Kopieer naar ClickWise. Dwingt 6-staps flow af.</CardDescription>
                 </div>
                 <Button size="sm" variant="outline" onClick={() => copy(VOICE_FLOW_PROMPT_TEMPLATE)}>
                   <Copy className="h-3 w-3 mr-1" /> Kopieer

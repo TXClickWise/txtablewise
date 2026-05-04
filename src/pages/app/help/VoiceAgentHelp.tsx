@@ -446,7 +446,7 @@ const SECTIONS: Section[] = [
             <div className="text-xs text-muted-foreground">
               Parameters: <code>date</code> (YYYY-MM-DD), <code>time</code> (HH:MM 24h),
               <code> party_size</code> (1–8). <strong>Naam, telefoon en e-mail</strong> komen uit de
-              standaard ClickWise/HighLevel contactvelden via <code>{`{{contact.first_name}}`}</code>,{" "}
+              standaard ClickWise contactvelden via <code>{`{{contact.first_name}}`}</code>,{" "}
               <code>{`{{contact.last_name}}`}</code>, <code>{`{{contact.phone}}`}</code> en{" "}
               <code>{`{{contact.email}}`}</code> — die hoef je niet als custom field aan te maken.
               Optioneel: <code>special_requests</code> (allergieën / gelegenheid).
