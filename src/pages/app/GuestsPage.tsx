@@ -44,6 +44,8 @@ const FILTERS: { value: GuestFilter; label: string }[] = [
 const GuestsPage = () => {
   const { current } = useRestaurant();
   const restaurantId = current?.restaurant_id;
+  const role = current?.role;
+  const readOnly = role === "host" || role === "staff";
   const qc = useQueryClient();
 
   const [search, setSearch] = useState("");
@@ -85,9 +87,11 @@ const GuestsPage = () => {
             <Button variant="outline" size="icon" className="h-11 w-11" onClick={() => refetch()} disabled={isLoading} aria-label="Vernieuwen">
               <RefreshCw className={isLoading ? "h-4 w-4 animate-spin" : "h-4 w-4"} />
             </Button>
-            <Button size="lg" className="h-11" onClick={() => setCreateOpen(true)}>
-              <Plus className="mr-1 h-4 w-4" /> Gast
-            </Button>
+            {!readOnly && (
+              <Button size="lg" className="h-11" onClick={() => setCreateOpen(true)}>
+                <Plus className="mr-1 h-4 w-4" /> Gast
+              </Button>
+            )}
           </>
         }
       />
@@ -128,9 +132,11 @@ const GuestsPage = () => {
               title="Nog geen gastprofielen"
               description="Voeg een eerste gast toe of laat reserveringen automatisch profielen aanmaken."
               action={
-                <Button onClick={() => setCreateOpen(true)}>
-                  <Plus className="h-4 w-4 mr-1" /> Gast toevoegen
-                </Button>
+                readOnly ? undefined : (
+                  <Button onClick={() => setCreateOpen(true)}>
+                    <Plus className="h-4 w-4 mr-1" /> Gast toevoegen
+                  </Button>
+                )
               }
             />
           ) : (
@@ -175,25 +181,30 @@ const GuestsPage = () => {
       <GuestDetailSheet
         guestId={selectedId}
         restaurantId={restaurantId}
+        readOnly={readOnly}
         onOpenEdit={(g) => setEditing(g)}
         onOpenReservation={(id) => setReservationOpen(id)}
         onClose={() => setSelectedId(null)}
       />
 
-      {/* Create */}
-      <GuestFormSheet
-        open={createOpen} onOpenChange={setCreateOpen}
-        restaurantId={restaurantId}
-        onSaved={() => { refreshAll(); }}
-        onUseExisting={(g) => { setSelectedId(g.id); }}
-      />
-      {/* Edit */}
-      <GuestFormSheet
-        open={!!editing} onOpenChange={(o) => !o && setEditing(null)}
-        restaurantId={restaurantId}
-        guest={editing}
-        onSaved={() => { refreshAll(); setEditing(null); }}
-      />
+      {!readOnly && (
+        <>
+          {/* Create */}
+          <GuestFormSheet
+            open={createOpen} onOpenChange={setCreateOpen}
+            restaurantId={restaurantId}
+            onSaved={() => { refreshAll(); }}
+            onUseExisting={(g) => { setSelectedId(g.id); }}
+          />
+          {/* Edit */}
+          <GuestFormSheet
+            open={!!editing} onOpenChange={(o) => !o && setEditing(null)}
+            restaurantId={restaurantId}
+            guest={editing}
+            onSaved={() => { refreshAll(); setEditing(null); }}
+          />
+        </>
+      )}
 
       <ReservationDetailDialog
         reservationId={reservationOpen}
@@ -205,13 +216,14 @@ const GuestsPage = () => {
 };
 
 function GuestDetailSheet({
-  guestId, restaurantId, onClose, onOpenEdit, onOpenReservation,
+  guestId, restaurantId, onClose, onOpenEdit, onOpenReservation, readOnly = false,
 }: {
   guestId: string | null;
   restaurantId: string;
   onClose: () => void;
   onOpenEdit: (g: Guest) => void;
   onOpenReservation: (id: string) => void;
+  readOnly?: boolean;
 }) {
   const [guest, setGuest] = useState<Guest | null>(null);
   const [loading, setLoading] = useState(false);
@@ -276,7 +288,9 @@ function GuestDetailSheet({
                 <div className="flex gap-2 pt-2">
                   {guest.email && <Button variant="outline" size="sm" asChild><a href={`mailto:${guest.email}`}><Mail className="h-3.5 w-3.5 mr-1" /> Mail</a></Button>}
                   {guest.phone && <Button variant="outline" size="sm" asChild><a href={`tel:${guest.phone}`}><Phone className="h-3.5 w-3.5 mr-1" /> Bel</a></Button>}
-                  <Button size="sm" className="ml-auto" onClick={() => onOpenEdit(guest)}>Wijzigen</Button>
+                  {!readOnly && (
+                    <Button size="sm" className="ml-auto" onClick={() => onOpenEdit(guest)}>Wijzigen</Button>
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -322,7 +336,7 @@ function GuestDetailSheet({
                 <CardTitle className="text-sm font-display">Notities</CardTitle>
               </CardHeader>
               <CardContent className="pt-0">
-                <GuestNotesSection restaurantId={restaurantId} guestId={guest.id} />
+                <GuestNotesSection restaurantId={restaurantId} guestId={guest.id} readOnly={readOnly} />
               </CardContent>
             </Card>
 

@@ -16,7 +16,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
-type Item = { title: string; url: string; icon: typeof LayoutDashboard; end?: boolean; advanced?: boolean };
+type Role = "owner" | "manager" | "host" | "staff";
+type Item = { title: string; url: string; icon: typeof LayoutDashboard; end?: boolean; advanced?: boolean; roles?: Role[] };
 
 const operatie: Item[] = [
   { title: "Vandaag", url: "/app", icon: LayoutDashboard, end: true },
@@ -31,14 +32,14 @@ const gasten: Item[] = [
 ];
 
 const hospitality: Item[] = [
-  { title: "Gastcommunicatie", url: "/app/gastcommunicatie", icon: MessageSquare },
-  { title: "AI Host & Voice", url: "/app/ai-voice", icon: Bot },
+  { title: "Gastcommunicatie", url: "/app/gastcommunicatie", icon: MessageSquare, roles: ["owner","manager"] },
+  { title: "AI Host & Voice", url: "/app/ai-voice", icon: Bot, roles: ["owner","manager"] },
 ];
 
 const beheer: Item[] = [
-  { title: "Rapportages", url: "/app/rapportages", icon: BarChart3 },
-  { title: "Koppelingen", url: "/app/koppelingen", icon: Plug },
-  { title: "Instellingen", url: "/app/instellingen", icon: Settings },
+  { title: "Rapportages", url: "/app/rapportages", icon: BarChart3, roles: ["owner","manager"] },
+  { title: "Koppelingen", url: "/app/koppelingen", icon: Plug, roles: ["owner","manager"] },
+  { title: "Instellingen", url: "/app/instellingen", icon: Settings, roles: ["owner","manager"] },
 ];
 
 // System admin only
@@ -54,8 +55,8 @@ const admin: Item[] = [
   { title: "Pilot readiness", url: "/app/admin/pilot-readiness", icon: ShieldCheck },
 ];
 
-function Group({ label, items, collapsed, pathname, accent, onNavigate, canSeeAdvanced }: { label: string; items: Item[]; collapsed: boolean; pathname: string; accent?: boolean; onNavigate?: () => void; canSeeAdvanced: boolean }) {
-  const visible = items.filter((i) => !i.advanced || canSeeAdvanced);
+function Group({ label, items, collapsed, pathname, accent, onNavigate, canSeeAdvanced, role }: { label: string; items: Item[]; collapsed: boolean; pathname: string; accent?: boolean; onNavigate?: () => void; canSeeAdvanced: boolean; role: Role | null }) {
+  const visible = items.filter((i) => (!i.advanced || canSeeAdvanced) && (!i.roles || (role && i.roles.includes(role))));
   if (visible.length === 0) return null;
   return (
     <SidebarGroup>
@@ -121,13 +122,20 @@ export function AppSidebar() {
       </SidebarHeader>
 
       <SidebarContent>
-        <Group label="Operatie" items={operatie} collapsed={collapsed} pathname={location.pathname} onNavigate={handleNavigate} canSeeAdvanced={canSeeAdvanced} />
-        <Group label="Gasten" items={gasten} collapsed={collapsed} pathname={location.pathname} onNavigate={handleNavigate} canSeeAdvanced={canSeeAdvanced} />
-        <Group label="Hospitality" items={hospitality} collapsed={collapsed} pathname={location.pathname} onNavigate={handleNavigate} canSeeAdvanced={canSeeAdvanced} />
-        <Group label="Beheer" items={beheer} collapsed={collapsed} pathname={location.pathname} onNavigate={handleNavigate} canSeeAdvanced={canSeeAdvanced} />
-        {isSystemAdmin && (
-          <Group label="Admin" items={admin} collapsed={collapsed} pathname={location.pathname} accent onNavigate={handleNavigate} canSeeAdvanced={canSeeAdvanced} />
-        )}
+        {(() => {
+          const role = (current?.role as Role | undefined) ?? null;
+          return (
+            <>
+              <Group label="Operatie" items={operatie} collapsed={collapsed} pathname={location.pathname} onNavigate={handleNavigate} canSeeAdvanced={canSeeAdvanced} role={role} />
+              <Group label="Gasten" items={gasten} collapsed={collapsed} pathname={location.pathname} onNavigate={handleNavigate} canSeeAdvanced={canSeeAdvanced} role={role} />
+              <Group label="Hospitality" items={hospitality} collapsed={collapsed} pathname={location.pathname} onNavigate={handleNavigate} canSeeAdvanced={canSeeAdvanced} role={role} />
+              <Group label="Beheer" items={beheer} collapsed={collapsed} pathname={location.pathname} onNavigate={handleNavigate} canSeeAdvanced={canSeeAdvanced} role={role} />
+              {isSystemAdmin && (
+                <Group label="Admin" items={admin} collapsed={collapsed} pathname={location.pathname} accent onNavigate={handleNavigate} canSeeAdvanced={canSeeAdvanced} role={role} />
+              )}
+            </>
+          );
+        })()}
       </SidebarContent>
 
       <SidebarFooter className="border-t border-sidebar-border">

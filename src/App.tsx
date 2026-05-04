@@ -77,20 +77,20 @@ const App = () => (
             <Route path="/onboarding" element={<RequireAuth><Onboarding /></RequireAuth>} />
             <Route path="/app" element={<RequireAuth><AppShell /></RequireAuth>}>
               <Route index element={<ErrorBoundary label="TodayPage"><TodayPage /></ErrorBoundary>} />
-              <Route path="onboarding" element={<OnboardingWizardPage />} />
+              <Route path="onboarding" element={<RequireRole allow={["owner"]}><OnboardingWizardPage /></RequireRole>} />
 
               {/* Geconsolideerde schermen */}
               <Route path="agenda" element={<ErrorBoundary label="AgendaTabsPage"><AgendaTabsPage /></ErrorBoundary>} />
               <Route path="vloer" element={<ErrorBoundary label="VloerTabsPage"><VloerTabsPage /></ErrorBoundary>} />
               <Route path="gasten" element={<ErrorBoundary label="GastenTabsPage"><GastenTabsPage /></ErrorBoundary>} />
-              <Route path="gastcommunicatie" element={<GastcommunicatiePage />} />
-              <Route path="ai-voice" element={<AIHostVoicePage />} />
-              <Route path="koppelingen" element={<KoppelingenTabsPage />} />
+              <Route path="gastcommunicatie" element={<RequireRole allow={["owner","manager"]}><GastcommunicatiePage /></RequireRole>} />
+              <Route path="ai-voice" element={<RequireRole allow={["owner","manager"]}><AIHostVoicePage /></RequireRole>} />
+              <Route path="koppelingen" element={<RequireRole allow={["owner","manager"]}><KoppelingenTabsPage /></RequireRole>} />
 
               {/* Operatie — losse schermen */}
               <Route path="walk-ins" element={<ErrorBoundary label="WalkInsPage"><WalkInsPage /></ErrorBoundary>} />
               <Route path="wachtlijst" element={<ErrorBoundary label="WaitlistPage"><WaitlistPage /></ErrorBoundary>} />
-              <Route path="rapportages" element={<ReportsPage />} />
+              <Route path="rapportages" element={<RequireRole allow={["owner","manager"]}><ReportsPage /></RequireRole>} />
               <Route path="help/voice-agent" element={<VoiceAgentHelp />} />
 
               {/* Legacy redirects naar nieuwe tab-locaties */}
@@ -123,7 +123,7 @@ const App = () => (
               <Route path="integraties/pos" element={<RequireSystemAdmin><POSIntegrationPage /></RequireSystemAdmin>} />
               <Route path="integraties/hub" element={<RequireSystemAdmin><IntegrationHubPage /></RequireSystemAdmin>} />
               <Route path="integraties/logs" element={<RequireSystemAdmin><IntegrationLogsPage /></RequireSystemAdmin>} />
-              <Route path="instellingen" element={<SettingsPage />}>
+              <Route path="instellingen" element={<RequireRole allow={["owner","manager"]}><SettingsPage /></RequireRole>}>
                 <Route index element={<GeneralSettings />} />
                 {/* New grouped sections */}
                 <Route path="openingstijden" element={<HoursClosuresSettings />} />
@@ -133,9 +133,9 @@ const App = () => (
                 <Route path="gasten" element={<GuestsSettings />} />
                 <Route path="berichten" element={<MessagesSettings />} />
                 <Route path="ai-voice" element={<AiVoiceSettings />} />
-                <Route path="integraties" element={<IntegrationsSettings />} />
-                <Route path="api" element={<ApiWebhooksSettings />} />
-                <Route path="gebruikers" element={<UsersRolesSettings />} />
+                <Route path="integraties" element={<RequireRole allow={["owner"]}><IntegrationsSettings /></RequireRole>} />
+                <Route path="api" element={<RequireRole allow={["owner"]}><ApiWebhooksSettings /></RequireRole>} />
+                <Route path="gebruikers" element={<RequireRole allow={["owner"]}><UsersRolesSettings /></RequireRole>} />
                 <Route path="abonnement" element={<RequireRole allow={["owner"]}><SubscriptionSettings /></RequireRole>} />
                 <Route path="pilot-launch" element={<RequireRole allow={["owner"]}><PilotLaunchSettings /></RequireRole>} />
                 {/* Legacy routes — preserved for old links */}
