@@ -6,6 +6,11 @@
 //   /agent_api/check_availability
 //   /agent_api/book_reservation
 //   /agent_api/cancel_reservation
+//   /agent_api/find_reservation
+//   /agent_api/update_reservation
+//   /agent_api/create_waitlist_entry
+//   /agent_api/get_opening_hours
+//   /agent_api/reconfirm_reservation
 //   /agent_api/log_call           (provider stuurt afronding van gesprek)
 //
 // Geen JWT vereist (zie config.toml). Validatie gebeurt server-side.
