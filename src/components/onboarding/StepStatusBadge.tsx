@@ -1,7 +1,7 @@
 import { cn } from "@/lib/utils";
-import { Check, Circle, AlertTriangle, Clock3 } from "lucide-react";
+import { Check, Circle, AlertTriangle, Clock3, MinusCircle } from "lucide-react";
 
-export type StepStatus = "not_started" | "in_progress" | "done" | "attention";
+export type StepStatus = "not_started" | "in_progress" | "done" | "attention" | "skipped";
 
 const META: Record<
   StepStatus,
@@ -29,6 +29,11 @@ const META: Record<
     className:
       "bg-red-500/10 text-red-700 border-red-500/30 dark:text-red-300",
     Icon: AlertTriangle,
+  },
+  skipped: {
+    label: "Overgeslagen",
+    className: "bg-muted text-muted-foreground border-border",
+    Icon: MinusCircle,
   },
 };
 
@@ -64,6 +69,7 @@ export const StepStatusDot = ({ status }: { status: StepStatus }) => {
     in_progress: "bg-amber-500",
     done: "bg-emerald-500",
     attention: "bg-red-500",
+    skipped: "bg-muted-foreground/40",
   };
   return <span className={cn("h-2 w-2 rounded-full shrink-0", colors[status])} />;
 };

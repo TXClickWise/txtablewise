@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { FloorPlanEditor } from "@/components/floor-plan/FloorPlanEditor";
+import { TableCombinationsManager } from "@/components/floor-plan/TableCombinationsManager";
 
 type Zone = { id: string; name: string; sort_order: number; is_active: boolean };
 type TableRow = {
@@ -31,6 +32,7 @@ export default function ZonesTablesSettings() {
   const rid = current?.restaurant_id;
   const [zones, setZones] = useState<Zone[]>([]);
   const [tables, setTables] = useState<TableRow[]>([]);
+  const [combos, setCombos] = useState<{ id: string; name: string; table_ids: string[]; is_active: boolean }[]>([]);
   const [loading, setLoading] = useState(true);
   const [newZone, setNewZone] = useState("");
   const [newTable, setNewTable] = useState<TableRow>({
@@ -39,15 +41,20 @@ export default function ZonesTablesSettings() {
 
   const load = async () => {
     if (!rid) return;
-    const [{ data: z }, { data: t }] = await Promise.all([
+    const [{ data: z }, { data: t }, { data: c }] = await Promise.all([
       supabase.from("zones").select("*").eq("restaurant_id", rid).order("sort_order"),
       supabase.from("tables").select("*").eq("restaurant_id", rid).order("label"),
+      supabase.from("table_combinations").select("id, name, table_ids, is_active").eq("restaurant_id", rid),
     ]);
     setZones(z ?? []);
     setTables((t ?? []) as TableRow[]);
+    setCombos((c ?? []) as any);
     setLoading(false);
   };
   useEffect(() => { load(); }, [rid]);
+
+  const combosForTable = (tableId: string) =>
+    combos.filter((c) => c.is_active && c.table_ids.includes(tableId));
 
   const addZone = async () => {
     if (!rid || !newZone.trim()) return;
@@ -123,36 +130,42 @@ export default function ZonesTablesSettings() {
         <CardContent className="space-y-3">
           {tables.length === 0 && <p className="text-sm text-muted-foreground">Nog geen tafels.</p>}
           <div className="space-y-2">
-            {tables.map((t) => (
-              <div key={t.id} className="grid grid-cols-12 gap-2 items-center">
-                <Input className="col-span-2" value={t.label} onChange={(e) => updateTable(t.id!, { label: e.target.value })} />
-                <Select value={t.zone_id ?? "none"} onValueChange={(v) => updateTable(t.id!, { zone_id: v === "none" ? null : v })}>
-                  <SelectTrigger className="col-span-3"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">Geen zone</SelectItem>
-                    {zones.map((z) => <SelectItem key={z.id} value={z.id}>{z.name}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-                <div className="col-span-2 flex items-center gap-1">
-                  <Input type="number" value={t.capacity_min} onChange={(e) => updateTable(t.id!, { capacity_min: parseInt(e.target.value) || 1 })} />
-                  <span className="text-muted-foreground">–</span>
-                  <Input type="number" value={t.capacity_max} onChange={(e) => updateTable(t.id!, { capacity_max: parseInt(e.target.value) || 1 })} />
+            {tables.map((t) => {
+              const inCombos = combosForTable(t.id!);
+              return (
+              <div key={t.id} className="space-y-1">
+                <div className="grid grid-cols-12 gap-2 items-center">
+                  <Input className="col-span-2" value={t.label} onChange={(e) => updateTable(t.id!, { label: e.target.value })} />
+                  <Select value={t.zone_id ?? "none"} onValueChange={(v) => updateTable(t.id!, { zone_id: v === "none" ? null : v })}>
+                    <SelectTrigger className="col-span-3"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Geen zone</SelectItem>
+                      {zones.map((z) => <SelectItem key={z.id} value={z.id}>{z.name}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                  <div className="col-span-3 flex items-center gap-1">
+                    <Input type="number" value={t.capacity_min} onChange={(e) => updateTable(t.id!, { capacity_min: parseInt(e.target.value) || 1 })} />
+                    <span className="text-muted-foreground">–</span>
+                    <Input type="number" value={t.capacity_max} onChange={(e) => updateTable(t.id!, { capacity_max: parseInt(e.target.value) || 1 })} />
+                  </div>
+                  <Select value={t.shape} onValueChange={(v) => updateTable(t.id!, { shape: v })}>
+                    <SelectTrigger className="col-span-3"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="round">Rond</SelectItem>
+                      <SelectItem value="square">Vierkant</SelectItem>
+                      <SelectItem value="rect">Rechthoek</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Button variant="ghost" size="icon" className="col-span-1" onClick={() => delTable(t.id!)}><Trash2 className="h-4 w-4" /></Button>
                 </div>
-                <Select value={t.shape} onValueChange={(v) => updateTable(t.id!, { shape: v })}>
-                  <SelectTrigger className="col-span-2"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="round">Rond</SelectItem>
-                    <SelectItem value="square">Vierkant</SelectItem>
-                    <SelectItem value="rect">Rechthoek</SelectItem>
-                  </SelectContent>
-                </Select>
-                <div className="col-span-2 flex items-center gap-2">
-                  <Switch checked={t.combinable} onCheckedChange={(v) => updateTable(t.id!, { combinable: v })} />
-                  <span className="text-xs text-muted-foreground">Combineer</span>
-                </div>
-                <Button variant="ghost" size="icon" className="col-span-1" onClick={() => delTable(t.id!)}><Trash2 className="h-4 w-4" /></Button>
+                {inCombos.length > 0 && (
+                  <p className="text-[11px] text-muted-foreground pl-1">
+                    Onderdeel van: {inCombos.map((c) => c.name).join(", ")}
+                  </p>
+                )}
               </div>
-            ))}
+              );
+            })}
           </div>
 
           <div className="border-t border-border pt-4 mt-4">
@@ -184,6 +197,8 @@ export default function ZonesTablesSettings() {
           </div>
         </CardContent>
       </Card>
+
+      {rid && <TableCombinationsManager restaurantId={rid} />}
       </TabsContent>
     </Tabs>
   );

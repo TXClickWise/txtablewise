@@ -349,7 +349,7 @@ const TestReservationStep = ({ restaurantId }: StepCtx) => {
           end_time: end.toISOString(),
           party_size: 2,
           status: "pending",
-          channel: "manual",
+          channel: "manager",
           source_label: "wizard_test",
           source_metadata: { test: true, source: "onboarding_wizard" },
           internal_notes: "Test-reservering vanuit setup-wizard",
@@ -401,9 +401,16 @@ const TestReservationStep = ({ restaurantId }: StepCtx) => {
           )}
         </Card>
       )}
-      <Button asChild variant="outline">
-        <Link to="/app/integraties/logs">Bekijk integratie-logs</Link>
-      </Button>
+      {!result && (
+        <p className="text-xs text-muted-foreground">
+          Tip: na een geslaagde test vind je de reservering terug in de agenda.
+        </p>
+      )}
+      {result && !result.ok && (
+        <p className="text-xs text-muted-foreground">
+          Controleer je instellingen en probeer opnieuw. Blijft het misgaan? Neem contact op met support.
+        </p>
+      )}
     </div>
   );
 };
@@ -642,12 +649,25 @@ export default function OnboardingWizard() {
   const Icon = step.icon;
   const totalSteps = STEPS.length;
 
-  // Progress = % completed (done) of the 12 real steps
+  // Progress = % completed (done or skipped) of the 12 real steps
   const completedCount = useMemo(() => {
     if (!statuses) return 0;
-    return Object.values(statuses).filter((s) => s === "done").length;
+    return Object.values(statuses).filter((s) => s === "done" || s === "skipped").length;
   }, [statuses]);
   const progress = (completedCount / 12) * 100;
+
+  const skipCurrentStep = async () => {
+    if (step.key === "welcome" || step.key === "done") return;
+    const prev = (settings as any)?.metadata?.onboarding_skipped ?? {};
+    await patch({
+      metadata: {
+        ...((settings as any)?.metadata ?? {}),
+        onboarding_skipped: { ...prev, [step.key]: true },
+      },
+    });
+    toast.success("Stap overgeslagen — je kunt dit later instellen.");
+    goNext();
+  };
 
   const goNext = () => {
     if (stepIndex < totalSteps - 1) setStepIndex((i) => i + 1);
@@ -755,15 +775,22 @@ export default function OnboardingWizard() {
             {step.key !== "welcome" && step.key !== "done" && (
               <>
                 <Separator className="my-6" />
-                <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center justify-between gap-3 flex-wrap">
                   <Button variant="ghost" onClick={goBack} disabled={stepIndex === 0}>
                     <ArrowLeft className="h-4 w-4 mr-1.5" />
                     Vorige
                   </Button>
-                  <Button onClick={goNext} size="lg">
-                    Volgende
-                    <ArrowRight className="h-4 w-4 ml-1.5" />
-                  </Button>
+                  <div className="flex items-center gap-2">
+                    {(step.key === "clickwise" || step.key === "api_webhooks" || step.key === "ai_voice") && (
+                      <Button variant="outline" onClick={skipCurrentStep}>
+                        Overslaan — ik stel dit later in
+                      </Button>
+                    )}
+                    <Button onClick={goNext} size="lg">
+                      Volgende
+                      <ArrowRight className="h-4 w-4 ml-1.5" />
+                    </Button>
+                  </div>
                 </div>
               </>
             )}
