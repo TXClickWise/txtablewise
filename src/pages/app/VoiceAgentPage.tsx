@@ -78,7 +78,7 @@ export default function VoiceAgentPage() {
     setSettings(
       (s.data as VoiceSettings | null) ?? {
         restaurant_id: rid,
-        provider: "vapi",
+        provider: "highlevel",
         agent_id: "",
         phone_number: "",
         mode: "sandbox",
