@@ -121,7 +121,7 @@ Optioneel: `contact.email`, `notes`, `language`, `source`, `externalReference`.
     "self":   "https://.../public_api/reservations/11111111-...",
     "update": "https://.../public_api/reservations/11111111-...",
     "cancel": "https://.../public_api/reservations/11111111-...",
-    "guestManage": "https://txtablewise.lovable.app/manage/<token>"
+    "guestManage": "https://txtablewise.nl/manage/<token>"
   }
 }
 ```
