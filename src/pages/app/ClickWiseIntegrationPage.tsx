@@ -649,10 +649,20 @@ const ClickWiseIntegrationPage = () => {
               )}
               <div>
                 <Label>Payload</Label>
-                <pre className="mt-1 rounded-lg bg-muted/50 p-3 text-xs overflow-x-auto max-h-96">
+                <pre className="mt-1 rounded-lg bg-muted/50 p-3 text-xs overflow-x-auto max-h-72">
                   {JSON.stringify(openEvent.payload, null, 2)}
                 </pre>
               </div>
+              {openEvent.metadata && Object.keys(openEvent.metadata).length > 0 && (
+                <details className="rounded-lg border p-3">
+                  <summary className="cursor-pointer text-sm font-medium">
+                    ClickWise response & metadata
+                  </summary>
+                  <pre className="mt-2 rounded bg-muted/50 p-3 text-xs overflow-x-auto max-h-72">
+                    {JSON.stringify(openEvent.metadata, null, 2)}
+                  </pre>
+                </details>
+              )}
               <div className="flex flex-wrap gap-2">
                 {openEvent.status !== "sent" && (
                   <Button onClick={() => handleProcessNow(openEvent.id)} disabled={processing}>
