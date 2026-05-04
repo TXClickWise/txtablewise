@@ -1,57 +1,107 @@
-# P1-001 — Volledige role-based route bescherming
+
+# Plan — Landingpage Redesign (Prompt 26)
 
 ## Doel
-Alle 20+ routes beschermen volgens de rollenmatrix (owner/manager/host/staff), sidebar filteren per rol, en de Gasten-pagina alleen-lezen maken voor host/staff.
+Volledige herschrijving van `src/pages/Index.tsx` naar een premium, Nederlandstalige B2B-conversiepagina gericht op horecaondernemers. Eén conversiedoel: demo aanvragen. Geen verwijzingen naar "Reserveer een tafel" of technisch jargon.
 
-## Aanpak — 3 stappen
+## Wijzigingen in 1 oogopslag
 
-### Stap 1 — `src/App.tsx`: routes wrappen met `RequireRole`
+```text
+src/pages/Index.tsx                  → volledig herschreven
+src/components/landing/              → nieuwe map met subcomponenten
+  ├── LandingHeader.tsx              → sticky header + mobiel hamburgermenu
+  ├── HeroSection.tsx                → hero met 2 CTA's + vertrouwenstrip
+  ├── PainPointsSection.tsx          → 3 herkenbare scenario's
+  ├── SolutionGrid.tsx               → 6 features (icon + titel + 1 zin)
+  ├── TrustSection.tsx               → "gebouwd voor NL horeca" + product mockup
+  ├── PricingSection.tsx             → Trial / Basic / Pro (op aanvraag)
+  ├── DemoRequestForm.tsx            → formulier → Supabase
+  └── LandingFooter.tsx              → minimale footer
+supabase/migrations/<ts>_demo_requests.sql  → nieuwe tabel + RLS
+```
 
-**Manager + Owner** (top-level routes):
-- `/app/rapportages` → `["owner","manager"]`
-- `/app/gastcommunicatie` → `["owner","manager"]`
-- `/app/ai-voice` → `["owner","manager"]`
-- `/app/koppelingen` → `["owner","manager"]`
+## Database
 
-**Owner-only**:
-- `/app/onboarding` → `["owner"]`
-- `instellingen/gebruikers` → `["owner"]`
-- `instellingen/api` → `["owner"]`
-- `instellingen/integraties` → `["owner"]`
-- (`abonnement` en `pilot-launch` zijn al beschermd ✅)
+Nieuwe tabel `public.demo_requests`:
 
-**Instellingen-parent** wrappen met `["owner","manager"]` zodat host/staff geen enkele instellingen-route kunnen openen. De owner-only child routes blijven extra gewrapped.
+| kolom | type | notitie |
+|---|---|---|
+| id | uuid pk | gen_random_uuid() |
+| restaurant_name | text not null | |
+| contact_name | text not null | |
+| email | text not null | |
+| phone | text | optioneel |
+| status | text | default 'new' (new/contacted/converted/closed) |
+| created_at | timestamptz | default now() |
 
-**Host/staff toegang behouden** voor: `/app` (Vandaag), `/app/agenda`, `/app/vloer`, `/app/walk-ins`, `/app/wachtlijst`, `/app/gasten` — geen wrapper nodig.
+RLS:
+- `INSERT` toegestaan voor `anon` + `authenticated` met simpele lengte-checks (naam ≤ 200, email ≤ 255, message niet relevant)
+- `SELECT/UPDATE` alleen voor `is_system_admin()`
 
-`RequireRole` leest `current.role` uit `useRestaurant()`. Bij actieve admin override geeft die hook `role: "owner"` terug, dus de admin-context-switch blijft werken zonder wijziging.
+## Pagina-structuur (mobile-first, 375px)
 
-### Stap 2 — `src/components/AppSidebar.tsx`: items filteren per rol
+### 1. Header (sticky, transparant over hero, wordt solid bij scroll)
+- Logo "TX TableWise" links
+- Desktop nav: Functies · Tarieven · Contact
+- CTA-knop "Gratis demo" altijd zichtbaar (scrollt naar `#contact`)
+- Mobiel: hamburger met nav + Inloggen-link
 
-- Huidige rol ophalen via `useRestaurant().current?.role`.
-- Per groep een `roles` whitelist definiëren:
-  - `operatie`, `gasten` → iedereen
-  - `hospitality` (Gastcommunicatie, AI Host & Voice) → owner/manager
-  - `beheer` (Rapportages, Koppelingen, Instellingen) → owner/manager
-  - `admin` → alleen system admin (al gefilterd via `isSystemAdmin`)
-- In de bestaande `Group`-component een `allowedRoles` filter toevoegen die items verbergt als de huidige rol niet match. System admin override ziet alles (omdat overrideroleforced naar "owner" staat).
+### 2. Hero
+- Achtergrond: bestaande `hero-restaurant.jpg` met donkere warm-overlay (gradient hero token)
+- H1: "Minder no-shows. Vollere tafels. Rustiger team."
+- Sub: "TX TableWise is het reserveringssysteem voor restaurants die hun eigen gasten willen beheren — zonder commissie, zonder gedoe."
+- Primair: **Plan een demo** → `#contact`
+- Secundair: **Bekijk wat het kan** → `#functies`
+- Vertrouwenstrip: "Commissievrij · Eigen gastdata · Klaar in 15 minuten"
+- Mobiel: H1 max 3 regels, knoppen full-width 48px hoog
 
-### Stap 3 — `src/pages/app/GuestsPage.tsx` + sub-componenten: read-only modus
+### 3. Pijnpunt-sectie ("Herkenbaar?")
+3 cards op licht canvas:
+- Gasten die niet komen opdagen
+- Drie systemen, nul overzicht
+- Geen tijd voor opvolging
 
-- In `GuestsPage`: bepaal `const readOnly = role === "host" || role === "staff"`.
-- Verberg/disable wanneer `readOnly`:
-  - "Nieuwe gast"-knop (`UserPlus`)
-  - "Bewerken" en "Verwijderen" in detail/sheet
-  - Notitie-invoer in `GuestNotesSection` (prop `readOnly`)
-- Props doorzetten naar `GuestFormSheet` en `GuestNotesSection` (nieuwe optionele `readOnly` prop). Form niet renderen als readOnly.
+### 4. Oplossing (`#functies`)
+6 blokken (icon + titel + 1 zin):
+Reserveringen · Tafelplan op tablet · No-show preventie · Wachtlijst · Gastprofielen · AI-host
+Lucide icons, geen jargon (geen ClickWise/POS/CRM op homepage).
+
+### 5. Trust-sectie
+- Linker kolom: 4 bullets (NL support, geen commissie, eigenaar gastdata, direct live)
+- Rechter kolom: dashboard mockup in afgerond device-frame met soft shadow. Gemaakt als pure HTML/CSS preview (geen externe asset) met demo-reservering rijen — premium, lichtgrijs canvas
+
+### 6. Tarieven (`#tarieven`)
+3 kaarten:
+- **Trial** — Gratis · 14 dagen → "Start gratis trial" → `/auth`
+- **Basic** — Op aanvraag → "Plan een demo"
+- **Pro** — Op aanvraag, badge "Aanbevolen" → "Plan een demo"
+- Onderschrift: "Transparante maandprijzen, geen commissie per couvert, maandelijks opzegbaar."
+
+### 7. Contact (`#contact`) — Demo formulier
+Velden: restaurant_name, contact_name, email, phone (optioneel)
+- Validatie via zod (`trim`, `email`, lengte-limieten)
+- Submit via supabase client → `demo_requests` insert
+- Success-state met dankboodschap, error-state met toast
+- Tekst onder knop: "We nemen binnen 24 uur contact op. Geen verplichtingen."
+
+### 8. Footer
+Logo + links (Functies, Tarieven, Contact, Inloggen, Privacybeleid placeholder) + copyright "© 2026 TX TableWise — Commissievrij reserveren voor moderne horeca"
+
+## Design / responsive
+- Hergebruik bestaande tokens: `bg-background`, `text-foreground`, `bg-primary`, `bg-accent`, `shadow-elegant`, `bg-gradient-hero`, `bg-gradient-warm`, radius `--radius`
+- Geen hardcoded HSL — alles via tokens
+- Breakpoints: mobiel single column, `md:` 2-kolom, `lg:` 3-kolom waar passend
+- Scroll-fade-in via `IntersectionObserver` hook (klein, inline) — geen extra dependencies
+- Lazy-load hero met `loading="eager"` (above-the-fold) maar `decoding="async"`
+
+## Wat wegvalt
+- "Reserveer een tafel" knoppen (overal)
+- "−42% no-shows" en alle verzonnen statistieken
+- Differentiators sectie met ClickWise / Loyverse referenties
+- "AI-first" badges
 
 ## Verificatie
-- Host: sidebar toont alleen Operatie + Gasten; `/app/rapportages` → "Geen toegang" kaart.
-- Manager: alles behalve Gebruikers/API/Integraties instellingen + onboarding.
-- Owner: alles behalve admin-sectie.
-- System admin override op restaurant: ziet alle pagina's (override forceert owner-rol).
-
-## Niet wijzigen
-- `RequireRole` component zelf
-- Edge functions, database, RLS
-- Routing structuur (alleen wrappers toevoegen)
+- `/` op 375px → hero past, geen horizontaal scroll, CTA's tikbaar
+- Demo-formulier insert → check via `supabase--read_query` op `demo_requests`
+- Inlog-link → `/auth`
+- Geen "Reserveer" tekst meer in `Index.tsx`
