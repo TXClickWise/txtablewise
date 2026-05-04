@@ -32,8 +32,12 @@ const HEX_RE = /^#[0-9a-fA-F]{6}$/;
 
 const WidgetSettings = () => {
   const { current } = useRestaurant();
+  const { plan } = usePlan();
+  const isPro = plan === "pro";
   const restaurant = current?.restaurants;
   const [brand, setBrand] = useState<RestaurantBrand | null>(null);
+  const [customDomain, setCustomDomain] = useState<string>("");
+  const [savingDomain, setSavingDomain] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
