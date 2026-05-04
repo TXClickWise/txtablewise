@@ -1,85 +1,62 @@
-## Doel
+# FIX-001 — Reservation Status Enum Mismatch
 
-Eindgebruiker werkt sneller en intuïtiever doordat dezelfde informatie nog maar op één logische plek in het menu staat. Geen functionaliteit verdwijnt — alleen de navigatiestructuur wordt versmald van 22 naar 11 sidebar-items via tabs en redirects.
+## Probleem
 
-## Nieuwe sidebar (eindgebruiker)
+De PostgreSQL enum `reservation_status` bevat `finished`, maar de hele codebase (edge functions, services, UI) gebruikt `completed`. Zodra een operator "Afgerond" markeert, faalt de DB-update omdat `completed` geen geldige enum-waarde is.
 
-```text
-Operatie
-  • Vandaag
-  • Agenda            (tabs: Tijdlijn | Lijst)
-  • Vloer             (tabs: Live | Bewerken)
-  • Walk-ins
-  • Wachtlijst
+## Aanpak
 
-Gasten
-  • Gasten            (tabs: Alle gasten | Grote groepen)
+1. Eén Supabase-migratie: voeg `completed` toe aan de enum en normaliseer bestaande `finished` records.
+2. Frontend opschonen: alle defensieve `["finished", "completed"]`-checks vereenvoudigen naar `["completed"]`.
+3. Geen wijzigingen aan edge functions, routing, navigatie of andere modules.
 
-Hospitality
-  • Gastcommunicatie  (tabs: No-show | Reviews & aftercare | Drankjes vooraf)
-  • AI Host & Voice   (tabs: AI Host | Voice Agent)
+## Stap 1 — Database migratie
 
-Beheer
-  • Rapportages
-  • Koppelingen       (tabs: Overzicht | ClickWise | POS | Voice setup | Integratiehub)
-  • Instellingen      (alle subpagina's bereikbaar via deze pagina, niet via sidebar)
+```sql
+-- FIX-001: Add 'completed' to reservation_status enum
+ALTER TYPE public.reservation_status ADD VALUE IF NOT EXISTS 'completed';
+
+-- Normaliseer bestaande records (apart statement, draait na ALTER TYPE commit)
+UPDATE public.reservations SET status = 'completed' WHERE status::text = 'finished';
+UPDATE public.reservation_status_history SET new_status = 'completed' WHERE new_status = 'finished';
+UPDATE public.reservation_status_history SET old_status = 'completed' WHERE old_status = 'finished';
 ```
 
-Admin-sectie (alleen system admins) blijft ongewijzigd — daar is detail gewenst.
+Let op: `reservation_status_history.old_status` / `new_status` zijn `text`, niet de enum — daar gewoon de string vervangen.
 
-## Wat er gebeurt per samenvoeging
+## Stap 2 — Frontend opschoning
 
-**Agenda + Reserveringen → één pagina "Agenda"**
-- Bestaande tijdlijn wordt tab "Tijdlijn"
-- Bestaande reserveringslijst wordt tab "Lijst"
-- `/app/reserveringen` blijft werken, opent Agenda op tab "Lijst"
+| Bestand | Wijziging |
+|---|---|
+| `src/components/reviews/ReservationAftercareSection.tsx` | `COMPLETED = ["completed", "finished"]` → `["completed"]` |
+| `src/services/reporting.ts` | `["finished", "completed", "seated"]` → `["completed", "seated"]` |
+| `src/services/reviews.ts` | `completedStatuses = ["finished", "completed"]` → `["completed"]` |
+| `src/pages/app/ReservationsPage.tsx` | Verwijder `r.status === "finished" ? "completed" : r.status` normalisatie; vereenvoudig `["cancelled", "no_show", "completed", "finished"]` → zonder `finished` |
+| `src/pages/app/TodayPage.tsx` | `["confirmed", "seated", "completed", "finished", "pending"]` → zonder `finished` |
+| `src/components/StatusBadge.tsx` | Verwijder `finished` entries uit `statusBadgeVariants`, `STATUS_LABELS`, `STATUS_DOTS` |
+| `src/pages/app/FloorPlanPage.tsx` | Controleer rond regel 484; verwijder dubbele "Afgerond"-knop indien aanwezig |
 
-**Vloer + Tafelplan → één pagina "Vloer"**
-- Floor Mode = tab "Live" (operationeel)
-- Tafelplan-bewerken = tab "Bewerken" (achter expliciete switch)
-- `/app/tafelplan` redirect naar Vloer + tab "Bewerken"
+Daarnaast doe ik een `rg "finished"` sweep om eventuele extra plekken (bv. ReservationCard, QuickActionsMenu, ReservationDetailDialog, FloorModePage) mee te nemen — alleen als ze écht naar deze status verwijzen, niet naar "afgerekend" tekst.
 
-**Gasten + Grote groepen → één pagina "Gasten"**
-- Alle gasten = standaardtab
-- Grote groepen = tab met filter party_size ≥ drempel
-- `/app/grote-groepen` redirect naar Gasten + tab "Grote groepen"
+## Stap 3 — Type-regeneratie
 
-**Gastcommunicatie (nieuw containerscherm)**
-- Tabs voor No-show preventie, Reviews & aftercare, Drankjes vooraf
-- Bestaande pagina-inhoud wordt 1-op-1 ingeladen per tab
-- Oude routes redirecten naar de juiste tab
+Na de migratie wordt `src/integrations/supabase/types.ts` automatisch bijgewerkt met de nieuwe enum-waarde. Geen handmatige actie nodig.
 
-**AI Host & Voice (nieuw containerscherm)**
-- Tabs voor AI Host en Voice Agent (eindgebruikersweergave)
-- Voice Agent debug/setup blijft bij Admin
+## Verificatie
 
-**Koppelingen (uitgebreid met tabs)**
-- Bestaande Koppelingen-pagina krijgt tabs: Overzicht, ClickWise, POS, Voice setup, Integratiehub
-- `/app/integraties`, `/app/koppelingen/clickwise`, `/app/koppelingen/pos` etc. redirecten naar juiste tab
-- Integratie-logs blijven admin-only
-
-**Instellingen blijft hub**
-- Geen losse settings-subpagina's in sidebar
-- Alle subpagina's (openingstijden, no-show config, etc.) bereikbaar via Instellingen-overzicht
-
-## Technisch
-
-- Geen pagina-content herschrijven. Bestaande page-componenten worden hergebruikt als tab-content.
-- Nieuwe wrapper-pagina's gebruiken shadcn `Tabs` met URL-sync (`?tab=...`) zodat directe links blijven werken.
-- Oude routes blijven in de router maar renderen een `<Navigate>` naar het nieuwe pad met juiste `?tab=`.
-- `src/components/AppSidebar.tsx` wordt afgeslankt tot de 11 items.
-- Geen database- of edge-function wijzigingen.
-- Alle bestaande deeplinks blijven werken via redirects.
+- Markeer een reservering als "Aan tafel" → "Afgerond": status wordt opgeslagen zonder DB-error.
+- Reserveringenlijst filtert correct op "Afgerond".
+- Rapportages tellen "Afgerond" reserveringen mee.
+- Aftercare-sectie verschijnt alleen na afronding.
 
 ## Buiten scope
 
-- Geen visuele redesign van de pagina's zelf.
-- Geen wijziging aan admin-sectie.
-- Geen wijziging aan onboarding wizard of publieke booking widget.
+- Edge functions (gebruiken al `completed` — niet aanraken).
+- `ALLOWED_TRANSITIONS` in `manage_reservation`.
+- Routing, navigatie, layout.
+- Andere enums of statusvelden.
 
-## Acceptatie
+## Risico's
 
-- Sidebar toont 11 items in 4 groepen voor een gewone gebruiker.
-- Alle bestaande functionaliteit blijft bereikbaar via maximaal 2 klikken.
-- Oude URLs blijven werken (redirect naar nieuwe tab).
-- Geen dubbele lijsten/cijfers meer onder verschillende menu-items.
+- `ALTER TYPE ... ADD VALUE` kan in oudere PG-versies niet in dezelfde transactie als DML gebruikt worden. Supabase voert migratie-statements los uit, dus dit werkt. Mocht het toch falen, splits ik in twee migratiebestanden.
+- `finished` blijft als enum-waarde bestaan (kan niet veilig verwijderd worden zonder enum-rebuild). Dat is OK: na de UPDATE worden er geen records meer mee aangemaakt en de frontend gebruikt het niet meer.
