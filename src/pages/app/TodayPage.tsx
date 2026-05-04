@@ -88,7 +88,7 @@ const TodayPage = () => {
 
   const kpis = useMemo(() => {
     const guestsTotal = reservations.reduce((sum, r) =>
-      ["confirmed", "seated", "completed", "finished", "pending"].includes(r.status) ? sum + r.party_size : sum, 0);
+      ["confirmed", "seated", "completed", "pending"].includes(r.status) ? sum + r.party_size : sum, 0);
     const seated = reservations.filter((r) => r.status === "seated").length;
     const noShows = reservations.filter((r) => r.status === "no_show").length;
     return { guestsTotal, seated, noShows };

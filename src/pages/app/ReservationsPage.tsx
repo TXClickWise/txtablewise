@@ -133,7 +133,7 @@ const ReservationsPage = () => {
 
       // status
       if (filters.status !== "all") {
-        const norm = r.status === "finished" ? "completed" : r.status;
+        const norm = r.status;
         if (norm !== filters.status) return false;
       }
       // signal
@@ -207,7 +207,7 @@ const ReservationsPage = () => {
     if (isToday && allTables.length > 0) {
       const occupiedTableIds = new Set<string>();
       for (const r of reservations) {
-        if (["cancelled", "no_show", "completed", "finished"].includes(r.status)) continue;
+        if (["cancelled", "no_show", "completed"].includes(r.status)) continue;
         const start = new Date(r.start_time);
         const end = r.end_time ? new Date(r.end_time) : new Date(start.getTime() + 90 * 60 * 1000);
         if (now >= start && now <= end) {

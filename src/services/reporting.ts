@@ -84,7 +84,7 @@ export async function getChannelMetrics(restaurantId: string, range: DateRange):
     row.covers += r.party_size;
     if (r.status === "no_show") row.noShows += 1;
     if (r.status === "cancelled") row.cancelled += 1;
-    if (["finished", "completed", "seated"].includes(r.status)) row.completed += 1;
+    if (["completed", "seated"].includes(r.status)) row.completed += 1;
     map.set(ch, row);
   }
   return Array.from(map.values()).map((r) => ({

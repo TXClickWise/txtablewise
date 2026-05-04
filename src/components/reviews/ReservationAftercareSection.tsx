@@ -15,7 +15,7 @@ type Props = {
   reservationStatus: string;
 };
 
-const COMPLETED = ["completed", "finished"];
+const COMPLETED = ["completed"];
 
 export function ReservationAftercareSection({ reservationId, reservationStatus }: Props) {
   const [review, setReview] = useState<ReviewRequest | null>(null);
