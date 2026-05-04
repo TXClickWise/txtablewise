@@ -166,6 +166,11 @@ export default function AdminRestaurantDetailPage() {
           </CardContent>
         </Card>
 
+        <PlatformBaseUrlCard
+          restaurantId={restaurant.id}
+          initial={(restaurant as any).public_base_url ?? ""}
+        />
+
         <Card>
           <CardHeader><CardTitle className="text-base">Statistieken</CardTitle></CardHeader>
           <CardContent className="grid grid-cols-2 gap-3 text-sm">
