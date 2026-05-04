@@ -34,6 +34,7 @@ const AppShellInner = ({ children }: { children?: ReactNode }) => {
             <SidebarTrigger />
             <div className="flex-1" />
           </header>
+          <AdminOverrideBanner />
           <ConnectionStatusNotice />
           <TrialBanner />
           {!isWizard && <PilotWarningBanner />}
