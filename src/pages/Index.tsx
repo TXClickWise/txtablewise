@@ -59,7 +59,7 @@ const Index = () => {
               <UtensilsCrossed className="h-5 w-5" />
             </div>
             <span className="font-display text-xl font-semibold tracking-tight text-primary-foreground drop-shadow">
-              TableWise
+              TX TableWise
             </span>
           </Link>
           <nav className="hidden items-center gap-8 text-sm text-primary-foreground/90 md:flex">
@@ -103,7 +103,7 @@ const Index = () => {
             </h1>
 
             <p className="mt-6 max-w-2xl text-lg leading-relaxed text-primary-foreground/85 md:text-xl">
-              TableWise brengt reserveringen, tafelbeheer, walk-ins, wachtlijst, no-show preventie, gastdata,
+              TX TableWise brengt reserveringen, tafelbeheer, walk-ins, wachtlijst, no-show preventie, gastdata,
               ClickWise-communicatie en toekomstige POS-inzichten samen in één premium tablet-first systeem voor moderne horeca.
             </p>
 
@@ -183,7 +183,7 @@ const Index = () => {
               Premium tools voor zaken die graag persoonlijk blijven.
             </h2>
             <p className="mt-4 text-lg text-muted-foreground">
-              Of je nu 30 of 180 couverts per service draait — TableWise schaalt mee zonder dat het
+              Of je nu 30 of 180 couverts per service draait — TX TableWise schaalt mee zonder dat het
               ingewikkeld voelt voor je team.
             </p>
             <ul className="mt-8 space-y-3">
@@ -223,7 +223,7 @@ const Index = () => {
       <section className="bg-muted/30 py-20 md:py-28">
         <div className="container">
           <div className="mx-auto max-w-2xl text-center mb-12">
-            <span className="text-sm font-medium uppercase tracking-[0.2em] text-primary">Waarom TableWise</span>
+            <span className="text-sm font-medium uppercase tracking-[0.2em] text-primary">Waarom TX TableWise</span>
             <h2 className="mt-3 font-display text-4xl font-semibold leading-tight md:text-5xl">
               Niet zomaar reserveringen — een hospitality operating system.
             </h2>
@@ -286,9 +286,9 @@ const Index = () => {
             <div className="flex h-7 w-7 items-center justify-center rounded-md bg-primary text-primary-foreground">
               <UtensilsCrossed className="h-4 w-4" />
             </div>
-            <span className="font-display text-base font-semibold text-foreground">TableWise</span>
+            <span className="font-display text-base font-semibold text-foreground">TX TableWise</span>
           </div>
-          <div>© {new Date().getFullYear()} TableWise — Premium horeca reserveringen.</div>
+          <div>© {new Date().getFullYear()} TX TableWise — Premium horeca reserveringen.</div>
         </div>
       </footer>
     </div>
