@@ -829,7 +829,7 @@ async function handleUpdateReservation(req: Request, keyRow: KeyRow, reservation
       entity: "reservation",
       entity_id: current.id,
       actor_user_id: null,
-      actor_label: `public_api:${keyRow.key_prefix ?? "key"}`,
+      actor_label: `public_api:${keyRow.id.slice(0, 8)}`,
       before_data: {
         reservation_date: current.reservation_date,
         start_time: current.start_time,
