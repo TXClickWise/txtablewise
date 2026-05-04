@@ -16,6 +16,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { corsHeaders as baseCors } from "../_shared/cors.ts";
 import {
   zonedDateTimeToUtcIso, addMinutesIso, intervalsOverlap, ACTIVE_STATUSES,
+  findAvailableCombination,
 } from "../_shared/reservation-utils.ts";
 import { mapInternalError, twError, twHttp, type TwCode } from "../_shared/tw-errors.ts";
 import { logIntegration, actionFromPath } from "../_shared/integration-log.ts";
