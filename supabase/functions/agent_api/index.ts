@@ -156,6 +156,11 @@ async function handle(
 
   const sb = admin();
 
+  // Per-channel permission gating (optional `channel` field in payload).
+  const channel = (payload.channel as string | undefined) || undefined;
+  const channelCheck = await checkChannelPermission(keyRow.restaurant_id, channel, ctx.action);
+  if (!channelCheck.ok) return json({ error: channelCheck.error, error_code: channelCheck.error_code }, channelCheck.status);
+
   try {
     switch (ctx.action) {
       case "check_availability": {
