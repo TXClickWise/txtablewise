@@ -124,6 +124,13 @@ export function usePilotReadiness(restaurantId: string | undefined) {
           hint: "Optionele communicatie-integratie.",
           link: "/app/koppelingen?tab=clickwise",
         },
+        {
+          key: "reminder_scheduler",
+          label: "Reminder scheduler (handmatige setup)",
+          ok: false,
+          required: false,
+          hint: "Cron job voor automatische 24u/2u herinneringen. Zie docs/CRON_SETUP.md.",
+        },
       ];
 
       const required = items.filter((i) => i.required);
