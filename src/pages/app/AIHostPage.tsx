@@ -27,7 +27,7 @@ import { useRestaurant } from "@/hooks/useRestaurant";
 import { ChannelReadinessCards } from "@/components/ai-host/ChannelReadinessCards";
 import { AIActionTestConsole } from "@/components/ai-host/AIActionTestConsole";
 import { AIActionLogs } from "@/components/ai-host/AIActionLogs";
-import { HighLevelToolSetupPanel } from "@/components/ai-host/HighLevelToolSetupPanel";
+import { ClickWiseToolSetupPanel } from "@/components/ai-host/ClickWiseToolSetupPanel";
 
 const CHANNELS = [
   { Icon: Phone, t: "Voice AI", d: "Neemt op wanneer je kookt" },
