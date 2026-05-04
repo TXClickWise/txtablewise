@@ -214,7 +214,7 @@ const ClickWiseIntegrationPage = () => {
         <h1 className="text-2xl md:text-3xl font-display font-semibold">ClickWise</h1>
         <p className="text-sm text-muted-foreground">
           ClickWise wordt gebruikt voor CRM, WhatsApp, SMS, e-mail, workflows, reminders, reviews en AI-agents.
-          TableWise levert de reserveringsdata en events aan.
+          TX TableWise levert de reserveringsdata en events aan.
         </p>
       </header>
 
@@ -339,7 +339,7 @@ const ClickWiseIntegrationPage = () => {
         <TabsContent value="contact" className="mt-4">
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">Contact sync — TableWise gasten ↔ ClickWise contacts</CardTitle>
+              <CardTitle className="text-base">Contact sync — TX TableWise gasten ↔ ClickWise contacts</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex items-center justify-between rounded-lg border p-3">
@@ -356,7 +356,7 @@ const ClickWiseIntegrationPage = () => {
               <div className="rounded-lg border overflow-hidden">
                 <table className="w-full text-sm">
                   <thead className="bg-muted/50">
-                    <tr><th className="text-left p-2">TableWise</th><th className="text-left p-2">ClickWise</th><th className="text-left p-2">Voorbeeld</th></tr>
+                    <tr><th className="text-left p-2">TX TableWise</th><th className="text-left p-2">ClickWise</th><th className="text-left p-2">Voorbeeld</th></tr>
                   </thead>
                   <tbody>
                     {CONTACT_MAPPING.map((m) => (
@@ -433,7 +433,7 @@ const ClickWiseIntegrationPage = () => {
                     <table className="w-full text-sm">
                       <thead className="bg-muted/50">
                         <tr>
-                          <th className="text-left p-2">TableWise veld</th>
+                          <th className="text-left p-2">TX TableWise veld</th>
                           <th className="text-left p-2">ClickWise custom field</th>
                           <th className="text-left p-2">Voorbeeld</th>
                           <th className="text-right p-2">Actief</th>
