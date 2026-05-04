@@ -9,6 +9,7 @@ import { OnboardingBanner } from "./onboarding/OnboardingBanner";
 import { ConnectionStatusNotice } from "./touch";
 import { TrialBanner } from "./plan/TrialBanner";
 import { PilotWarningBanner } from "./pilot/PilotWarningBanner";
+import { AdminOverrideBanner } from "./admin/AdminOverrideBanner";
 
 const AppShellInner = ({ children }: { children?: ReactNode }) => {
   const { current, loading } = useRestaurant();
