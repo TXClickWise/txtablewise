@@ -16,7 +16,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
-type Item = { title: string; url: string; icon: typeof LayoutDashboard; end?: boolean; advanced?: boolean };
+type Role = "owner" | "manager" | "host" | "staff";
+type Item = { title: string; url: string; icon: typeof LayoutDashboard; end?: boolean; advanced?: boolean; roles?: Role[] };
 
 const operatie: Item[] = [
   { title: "Vandaag", url: "/app", icon: LayoutDashboard, end: true },
@@ -31,14 +32,14 @@ const gasten: Item[] = [
 ];
 
 const hospitality: Item[] = [
-  { title: "Gastcommunicatie", url: "/app/gastcommunicatie", icon: MessageSquare },
-  { title: "AI Host & Voice", url: "/app/ai-voice", icon: Bot },
+  { title: "Gastcommunicatie", url: "/app/gastcommunicatie", icon: MessageSquare, roles: ["owner","manager"] },
+  { title: "AI Host & Voice", url: "/app/ai-voice", icon: Bot, roles: ["owner","manager"] },
 ];
 
 const beheer: Item[] = [
-  { title: "Rapportages", url: "/app/rapportages", icon: BarChart3 },
-  { title: "Koppelingen", url: "/app/koppelingen", icon: Plug },
-  { title: "Instellingen", url: "/app/instellingen", icon: Settings },
+  { title: "Rapportages", url: "/app/rapportages", icon: BarChart3, roles: ["owner","manager"] },
+  { title: "Koppelingen", url: "/app/koppelingen", icon: Plug, roles: ["owner","manager"] },
+  { title: "Instellingen", url: "/app/instellingen", icon: Settings, roles: ["owner","manager"] },
 ];
 
 // System admin only
