@@ -32,6 +32,7 @@ export default function ZonesTablesSettings() {
   const rid = current?.restaurant_id;
   const [zones, setZones] = useState<Zone[]>([]);
   const [tables, setTables] = useState<TableRow[]>([]);
+  const [combos, setCombos] = useState<{ id: string; name: string; table_ids: string[]; is_active: boolean }[]>([]);
   const [loading, setLoading] = useState(true);
   const [newZone, setNewZone] = useState("");
   const [newTable, setNewTable] = useState<TableRow>({
@@ -40,15 +41,20 @@ export default function ZonesTablesSettings() {
 
   const load = async () => {
     if (!rid) return;
-    const [{ data: z }, { data: t }] = await Promise.all([
+    const [{ data: z }, { data: t }, { data: c }] = await Promise.all([
       supabase.from("zones").select("*").eq("restaurant_id", rid).order("sort_order"),
       supabase.from("tables").select("*").eq("restaurant_id", rid).order("label"),
+      supabase.from("table_combinations").select("id, name, table_ids, is_active").eq("restaurant_id", rid),
     ]);
     setZones(z ?? []);
     setTables((t ?? []) as TableRow[]);
+    setCombos((c ?? []) as any);
     setLoading(false);
   };
   useEffect(() => { load(); }, [rid]);
+
+  const combosForTable = (tableId: string) =>
+    combos.filter((c) => c.is_active && c.table_ids.includes(tableId));
 
   const addZone = async () => {
     if (!rid || !newZone.trim()) return;
