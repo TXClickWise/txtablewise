@@ -197,6 +197,8 @@ export default function ZonesTablesSettings() {
           </div>
         </CardContent>
       </Card>
+
+      {rid && <TableCombinationsManager restaurantId={rid} />}
       </TabsContent>
     </Tabs>
   );
