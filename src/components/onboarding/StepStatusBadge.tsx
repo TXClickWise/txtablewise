@@ -69,6 +69,7 @@ export const StepStatusDot = ({ status }: { status: StepStatus }) => {
     in_progress: "bg-amber-500",
     done: "bg-emerald-500",
     attention: "bg-red-500",
+    skipped: "bg-muted-foreground/40",
   };
   return <span className={cn("h-2 w-2 rounded-full shrink-0", colors[status])} />;
 };
