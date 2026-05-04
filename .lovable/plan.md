@@ -1,62 +1,57 @@
-# FIX-001 — Reservation Status Enum Mismatch
+# P1-001 — Volledige role-based route bescherming
 
-## Probleem
+## Doel
+Alle 20+ routes beschermen volgens de rollenmatrix (owner/manager/host/staff), sidebar filteren per rol, en de Gasten-pagina alleen-lezen maken voor host/staff.
 
-De PostgreSQL enum `reservation_status` bevat `finished`, maar de hele codebase (edge functions, services, UI) gebruikt `completed`. Zodra een operator "Afgerond" markeert, faalt de DB-update omdat `completed` geen geldige enum-waarde is.
+## Aanpak — 3 stappen
 
-## Aanpak
+### Stap 1 — `src/App.tsx`: routes wrappen met `RequireRole`
 
-1. Eén Supabase-migratie: voeg `completed` toe aan de enum en normaliseer bestaande `finished` records.
-2. Frontend opschonen: alle defensieve `["finished", "completed"]`-checks vereenvoudigen naar `["completed"]`.
-3. Geen wijzigingen aan edge functions, routing, navigatie of andere modules.
+**Manager + Owner** (top-level routes):
+- `/app/rapportages` → `["owner","manager"]`
+- `/app/gastcommunicatie` → `["owner","manager"]`
+- `/app/ai-voice` → `["owner","manager"]`
+- `/app/koppelingen` → `["owner","manager"]`
 
-## Stap 1 — Database migratie
+**Owner-only**:
+- `/app/onboarding` → `["owner"]`
+- `instellingen/gebruikers` → `["owner"]`
+- `instellingen/api` → `["owner"]`
+- `instellingen/integraties` → `["owner"]`
+- (`abonnement` en `pilot-launch` zijn al beschermd ✅)
 
-```sql
--- FIX-001: Add 'completed' to reservation_status enum
-ALTER TYPE public.reservation_status ADD VALUE IF NOT EXISTS 'completed';
+**Instellingen-parent** wrappen met `["owner","manager"]` zodat host/staff geen enkele instellingen-route kunnen openen. De owner-only child routes blijven extra gewrapped.
 
--- Normaliseer bestaande records (apart statement, draait na ALTER TYPE commit)
-UPDATE public.reservations SET status = 'completed' WHERE status::text = 'finished';
-UPDATE public.reservation_status_history SET new_status = 'completed' WHERE new_status = 'finished';
-UPDATE public.reservation_status_history SET old_status = 'completed' WHERE old_status = 'finished';
-```
+**Host/staff toegang behouden** voor: `/app` (Vandaag), `/app/agenda`, `/app/vloer`, `/app/walk-ins`, `/app/wachtlijst`, `/app/gasten` — geen wrapper nodig.
 
-Let op: `reservation_status_history.old_status` / `new_status` zijn `text`, niet de enum — daar gewoon de string vervangen.
+`RequireRole` leest `current.role` uit `useRestaurant()`. Bij actieve admin override geeft die hook `role: "owner"` terug, dus de admin-context-switch blijft werken zonder wijziging.
 
-## Stap 2 — Frontend opschoning
+### Stap 2 — `src/components/AppSidebar.tsx`: items filteren per rol
 
-| Bestand | Wijziging |
-|---|---|
-| `src/components/reviews/ReservationAftercareSection.tsx` | `COMPLETED = ["completed", "finished"]` → `["completed"]` |
-| `src/services/reporting.ts` | `["finished", "completed", "seated"]` → `["completed", "seated"]` |
-| `src/services/reviews.ts` | `completedStatuses = ["finished", "completed"]` → `["completed"]` |
-| `src/pages/app/ReservationsPage.tsx` | Verwijder `r.status === "finished" ? "completed" : r.status` normalisatie; vereenvoudig `["cancelled", "no_show", "completed", "finished"]` → zonder `finished` |
-| `src/pages/app/TodayPage.tsx` | `["confirmed", "seated", "completed", "finished", "pending"]` → zonder `finished` |
-| `src/components/StatusBadge.tsx` | Verwijder `finished` entries uit `statusBadgeVariants`, `STATUS_LABELS`, `STATUS_DOTS` |
-| `src/pages/app/FloorPlanPage.tsx` | Controleer rond regel 484; verwijder dubbele "Afgerond"-knop indien aanwezig |
+- Huidige rol ophalen via `useRestaurant().current?.role`.
+- Per groep een `roles` whitelist definiëren:
+  - `operatie`, `gasten` → iedereen
+  - `hospitality` (Gastcommunicatie, AI Host & Voice) → owner/manager
+  - `beheer` (Rapportages, Koppelingen, Instellingen) → owner/manager
+  - `admin` → alleen system admin (al gefilterd via `isSystemAdmin`)
+- In de bestaande `Group`-component een `allowedRoles` filter toevoegen die items verbergt als de huidige rol niet match. System admin override ziet alles (omdat overrideroleforced naar "owner" staat).
 
-Daarnaast doe ik een `rg "finished"` sweep om eventuele extra plekken (bv. ReservationCard, QuickActionsMenu, ReservationDetailDialog, FloorModePage) mee te nemen — alleen als ze écht naar deze status verwijzen, niet naar "afgerekend" tekst.
+### Stap 3 — `src/pages/app/GuestsPage.tsx` + sub-componenten: read-only modus
 
-## Stap 3 — Type-regeneratie
-
-Na de migratie wordt `src/integrations/supabase/types.ts` automatisch bijgewerkt met de nieuwe enum-waarde. Geen handmatige actie nodig.
+- In `GuestsPage`: bepaal `const readOnly = role === "host" || role === "staff"`.
+- Verberg/disable wanneer `readOnly`:
+  - "Nieuwe gast"-knop (`UserPlus`)
+  - "Bewerken" en "Verwijderen" in detail/sheet
+  - Notitie-invoer in `GuestNotesSection` (prop `readOnly`)
+- Props doorzetten naar `GuestFormSheet` en `GuestNotesSection` (nieuwe optionele `readOnly` prop). Form niet renderen als readOnly.
 
 ## Verificatie
+- Host: sidebar toont alleen Operatie + Gasten; `/app/rapportages` → "Geen toegang" kaart.
+- Manager: alles behalve Gebruikers/API/Integraties instellingen + onboarding.
+- Owner: alles behalve admin-sectie.
+- System admin override op restaurant: ziet alle pagina's (override forceert owner-rol).
 
-- Markeer een reservering als "Aan tafel" → "Afgerond": status wordt opgeslagen zonder DB-error.
-- Reserveringenlijst filtert correct op "Afgerond".
-- Rapportages tellen "Afgerond" reserveringen mee.
-- Aftercare-sectie verschijnt alleen na afronding.
-
-## Buiten scope
-
-- Edge functions (gebruiken al `completed` — niet aanraken).
-- `ALLOWED_TRANSITIONS` in `manage_reservation`.
-- Routing, navigatie, layout.
-- Andere enums of statusvelden.
-
-## Risico's
-
-- `ALTER TYPE ... ADD VALUE` kan in oudere PG-versies niet in dezelfde transactie als DML gebruikt worden. Supabase voert migratie-statements los uit, dus dit werkt. Mocht het toch falen, splits ik in twee migratiebestanden.
-- `finished` blijft als enum-waarde bestaan (kan niet veilig verwijderd worden zonder enum-rebuild). Dat is OK: na de UPDATE worden er geen records meer mee aangemaakt en de frontend gebruikt het niet meer.
+## Niet wijzigen
+- `RequireRole` component zelf
+- Edge functions, database, RLS
+- Routing structuur (alleen wrappers toevoegen)
