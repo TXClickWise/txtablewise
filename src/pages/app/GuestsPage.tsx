@@ -44,6 +44,8 @@ const FILTERS: { value: GuestFilter; label: string }[] = [
 const GuestsPage = () => {
   const { current } = useRestaurant();
   const restaurantId = current?.restaurant_id;
+  const role = current?.role;
+  const readOnly = role === "host" || role === "staff";
   const qc = useQueryClient();
 
   const [search, setSearch] = useState("");
