@@ -61,7 +61,7 @@ const WidgetSettings = () => {
       setLoading(true);
       const { data, error } = await supabase
         .from("restaurants")
-        .select("id, slug, name, brand_primary, logo_url, public_base_url")
+        .select("id, slug, name, brand_primary, logo_url, public_base_url, custom_widget_domain")
         .eq("id", restaurant.id)
         .maybeSingle();
       if (cancelled) return;
@@ -73,12 +73,16 @@ const WidgetSettings = () => {
       setBrand(data as RestaurantBrand);
       if (data.brand_primary && HEX_RE.test(data.brand_primary)) setBrandPrimary(data.brand_primary);
       setLogoUrl(data.logo_url ?? "");
+      setCustomDomain((data as any).custom_widget_domain ?? "");
       setLoading(false);
     })();
     return () => { cancelled = true; };
   }, [restaurant?.id]);
 
-  const origin = getWidgetBaseUrl(brand?.public_base_url);
+  const origin = getWidgetBaseUrl({
+    customWidgetDomain: brand?.custom_widget_domain,
+    publicBaseUrl: brand?.public_base_url,
+  });
   const slug = brand?.slug ?? "";
 
   const widgetUrl = useMemo(() => {
