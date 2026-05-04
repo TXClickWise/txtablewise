@@ -21,6 +21,7 @@ type Slot = {
   end_iso: string;    // UTC ISO
   available: boolean;
   available_table_count: number;
+  is_combination?: boolean;
   peak_warning?: boolean;
   reason?: "covers_full" | "rate_full" | "no_table";
 };
