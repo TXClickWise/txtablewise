@@ -23,6 +23,7 @@ import {
 import { z } from "zod";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
+import { canAttemptBooking, recordBookingAttempt } from "@/lib/widgetRateLimit";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -271,6 +272,16 @@ const ReserveWidget = () => {
     const parsed = guestSchema.safeParse({ first_name: firstName, last_name: lastName, email, phone });
     if (!parsed.success) return toast.error(parsed.error.errors[0].message);
 
+    const gate = canAttemptBooking();
+    if (!gate.allowed) {
+      const mins = Math.ceil((gate.retryInSeconds ?? 60) / 60);
+      toast.error("Te veel pogingen", {
+        description: `Je hebt het maximale aantal pogingen bereikt. Probeer het over ${mins} minuut${mins === 1 ? "" : "en"} opnieuw.`,
+      });
+      return;
+    }
+    recordBookingAttempt();
+
     setBookingError(null);
     setSubmitting(true);
 
@@ -326,6 +337,15 @@ const ReserveWidget = () => {
     return Array.from({ length: max }, (_, i) => i + 1);
   }, [restaurant]);
 
+  if (restaurantError) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-6">
+        <div className="max-w-sm text-center space-y-2">
+          <p className="text-foreground font-medium">{restaurantError}</p>
+        </div>
+      </div>
+    );
+  }
   if (!restaurant) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
