@@ -288,3 +288,45 @@ function Stat({ label, value }: { label: string; value: number | string }) {
     </div>
   );
 }
+
+function PlatformBaseUrlCard({ restaurantId, initial }: { restaurantId: string; initial: string }) {
+  const [value, setValue] = useState(initial);
+  const [saving, setSaving] = useState(false);
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base">Platform widget basis-URL</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <div className="space-y-1">
+          <Label className="text-xs">Basis-URL</Label>
+          <Input
+            value={value}
+            onChange={(e) => setValue(e.target.value)}
+            placeholder="https://txtablewise.nl"
+          />
+          <p className="text-xs text-muted-foreground">
+            De basis-URL die wordt gebruikt voor alle widget-links van dit restaurant. Standaard: https://txtablewise.nl. Alleen bewerkbaar door system admin.
+          </p>
+        </div>
+        <Button
+          size="sm"
+          disabled={saving}
+          onClick={async () => {
+            setSaving(true);
+            const v = value.trim() ? value.trim().replace(/\/+$/, "") : null;
+            const { error } = await supabase
+              .from("restaurants")
+              .update({ public_base_url: v })
+              .eq("id", restaurantId);
+            setSaving(false);
+            if (error) toast.error(error.message);
+            else toast.success("Opgeslagen");
+          }}
+        >
+          {saving ? "Opslaan…" : "Opslaan"}
+        </Button>
+      </CardContent>
+    </Card>
+  );
+}
