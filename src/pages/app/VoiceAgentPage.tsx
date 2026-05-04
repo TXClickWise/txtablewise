@@ -43,11 +43,7 @@ type ApiKeyRow = {
 };
 
 const PROVIDERS = [
-  { value: "vapi", label: "Vapi (aanbevolen)" },
-  { value: "retell", label: "Retell AI" },
-  { value: "highlevel", label: "ClickWise Voice Agent" },
-  { value: "elevenlabs", label: "ElevenLabs Agents" },
-  { value: "other", label: "Anders" },
+  { value: "highlevel", label: "ClickWise Voice AI" },
 ];
 
 export default function VoiceAgentPage() {
