@@ -64,10 +64,20 @@ export async function createWalkIn(raw: WalkInInput): Promise<WalkInResult> {
     v.guest?.firstName?.trim() && v.guest.firstName.trim().length > 0
       ? v.guest.firstName.trim()
       : "Walk-in";
-  const guestEmail =
-    v.guest?.email?.trim() && v.guest.email.trim().length > 0
-      ? v.guest.email.trim()
-      : `walkin-${Date.now()}-${Math.floor(Math.random() * 1000)}@tablewise.local`;
+  const trimmedEmail = v.guest?.email?.trim();
+  const trimmedPhone = v.guest?.phone?.trim();
+  const guestEmail = trimmedEmail && trimmedEmail.length > 0 ? trimmedEmail : null;
+  const guestPhone = trimmedPhone && trimmedPhone.length > 0 ? trimmedPhone : undefined;
+
+  // book_reservation vereist email OF telefoon. Voor anonieme walk-ins zonder
+  // beide velden geven we een duidelijke melding in plaats van een nep e-mail.
+  if (!guestEmail && !guestPhone) {
+    return {
+      ok: false,
+      reason_code: "validation",
+      error: "Voeg een telefoonnummer of e-mailadres toe om de walk-in te plaatsen.",
+    };
+  }
 
   const body: Record<string, unknown> = {
     restaurant_id: v.restaurantId,
@@ -78,12 +88,13 @@ export async function createWalkIn(raw: WalkInInput): Promise<WalkInResult> {
     guest: {
       first_name: guestFirstName,
       email: guestEmail,
-      phone: v.guest?.phone || undefined,
+      phone: guestPhone,
       language: "nl",
     },
     special_requests: v.notes || undefined,
     source_metadata: {
       origin: "operator_walk_in",
+      is_walk_in_guest: true,
       preselected_table_id: v.tableId ?? null,
       duration_override: v.durationMinutes ?? null,
     },
