@@ -55,8 +55,8 @@ const admin: Item[] = [
   { title: "Pilot readiness", url: "/app/admin/pilot-readiness", icon: ShieldCheck },
 ];
 
-function Group({ label, items, collapsed, pathname, accent, onNavigate, canSeeAdvanced }: { label: string; items: Item[]; collapsed: boolean; pathname: string; accent?: boolean; onNavigate?: () => void; canSeeAdvanced: boolean }) {
-  const visible = items.filter((i) => !i.advanced || canSeeAdvanced);
+function Group({ label, items, collapsed, pathname, accent, onNavigate, canSeeAdvanced, role }: { label: string; items: Item[]; collapsed: boolean; pathname: string; accent?: boolean; onNavigate?: () => void; canSeeAdvanced: boolean; role: Role | null }) {
+  const visible = items.filter((i) => (!i.advanced || canSeeAdvanced) && (!i.roles || (role && i.roles.includes(role))));
   if (visible.length === 0) return null;
   return (
     <SidebarGroup>
