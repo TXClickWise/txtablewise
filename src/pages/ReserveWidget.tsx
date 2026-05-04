@@ -54,6 +54,7 @@ type RestaurantInfo = {
   allow_zone_preference: boolean;
   brand_primary: string | null;
   logo_url: string | null;
+  booking_horizon_days: number;
 };
 
 // Convert #RRGGBB hex to "h s% l%" string for CSS HSL custom properties.
@@ -188,16 +189,18 @@ const ReserveWidget = () => {
   const [confirmation, setConfirmation] = useState<{ code: string; start: string; status: string } | null>(null);
   const [bookingError, setBookingError] = useState<string | null>(null);
 
+  const [restaurantError, setRestaurantError] = useState<string | null>(null);
+
   // Load restaurant
   useEffect(() => {
     if (!slug) return;
     (async () => {
       const { data, error } = await supabase
         .from("restaurants")
-        .select("id, name, slug, timezone, max_party_size_online, large_group_threshold, preorders_enabled, preorders_allow_free_text, allow_zone_preference, brand_primary, logo_url")
+        .select("id, name, slug, timezone, max_party_size_online, large_group_threshold, preorders_enabled, preorders_allow_free_text, allow_zone_preference, brand_primary, logo_url, booking_horizon_days")
         .eq("slug", slug).maybeSingle();
       if (error || !data) {
-        toast.error("Restaurant niet gevonden");
+        setRestaurantError("Reserveren is op dit moment niet mogelijk. Probeer het later opnieuw of bel het restaurant.");
         return;
       }
       setRestaurant(data as RestaurantInfo);
