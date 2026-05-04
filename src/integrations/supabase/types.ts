@@ -2307,6 +2307,7 @@ export type Database = {
         | "finished"
         | "no_show"
         | "cancelled"
+        | "completed"
       review_request_status:
         | "pending"
         | "sent"
@@ -2519,6 +2520,7 @@ export const Constants = {
         "finished",
         "no_show",
         "cancelled",
+        "completed",
       ],
       review_request_status: [
         "pending",
