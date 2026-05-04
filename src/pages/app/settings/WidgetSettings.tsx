@@ -267,19 +267,11 @@ const WidgetSettings = () => {
                 <p className="text-xs text-muted-foreground">Wordt toegepast op knoppen, accenten en focus.</p>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="logo-url" className="flex items-center gap-2">
-                  <ImageIcon className="h-4 w-4" /> Logo URL
-                </Label>
-                <Input
-                  id="logo-url"
-                  type="url"
-                  value={logoUrl}
-                  onChange={(e) => setLogoUrl(e.target.value)}
-                  placeholder="https://..."
-                />
-                <p className="text-xs text-muted-foreground">Plak een publieke URL naar je logo (PNG/SVG, transparante achtergrond werkt het beste).</p>
-              </div>
+              <LogoUploader
+                restaurantId={brand.id}
+                value={logoUrl}
+                onChange={setLogoUrl}
+              />
 
               <Button onClick={saveBrand} disabled={saving} className="gap-2">
                 {saving && <Loader2 className="h-4 w-4 animate-spin" />}
