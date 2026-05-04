@@ -132,7 +132,8 @@ const App = () => (
                 <Route path="integraties" element={<IntegrationsSettings />} />
                 <Route path="api" element={<ApiWebhooksSettings />} />
                 <Route path="gebruikers" element={<UsersRolesSettings />} />
-                <Route path="abonnement" element={<SubscriptionSettings />} />
+                <Route path="abonnement" element={<RequireRole allow={["owner"]}><SubscriptionSettings /></RequireRole>} />
+                <Route path="pilot-launch" element={<RequireRole allow={["owner"]}><PilotLaunchSettings /></RequireRole>} />
                 {/* Legacy routes — preserved for old links */}
                 <Route path="shifts" element={<ShiftsSettings />} />
                 <Route path="capaciteit" element={<CapacitySettings />} />
