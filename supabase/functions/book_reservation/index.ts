@@ -246,27 +246,28 @@ Deno.serve(async (req) => {
       source_metadata: body.source_metadata ?? {},
       requires_manual_approval: requiresManualApproval,
       large_group_status: largeGroupStatus,
+      table_combination_id: chosenCombinationId,
     }).select("*").single();
 
     if (resErr) return json({ error: resErr.message }, 500);
 
-    // Link table
-    const { error: rtErr } = await supabase.from("reservation_tables").insert({
-      reservation_id: reservation.id, table_id: candidate.id,
-    });
+    // Link table(s) — single table or all tables of the chosen combination
+    const { error: rtErr } = await supabase.from("reservation_tables").insert(
+      chosenTableIds.map((tid) => ({ reservation_id: reservation.id, table_id: tid })),
+    );
     if (rtErr) {
-      // Rollback the reservation
       await supabase.from("reservations").delete().eq("id", reservation.id);
       return json({ error: "Failed to assign table: " + rtErr.message }, 500);
     }
 
-    // Re-check for race condition: did another reservation take this table in the same window?
+    // Re-check race condition across ALL chosen tables
     const { data: doubleCheck } = await supabase
       .from("reservation_tables")
-      .select("reservation_id, reservations!inner(start_time, end_time, status, hold_expires_at)")
-      .eq("table_id", candidate.id);
+      .select("reservation_id, table_id, reservations!inner(start_time, end_time, status, hold_expires_at)")
+      .in("table_id", chosenTableIds);
     const conflicts = ((doubleCheck ?? []) as unknown as Array<{
       reservation_id: string;
+      table_id: string;
       reservations: { start_time: string; end_time: string; status: string; hold_expires_at: string | null } | null;
     }>).filter((row) => {
       if (row.reservation_id === reservation.id) return false;
@@ -277,7 +278,6 @@ Deno.serve(async (req) => {
       return intervalsOverlap(start_iso, end_iso, r.start_time, r.end_time);
     });
     if (conflicts.length > 0) {
-      // Rollback
       await supabase.from("reservation_tables").delete().eq("reservation_id", reservation.id);
       await supabase.from("reservations").delete().eq("id", reservation.id);
       return json({ error: "Slot net bezet door een andere reservering, probeer opnieuw", error_code: "slot_unavailable", field: "time", retry: true }, 409);
@@ -307,7 +307,9 @@ Deno.serve(async (req) => {
         start_time: start_iso,
         end_time: end_iso,
         party_size: body.party_size,
-        table_id: candidate.id,
+        table_id: chosenTableIds[0],
+        table_ids: chosenTableIds,
+        table_combination_id: chosenCombinationId,
         hold_expires_at: holdExpires,
       },
     });
