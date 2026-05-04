@@ -25,6 +25,7 @@ type RestaurantBrand = {
   brand_primary: string | null;
   logo_url: string | null;
   public_base_url: string | null;
+  custom_widget_domain: string | null;
 };
 
 const HEX_RE = /^#[0-9a-fA-F]{6}$/;
