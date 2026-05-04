@@ -257,6 +257,10 @@ Deno.serve(async (req) => {
     );
     if (rtErr) {
       await supabase.from("reservations").delete().eq("id", reservation.id);
+      const isOverlap = (rtErr as any).code === "23505" || /already.*booked|geboekt/i.test(rtErr.message);
+      if (isOverlap) {
+        return json({ error: "Slot net bezet door een andere reservering, probeer opnieuw", error_code: "slot_unavailable", field: "time", retry: true }, 409);
+      }
       return json({ error: "Failed to assign table: " + rtErr.message }, 500);
     }
 
