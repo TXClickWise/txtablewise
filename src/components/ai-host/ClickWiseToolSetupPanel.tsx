@@ -136,12 +136,12 @@ function ActionDoc({ action }: { action: AIActionContract }) {
   );
 }
 
-export function HighLevelToolSetupPanel() {
+export function ClickWiseToolSetupPanel() {
   return (
     <div className="space-y-4">
       <Card>
         <CardContent className="p-4 text-sm text-muted-foreground">
-          Configureer in HighLevel/ClickWise per Custom Action één van de hieronder gedocumenteerde tools.
+          Configureer in ClickWise per Custom Action één van de hieronder gedocumenteerde tools.
           Endpoint: <code className="text-foreground">POST /functions/v1/agent_api/&lt;action_name&gt;</code>.
           Header: <code className="text-foreground">x-agent-api-key</code> met je restaurantsleutel.
         </CardContent>
