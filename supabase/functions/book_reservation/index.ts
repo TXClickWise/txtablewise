@@ -80,8 +80,13 @@ Deno.serve(async (req) => {
     const start_iso = zonedDateTimeToUtcIso(body.date, body.time, tz);
     const end_iso = addMinutesIso(start_iso, durationMinutes);
 
-    if (new Date(start_iso) < new Date(Date.now() + (restaurant.booking_lead_time_minutes ?? 0) * 60_000)) {
-      return json({ error: "Slot too soon", error_code: "slot_too_soon", field: "time" }, 400);
+    // Lead-time only applies to guest-facing channels; operator flows (manager/walk-in) bypass.
+    const operatorChannels = new Set(["manager", "walk_in"]);
+    if (!operatorChannels.has(channel)) {
+      const leadMin = restaurant.booking_lead_time_minutes ?? 0;
+      if (new Date(start_iso).getTime() < Date.now() + leadMin * 60_000) {
+        return json({ error: "Slot too soon", error_code: "slot_too_soon", field: "time" }, 400);
+      }
     }
 
     // Find fitting individual tables
