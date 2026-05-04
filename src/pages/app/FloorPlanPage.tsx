@@ -480,14 +480,9 @@ function ReservationActions({
           </>
         )}
         {res.status === "seated" && (
-          <>
-            <Button size="lg" className="h-14" onClick={() => onAction("completed")}>
-              <LogOut className="mr-2 h-5 w-5" /> Vertrokken
-            </Button>
-            <Button size="lg" variant="outline" className="h-14" onClick={() => onAction("finished")}>
-              Afgerekend
-            </Button>
-          </>
+          <Button size="lg" className="h-14" onClick={() => onAction("completed")}>
+            <LogOut className="mr-2 h-5 w-5" /> Afgerond
+          </Button>
         )}
         <Button size="lg" variant="outline" className="h-14 col-span-2 sm:col-span-1" disabled>
           <Move className="mr-2 h-5 w-5" /> Verplaats tafel
