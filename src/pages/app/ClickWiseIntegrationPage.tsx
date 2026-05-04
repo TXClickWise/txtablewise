@@ -539,26 +539,39 @@ const ClickWiseIntegrationPage = () => {
             <CardContent className="space-y-2">
               {events.length === 0 ? (
                 <p className="text-sm text-muted-foreground py-6 text-center">Geen events met deze filter.</p>
-              ) : events.map((e) => (
-                <button key={e.id} onClick={() => setOpenEvent(e)}
-                  className="w-full text-left rounded-lg border p-3 hover:bg-accent transition flex items-start gap-3 min-h-12">
-                  <div className="flex-1 space-y-1">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="font-mono text-xs">{e.event_type}</span>
-                      <EventStatusBadge status={e.status} />
-                      {e.retry_count > 0 && (
-                        <Badge variant="outline" className="text-xs">retry {e.retry_count}</Badge>
+              ) : events.map((e) => {
+                const evMode = (e.metadata as Record<string, unknown> | null)?.mode as string | undefined;
+                return (
+                  <button key={e.id} onClick={() => setOpenEvent(e)}
+                    className="w-full text-left rounded-lg border p-3 hover:bg-accent transition flex items-start gap-3 min-h-12">
+                    <div className="flex-1 space-y-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-mono text-xs">{e.event_type}</span>
+                        <EventStatusBadge status={e.status} />
+                        {evMode === "live" && (
+                          <Badge variant="outline" className="text-xs bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/30">live</Badge>
+                        )}
+                        {evMode === "test" && (
+                          <Badge variant="outline" className="text-xs">test</Badge>
+                        )}
+                        {(e.retry_count > 0 || e.attempts > 0) && (
+                          <Badge variant="outline" className="text-xs">
+                            {e.retry_count > 0 ? `retry ${e.retry_count}` : `${e.attempts} poging${e.attempts === 1 ? "" : "en"}`}
+                          </Badge>
+                        )}
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        {format(new Date(e.created_at), "d MMM HH:mm", { locale: nl })}
+                        {e.target ? ` · ${e.target}` : ""}
+                      </div>
+                      {e.status === "failed" && e.last_error && (
+                        <div className="text-xs text-destructive truncate">{e.last_error}</div>
                       )}
                     </div>
-                    <div className="text-xs text-muted-foreground">
-                      {format(new Date(e.created_at), "d MMM HH:mm", { locale: nl })}
-                      {e.target ? ` · ${e.target}` : ""}
-                      {e.last_error ? ` · ${e.last_error}` : ""}
-                    </div>
-                  </div>
-                  <ChevronRight className="h-5 w-5 text-muted-foreground self-center" />
-                </button>
-              ))}
+                    <ChevronRight className="h-5 w-5 text-muted-foreground self-center" />
+                  </button>
+                );
+              })}
             </CardContent>
           </Card>
         </TabsContent>
