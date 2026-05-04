@@ -1519,6 +1519,7 @@ export type Database = {
           preorders_allow_free_text: boolean
           preorders_enabled: boolean
           preorders_payment_required: boolean
+          public_base_url: string | null
           slot_duration_minutes: number
           slug: string
           timezone: string
@@ -1604,6 +1605,7 @@ export type Database = {
           preorders_allow_free_text?: boolean
           preorders_enabled?: boolean
           preorders_payment_required?: boolean
+          public_base_url?: string | null
           slot_duration_minutes?: number
           slug: string
           timezone?: string
@@ -1689,6 +1691,7 @@ export type Database = {
           preorders_allow_free_text?: boolean
           preorders_enabled?: boolean
           preorders_payment_required?: boolean
+          public_base_url?: string | null
           slot_duration_minutes?: number
           slug?: string
           timezone?: string

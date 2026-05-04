@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import { ExternalLink, Copy, Wrench } from "lucide-react";
+import { getWidgetUrl } from "@/lib/widgetUrl";
 
 export default function GeneralSettings() {
   const { current } = useRestaurant();
@@ -20,6 +21,7 @@ export default function GeneralSettings() {
     slot_duration_minutes: 15, default_reservation_minutes: 105,
     max_party_size_online: 8, large_group_threshold: 9,
     booking_lead_time_minutes: 60, hold_minutes: 10, booking_horizon_days: 90,
+    public_base_url: "",
   });
   const [saving, setSaving] = useState(false);
 
@@ -39,15 +41,20 @@ export default function GeneralSettings() {
       booking_lead_time_minutes: r.booking_lead_time_minutes ?? 60,
       hold_minutes: r.hold_minutes ?? 10,
       booking_horizon_days: r.booking_horizon_days ?? 90,
+      public_base_url: (r as any).public_base_url ?? "",
     });
   }, [r]);
 
   if (!r) return null;
-  const url = `${window.location.origin}/r/${r.slug}`;
+  const url = getWidgetUrl(r.slug, form.public_base_url || (r as any).public_base_url);
 
   const onSave = async () => {
     setSaving(true);
-    const { error } = await supabase.from("restaurants").update(form).eq("id", r.id);
+    const payload = {
+      ...form,
+      public_base_url: form.public_base_url?.trim() ? form.public_base_url.trim().replace(/\/+$/, "") : null,
+    };
+    const { error } = await supabase.from("restaurants").update(payload).eq("id", r.id);
     setSaving(false);
     if (error) toast.error(error.message);
     else toast.success("Opgeslagen");
@@ -69,14 +76,27 @@ export default function GeneralSettings() {
     <div className="space-y-6">
       <Card>
         <CardHeader><CardTitle className="font-display text-lg">Publieke reserveringspagina</CardTitle></CardHeader>
-        <CardContent className="flex items-center gap-2">
-          <Input readOnly value={url} className="font-mono text-xs" />
-          <Button variant="outline" size="icon" onClick={() => { navigator.clipboard.writeText(url); toast.success("Gekopieerd"); }}>
-            <Copy className="h-4 w-4" />
-          </Button>
-          <Button variant="outline" size="icon" asChild>
-            <a href={url} target="_blank" rel="noopener noreferrer"><ExternalLink className="h-4 w-4" /></a>
-          </Button>
+        <CardContent className="space-y-4">
+          <div className="flex items-center gap-2">
+            <Input readOnly value={url} className="font-mono text-xs" />
+            <Button variant="outline" size="icon" onClick={() => { navigator.clipboard.writeText(url); toast.success("Gekopieerd"); }}>
+              <Copy className="h-4 w-4" />
+            </Button>
+            <Button variant="outline" size="icon" asChild>
+              <a href={url} target="_blank" rel="noopener noreferrer"><ExternalLink className="h-4 w-4" /></a>
+            </Button>
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs">Publieke widget-URL</Label>
+            <Input
+              value={form.public_base_url}
+              onChange={(e) => setForm({ ...form, public_base_url: e.target.value })}
+              placeholder="https://txtablewise.lovable.app"
+            />
+            <p className="text-xs text-muted-foreground">
+              De basis-URL voor je reserveringswidget. Laat leeg om het huidige domein te gebruiken. Vul in als je een eigen domein gebruikt.
+            </p>
+          </div>
         </CardContent>
       </Card>
 

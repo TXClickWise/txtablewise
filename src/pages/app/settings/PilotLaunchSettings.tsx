@@ -15,6 +15,7 @@ import { usePilotReadiness } from "@/hooks/usePilotReadiness";
 import { PilotReadinessChecklist } from "@/components/pilot/PilotReadinessChecklist";
 import { DemoDataResetCard } from "@/components/pilot/DemoDataResetCard";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { getWidgetUrl } from "@/lib/widgetUrl";
 
 const MANUAL_CHECKS = [
   "Openingstijden kloppen voor komende week",
@@ -34,7 +35,7 @@ export default function PilotLaunchSettings() {
 
   const widgetUrl = useMemo(() => {
     if (!current) return "";
-    return `${window.location.origin}/r/${current.restaurants.slug}`;
+    return getWidgetUrl(current.restaurants.slug, (current.restaurants as any).public_base_url);
   }, [current]);
 
   const { data: liveStatus } = useQuery({

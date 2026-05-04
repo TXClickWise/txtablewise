@@ -14,6 +14,7 @@ import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
+import { getWidgetBaseUrl } from "@/lib/widgetUrl";
 
 type RestaurantBrand = {
   id: string;
@@ -21,17 +22,10 @@ type RestaurantBrand = {
   name: string;
   brand_primary: string | null;
   logo_url: string | null;
+  public_base_url: string | null;
 };
 
 const HEX_RE = /^#[0-9a-fA-F]{6}$/;
-
-function publicOrigin(): string {
-  if (typeof window === "undefined") return "https://txtablewise.lovable.app";
-  // Prefer custom domain in production; fallback to current origin for previews
-  const host = window.location.host;
-  if (host.includes("localhost") || host.includes("lovable")) return window.location.origin;
-  return `${window.location.protocol}//${window.location.host}`;
-}
 
 const WidgetSettings = () => {
   const { current } = useRestaurant();
@@ -60,7 +54,7 @@ const WidgetSettings = () => {
       setLoading(true);
       const { data, error } = await supabase
         .from("restaurants")
-        .select("id, slug, name, brand_primary, logo_url")
+        .select("id, slug, name, brand_primary, logo_url, public_base_url")
         .eq("id", restaurant.id)
         .maybeSingle();
       if (cancelled) return;
@@ -77,7 +71,7 @@ const WidgetSettings = () => {
     return () => { cancelled = true; };
   }, [restaurant?.id]);
 
-  const origin = publicOrigin();
+  const origin = getWidgetBaseUrl(brand?.public_base_url);
   const slug = brand?.slug ?? "";
 
   const widgetUrl = useMemo(() => {
