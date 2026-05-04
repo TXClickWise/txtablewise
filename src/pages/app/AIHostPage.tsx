@@ -324,7 +324,7 @@ const AIHostPage = () => {
         </TabsContent>
 
         <TabsContent value="highlevel">
-          <HighLevelToolSetupPanel />
+          <ClickWiseToolSetupPanel />
         </TabsContent>
 
         <TabsContent value="rules">
