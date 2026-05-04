@@ -125,8 +125,8 @@ async function checkChannelPermission(restaurantId: string, channel: string | un
   }
   const sb = admin();
   const { data } = await sb.from("voice_agent_settings")
-    .select("settings").eq("restaurant_id", restaurantId).maybeSingle();
-  const settings = (data?.settings ?? {}) as Record<string, any>;
+    .select("config").eq("restaurant_id", restaurantId).maybeSingle();
+  const settings = (data?.config ?? {}) as Record<string, any>;
   const channels = settings.channels ?? {};
   const cfg = channels[channel];
   if (!cfg) return { ok: true as const }; // not yet configured: don't block
