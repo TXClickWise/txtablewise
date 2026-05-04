@@ -43,14 +43,33 @@ export function LandingHeader() {
           >
             <UtensilsCrossed className="h-5 w-5" />
           </div>
-          <span
-            className={cn(
-              "font-display text-lg font-semibold tracking-tight transition-colors md:text-xl",
-              scrolled ? "text-foreground" : "text-primary-foreground drop-shadow",
-            )}
-          >
-            TX TableWise
-          </span>
+          <div className="flex flex-col leading-none">
+            <span
+              className={cn(
+                "font-display text-lg font-semibold tracking-tight transition-colors md:text-xl",
+                scrolled ? "text-foreground" : "text-primary-foreground drop-shadow",
+              )}
+            >
+              TX TableWise
+            </span>
+            <span
+              className={cn(
+                "mt-0.5 text-[10px] tracking-wide transition-colors",
+                scrolled ? "text-muted-foreground/60" : "text-primary-foreground/50",
+              )}
+            >
+              by{" "}
+              <a
+                href="https://clickwise.app"
+                target="_blank"
+                rel="noopener"
+                onClick={(e) => e.stopPropagation()}
+                className="hover:underline"
+              >
+                ClickWise
+              </a>
+            </span>
+          </div>
         </Link>
 
         <nav className="hidden items-center gap-8 md:flex">
