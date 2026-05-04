@@ -167,6 +167,76 @@ const WidgetSettings = () => {
         </p>
       </div>
 
+      {/* White-label custom domein (Pro-only) */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <Sparkles className="h-4 w-4 text-primary" /> Eigen domein (white-label)
+            {!isPro && <span className="ml-2 text-xs font-normal rounded-full bg-primary/10 text-primary px-2 py-0.5">Pro</span>}
+          </CardTitle>
+          <CardDescription>
+            {isPro
+              ? "Koppel je eigen (sub-)domein aan je reserveringswidget voor een volledig professionele uitstraling."
+              : "Beschikbaar op het Pro-plan: gebruik je eigen (sub-)domein voor je reserveringswidget."}
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {isPro ? (
+            <>
+              <div className="space-y-2">
+                <Label htmlFor="custom-domain">Custom widget-domein</Label>
+                <Input
+                  id="custom-domain"
+                  value={customDomain}
+                  onChange={(e) => setCustomDomain(e.target.value)}
+                  placeholder="reserveer.mijnrestaurant.nl"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Voeg een CNAME-record toe in je DNS dat verwijst naar <code className="font-mono">txtablewise.nl</code>.
+                </p>
+              </div>
+              {brand?.custom_widget_domain && (
+                <div className="text-xs inline-flex items-center gap-2 rounded-full border border-border px-2.5 py-1">
+                  <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground" />
+                  DNS-verificatie nog niet actief
+                </div>
+              )}
+              <Button
+                disabled={savingDomain}
+                onClick={async () => {
+                  if (!brand) return;
+                  setSavingDomain(true);
+                  const value = customDomain.trim() ? customDomain.trim().replace(/^https?:\/\//i, "").replace(/\/+$/, "") : null;
+                  const { error } = await supabase
+                    .from("restaurants")
+                    .update({ custom_widget_domain: value } as any)
+                    .eq("id", brand.id);
+                  setSavingDomain(false);
+                  if (error) { toast.error("Opslaan mislukt"); return; }
+                  setBrand({ ...brand, custom_widget_domain: value });
+                  toast.success(value ? "Eigen domein opgeslagen" : "Eigen domein verwijderd");
+                }}
+              >
+                {savingDomain && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+                Opslaan
+              </Button>
+            </>
+          ) : (
+            <div className="rounded-md border border-dashed border-border p-4 flex items-start gap-3">
+              <Lock className="h-4 w-4 text-muted-foreground mt-0.5" />
+              <div className="flex-1 space-y-2">
+                <p className="text-sm">
+                  <strong>Eigen domein beschikbaar op het Pro-plan.</strong> Gebruik je eigen (sub-)domein voor een volledig professionele uitstraling.
+                </p>
+                <Button variant="outline" size="sm" asChild>
+                  <a href="/app/instellingen/abonnement">Bekijk Pro-plan</a>
+                </Button>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
       <div className="grid lg:grid-cols-2 gap-6">
         {/* LEFT: configuration */}
         <div className="space-y-6">
