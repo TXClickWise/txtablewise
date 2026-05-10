@@ -74,7 +74,7 @@ export default function GuestManageReservation() {
     const res = await fetch(FUNCTION_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ token, action, ...extra }),
+      body: JSON.stringify({ token, action, locale, ...extra }),
     });
     const data = await res.json();
     return { ok: res.ok, status: res.status, data };
