@@ -1,7 +1,18 @@
+// AgendaPage — tablet-first dag-agenda.
+// Highlights:
+// - Kwartier-grid (4 streepjes per uur) met 3-tier visuele hiërarchie
+// - Tik op leeg kwartier opent ReservationFormSheet met prefill (tafel + tijd)
+// - Walk-in shortcut in PageHeader (geen tafel verplicht)
+// - Horizontale én verticale zoom (rij-hoogte)
+// - "Nu"-lijn en auto-recenter na inactiviteit op vandaag
+// - Statussnelknoppen verschijnen automatisch in ReservationDetailDialog bij tap op blok
 import { useEffect, useMemo, useRef, useState } from "react";
 import { format, addDays, subDays, isSameDay } from "date-fns";
 import { nl } from "date-fns/locale";
-import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, ZoomIn, ZoomOut } from "lucide-react";
+import {
+  ChevronLeft, ChevronRight, Calendar as CalendarIcon,
+  ZoomIn, ZoomOut, MoveVertical, UserPlus, Plus,
+} from "lucide-react";
 import { useRestaurant } from "@/hooks/useRestaurant";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -10,23 +21,30 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { ReservationDetailDialog } from "@/components/ReservationDetailDialog";
+import { ReservationFormSheet, type ReservationFormPrefill } from "@/components/reservations/ReservationFormSheet";
+import { WalkInDialog } from "@/components/WalkInDialog";
 import { PageHeader } from "@/components/PageHeader";
 import { EmptyState } from "@/components/touch/StateViews";
 import { cn } from "@/lib/utils";
 
-// time grid 11:00 → 24:00 every 30 min
 const START_HOUR = 11;
 const END_HOUR = 24;
 const SLOT_MIN = 30;
+const QUARTER_MIN = 15;
 const PX_MIN = 1;
 const PX_MAX = 6;
 const PX_STEP = 0.5;
 const PX_DEFAULT = 2;
+const ROW_MIN = 48;
+const ROW_MAX = 120;
+const ROW_STEP = 8;
+const ROW_DEFAULT = 64;
 
 const STATUS_BG: Record<string, string> = {
   pending: "bg-status-pending/30 border-status-pending/60",
   confirmed: "bg-status-confirmed/30 border-status-confirmed/60",
   seated: "bg-status-seated/30 border-status-seated/60",
+  finished: "bg-status-completed/30 border-status-completed/60",
   completed: "bg-status-completed/30 border-status-completed/60",
   cancelled: "bg-status-cancelled/20 border-status-cancelled/40 line-through opacity-60",
   no_show: "bg-status-noshow/20 border-status-noshow/40",
@@ -39,7 +57,12 @@ const AgendaPage = () => {
   const [date, setDate] = useState<Date>(new Date());
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [pxPerMin, setPxPerMin] = useState(PX_DEFAULT);
+  const [rowHeight, setRowHeight] = useState(ROW_DEFAULT);
   const [now, setNow] = useState(new Date());
+  const [createOpen, setCreateOpen] = useState(false);
+  const [createPrefill, setCreatePrefill] = useState<ReservationFormPrefill | undefined>(undefined);
+  const [walkInOpen, setWalkInOpen] = useState(false);
+  const [walkInTable, setWalkInTable] = useState<{ id: string; label: string } | undefined>(undefined);
   const scrollRef = useRef<HTMLDivElement>(null);
   const didInitialScroll = useRef(false);
   const dateStr = format(date, "yyyy-MM-dd");
@@ -61,13 +84,11 @@ const AgendaPage = () => {
     };
   }, []);
 
-  // Auto-recenter na 2 min inactiviteit (alleen op vandaag), op 15-min interval
   const inactivityTimer = useRef<number | null>(null);
   const recenterToNow = (smooth = true) => {
     const el = scrollRef.current;
     if (!el) return;
     const n = new Date();
-    // rond af op dichtstbijzijnde kwartier
     const totalMin = n.getHours() * 60 + n.getMinutes();
     const snapped = Math.round(totalMin / 15) * 15;
     const m = snapped - START_HOUR * 60;
@@ -87,8 +108,6 @@ const AgendaPage = () => {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dateStr, pxPerMin]);
-
-
 
   const { data: tables = [] } = useQuery({
     queryKey: ["agenda-tables", rid],
@@ -112,7 +131,20 @@ const AgendaPage = () => {
     },
   });
 
-  const slots = useMemo(() => {
+  const { data: restaurantConfig } = useQuery({
+    queryKey: ["agenda-restaurant-cfg", rid],
+    enabled: !!rid,
+    queryFn: async () => {
+      const { data } = await supabase.from("restaurants")
+        .select("default_reservation_minutes")
+        .eq("id", rid!).maybeSingle();
+      return data;
+    },
+  });
+  const defaultDuration = restaurantConfig?.default_reservation_minutes ?? 90;
+
+  // Halve-uur labels in de header (tijdsindicatie)
+  const slotLabels = useMemo(() => {
     const out: string[] = [];
     for (let h = START_HOUR; h < END_HOUR; h++) {
       for (let m = 0; m < 60; m += SLOT_MIN) {
@@ -124,15 +156,13 @@ const AgendaPage = () => {
 
   const totalMinutes = (END_HOUR - START_HOUR) * 60;
   const totalWidth = totalMinutes * pxPerMin;
+  const quarterCount = totalMinutes / QUARTER_MIN;
 
-  // group reservations by table_id
   const byTable = useMemo(() => {
     const map: Record<string, any[]> = {};
     for (const r of reservations as any[]) {
       const tids = r.reservation_tables?.map((rt: any) => rt.table_id) ?? [];
-      for (const tid of tids) {
-        (map[tid] ||= []).push(r);
-      }
+      for (const tid of tids) (map[tid] ||= []).push(r);
     }
     return map;
   }, [reservations]);
@@ -142,11 +172,17 @@ const AgendaPage = () => {
     return (d.getHours() - START_HOUR) * 60 + d.getMinutes();
   };
 
+  const minutesToTime = (mins: number) => {
+    const total = START_HOUR * 60 + mins;
+    const h = Math.floor(total / 60);
+    const m = total % 60;
+    return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+  };
+
   const isToday = isSameDay(date, now);
   const nowMin = (now.getHours() - START_HOUR) * 60 + now.getMinutes();
   const showNowLine = isToday && nowMin >= 0 && nowMin <= totalMinutes;
 
-  // Auto-scroll naar nu bij eerste render of dagwissel naar vandaag
   useEffect(() => {
     if (!scrollRef.current || tables.length === 0) return;
     const el = scrollRef.current;
@@ -160,16 +196,13 @@ const AgendaPage = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dateStr, tables.length]);
 
-  // Zoom met behoud van centerTime
   const zoomBy = (delta: number) => {
     const el = scrollRef.current;
     const oldPx = pxPerMin;
     const next = Math.max(PX_MIN, Math.min(PX_MAX, +(oldPx + delta).toFixed(2)));
     if (next === oldPx) return;
     let centerMin = nowMin;
-    if (el) {
-      centerMin = (el.scrollLeft + el.clientWidth / 2) / oldPx;
-    }
+    if (el) centerMin = (el.scrollLeft + el.clientWidth / 2) / oldPx;
     setPxPerMin(next);
     requestAnimationFrame(() => {
       const e2 = scrollRef.current;
@@ -177,6 +210,9 @@ const AgendaPage = () => {
       e2.scrollLeft = Math.max(0, centerMin * next - e2.clientWidth / 2);
     });
   };
+
+  const rowZoom = (delta: number) =>
+    setRowHeight((v) => Math.max(ROW_MIN, Math.min(ROW_MAX, v + delta)));
 
   // Pinch-zoom op touch
   const pointers = useRef<Map<number, { x: number; y: number }>>(new Map());
@@ -218,6 +254,49 @@ const AgendaPage = () => {
 
   const zoomPct = Math.round((pxPerMin / PX_DEFAULT) * 100);
 
+  // Tik op leeg kwartier → bepaal eerlijke starttijd en open reservatie-sheet
+  const handleQuarterClick = (table: any, quarterIndex: number) => {
+    const items = (byTable[table.id] ?? []) as any[];
+    const clickMin = quarterIndex * QUARTER_MIN;
+
+    const sorted = [...items].sort(
+      (a, b) => minutesFromStart(a.start_time) - minutesFromStart(b.start_time),
+    );
+    for (const r of sorted) {
+      const sMin = minutesFromStart(r.start_time);
+      const eMin = minutesFromStart(r.end_time);
+      if (clickMin >= sMin && clickMin < eMin) {
+        setSelectedId(r.id);
+        return;
+      }
+    }
+
+    let chosenMin = clickMin;
+    const next = sorted.find((r) => minutesFromStart(r.start_time) > clickMin);
+    if (next) {
+      const nextStart = minutesFromStart(next.start_time);
+      if (clickMin + defaultDuration > nextStart) {
+        chosenMin = Math.max(0, nextStart - defaultDuration);
+      }
+    }
+    const today = new Date();
+    if (format(today, "yyyy-MM-dd") === dateStr) {
+      const nowM = (today.getHours() - START_HOUR) * 60 + today.getMinutes();
+      const nextQ = Math.ceil(nowM / QUARTER_MIN) * QUARTER_MIN;
+      if (chosenMin < nextQ) chosenMin = nextQ;
+    }
+    if (chosenMin < 0) chosenMin = 0;
+    if (chosenMin >= totalMinutes) return;
+
+    setCreatePrefill({
+      date: dateStr,
+      time: minutesToTime(chosenMin),
+      tableId: table.id,
+      tableLabel: table.label,
+    });
+    setCreateOpen(true);
+  };
+
   return (
     <div className="p-4 sm:p-6 max-w-[1600px] mx-auto space-y-6">
       <PageHeader
@@ -225,6 +304,20 @@ const AgendaPage = () => {
         description={<span className="capitalize">{format(date, "EEEE d MMMM yyyy", { locale: nl })}</span>}
         actions={
           <>
+            <Button
+              variant="default"
+              className="h-11"
+              onClick={() => { setWalkInTable(undefined); setWalkInOpen(true); }}
+            >
+              <UserPlus className="h-4 w-4 mr-2" /> Walk-in
+            </Button>
+            <Button
+              variant="outline"
+              className="h-11"
+              onClick={() => { setCreatePrefill({ date: dateStr }); setCreateOpen(true); }}
+            >
+              <Plus className="h-4 w-4 mr-2" /> Reservering
+            </Button>
             <div className="hidden sm:flex items-center gap-1 mr-1">
               <Button variant="outline" size="icon" className="h-11 w-11" onClick={() => zoomBy(-PX_STEP)} disabled={pxPerMin <= PX_MIN} aria-label="Uitzoomen">
                 <ZoomOut className="h-4 w-4" />
@@ -232,6 +325,12 @@ const AgendaPage = () => {
               <span className="text-xs text-muted-foreground tabular-nums w-12 text-center">{zoomPct}%</span>
               <Button variant="outline" size="icon" className="h-11 w-11" onClick={() => zoomBy(PX_STEP)} disabled={pxPerMin >= PX_MAX} aria-label="Inzoomen">
                 <ZoomIn className="h-4 w-4" />
+              </Button>
+              <Button variant="outline" size="icon" className="h-11 w-11" onClick={() => rowZoom(-ROW_STEP)} disabled={rowHeight <= ROW_MIN} aria-label="Rijen smaller">
+                <MoveVertical className="h-4 w-4 rotate-45" />
+              </Button>
+              <Button variant="outline" size="icon" className="h-11 w-11" onClick={() => rowZoom(ROW_STEP)} disabled={rowHeight >= ROW_MAX} aria-label="Rijen hoger">
+                <MoveVertical className="h-4 w-4" />
               </Button>
             </div>
             <Button variant="outline" size="icon" className="h-11 w-11" onClick={() => setDate(subDays(date, 1))} aria-label="Vorige dag">
@@ -262,12 +361,18 @@ const AgendaPage = () => {
 
       {/* Mobile zoom-knoppen */}
       <div className="flex sm:hidden items-center justify-end gap-1">
-        <Button variant="outline" size="icon" className="h-10 w-10" onClick={() => zoomBy(-PX_STEP)} disabled={pxPerMin <= PX_MIN} aria-label="Uitzoomen">
+        <Button variant="outline" size="icon" className="h-11 w-11" onClick={() => zoomBy(-PX_STEP)} disabled={pxPerMin <= PX_MIN} aria-label="Uitzoomen">
           <ZoomOut className="h-4 w-4" />
         </Button>
         <span className="text-xs text-muted-foreground tabular-nums w-12 text-center">{zoomPct}%</span>
-        <Button variant="outline" size="icon" className="h-10 w-10" onClick={() => zoomBy(PX_STEP)} disabled={pxPerMin >= PX_MAX} aria-label="Inzoomen">
+        <Button variant="outline" size="icon" className="h-11 w-11" onClick={() => zoomBy(PX_STEP)} disabled={pxPerMin >= PX_MAX} aria-label="Inzoomen">
           <ZoomIn className="h-4 w-4" />
+        </Button>
+        <Button variant="outline" size="icon" className="h-11 w-11" onClick={() => rowZoom(-ROW_STEP)} disabled={rowHeight <= ROW_MIN} aria-label="Rijen smaller">
+          <MoveVertical className="h-4 w-4 rotate-45" />
+        </Button>
+        <Button variant="outline" size="icon" className="h-11 w-11" onClick={() => rowZoom(ROW_STEP)} disabled={rowHeight >= ROW_MAX} aria-label="Rijen hoger">
+          <MoveVertical className="h-4 w-4" />
         </Button>
       </div>
 
@@ -282,103 +387,133 @@ const AgendaPage = () => {
               />
             </div>
           ) : (
-            <div
-              ref={scrollRef}
-              className="overflow-x-auto"
-              style={{ touchAction: "pan-x pan-y" }}
-              onPointerDown={(e) => { resetInactivity(); onPointerDown(e); }}
-              onPointerMove={onPointerMove}
-              onPointerUp={onPointerEnd}
-              onPointerCancel={onPointerEnd}
-              onPointerLeave={onPointerEnd}
-              onScroll={resetInactivity}
-              onWheel={resetInactivity}
-            >
-              <div className="relative" style={{ minWidth: totalWidth + 120 }}>
-                {/* Header row */}
-                <div className="sticky top-0 z-10 bg-card border-b border-border flex">
-                  <div className="w-[120px] shrink-0 p-2 text-xs font-medium text-muted-foreground border-r border-border">Tafel</div>
-                  <div className="relative flex-1" style={{ width: totalWidth }}>
-                    {slots.map((s, i) => (
-                      <div
-                        key={s}
-                        className={cn("absolute top-0 h-full text-[10px] text-muted-foreground border-l border-border/50", i % 2 === 0 ? "" : "border-l-dashed")}
-                        style={{ left: i * SLOT_MIN * pxPerMin, width: SLOT_MIN * pxPerMin }}
-                      >
-                        {i % 2 === 0 && <span className="px-1">{s}</span>}
-                      </div>
-                    ))}
-                    <div className="h-6" />
-                  </div>
-                </div>
-
-                {/* Rows */}
-                {(tables as any[]).map((t) => {
-                  const items = byTable[t.id] ?? [];
-                  return (
-                    <div key={t.id} className="flex border-b border-border hover:bg-muted/20">
-                      <div className="w-[120px] shrink-0 p-3 border-r border-border">
-                        <div className="font-medium text-sm">{t.label}</div>
-                        {t.zones?.name && <div className="text-xs text-muted-foreground">{t.zones.name}</div>}
-                      </div>
-                      <div className="relative" style={{ width: totalWidth, height: 56 }}>
-                        {/* slot grid lines */}
-                        {slots.map((_, i) => (
-                          <div
-                            key={i}
-                            className="absolute top-0 h-full border-l border-border/30"
-                            style={{ left: i * SLOT_MIN * pxPerMin }}
-                          />
-                        ))}
-                        {/* reservations */}
-                        {items.map((r) => {
-                          const startMin = minutesFromStart(r.start_time);
-                          const endMin = minutesFromStart(r.end_time);
-                          const left = Math.max(0, startMin) * pxPerMin;
-                          const width = Math.max(20, (endMin - startMin) * pxPerMin - 2);
-                          return (
-                            <button
-                              key={r.id}
-                              onClick={() => setSelectedId(r.id)}
-                              className={cn(
-                                "absolute top-2 bottom-2 rounded-md border px-2 text-left text-xs overflow-hidden hover:brightness-110 transition-all",
-                                STATUS_BG[r.status] ?? "bg-muted border-border"
-                              )}
-                              style={{ left, width }}
-                            >
-                              <div className="font-medium truncate">
-                                {format(new Date(r.start_time), "HH:mm")} · {r.guests?.first_name ?? "Gast"} {r.guests?.last_name ?? ""}
-                              </div>
-                              <div className="text-[10px] opacity-80">{r.party_size}p</div>
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  );
-                })}
-
-                {/* Live "nu"-lijn */}
-                {showNowLine && (
-                  <div
-                    className="pointer-events-none absolute top-0 bottom-0 z-20"
-                    style={{ left: 120 + nowMin * pxPerMin }}
-                    aria-hidden
-                  >
-                    <div className="absolute top-0 bottom-0 w-[2px] bg-primary" />
-                    <div className="absolute -top-1 -left-1 h-2 w-2 rounded-full bg-primary shadow" />
-                    <div className="absolute top-1 left-2 px-1.5 py-0.5 text-[10px] font-medium rounded bg-primary text-primary-foreground tabular-nums whitespace-nowrap">
-                      {format(now, "HH:mm")}
-                    </div>
-                  </div>
-                )}
+            <>
+              <div className="flex items-center gap-2 px-3 py-2 border-b border-border text-xs text-muted-foreground">
+                <span>Tip: tik op een leeg tijdvak om snel een reservering toe te voegen op die tafel.</span>
               </div>
-            </div>
+              <div
+                ref={scrollRef}
+                className="overflow-x-auto"
+                style={{ touchAction: "pan-x pan-y" }}
+                onPointerDown={(e) => { resetInactivity(); onPointerDown(e); }}
+                onPointerMove={onPointerMove}
+                onPointerUp={onPointerEnd}
+                onPointerCancel={onPointerEnd}
+                onPointerLeave={onPointerEnd}
+                onScroll={resetInactivity}
+                onWheel={resetInactivity}
+              >
+                <div className="relative" style={{ minWidth: totalWidth + 120 }}>
+                  {/* Header row */}
+                  <div className="sticky top-0 z-10 bg-card border-b border-border flex">
+                    <div className="sticky left-0 z-20 bg-card w-[120px] shrink-0 p-2 text-xs font-medium text-muted-foreground border-r border-border">Tafel</div>
+                    <div className="relative flex-1" style={{ width: totalWidth }}>
+                      {slotLabels.map((s, i) => (
+                        <div
+                          key={s}
+                          className="absolute top-0 h-full text-[10px] text-muted-foreground border-l border-border/50"
+                          style={{ left: i * SLOT_MIN * pxPerMin, width: SLOT_MIN * pxPerMin }}
+                        >
+                          {i % 2 === 0 && <span className="px-1">{s}</span>}
+                        </div>
+                      ))}
+                      <div className="h-6" />
+                    </div>
+                  </div>
+
+                  {/* Rows */}
+                  {(tables as any[]).map((t) => {
+                    const items = byTable[t.id] ?? [];
+                    return (
+                      <div key={t.id} className="flex border-b border-border hover:bg-muted/10">
+                        <div className="sticky left-0 z-[5] bg-card w-[120px] shrink-0 p-3 border-r border-border flex flex-col justify-center">
+                          <div className="font-medium text-sm">{t.label}</div>
+                          {t.zones?.name && <div className="text-xs text-muted-foreground">{t.zones.name}</div>}
+                        </div>
+                        <div className="relative" style={{ width: totalWidth, height: rowHeight }}>
+                          {/* Kwartier-cellen (klikbaar, 3-tier hiërarchie) */}
+                          {Array.from({ length: quarterCount }).map((_, i) => (
+                            <button
+                              key={`q-${t.id}-${i}`}
+                              type="button"
+                              onClick={() => handleQuarterClick(t, i)}
+                              className={cn(
+                                "absolute top-0 h-full border-l transition-colors",
+                                i % 4 === 0
+                                  ? "border-border/60"
+                                  : i % 2 === 0
+                                  ? "border-border/30"
+                                  : "border-border/15",
+                                "hover:bg-primary/5 active:bg-primary/10 focus-visible:bg-primary/10 focus-visible:outline-none",
+                              )}
+                              style={{ left: i * QUARTER_MIN * pxPerMin, width: QUARTER_MIN * pxPerMin }}
+                              aria-label={`Reservering toevoegen op ${t.label} om ${minutesToTime(i * QUARTER_MIN)}`}
+                            />
+                          ))}
+                          {/* Reservering-blokken bovenop */}
+                          {items.map((r) => {
+                            const startMin = minutesFromStart(r.start_time);
+                            const endMin = minutesFromStart(r.end_time);
+                            const left = Math.max(0, startMin) * pxPerMin;
+                            const width = Math.max(20, (endMin - startMin) * pxPerMin - 2);
+                            return (
+                              <button
+                                key={r.id}
+                                onClick={(e) => { e.stopPropagation(); setSelectedId(r.id); }}
+                                className={cn(
+                                  "absolute rounded-md border px-2 text-left text-xs overflow-hidden hover:brightness-110 transition-all z-[2]",
+                                  STATUS_BG[r.status] ?? "bg-muted border-border",
+                                )}
+                                style={{ left, top: 6, height: rowHeight - 12, width }}
+                              >
+                                <div className="font-medium truncate">
+                                  {format(new Date(r.start_time), "HH:mm")} · {r.guests?.first_name ?? "Gast"} {r.guests?.last_name ?? ""}
+                                </div>
+                                <div className="text-[10px] opacity-80">{r.party_size}p</div>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })}
+
+                  {/* Live "nu"-lijn */}
+                  {showNowLine && (
+                    <div
+                      className="pointer-events-none absolute top-0 bottom-0 z-[3]"
+                      style={{ left: 120 + nowMin * pxPerMin }}
+                      aria-hidden
+                    >
+                      <div className="absolute top-0 bottom-0 w-[2px] bg-primary" />
+                      <div className="absolute -top-1 -left-1 h-2 w-2 rounded-full bg-primary shadow" />
+                      <div className="absolute top-1 left-2 px-1.5 py-0.5 text-[10px] font-medium rounded bg-primary text-primary-foreground tabular-nums whitespace-nowrap">
+                        {format(now, "HH:mm")}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </>
           )}
         </CardContent>
       </Card>
 
-      <ReservationDetailDialog reservationId={selectedId} open={!!selectedId} onOpenChange={(o) => !o && setSelectedId(null)} />
+      <ReservationDetailDialog
+        reservationId={selectedId}
+        open={!!selectedId}
+        onOpenChange={(o) => !o && setSelectedId(null)}
+      />
+      <ReservationFormSheet
+        open={createOpen}
+        onOpenChange={(o) => { setCreateOpen(o); if (!o) setCreatePrefill(undefined); }}
+        prefill={createPrefill}
+      />
+      <WalkInDialog
+        open={walkInOpen}
+        onOpenChange={(o) => { setWalkInOpen(o); if (!o) setWalkInTable(undefined); }}
+        prefilledTable={walkInTable}
+      />
     </div>
   );
 };
