@@ -332,7 +332,51 @@ export async function getPacingMetrics(restaurantId: string, range: DateRange) {
   return Array.from(slotMap.entries()).map(([slot, v]) => ({ slot, ...v })).sort((a, b) => a.slot.localeCompare(b.slot));
 }
 
-// ---------- Insight cards ----------
+// ---------- Weekly trend (last N weeks ending at range.to) ----------
+export type WeeklyTrendRow = { weekStart: string; label: string; reservations: number; covers: number; noShows: number };
+
+export async function getWeeklyTrend(restaurantId: string, weeks = 8, endDate?: string): Promise<WeeklyTrendRow[]> {
+  const end = endDate ? new Date(endDate) : new Date();
+  // Anchor to Monday of end-week
+  const dayOffset = (end.getDay() + 6) % 7;
+  const endMonday = new Date(end);
+  endMonday.setHours(0, 0, 0, 0);
+  endMonday.setDate(end.getDate() - dayOffset);
+  const start = new Date(endMonday);
+  start.setDate(endMonday.getDate() - (weeks - 1) * 7);
+  const startStr = isoDate(start);
+  const endStr = isoDate(new Date(endMonday.getTime() + 6 * 86_400_000));
+
+  const { data } = await (supabase as unknown as {
+    from: (t: string) => { select: (s: string) => { eq: (c: string, v: unknown) => { gte: (c: string, v: unknown) => { lte: (c: string, v: unknown) => Promise<{ data: Array<{ reservation_date: string; party_size: number; status: string }> }> } } } };
+  }).from("reservations").select("reservation_date,party_size,status")
+    .eq("restaurant_id", restaurantId).gte("reservation_date", startStr).lte("reservation_date", endStr);
+  const rows = data ?? [];
+
+  const buckets: WeeklyTrendRow[] = [];
+  for (let i = 0; i < weeks; i++) {
+    const ws = new Date(start);
+    ws.setDate(start.getDate() + i * 7);
+    buckets.push({
+      weekStart: isoDate(ws),
+      label: `${String(ws.getDate()).padStart(2, "0")}/${String(ws.getMonth() + 1).padStart(2, "0")}`,
+      reservations: 0, covers: 0, noShows: 0,
+    });
+  }
+  const startMs = start.getTime();
+  for (const r of rows) {
+    const d = new Date(r.reservation_date);
+    const idx = Math.floor((d.getTime() - startMs) / (7 * 86_400_000));
+    if (idx < 0 || idx >= weeks) continue;
+    const b = buckets[idx];
+    b.reservations += 1;
+    if (!["cancelled", "no_show", "hold"].includes(r.status)) b.covers += r.party_size;
+    if (r.status === "no_show") b.noShows += 1;
+  }
+  return buckets;
+}
+
+
 export type InsightCard = { id: string; title: string; body: string; tone: "info" | "positive" | "warning" };
 
 export function buildInsightCards(args: {
