@@ -1,19 +1,12 @@
 // ReservationCard — scannable, touch-friendly card used across overview,
 // today, and search results. Quick actions go through the reservations service.
-import { useState } from "react";
 import { format } from "date-fns";
-import { CheckCircle2, UserCheck, XCircle, AlertOctagon, Eye } from "lucide-react";
+import { Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/StatusBadge";
 import { ChannelBadge } from "@/components/ChannelBadge";
 import { ReservationBadges, type ReservationFlags } from "./ReservationBadges";
-import {
-  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
-  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import { reservations as resService } from "@/services/reservations";
-import { toast } from "sonner";
-import { useQueryClient } from "@tanstack/react-query";
+import { ReservationStatusQuickBar } from "./ReservationStatusQuickBar";
 import { cn } from "@/lib/utils";
 
 // Loose shape — matches what the page selects. Keep flexible so callers don't
