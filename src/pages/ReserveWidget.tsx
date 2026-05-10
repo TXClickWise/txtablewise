@@ -260,14 +260,23 @@ const ReserveWidget = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [slots, step, initialTime]);
 
+  const maxOnlineRequest = restaurant
+    ? (restaurant.large_group_max_online_request ?? restaurant.max_party_size_online)
+    : 0;
+  const extraInfoFrom = restaurant?.large_group_extra_info_from ?? null;
+  const manualApprovalFrom = restaurant?.large_group_manual_approval_from ?? null;
+  const requiresMessage = !!extraInfoFrom && partySize >= extraInfoFrom;
+  const showsApprovalBanner = !!manualApprovalFrom && partySize >= manualApprovalFrom;
+
   const goToDetails = () => {
     if (!restaurant) return;
-    if (partySize > restaurant.max_party_size_online) {
+    if (partySize > maxOnlineRequest) {
       setStep("large_group");
       return;
     }
     if (!date) return toast.error("Kies een datum");
     if (!selectedSlot) return toast.error("Kies een tijd");
+    if (requiresMessage) setShowExtras(true);
     setStep("details");
   };
 
