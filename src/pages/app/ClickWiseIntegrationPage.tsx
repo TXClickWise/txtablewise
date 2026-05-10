@@ -27,7 +27,7 @@ import {
   buildSamplePayload, CONTACT_MAPPING,
   DEFAULT_TAG_MAPPING, DEFAULT_CUSTOM_FIELDS, DEFAULT_WORKFLOWS,
   checkClickWiseReadiness, enableClickWiseLiveMode, disableClickWiseLiveMode,
-  processIntegrationEvent, processPendingClickWiseEvents,
+  processIntegrationEvent, processPendingClickWiseEvents, testClickWiseConnection,
   type ClickWiseSettings, type IntegrationEventRow, type EventFilter,
   type ClickWiseReadiness,
 } from "@/services/clickwise";
