@@ -40,6 +40,10 @@ const POSIntegrationPage = () => {
   const [reload, setReload] = useState(0);
   const [loyverse, setLoyverse] = useState<LoyverseConnectionStatus>(null);
   const [loyverseBusy, setLoyverseBusy] = useState<null | "connect" | "sync" | "disconnect">(null);
+  const [tokenDialogOpen, setTokenDialogOpen] = useState(false);
+  const [tokenInput, setTokenInput] = useState("");
+  const [showToken, setShowToken] = useState(false);
+  const [tokenHelpOpen, setTokenHelpOpen] = useState(false);
 
   useEffect(() => {
     if (!restaurantId) return;
@@ -49,26 +53,23 @@ const POSIntegrationPage = () => {
     getLoyverseStatus(restaurantId).then(setLoyverse).catch(() => setLoyverse(null));
   }, [restaurantId, reload]);
 
-  // Handle OAuth return (?loyverse=connected / error)
-  useEffect(() => {
-    const sp = new URLSearchParams(window.location.search);
-    const ly = sp.get("loyverse");
-    if (!ly) return;
-    if (ly === "connected") toast.success("Loyverse gekoppeld");
-    else toast.error("Loyverse koppeling mislukt", { description: sp.get("reason") ?? undefined });
-    sp.delete("loyverse"); sp.delete("reason");
-    window.history.replaceState({}, "", `${window.location.pathname}${sp.toString() ? "?" + sp.toString() : ""}`);
-    setReload((r) => r + 1);
-  }, []);
-
   async function handleLoyverseConnect() {
     if (!restaurantId) return;
+    const token = tokenInput.trim();
+    if (token.length < 10) {
+      toast.error("Token lijkt ongeldig", { description: "Plak de volledige access token uit Loyverse." });
+      return;
+    }
     setLoyverseBusy("connect");
     try {
-      const { url } = await getLoyverseAuthorizeUrl(restaurantId);
-      window.location.href = url;
+      await connectLoyverseWithToken(restaurantId, token);
+      toast.success("Loyverse gekoppeld");
+      setTokenDialogOpen(false);
+      setTokenInput("");
+      setReload((x) => x + 1);
     } catch (e) {
       toast.error("Koppelen mislukt", { description: (e as Error).message });
+    } finally {
       setLoyverseBusy(null);
     }
   }
