@@ -25,6 +25,7 @@ import { toast } from "sonner";
 import { WalkInQuickSheet } from "@/components/walk-in/WalkInQuickSheet";
 import { StatusBadge } from "@/components/StatusBadge";
 import { ReservationBadges } from "@/components/reservations/ReservationBadges";
+import { ReservationStatusQuickBar } from "@/components/reservations/ReservationStatusQuickBar";
 import { PacingIndicator, pacingLevelFromCovers } from "@/components/reservations/PacingIndicator";
 import { AIQuickSeatSheet } from "@/components/floor-plan/AIQuickSeatSheet";
 import { LastMinuteFillPanel } from "@/components/waitlist/LastMinuteFillPanel";
