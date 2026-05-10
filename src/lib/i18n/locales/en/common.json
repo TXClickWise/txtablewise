@@ -1,0 +1,10 @@
+{
+  "unsubscribe": {
+    "title": "Unsubscribe",
+    "description": "Click below to stop receiving emails from this restaurant.",
+    "confirm": "Confirm unsubscribe",
+    "success": "You've been unsubscribed. Thank you!",
+    "invalid": "This link is no longer valid.",
+    "alreadyDone": "You're already unsubscribed."
+  }
+}

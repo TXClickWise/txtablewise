@@ -1,0 +1,19 @@
+{
+  "title": "Mijn reservering",
+  "loading": "Reservering laden…",
+  "notFound": "Reservering niet gevonden of niet meer geldig.",
+  "details": "Details",
+  "datetime": "Datum & tijd",
+  "guests": "Aantal gasten",
+  "status": "Status",
+  "cancelTitle": "Reservering annuleren",
+  "cancelDescription": "Beantwoord deze actie zorgvuldig. Eenmaal geannuleerd kun je deze reservering niet meer herstellen.",
+  "cancelButton": "Reservering annuleren",
+  "cancelConfirm": "Weet je het zeker?",
+  "cancelYes": "Ja, annuleer",
+  "cancelNo": "Nee, behoud",
+  "cancelled": "Reservering geannuleerd",
+  "cancelledBody": "We hebben je reservering geannuleerd. Bedankt dat je het hebt laten weten.",
+  "thanks": "Bedankt — tot een volgende keer.",
+  "needHelp": "Vragen? Beantwoord de bevestigingsmail om contact op te nemen met het restaurant."
+}

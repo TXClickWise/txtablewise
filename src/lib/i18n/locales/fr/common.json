@@ -1,0 +1,10 @@
+{
+  "unsubscribe": {
+    "title": "Se désinscrire",
+    "description": "Cliquez ci-dessous pour ne plus recevoir d'e-mails de ce restaurant.",
+    "confirm": "Confirmer la désinscription",
+    "success": "Vous êtes désinscrit(e). Merci !",
+    "invalid": "Ce lien n'est plus valide.",
+    "alreadyDone": "Vous êtes déjà désinscrit(e)."
+  }
+}

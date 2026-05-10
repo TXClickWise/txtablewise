@@ -1,0 +1,10 @@
+{
+  "unsubscribe": {
+    "title": "Uitschrijven",
+    "description": "Klik hieronder om geen e-mails meer te ontvangen van dit restaurant.",
+    "confirm": "Bevestig uitschrijven",
+    "success": "Je bent uitgeschreven. Bedankt!",
+    "invalid": "Deze link is niet meer geldig.",
+    "alreadyDone": "Je bent al uitgeschreven."
+  }
+}
