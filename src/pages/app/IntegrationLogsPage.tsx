@@ -86,6 +86,37 @@ export default function IntegrationLogsPage() {
     }
   };
 
+  const retryableLogs = useMemo(
+    () => logs.filter((l) => l.retry_safe && l.status !== "success"),
+    [logs],
+  );
+  const toggleBulk = (id: string) => {
+    setBulkIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+  const toggleBulkAll = () => {
+    if (bulkIds.size === retryableLogs.length) setBulkIds(new Set());
+    else setBulkIds(new Set(retryableLogs.map((l) => l.id)));
+  };
+  const onBulkRetry = async () => {
+    if (bulkIds.size === 0) return;
+    setBulkRunning(true);
+    let ok = 0, fail = 0;
+    for (const id of Array.from(bulkIds)) {
+      try {
+        const r = await retryIntegrationLog(id);
+        r.ok ? ok++ : fail++;
+      } catch { fail++; }
+    }
+    setBulkRunning(false);
+    setBulkIds(new Set());
+    toast.success(`Retry klaar — ${ok} gelukt, ${fail} gefaald`);
+    await load();
+  };
+
   return (
     <div className="p-6 space-y-6 max-w-6xl">
       <div className="flex items-center gap-3">
