@@ -195,6 +195,7 @@ export default function VoiceAgentPage() {
                   Telefoonnummer: <strong>{settings.phone_number}</strong>
                 </div>
               )}
+              <VoiceTestButton restaurantId={rid!} disabled={!activeKey} />
             </CardContent>
           </Card>
 
