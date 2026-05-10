@@ -204,6 +204,7 @@ const ClickWiseIntegrationPage = () => {
       toast.error(e instanceof Error ? e.message : "Test mislukt.");
     } finally { setProcessing(false); }
   };
+  const handleEnableLive = async () => {
     if (!restaurantId) return;
     const r = await enableClickWiseLiveMode(restaurantId);
     if (!r.ok) return toast.error(r.error);
