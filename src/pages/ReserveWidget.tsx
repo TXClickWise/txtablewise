@@ -292,8 +292,8 @@ const ReserveWidget = () => {
       setStep("large_group");
       return;
     }
-    if (!date) return toast.error("Kies een datum");
-    if (!selectedSlot) return toast.error("Kies een tijd");
+    if (!date) return toast.error(t("errors.chooseDate"));
+    if (!selectedSlot) return toast.error(t("errors.chooseTime"));
     if (requiresMessage) setShowExtras(true);
     setStep("details");
   };
@@ -304,14 +304,14 @@ const ReserveWidget = () => {
     if (!parsed.success) return toast.error(parsed.error.errors[0].message);
     if (requiresMessage && !requests.trim()) {
       setShowExtras(true);
-      return toast.error("Voeg even een korte toelichting toe voor het restaurant");
+      return toast.error(t("errors.messageRequired"));
     }
 
     const gate = canAttemptBooking();
     if (!gate.allowed) {
       const mins = Math.ceil((gate.retryInSeconds ?? 60) / 60);
-      toast.error("Te veel pogingen", {
-        description: `Je hebt het maximale aantal pogingen bereikt. Probeer het over ${mins} minuut${mins === 1 ? "" : "en"} opnieuw.`,
+      toast.error(t("errors.rateLimitTitle"), {
+        description: t("errors.rateLimitBody", { minutes: mins, plural: mins === 1 ? "" : (locale === "nl" ? "ten" : locale === "de" ? "n" : "s") }),
       });
       return;
     }
