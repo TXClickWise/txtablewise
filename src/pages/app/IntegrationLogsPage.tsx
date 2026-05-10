@@ -46,6 +46,8 @@ export default function IntegrationLogsPage() {
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<IntegrationLog | null>(null);
   const [retrying, setRetrying] = useState<string | null>(null);
+  const [bulkIds, setBulkIds] = useState<Set<string>>(new Set());
+  const [bulkRunning, setBulkRunning] = useState(false);
 
   const load = async () => {
     if (!rid) return;
