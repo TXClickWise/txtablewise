@@ -20,6 +20,7 @@ import {
   Clock, Bell, History, Plug, Phone,
 } from "lucide-react";
 import { reservations as resService } from "@/services/reservations";
+import { ReservationStatusQuickBar } from "./ReservationStatusQuickBar";
 import { toast } from "sonner";
 import { Link } from "react-router-dom";
 import { cn } from "@/lib/utils";
@@ -179,32 +180,14 @@ export function ReservationDetailSheet({ reservationId, open, onOpenChange, onOp
                 </div>
               </div>
 
-              {/* Quick status actions */}
-              <div className="flex flex-wrap gap-1.5 pt-1">
-                {canSeat && (
-                  <Button size="sm" disabled={busy} onClick={() => run("seated")}>
-                    <UserCheck className="h-4 w-4 mr-1" /> Aangekomen
-                  </Button>
-                )}
-                {canComplete && (
-                  <Button size="sm" variant="secondary" disabled={busy} onClick={() => run("completed")}>
-                    <CheckCircle2 className="h-4 w-4 mr-1" /> Voltooid
-                  </Button>
-                )}
-                {canNoShow && (
-                  <Button size="sm" variant="outline" disabled={busy} onClick={() => run("no_show")}>
-                    <AlertOctagon className="h-4 w-4 mr-1" /> No-show
-                  </Button>
-                )}
-                {canCancel && (
-                  <Button
-                    size="sm" variant="ghost" disabled={busy}
-                    className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                    onClick={() => run("cancel")}
-                  >
-                    <XCircle className="h-4 w-4 mr-1" /> Annuleer
-                  </Button>
-                )}
+              {/* Quick status actions — uniform overal */}
+              <div className="flex flex-wrap gap-1.5 pt-1 items-center">
+                <ReservationStatusQuickBar
+                  reservationId={data.id}
+                  status={data.status}
+                  size="md"
+                  onChanged={refresh}
+                />
                 <Button size="sm" variant="outline" className="ml-auto" onClick={() => { onOpenFullEditor(data.id); onOpenChange(false); }}>
                   <Pencil className="h-4 w-4 mr-1" /> Volledig bewerken
                 </Button>
