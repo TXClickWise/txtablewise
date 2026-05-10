@@ -16,6 +16,7 @@ import {
 import { WalkInQuickSheet } from "@/components/walk-in/WalkInQuickSheet";
 import { StatusBadge } from "@/components/StatusBadge";
 import { AIQuickSeatSheet } from "@/components/floor-plan/AIQuickSeatSheet";
+import { MoveReservationSheet } from "@/components/reservations/MoveReservationSheet";
 
 type Zone = { id: string; name: string };
 type Table = {
