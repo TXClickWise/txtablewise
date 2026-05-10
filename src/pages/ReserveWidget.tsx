@@ -125,10 +125,33 @@ const Chip = ({ active, onClick, children }: { active: boolean; onClick: () => v
 const ReserveWidget = () => {
   const { slug } = useParams<{ slug: string }>();
   const [searchParams] = useSearchParams();
+  const { t } = useTranslation("widget");
   const sourceInfo = useMemo(
     () => resolveSourceChannel(searchParams.get("source")),
     [searchParams],
   );
+
+  // Locale state — auto-detect, persistable, mirrors into i18next + date-fns
+  const initialLocale = useMemo<Locale>(
+    () => detectGuestLocale({ slug, urlLang: searchParams.get("lang") }),
+    [slug, searchParams],
+  );
+  const [locale, setLocale] = useState<Locale>(initialLocale);
+  useEffect(() => { setI18nLocale(locale); }, [locale]);
+  const dfLocale = DATE_FNS_LOCALES[locale];
+  const ZONES = useMemo(
+    () => ZONE_IDS.map((id) => ({ id, label: t(`zones.${id}`) })),
+    [t, locale],
+  );
+  const OCCASIONS = useMemo(
+    () => OCCASION_IDS.map((id) => ({ id, label: id === "" ? t("occasions.none") : t(`occasions.${id}`) })),
+    [t, locale],
+  );
+  const guestSchema = useMemo(() => makeGuestSchema((k) => t(`errors.${k.replace("errors.", "")}`)), [t, locale]);
+  const handleLocaleChange = (next: Locale) => {
+    setLocale(next);
+    if (slug) persistGuestLocale(slug, next);
+  };
 
   const [restaurant, setRestaurant] = useState<RestaurantInfo | null>(null);
   const [step, setStep] = useState<Step>("select");
