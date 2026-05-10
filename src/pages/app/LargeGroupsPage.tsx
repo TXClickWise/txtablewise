@@ -276,7 +276,7 @@ const LargeGroupsPage = () => {
         subtitle="Aanvragen via de website komen hier binnen. Bel of mail terug om in een echte reservering om te zetten."
       >
         {requests.map((req) => (
-          <RequestRow key={req.id} req={req} />
+          <RequestRow key={req.id} req={req} onOpen={() => setSelectedRequest(req)} />
         ))}
       </Section>
 
@@ -284,6 +284,12 @@ const LargeGroupsPage = () => {
         reservationId={selectedReservationId}
         open={!!selectedReservationId}
         onOpenChange={(o) => !o && setSelectedReservationId(null)}
+      />
+
+      <LargeGroupRequestDialog
+        request={selectedRequest}
+        open={!!selectedRequest}
+        onOpenChange={(o) => !o && setSelectedRequest(null)}
       />
 
       <AlertDialog open={!!decision} onOpenChange={(o) => { if (!o) { setDecision(null); setDeclineReason(""); } }}>
