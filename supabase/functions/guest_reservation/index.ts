@@ -97,6 +97,23 @@ Deno.serve(async (req) => {
       timezone: restaurant.timezone,
     };
 
+    // Persist guest's chosen language across all follow-up communication.
+    // Fire-and-forget: any action (incl. view) is a signal of the current preference.
+    if (body.locale && VALID_LOCALES.has(body.locale) && body.locale !== reservation.guest_language) {
+      try {
+        await supabase.from("reservations")
+          .update({ guest_language: body.locale })
+          .eq("id", reservation.id);
+        if (reservation.guest_id) {
+          await supabase.from("guests")
+            .update({ language: body.locale })
+            .eq("id", reservation.guest_id);
+        }
+      } catch (e) {
+        console.error("guest locale persist failed (non-fatal)", e);
+      }
+    }
+
     // Final-status reservations: only allow view, return a stable error code per status.
     if (FINAL_STATUSES.has(reservation.status) && action !== "view") {
       const code =
