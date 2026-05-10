@@ -143,6 +143,16 @@ const LargeGroupSettings = () => {
                 <option value="hold">Voorlopig</option>
               </select>
             </Field>
+            <Field label="Maximale online groepsaanvraag (personen)" hint='Bovengrens voor aanvragen via de widget. Boven dit aantal wijst de widget de gast door naar het losse groepsformulier. Laat leeg om gelijk te trekken met "Max online groepsgrootte".'>
+              <Input type="number" min={1} placeholder="bv. 18"
+                value={form.large_group_max_online_request}
+                onChange={(e) => setForm({ ...form, large_group_max_online_request: e.target.value === "" ? "" : (Number(e.target.value) || 1) })} />
+            </Field>
+            <Field label="Toelichting verplicht vanaf (personen)" hint="Vanaf dit aantal moet de gast in de widget een korte toelichting meesturen (gelegenheid, menuwens, etc.). Laat leeg om nooit te verplichten.">
+              <Input type="number" min={1} placeholder="bv. 12"
+                value={form.large_group_extra_info_from}
+                onChange={(e) => setForm({ ...form, large_group_extra_info_from: e.target.value === "" ? "" : (Number(e.target.value) || 1) })} />
+            </Field>
           </div>
         </CardContent>
       </Card>
