@@ -1,9 +1,14 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
+import { useTranslation } from "react-i18next";
+import "@/lib/i18n";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Loader2, MailX, Check, AlertCircle } from "lucide-react";
+import { LanguageSwitcher } from "@/components/widget/LanguageSwitcher";
+import { detectGuestLocale, persistGuestLocale, type Locale } from "@/lib/i18n/detectLocale";
+import { setI18nLocale } from "@/lib/i18n";
 
 type Status = "loading" | "ready" | "already" | "invalid" | "success" | "error";
 
@@ -13,6 +18,19 @@ const ANON = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 const Unsubscribe = () => {
   const [params] = useSearchParams();
   const token = params.get("token") ?? "";
+  const { t } = useTranslation("common");
+
+  const initialLocale = useMemo<Locale>(
+    () => detectGuestLocale({ slug: `unsub-${token}`, urlLang: params.get("lang") }),
+    [token, params],
+  );
+  const [locale, setLocale] = useState<Locale>(initialLocale);
+  useEffect(() => { setI18nLocale(locale); }, [locale]);
+  const handleLocaleChange = (next: Locale) => {
+    setLocale(next);
+    if (token) persistGuestLocale(`unsub-${token}`, next);
+  };
+
   const [status, setStatus] = useState<Status>("loading");
   const [submitting, setSubmitting] = useState(false);
 
@@ -62,6 +80,9 @@ const Unsubscribe = () => {
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
+      <div className="absolute top-4 right-4">
+        <LanguageSwitcher value={locale} onChange={handleLocaleChange} />
+      </div>
       <Card className="max-w-md w-full">
         <CardHeader className="text-center">
           <div className="mx-auto mb-2 h-12 w-12 rounded-full bg-muted flex items-center justify-center">
@@ -71,26 +92,26 @@ const Unsubscribe = () => {
             {(status === "invalid" || status === "error") && <AlertCircle className="h-6 w-6 text-destructive" />}
           </div>
           <CardTitle>
-            {status === "loading" && "Even controleren..."}
-            {status === "ready" && "Uitschrijven bevestigen"}
-            {status === "success" && "Je bent uitgeschreven"}
-            {status === "already" && "Al uitgeschreven"}
-            {status === "invalid" && "Ongeldige link"}
-            {status === "error" && "Er ging iets mis"}
+            {status === "loading" && t("unsubscribe.checking")}
+            {status === "ready" && t("unsubscribe.confirmTitle")}
+            {status === "success" && t("unsubscribe.success")}
+            {status === "already" && t("unsubscribe.alreadyTitle")}
+            {status === "invalid" && t("unsubscribe.invalidTitle")}
+            {status === "error" && t("unsubscribe.errorTitle")}
           </CardTitle>
           <CardDescription>
-            {status === "ready" && "Bevestig hieronder dat je geen mails meer wil ontvangen. Je kan altijd opnieuw reserveren — dan ontvang je weer de bevestiging van die reservering."}
-            {status === "success" && "We sturen je geen mails meer. Bedankt dat je het hebt laten weten."}
-            {status === "already" && "Dit mailadres staat al op de uitschrijflijst."}
-            {status === "invalid" && "Deze link is niet meer geldig. Mogelijk is hij al gebruikt of verlopen."}
-            {status === "error" && "Probeer het later nog eens, of neem contact op met het restaurant."}
+            {status === "ready" && t("unsubscribe.confirmDescription")}
+            {status === "success" && t("unsubscribe.successBody")}
+            {status === "already" && t("unsubscribe.alreadyBody")}
+            {status === "invalid" && t("unsubscribe.invalidBody")}
+            {status === "error" && t("unsubscribe.errorBody")}
           </CardDescription>
         </CardHeader>
         {status === "ready" && (
           <CardContent>
             <Button onClick={handleConfirm} disabled={submitting} className="w-full" size="lg">
               {submitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-              Bevestig uitschrijven
+              {submitting ? t("unsubscribe.submitting") : t("unsubscribe.confirm")}
             </Button>
           </CardContent>
         )}
