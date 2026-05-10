@@ -55,7 +55,23 @@ const STATUS_BG: Record<string, string> = {
 const AgendaPage = () => {
   const { current } = useRestaurant();
   const rid = current?.restaurant_id;
-  const [date, setDate] = useState<Date>(new Date());
+  const [searchParams, setSearchParams] = useSearchParams();
+  const initialDate = (() => {
+    const p = searchParams.get("date");
+    if (p) {
+      const d = parseISO(p);
+      if (isValid(d)) return d;
+    }
+    return new Date();
+  })();
+  const [date, setDateState] = useState<Date>(initialDate);
+  const setDate = (d: Date) => {
+    setDateState(d);
+    const next = new URLSearchParams(searchParams);
+    if (isSameDay(d, new Date())) next.delete("date");
+    else next.set("date", format(d, "yyyy-MM-dd"));
+    setSearchParams(next, { replace: true });
+  };
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [pxPerMin, setPxPerMin] = useState(PX_DEFAULT);
   const [rowHeight, setRowHeight] = useState(ROW_DEFAULT);
