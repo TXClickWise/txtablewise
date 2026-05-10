@@ -605,16 +605,16 @@ const ReserveWidget = () => {
         {step === "details" && selectedSlot && date && (
           <div className="space-y-6 animate-in fade-in duration-300">
             <button onClick={() => setStep("select")} className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
-              <ArrowLeft className="h-4 w-4" /> Wijzig tijd
+              <ArrowLeft className="h-4 w-4" /> {t("changeTime")}
             </button>
 
             {/* Compact summary chips */}
             <div className="flex flex-wrap gap-2 text-sm">
               <span className="px-3 h-9 inline-flex items-center rounded-full bg-muted font-medium">
-                {partySize} {partySize === 1 ? "gast" : "gasten"}
+                {t("guest", { count: partySize })}
               </span>
               <span className="px-3 h-9 inline-flex items-center rounded-full bg-muted font-medium">
-                {format(date, "EEE d MMM", { locale: nl })}
+                {format(date, "EEE d MMM", { locale: dfLocale })}
               </span>
               <span className="px-3 h-9 inline-flex items-center rounded-full bg-primary/10 text-primary font-semibold">
                 {selectedSlot.time}
@@ -622,27 +622,27 @@ const ReserveWidget = () => {
             </div>
 
             <div>
-              <h2 className="font-display text-2xl mb-1">Jouw gegevens</h2>
-              <p className="text-sm text-muted-foreground">Zo kunnen we je bereiken over je reservering.</p>
+              <h2 className="font-display text-2xl mb-1">{t("yourDetails")}</h2>
+              <p className="text-sm text-muted-foreground">{t("yourDetailsSub")}</p>
             </div>
 
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
-                  <Label htmlFor="fn">Voornaam *</Label>
+                  <Label htmlFor="fn">{t("firstName")} *</Label>
                   <Input id="fn" required value={firstName} onChange={(e) => setFirstName(e.target.value)} className="h-12" />
                 </div>
                 <div className="space-y-1.5">
-                  <Label htmlFor="ln">Achternaam</Label>
+                  <Label htmlFor="ln">{t("lastName")}</Label>
                   <Input id="ln" value={lastName} onChange={(e) => setLastName(e.target.value)} className="h-12" />
                 </div>
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="ph">Telefoon *</Label>
-                <Input id="ph" type="tel" required value={phone} onChange={(e) => setPhone(e.target.value)} className="h-12" placeholder="06 12345678" />
+                <Label htmlFor="ph">{t("phone")} *</Label>
+                <Input id="ph" type="tel" required value={phone} onChange={(e) => setPhone(e.target.value)} className="h-12" placeholder={t("phonePlaceholder")} />
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="em">E-mail (optioneel)</Label>
+                <Label htmlFor="em">{t("emailOptional")}</Label>
                 <Input id="em" type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="h-12" />
               </div>
             </div>
@@ -651,14 +651,14 @@ const ReserveWidget = () => {
             <Collapsible open={showExtras} onOpenChange={setShowExtras}>
               <CollapsibleTrigger className="flex items-center justify-between w-full text-sm text-primary hover:underline">
                 <span className="flex items-center gap-2">
-                  <Heart className="h-4 w-4" /> Voorkeuren of allergieën toevoegen
+                  <Heart className="h-4 w-4" /> {t("addPreferences")}
                 </span>
                 <ChevronDown className={cn("h-4 w-4 transition-transform", showExtras && "rotate-180")} />
               </CollapsibleTrigger>
               <CollapsibleContent className="space-y-4 pt-4">
                 {restaurant.allow_zone_preference && (
                   <div className="space-y-2">
-                    <Label className="text-sm flex items-center gap-2"><MapPin className="h-4 w-4" /> Waar zit je het liefst?</Label>
+                    <Label className="text-sm flex items-center gap-2"><MapPin className="h-4 w-4" /> {t("zoneQ")}</Label>
                     <div className="flex flex-wrap gap-2">
                       {ZONES.map((z) => (
                         <Chip key={z.id} active={zone === z.id} onClick={() => setZone(z.id)}>{z.label}</Chip>
@@ -667,7 +667,7 @@ const ReserveWidget = () => {
                   </div>
                 )}
                 <div className="space-y-2">
-                  <Label className="text-sm">Speciale gelegenheid?</Label>
+                  <Label className="text-sm">{t("occasionQ")}</Label>
                   <div className="flex flex-wrap gap-2">
                     {OCCASIONS.map((o) => (
                       <Chip key={o.id} active={occasion === o.id} onClick={() => setOccasion(o.id)}>{o.label}</Chip>
@@ -675,21 +675,19 @@ const ReserveWidget = () => {
                   </div>
                 </div>
                 <div className="space-y-1.5">
-                  <Label htmlFor="all">Allergieën of dieetwensen</Label>
+                  <Label htmlFor="all">{t("allergies")}</Label>
                   <Input id="all" value={allergies} onChange={(e) => setAllergies(e.target.value)} className="h-12"
-                    placeholder="Bijv. notenallergie, vegetarisch" />
+                    placeholder={t("allergiesPlaceholder")} />
                 </div>
                 <div className="space-y-1.5">
                   <Label htmlFor="rq">
-                    {requiresMessage ? "Bericht aan het restaurant *" : "Andere wensen"}
+                    {requiresMessage ? `${t("requestsRequired")} *` : t("requests")}
                   </Label>
                   <Textarea id="rq" value={requests} onChange={(e) => setRequests(e.target.value)} rows={3}
-                    placeholder={requiresMessage
-                      ? "Bijv. gelegenheid, gewenste menu-opzet, drankarrangement…"
-                      : "Bijv. liefst tafel bij raam"} />
+                    placeholder={requiresMessage ? t("requestsRequiredPlaceholder") : t("requestsPlaceholder")} />
                   {requiresMessage && (
                     <p className="text-xs text-muted-foreground">
-                      Voor groepen vanaf {extraInfoFrom} personen helpt een korte toelichting ons om alles goed voor te bereiden.
+                      {t("requestsHint", { n: extraInfoFrom })}
                     </p>
                   )}
                 </div>
@@ -701,7 +699,7 @@ const ReserveWidget = () => {
               <Collapsible open={showPreOrders} onOpenChange={setShowPreOrders}>
                 <CollapsibleTrigger className="flex items-center justify-between w-full text-sm text-primary hover:underline">
                   <span className="flex items-center gap-2">
-                    <Sparkles className="h-4 w-4" /> Iets vooraf klaarzetten
+                    <Sparkles className="h-4 w-4" /> {t("preOrders")}
                     {preOrders.length > 0 && (
                       <span className="text-xs text-muted-foreground">({preOrders.length})</span>
                     )}
@@ -723,7 +721,7 @@ const ReserveWidget = () => {
               <Card>
                 <CardContent className="py-3 text-sm">
                   <div className="text-muted-foreground mb-1 flex items-center gap-1">
-                    <ListPlus className="h-3.5 w-3.5" /> Vooraf klaarzetten
+                    <ListPlus className="h-3.5 w-3.5" /> {t("preOrdersSummary")}
                   </div>
                   <ul className="space-y-1">
                     {preOrders.map((p, i) => (
@@ -742,19 +740,19 @@ const ReserveWidget = () => {
             <label className="flex items-start gap-3 cursor-pointer">
               <Checkbox checked={marketing} onCheckedChange={(v) => setMarketing(!!v)} className="mt-1" />
               <span className="text-sm text-muted-foreground">
-                Ik wil updates of acties van {restaurant.name} ontvangen.
+                {t("marketing", { restaurant: restaurant.name })}
               </span>
             </label>
 
             {bookingError && (
-              <PublicBookingNotice variant="error" title="Er ging iets mis">{bookingError}</PublicBookingNotice>
+              <PublicBookingNotice variant="error" title={t("somethingWrong")}>{bookingError}</PublicBookingNotice>
             )}
 
             <Button className="w-full h-14 text-base" onClick={handleBook} disabled={submitting}>
-              {submitting ? "Beschikbaarheid controleren…" : "Reservering bevestigen"}
+              {submitting ? t("checkingAvailability") : t("confirm")}
             </Button>
             <p className="text-xs text-muted-foreground text-center">
-              Door te bevestigen ga je akkoord met de annuleringsvoorwaarden van het restaurant.
+              {t("termsLine")}
             </p>
           </div>
         )}
@@ -767,25 +765,25 @@ const ReserveWidget = () => {
             </div>
             <div>
               <h1 className="font-display text-3xl mb-2">
-                {confirmation.status === "pending" ? "Aanvraag ontvangen" : "Je reservering is ontvangen"}
+                {confirmation.status === "pending" ? t("confirmedPendingTitle") : t("confirmedTitle")}
               </h1>
               <p className="text-muted-foreground">
                 {confirmation.status === "pending"
-                  ? `${restaurant.name} controleert je reservering en bevestigt persoonlijk.`
-                  : `Je reservering bij ${restaurant.name} staat in de agenda.`}
+                  ? t("confirmedPendingSub", { restaurant: restaurant.name })
+                  : t("confirmedActiveSub", { restaurant: restaurant.name })}
               </p>
             </div>
             <Card className="text-left">
               <CardContent className="py-5 space-y-3">
-                <Row label="Datum & tijd" value={format(new Date(confirmation.start), "EEE d MMM · HH:mm", { locale: nl })} />
-                <Row label="Aantal gasten" value={String(partySize)} />
-                <Row label="Bevestigingscode" value={confirmation.code} mono />
+                <Row label={t("rowDateTime")} value={format(new Date(confirmation.start), "EEE d MMM · HH:mm", { locale: dfLocale })} />
+                <Row label={t("rowGuests")} value={String(partySize)} />
+                <Row label={t("rowCode")} value={confirmation.code} mono />
               </CardContent>
             </Card>
             <p className="text-sm text-muted-foreground">
-              Je ontvangt later een bevestiging via je voorkeurskanaal zodra het restaurant zijn communicatie heeft gekoppeld.
+              {t("channelHint")}
             </p>
-            <Button variant="outline" onClick={reset}>Nieuwe reservering</Button>
+            <Button variant="outline" onClick={reset}>{t("newReservation")}</Button>
           </div>
         )}
 
@@ -837,6 +835,9 @@ const LargeGroupForm = ({
   sourceChannel: SourceChannel;
   onBack: () => void;
 }) => {
+  const { t, i18n } = useTranslation("widget");
+  const currentLocale = (i18n.language as Locale) || "nl";
+  const dfLocale = DATE_FNS_LOCALES[currentLocale] ?? nl;
   const [name, setName] = useState("");
   const [emailV, setEmailV] = useState("");
   const [phone, setPhone] = useState("");
@@ -850,7 +851,7 @@ const LargeGroupForm = ({
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim() || !emailV.trim() || !partySize) return toast.error("Vul de verplichte velden in");
+    if (!name.trim() || !emailV.trim() || !partySize) return toast.error(t("errors.fillRequired"));
     setSubmitting(true);
     const { error } = await supabase.from("large_group_requests").insert({
       restaurant_id: restaurant.id,
@@ -874,11 +875,11 @@ const LargeGroupForm = ({
         <div className="mx-auto h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center">
           <Check className="h-8 w-8 text-primary" />
         </div>
-        <h1 className="font-display text-3xl">Je groepsaanvraag is ontvangen</h1>
+        <h1 className="font-display text-3xl">{t("group.receivedHeading")}</h1>
         <p className="text-muted-foreground">
-          Voor deze groepsgrootte controleert {restaurant.name} de beschikbaarheid persoonlijk.
+          {t("group.receivedBody", { restaurant: restaurant.name })}
         </p>
-        <Button variant="outline" onClick={onBack}>Terug</Button>
+        <Button variant="outline" onClick={onBack}>{t("back")}</Button>
       </div>
     );
   }
@@ -886,73 +887,73 @@ const LargeGroupForm = ({
   return (
     <form onSubmit={submit} className="space-y-5 animate-in fade-in duration-300">
       <button type="button" onClick={onBack} className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
-        <ArrowLeft className="h-4 w-4" /> Terug
+        <ArrowLeft className="h-4 w-4" /> {t("back")}
       </button>
       <div>
-        <h1 className="font-display text-3xl mb-2">Groepsaanvraag</h1>
+        <h1 className="font-display text-3xl mb-2">{t("group.heading")}</h1>
         <p className="text-muted-foreground">
-          Gezellig, jullie komen met een grotere groep. Voor groepen vanaf {restaurant.large_group_threshold} personen plannen we persoonlijk in.
+          {t("group.intro", { n: restaurant.large_group_threshold })}
         </p>
       </div>
 
       <PublicBookingNotice>
-        Voor grotere groepen kan het restaurant later om een reserveringsgarantie vragen.
+        {t("group.notice")}
       </PublicBookingNotice>
 
       <div className="space-y-1.5">
-        <Label>Aantal personen *</Label>
+        <Label>{t("group.personsLabel")} *</Label>
         <Input type="number" min={restaurant.large_group_threshold} max={200} required
           value={partySize} onChange={(e) => setPartySize(Number(e.target.value))} className="h-12" />
       </div>
       <div className="space-y-1.5">
-        <Label>Naam *</Label>
+        <Label>{t("group.nameLabel")} *</Label>
         <Input required value={name} onChange={(e) => setName(e.target.value)} className="h-12" />
       </div>
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-1.5">
-          <Label>E-mail *</Label>
+          <Label>{t("group.emailLabel")} *</Label>
           <Input type="email" required value={emailV} onChange={(e) => setEmailV(e.target.value)} className="h-12" />
         </div>
         <div className="space-y-1.5">
-          <Label>Telefoon</Label>
+          <Label>{t("group.phoneLabel")}</Label>
           <Input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} className="h-12" />
         </div>
       </div>
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-1.5">
-          <Label>Voorkeursdatum</Label>
+          <Label>{t("group.dateLabel")}</Label>
           <Popover>
             <PopoverTrigger asChild>
               <Button variant="outline" className="w-full h-12 justify-start text-left font-normal">
                 <CalendarIcon className="mr-2 h-4 w-4" />
-                {date ? format(date, "d MMM yyyy", { locale: nl }) : "—"}
+                {date ? format(date, "d MMM yyyy", { locale: dfLocale }) : t("group.datePlaceholder")}
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-auto p-0" align="start">
-              <Calendar mode="single" selected={date} onSelect={setDate} locale={nl}
+              <Calendar mode="single" selected={date} onSelect={setDate} locale={dfLocale}
                 disabled={(d) => d < new Date(new Date().setHours(0, 0, 0, 0))}
                 className={cn("p-3 pointer-events-auto")} initialFocus />
             </PopoverContent>
           </Popover>
         </div>
         <div className="space-y-1.5">
-          <Label>Voorkeurstijd</Label>
+          <Label>{t("group.timeLabel")}</Label>
           <Input type="time" value={time} onChange={(e) => setTime(e.target.value)} className="h-12" />
         </div>
       </div>
       <div className="space-y-1.5">
-        <Label>Gelegenheid</Label>
+        <Label>{t("group.occasionLabel")}</Label>
         <Input value={occasion} onChange={(e) => setOccasion(e.target.value)} className="h-12"
-          placeholder="Verjaardag, zakelijk diner, bruiloft…" />
+          placeholder={t("group.occasionPlaceholder")} />
       </div>
       <div className="space-y-1.5">
-        <Label>Bericht</Label>
+        <Label>{t("group.messageLabel")}</Label>
         <Textarea value={message} onChange={(e) => setMessage(e.target.value)} rows={4}
-          placeholder="Wensen, dieetinformatie, drankarrangement…" />
+          placeholder={t("group.messagePlaceholder")} />
       </div>
 
       <Button type="submit" className="w-full h-14 text-base" disabled={submitting}>
-        {submitting ? "Versturen…" : "Aanvraag versturen"}
+        {submitting ? t("group.submitting") : t("group.submit")}
       </Button>
     </form>
   );

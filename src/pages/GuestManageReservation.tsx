@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useSearchParams } from "react-router-dom";
+import { useTranslation } from "react-i18next";
+import "@/lib/i18n";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -11,6 +13,9 @@ import {
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 import { CalendarCheck2, CalendarX2, CheckCircle2, Clock, Loader2, Users } from "lucide-react";
+import { LanguageSwitcher } from "@/components/widget/LanguageSwitcher";
+import { detectGuestLocale, persistGuestLocale, type Locale } from "@/lib/i18n/detectLocale";
+import { setI18nLocale } from "@/lib/i18n";
 
 type Reservation = {
   reservation_date: string;
@@ -32,8 +37,26 @@ type RestaurantPublic = {
 
 const FUNCTION_URL = `https://${import.meta.env.VITE_SUPABASE_PROJECT_ID}.supabase.co/functions/v1/guest_reservation`;
 
+const LOCALE_TAGS: Record<Locale, string> = {
+  nl: "nl-NL", en: "en-GB", de: "de-DE", fr: "fr-FR",
+};
+
 export default function GuestManageReservation() {
   const { token } = useParams<{ token: string }>();
+  const [params] = useSearchParams();
+  const { t } = useTranslation("manage");
+
+  const initialLocale = useMemo<Locale>(
+    () => detectGuestLocale({ slug: `manage-${token ?? ""}`, urlLang: params.get("lang") }),
+    [token, params],
+  );
+  const [locale, setLocale] = useState<Locale>(initialLocale);
+  useEffect(() => { setI18nLocale(locale); }, [locale]);
+  const handleLocaleChange = (next: Locale) => {
+    setLocale(next);
+    if (token) persistGuestLocale(`manage-${token}`, next);
+  };
+
   const [loading, setLoading] = useState(true);
   const [acting, setActing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -79,11 +102,11 @@ export default function GuestManageReservation() {
   const fmt = useMemo(() => {
     if (!reservation || !restaurant) return null;
     const d = new Date(reservation.start_time);
-    return new Intl.DateTimeFormat("nl-NL", {
+    return new Intl.DateTimeFormat(LOCALE_TAGS[locale], {
       weekday: "long", day: "numeric", month: "long", year: "numeric",
       hour: "2-digit", minute: "2-digit", timeZone: restaurant.timezone,
     }).format(d);
-  }, [reservation, restaurant]);
+  }, [reservation, restaurant, locale]);
 
   if (loading) {
     return (
@@ -95,13 +118,14 @@ export default function GuestManageReservation() {
 
   if (error || !reservation || !restaurant) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background p-6">
+      <div className="min-h-screen flex items-center justify-center bg-background p-6 relative">
+        <div className="absolute top-4 right-4">
+          <LanguageSwitcher value={locale} onChange={handleLocaleChange} />
+        </div>
         <Card className="max-w-md w-full">
           <CardHeader>
-            <CardTitle className="font-display">Link niet geldig</CardTitle>
-            <CardDescription>
-              Deze link is verlopen of niet (meer) geldig. Neem contact op met het restaurant als u uw reservering wilt bekijken of wijzigen.
-            </CardDescription>
+            <CardTitle className="font-display">{t("notFoundTitle")}</CardTitle>
+            <CardDescription>{t("notFound")}</CardDescription>
           </CardHeader>
         </Card>
       </div>
@@ -115,9 +139,9 @@ export default function GuestManageReservation() {
     setActing(true);
     const { ok, data } = await call("confirm_attendance");
     setActing(false);
-    if (!ok) return toast.error("Bevestigen lukt niet — probeer opnieuw");
+    if (!ok) return toast.error(t("toastConfirmFail"));
     setReservation(data.reservation);
-    toast.success("Fijn dat u komt — tot dan!");
+    toast.success(t("toastConfirmSuccess"));
   };
 
   const onCancel = async () => {
@@ -125,9 +149,9 @@ export default function GuestManageReservation() {
     const { ok, data } = await call("cancel", { reason: cancelReason });
     setActing(false);
     setShowCancel(false);
-    if (!ok) return toast.error("Annuleren lukt niet — probeer opnieuw");
+    if (!ok) return toast.error(t("toastCancelFail"));
     setReservation(data.reservation);
-    toast.success("Bedankt voor het laten weten — uw reservering is geannuleerd.");
+    toast.success(t("toastCancelSuccess"));
   };
 
   const onSubmitChange = async () => {
@@ -140,24 +164,30 @@ export default function GuestManageReservation() {
     });
     setActing(false);
     setShowChange(false);
-    if (!ok) return toast.error("Verzenden lukt niet — probeer opnieuw");
+    if (!ok) return toast.error(t("toastChangeFail"));
     setChangeRequested(true);
-    toast.success("Wijzigingsverzoek verstuurd — we nemen contact op.");
+    toast.success(t("toastChangeSuccess"));
   };
 
   return (
     <div className="min-h-screen bg-muted/20 py-8 px-4">
       <div className="max-w-xl mx-auto space-y-4">
-        <header className="text-center space-y-1">
-          <p className="text-sm text-muted-foreground">{restaurant.name}</p>
-          <h1 className="font-display text-2xl">Uw reservering</h1>
+        <header className="flex items-start justify-between gap-3">
+          <div className="text-center flex-1 space-y-1">
+            <p className="text-sm text-muted-foreground">{restaurant.name}</p>
+            <h1 className="font-display text-2xl">{t("title")}</h1>
+          </div>
+          <LanguageSwitcher value={locale} onChange={handleLocaleChange} />
         </header>
 
         <Card>
           <CardHeader>
             <CardTitle className="font-display capitalize">{fmt}</CardTitle>
             <CardDescription className="flex flex-wrap gap-3 pt-2 text-sm">
-              <span className="inline-flex items-center gap-1"><Users className="h-4 w-4" />{reservation.party_size} {reservation.party_size === 1 ? "gast" : "gasten"}</span>
+              <span className="inline-flex items-center gap-1">
+                <Users className="h-4 w-4" />
+                {t("guest", { count: reservation.party_size })}
+              </span>
               {reservation.confirmation_code && (
                 <span className="inline-flex items-center gap-1 font-mono text-xs">#{reservation.confirmation_code}</span>
               )}
@@ -166,17 +196,17 @@ export default function GuestManageReservation() {
           <CardContent className="space-y-4">
             {isCancelled && (
               <div className="rounded-md bg-muted p-3 text-sm text-muted-foreground">
-                Deze reservering is geannuleerd.
+                {t("cancelledBanner")}
               </div>
             )}
             {!isCancelled && reservation.reminder_confirmed_at && (
               <div className="rounded-md bg-primary/10 text-primary p-3 text-sm inline-flex items-center gap-2">
-                <CheckCircle2 className="h-4 w-4" /> U heeft aangegeven te komen — bedankt!
+                <CheckCircle2 className="h-4 w-4" /> {t("attendanceConfirmed")}
               </div>
             )}
             {reservation.special_requests && (
               <div className="text-sm">
-                <Label className="text-xs text-muted-foreground">Uw opmerking</Label>
+                <Label className="text-xs text-muted-foreground">{t("yourNote")}</Label>
                 <p className="mt-1 whitespace-pre-wrap">{reservation.special_requests}</p>
               </div>
             )}
@@ -185,14 +215,14 @@ export default function GuestManageReservation() {
               <div className="grid sm:grid-cols-2 gap-2 pt-2">
                 {!reservation.reminder_confirmed_at && (
                   <Button onClick={onConfirmAttendance} disabled={acting} className="gap-2">
-                    <CalendarCheck2 className="h-4 w-4" /> Ik kom
+                    <CalendarCheck2 className="h-4 w-4" /> {t("imComing")}
                   </Button>
                 )}
                 <Button variant="outline" onClick={() => setShowChange(true)} disabled={acting} className="gap-2">
-                  <Clock className="h-4 w-4" /> Wijziging aanvragen
+                  <Clock className="h-4 w-4" /> {t("requestChange")}
                 </Button>
                 <Button variant="ghost" onClick={() => setShowCancel(true)} disabled={acting} className="gap-2 text-destructive hover:text-destructive sm:col-span-2">
-                  <CalendarX2 className="h-4 w-4" /> Ik kan toch niet komen
+                  <CalendarX2 className="h-4 w-4" /> {t("cantMakeIt")}
                 </Button>
               </div>
             )}
@@ -202,16 +232,16 @@ export default function GuestManageReservation() {
         {changeRequested && (
           <Card>
             <CardHeader>
-              <CardTitle className="font-display text-base">Wijzigingsverzoek ontvangen</CardTitle>
-              <CardDescription>
-                We nemen zo snel mogelijk contact met u op om de wijziging te bevestigen.
-              </CardDescription>
+              <CardTitle className="font-display text-base">{t("changeReceivedTitle")}</CardTitle>
+              <CardDescription>{t("changeReceivedBody")}</CardDescription>
             </CardHeader>
           </Card>
         )}
 
         <p className="text-center text-xs text-muted-foreground pt-4">
-          Vragen? Bel of mail {restaurant.name}{restaurant.phone ? ` op ${restaurant.phone}` : ""}.
+          {restaurant.phone
+            ? t("questionsFootWithPhone", { restaurant: restaurant.name, phone: restaurant.phone })
+            : t("questionsFootNoPhone", { restaurant: restaurant.name })}
         </p>
       </div>
 
@@ -219,19 +249,17 @@ export default function GuestManageReservation() {
       <AlertDialog open={showCancel} onOpenChange={setShowCancel}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Reservering annuleren?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Jammer dat u niet kunt komen. Wilt u eventueel een korte reden achterlaten?
-            </AlertDialogDescription>
+            <AlertDialogTitle>{t("cancelTitle")}</AlertDialogTitle>
+            <AlertDialogDescription>{t("cancelDescription")}</AlertDialogDescription>
           </AlertDialogHeader>
           <Textarea
-            placeholder="Bijv. agenda gewijzigd (optioneel)"
+            placeholder={t("cancelReasonPlaceholder")}
             value={cancelReason}
             onChange={(e) => setCancelReason(e.target.value.slice(0, 280))}
           />
           <AlertDialogFooter>
-            <AlertDialogCancel>Toch niet</AlertDialogCancel>
-            <AlertDialogAction onClick={onCancel} disabled={acting}>Bevestig annulering</AlertDialogAction>
+            <AlertDialogCancel>{t("cancelKeep")}</AlertDialogCancel>
+            <AlertDialogAction onClick={onCancel} disabled={acting}>{t("cancelConfirm")}</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
@@ -240,34 +268,32 @@ export default function GuestManageReservation() {
       <AlertDialog open={showChange} onOpenChange={setShowChange}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Wijziging aanvragen</AlertDialogTitle>
-            <AlertDialogDescription>
-              Geef hieronder uw voorkeur door. Wij bevestigen de wijziging persoonlijk.
-            </AlertDialogDescription>
+            <AlertDialogTitle>{t("changeTitle")}</AlertDialogTitle>
+            <AlertDialogDescription>{t("changeDescription")}</AlertDialogDescription>
           </AlertDialogHeader>
           <div className="space-y-3">
             <div className="grid grid-cols-2 gap-2">
               <div className="space-y-1">
-                <Label className="text-xs">Nieuwe datum</Label>
+                <Label className="text-xs">{t("newDate")}</Label>
                 <Input type="date" value={changeForm.desired_date} onChange={(e) => setChangeForm({ ...changeForm, desired_date: e.target.value })} />
               </div>
               <div className="space-y-1">
-                <Label className="text-xs">Nieuwe tijd</Label>
+                <Label className="text-xs">{t("newTime")}</Label>
                 <Input type="time" value={changeForm.desired_time} onChange={(e) => setChangeForm({ ...changeForm, desired_time: e.target.value })} />
               </div>
             </div>
             <div className="space-y-1">
-              <Label className="text-xs">Aantal gasten</Label>
+              <Label className="text-xs">{t("newPartySize")}</Label>
               <Input type="number" min={1} max={50} value={changeForm.desired_party_size} onChange={(e) => setChangeForm({ ...changeForm, desired_party_size: e.target.value })} />
             </div>
             <div className="space-y-1">
-              <Label className="text-xs">Opmerking</Label>
+              <Label className="text-xs">{t("note")}</Label>
               <Textarea value={changeForm.message} onChange={(e) => setChangeForm({ ...changeForm, message: e.target.value.slice(0, 500) })} />
             </div>
           </div>
           <AlertDialogFooter>
-            <AlertDialogCancel>Annuleren</AlertDialogCancel>
-            <AlertDialogAction onClick={onSubmitChange} disabled={acting}>Verstuur verzoek</AlertDialogAction>
+            <AlertDialogCancel>{t("back")}</AlertDialogCancel>
+            <AlertDialogAction onClick={onSubmitChange} disabled={acting}>{t("submitChange")}</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
