@@ -423,7 +423,11 @@ const ReservationsPage = () => {
         open={!!editorId}
         onOpenChange={(o) => !o && setEditorId(null)}
       />
-      <ReservationFormSheet open={createOpen} onOpenChange={setCreateOpen} />
+      <ReservationFormSheet
+        open={createOpen}
+        onOpenChange={(o) => { setCreateOpen(o); if (!o) setCreatePrefill(undefined); }}
+        prefill={createPrefill}
+      />
       <WalkInDialog open={walkInOpen} onOpenChange={setWalkInOpen} />
     </div>
   );
