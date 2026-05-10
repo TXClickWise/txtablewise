@@ -385,7 +385,7 @@ const ReserveWidget = () => {
   if (!restaurant) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-muted-foreground">Laden…</div>
+        <div className="text-muted-foreground">{t("errors.loading")}</div>
       </div>
     );
   }
