@@ -15,7 +15,7 @@ const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
 const CLIENT_ID = Deno.env.get("LOYVERSE_CLIENT_ID") ?? "";
 const CLIENT_SECRET = Deno.env.get("LOYVERSE_CLIENT_SECRET") ?? "";
-const REDIRECT_URI = `${SUPABASE_URL}/functions/v1/loyverse_oauth?action=callback`;
+const REDIRECT_URI = `${SUPABASE_URL}/functions/v1/loyverse_oauth`;
 // Frontend return URL after callback finishes (preview or published)
 const FRONTEND_FALLBACK = "https://txtablewise.lovable.app/app/integraties/pos";
 
@@ -197,7 +197,7 @@ Deno.serve(async (req) => {
 
   try {
     // ---- BROWSER callback (no JWT, comes from Loyverse) ----
-    if (action === "callback" && req.method === "GET") {
+    if ((action === "callback" || (req.method === "GET" && url.searchParams.has("code"))) && req.method === "GET") {
       const code = url.searchParams.get("code");
       const state = url.searchParams.get("state");
       const err = url.searchParams.get("error");
