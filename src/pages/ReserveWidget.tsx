@@ -835,6 +835,9 @@ const LargeGroupForm = ({
   sourceChannel: SourceChannel;
   onBack: () => void;
 }) => {
+  const { t, i18n } = useTranslation("widget");
+  const currentLocale = (i18n.language as Locale) || "nl";
+  const dfLocale = DATE_FNS_LOCALES[currentLocale] ?? nl;
   const [name, setName] = useState("");
   const [emailV, setEmailV] = useState("");
   const [phone, setPhone] = useState("");
@@ -848,7 +851,7 @@ const LargeGroupForm = ({
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim() || !emailV.trim() || !partySize) return toast.error("Vul de verplichte velden in");
+    if (!name.trim() || !emailV.trim() || !partySize) return toast.error(t("errors.fillRequired"));
     setSubmitting(true);
     const { error } = await supabase.from("large_group_requests").insert({
       restaurant_id: restaurant.id,
@@ -872,11 +875,11 @@ const LargeGroupForm = ({
         <div className="mx-auto h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center">
           <Check className="h-8 w-8 text-primary" />
         </div>
-        <h1 className="font-display text-3xl">Je groepsaanvraag is ontvangen</h1>
+        <h1 className="font-display text-3xl">{t("group.receivedHeading")}</h1>
         <p className="text-muted-foreground">
-          Voor deze groepsgrootte controleert {restaurant.name} de beschikbaarheid persoonlijk.
+          {t("group.receivedBody", { restaurant: restaurant.name })}
         </p>
-        <Button variant="outline" onClick={onBack}>Terug</Button>
+        <Button variant="outline" onClick={onBack}>{t("back")}</Button>
       </div>
     );
   }
@@ -884,73 +887,73 @@ const LargeGroupForm = ({
   return (
     <form onSubmit={submit} className="space-y-5 animate-in fade-in duration-300">
       <button type="button" onClick={onBack} className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
-        <ArrowLeft className="h-4 w-4" /> Terug
+        <ArrowLeft className="h-4 w-4" /> {t("back")}
       </button>
       <div>
-        <h1 className="font-display text-3xl mb-2">Groepsaanvraag</h1>
+        <h1 className="font-display text-3xl mb-2">{t("group.heading")}</h1>
         <p className="text-muted-foreground">
-          Gezellig, jullie komen met een grotere groep. Voor groepen vanaf {restaurant.large_group_threshold} personen plannen we persoonlijk in.
+          {t("group.intro", { n: restaurant.large_group_threshold })}
         </p>
       </div>
 
       <PublicBookingNotice>
-        Voor grotere groepen kan het restaurant later om een reserveringsgarantie vragen.
+        {t("group.notice")}
       </PublicBookingNotice>
 
       <div className="space-y-1.5">
-        <Label>Aantal personen *</Label>
+        <Label>{t("group.personsLabel")} *</Label>
         <Input type="number" min={restaurant.large_group_threshold} max={200} required
           value={partySize} onChange={(e) => setPartySize(Number(e.target.value))} className="h-12" />
       </div>
       <div className="space-y-1.5">
-        <Label>Naam *</Label>
+        <Label>{t("group.nameLabel")} *</Label>
         <Input required value={name} onChange={(e) => setName(e.target.value)} className="h-12" />
       </div>
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-1.5">
-          <Label>E-mail *</Label>
+          <Label>{t("group.emailLabel")} *</Label>
           <Input type="email" required value={emailV} onChange={(e) => setEmailV(e.target.value)} className="h-12" />
         </div>
         <div className="space-y-1.5">
-          <Label>Telefoon</Label>
+          <Label>{t("group.phoneLabel")}</Label>
           <Input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} className="h-12" />
         </div>
       </div>
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-1.5">
-          <Label>Voorkeursdatum</Label>
+          <Label>{t("group.dateLabel")}</Label>
           <Popover>
             <PopoverTrigger asChild>
               <Button variant="outline" className="w-full h-12 justify-start text-left font-normal">
                 <CalendarIcon className="mr-2 h-4 w-4" />
-                {date ? format(date, "d MMM yyyy", { locale: nl }) : "—"}
+                {date ? format(date, "d MMM yyyy", { locale: dfLocale }) : t("group.datePlaceholder")}
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-auto p-0" align="start">
-              <Calendar mode="single" selected={date} onSelect={setDate} locale={nl}
+              <Calendar mode="single" selected={date} onSelect={setDate} locale={dfLocale}
                 disabled={(d) => d < new Date(new Date().setHours(0, 0, 0, 0))}
                 className={cn("p-3 pointer-events-auto")} initialFocus />
             </PopoverContent>
           </Popover>
         </div>
         <div className="space-y-1.5">
-          <Label>Voorkeurstijd</Label>
+          <Label>{t("group.timeLabel")}</Label>
           <Input type="time" value={time} onChange={(e) => setTime(e.target.value)} className="h-12" />
         </div>
       </div>
       <div className="space-y-1.5">
-        <Label>Gelegenheid</Label>
+        <Label>{t("group.occasionLabel")}</Label>
         <Input value={occasion} onChange={(e) => setOccasion(e.target.value)} className="h-12"
-          placeholder="Verjaardag, zakelijk diner, bruiloft…" />
+          placeholder={t("group.occasionPlaceholder")} />
       </div>
       <div className="space-y-1.5">
-        <Label>Bericht</Label>
+        <Label>{t("group.messageLabel")}</Label>
         <Textarea value={message} onChange={(e) => setMessage(e.target.value)} rows={4}
-          placeholder="Wensen, dieetinformatie, drankarrangement…" />
+          placeholder={t("group.messagePlaceholder")} />
       </div>
 
       <Button type="submit" className="w-full h-14 text-base" disabled={submitting}>
-        {submitting ? "Versturen…" : "Aanvraag versturen"}
+        {submitting ? t("group.submitting") : t("group.submit")}
       </Button>
     </form>
   );
