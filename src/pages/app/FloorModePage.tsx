@@ -92,9 +92,31 @@ const FloorModePage = () => {
   const restaurant = (current as any)?.restaurants ?? {};
   const qc = useQueryClient();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const [now, setNow] = useState(() => new Date());
-  const today = format(now, "yyyy-MM-dd");
+  const initialSelected = (() => {
+    const p = searchParams.get("date");
+    if (p) {
+      const d = parseISO(p);
+      if (isValid(d)) return d;
+    }
+    return new Date();
+  })();
+  const [selectedDate, setSelectedDateState] = useState<Date>(initialSelected);
+  const setSelectedDate = (d: Date) => {
+    setSelectedDateState(d);
+    const next = new URLSearchParams(searchParams);
+    if (isSameDay(d, new Date())) next.delete("date");
+    else next.set("date", format(d, "yyyy-MM-dd"));
+    setSearchParams(next, { replace: true });
+  };
+  const isToday = isSameDay(selectedDate, now);
+  const dateStr = format(selectedDate, "yyyy-MM-dd");
+  // Reference time used for status calculations (overdue/almostFree/etc).
+  // On non-today views we anchor to start-of-day so nothing appears "live".
+  const referenceTime = isToday ? now : startOfDay(selectedDate);
+  const today = dateStr; // backward-compat alias used below
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
   const [selectedTableId, setSelectedTableId] = useState<string | null>(null);
   const [walkInOpen, setWalkInOpen] = useState(false);
