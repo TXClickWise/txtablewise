@@ -493,13 +493,13 @@ const ReserveWidget = () => {
             {/* Date */}
             <div className="space-y-2">
               <Label className="text-sm flex items-center gap-2">
-                <CalendarIcon className="h-4 w-4" /> Datum
+                <CalendarIcon className="h-4 w-4" /> {t("date")}
               </Label>
               <div className="grid grid-cols-3 gap-2">
                 {[
-                  { label: "Vandaag", offset: 0 },
-                  { label: "Morgen", offset: 1 },
-                  { label: "Overmorgen", offset: 2 },
+                  { label: t("today"), offset: 0 },
+                  { label: t("tomorrow"), offset: 1 },
+                  { label: t("dayAfter"), offset: 2 },
                 ].map((q) => {
                   const d = new Date(); d.setDate(d.getDate() + q.offset); d.setHours(0, 0, 0, 0);
                   const sel = date && format(date, "yyyy-MM-dd") === format(d, "yyyy-MM-dd");
@@ -518,11 +518,11 @@ const ReserveWidget = () => {
                 <PopoverTrigger asChild>
                   <Button variant="outline" className="w-full h-12 justify-start text-base font-normal">
                     <CalendarIcon className="mr-2 h-4 w-4" />
-                    {date ? format(date, "EEEE d MMMM yyyy", { locale: nl }) : "Andere datum kiezen"}
+                    {date ? format(date, "EEEE d MMMM yyyy", { locale: dfLocale }) : t("chooseDate")}
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar mode="single" selected={date} onSelect={(d) => d && setDate(d)} initialFocus locale={nl}
+                  <Calendar mode="single" selected={date} onSelect={(d) => d && setDate(d)} initialFocus locale={dfLocale}
                     disabled={(d) => d < new Date(new Date().setHours(0, 0, 0, 0)) || d > new Date(Date.now() + (restaurant.booking_horizon_days ?? 30) * 24 * 60 * 60 * 1000)}
                     className={cn("p-3 pointer-events-auto")} />
                 </PopoverContent>
