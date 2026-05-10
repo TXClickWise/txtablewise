@@ -51,13 +51,14 @@ Deno.serve(async (req) => {
     if (rErr) return json({ error: rErr.message }, 500);
     if (!restaurant) return json({ error: "Restaurant not found" }, 404);
 
-    // Large group check
-    if (body.party_size > restaurant.max_party_size_online) {
+    // Online request hard cap: large_group_max_online_request (falls back to max_party_size_online)
+    const onlineHardCap: number = restaurant.large_group_max_online_request ?? restaurant.max_party_size_online;
+    if (body.party_size > onlineHardCap) {
       return json({
         slots: [],
         large_group: true,
         large_group_threshold: restaurant.max_party_size_online,
-        message: `Voor groepen vanaf ${restaurant.large_group_threshold} personen vragen we een aparte aanvraag.`,
+        message: `Voor groepen groter dan ${onlineHardCap} personen vragen we een aparte aanvraag.`,
       });
     }
 
