@@ -496,30 +496,6 @@ export function WalkInQuickSheet({ open, onOpenChange, prefill, onPlaced }: Prop
                 </div>
                 <p className="mt-1 text-xs text-muted-foreground">Verwachte eindtijd: {endTimeLabel}</p>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <Label htmlFor="walkin-name" className="text-sm">Naam (optioneel)</Label>
-                  <Input
-                    id="walkin-name"
-                    value={firstName}
-                    maxLength={100}
-                    onChange={(e) => setFirstName(e.target.value)}
-                    className="h-12 mt-1"
-                    placeholder="Bijv. Jansen"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="walkin-phone" className="text-sm">Telefoon (optioneel)</Label>
-                  <Input
-                    id="walkin-phone"
-                    value={phone}
-                    maxLength={40}
-                    onChange={(e) => setPhone(e.target.value)}
-                    className="h-12 mt-1"
-                    placeholder="06…"
-                  />
-                </div>
-              </div>
               <div>
                 <Label htmlFor="walkin-notes" className="text-sm">Notitie (optioneel)</Label>
                 <Textarea
