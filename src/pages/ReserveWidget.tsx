@@ -532,7 +532,7 @@ const ReserveWidget = () => {
             {/* Time slots */}
             <div className="space-y-2">
               <Label className="text-sm flex items-center gap-2">
-                <Clock className="h-4 w-4" /> Tijd
+                <Clock className="h-4 w-4" /> {t("time")}
               </Label>
               {loadingSlots ? (
                 <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
@@ -550,9 +550,9 @@ const ReserveWidget = () => {
               ) : slots.length === 0 ? (
                 <Card>
                   <CardContent className="py-6 text-center space-y-3">
-                    <p className="text-sm text-muted-foreground">Er zijn op deze dag helaas geen tijden beschikbaar.</p>
+                    <p className="text-sm text-muted-foreground">{t("noSlots")}</p>
                     <Button size="sm" variant="outline" onClick={() => setStep("waitlist")}>
-                      Op de wachtlijst
+                      {t("joinWaitlist")}
                     </Button>
                   </CardContent>
                 </Card>
@@ -573,17 +573,17 @@ const ReserveWidget = () => {
                               : "border-border/40 bg-muted text-muted-foreground/50 cursor-not-allowed",
                           s.available && s.peak_warning && selectedSlot?.start_iso !== s.start_iso && "ring-1 ring-warning/40",
                         )}
-                        title={!s.available ? "Vol" : s.peak_warning ? "Beperkt beschikbaar" : "Beschikbaar"}
+                        title={!s.available ? t("slotFull") : s.peak_warning ? t("slotLimited") : t("slotAvailable")}
                       >
                         {s.time}
                       </button>
                     ))}
                   </div>
                   {slots.every((s) => !s.available) && (
-                    <PublicBookingNotice variant="warning" title="Geen plek meer op deze dag">
+                    <PublicBookingNotice variant="warning" title={t("fullTitle")}>
                       <div className="space-y-3">
-                        <p>Wil je op de wachtlijst? We nemen contact op zodra er iets vrijkomt.</p>
-                        <Button size="sm" onClick={() => setStep("waitlist")}>Op de wachtlijst</Button>
+                        <p>{t("fullBody")}</p>
+                        <Button size="sm" onClick={() => setStep("waitlist")}>{t("joinWaitlist")}</Button>
                       </div>
                     </PublicBookingNotice>
                   )}
@@ -596,7 +596,7 @@ const ReserveWidget = () => {
               onClick={goToDetails}
               disabled={!selectedSlot || !date || loadingSlots}
             >
-              Tafel reserveren <ChevronRight className="ml-1 h-4 w-4" />
+              {t("bookTable")} <ChevronRight className="ml-1 h-4 w-4" />
             </Button>
           </div>
         )}
