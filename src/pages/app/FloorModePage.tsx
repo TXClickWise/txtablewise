@@ -337,8 +337,14 @@ const FloorModePage = () => {
             <div className="flex items-baseline gap-3 flex-wrap">
               <h1 className="font-display text-2xl">Floor Mode</h1>
               <span className="text-sm text-muted-foreground capitalize">
-                {format(now, "EEEE d MMMM · HH:mm", { locale: nl })}
+                {format(selectedDate, "EEEE d MMMM", { locale: nl })}
+                {isToday && <span> · {format(clockNow, "HH:mm")}</span>}
               </span>
+              {!isToday && (
+                <span className="text-xs px-2 py-0.5 rounded-full bg-muted text-muted-foreground border border-border">
+                  Planning­weergave
+                </span>
+              )}
             </div>
             <div className="mt-1 flex items-center gap-3 flex-wrap text-sm text-muted-foreground">
               <Kpi label="reserveringen" value={totalToday} />
@@ -348,10 +354,50 @@ const FloorModePage = () => {
               <PacingIndicator level={pacingLevel} covers={coversNextHour} />
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <span className="hidden md:inline text-xs text-muted-foreground" aria-live="polite">
               Laatst bijgewerkt {format(lastUpdated, "HH:mm:ss")}
             </span>
+            {/* Date navigator */}
+            <div className="flex items-center gap-1">
+              <Button
+                variant="outline" size="icon" className="h-11 w-11"
+                onClick={() => setSelectedDate(subDays(selectedDate, 1))}
+                aria-label="Vorige dag"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" className="h-11">
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {format(selectedDate, "d MMM yyyy", { locale: nl })}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="end">
+                  <Calendar
+                    mode="single"
+                    selected={selectedDate}
+                    onSelect={(d) => d && setSelectedDate(d)}
+                    locale={nl}
+                    initialFocus
+                    className={cn("p-3 pointer-events-auto")}
+                  />
+                </PopoverContent>
+              </Popover>
+              <Button
+                variant="outline" size="icon" className="h-11 w-11"
+                onClick={() => setSelectedDate(addDays(selectedDate, 1))}
+                aria-label="Volgende dag"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+              {!isToday && (
+                <Button variant="outline" className="h-11" onClick={() => setSelectedDate(new Date())}>
+                  Vandaag
+                </Button>
+              )}
+            </div>
             <Button
               variant="ghost" size="icon" onClick={() => refetch()} title="Vernieuwen"
               aria-label="Vernieuwen"
