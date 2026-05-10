@@ -502,6 +502,8 @@ async function processEvent(
         response: result.body,
         http_status: result.status,
         contact_upsert: contactUpsertResult,
+        locale: resolvedLocale,
+        locale_source: localeSource,
         mode: "live",
       },
     }).eq("id", ev.id);
