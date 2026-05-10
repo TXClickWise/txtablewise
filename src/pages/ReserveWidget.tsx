@@ -462,13 +462,13 @@ const ReserveWidget = () => {
               </div>
               {canRequestLargerOnline && (
                 <div className="flex items-center gap-2 pt-1">
-                  <Label className="text-xs text-muted-foreground whitespace-nowrap">Grotere groep?</Label>
+                  <Label className="text-xs text-muted-foreground whitespace-nowrap">{t("largerGroup")}</Label>
                   <Input
                     type="number"
                     min={(restaurant?.max_party_size_online ?? 0) + 1}
                     max={200}
                     value={partySize > (restaurant?.max_party_size_online ?? 0) ? partySize : ""}
-                    placeholder={`bv. ${maxOnlineRequest} personen`}
+                    placeholder={t("largerGroupPlaceholder", { n: maxOnlineRequest })}
                     onChange={(e) => {
                       const v = parseInt(e.target.value, 10);
                       if (!Number.isNaN(v) && v >= 1) setPartySize(Math.min(v, 200));
@@ -480,12 +480,12 @@ const ReserveWidget = () => {
               {showsApprovalBanner && partySize <= maxOnlineRequest && (
                 <p className="text-xs text-muted-foreground">
                   {restaurant?.large_group_confirmation_text?.trim() ||
-                    `Reserveringen vanaf ${manualApprovalFrom} personen worden persoonlijk bevestigd door ${restaurant?.name}.`}
+                    t("manualApprovalDefault", { n: manualApprovalFrom, restaurant: restaurant?.name })}
                 </p>
               )}
               {restaurant && partySize > maxOnlineRequest && (
                 <p className="text-xs text-muted-foreground">
-                  Vanaf {maxOnlineRequest + 1} personen sturen we je door naar een korte groepsaanvraag — dan plant {restaurant.name} jullie persoonlijk in.
+                  {t("largerGroupRedirect", { n: maxOnlineRequest + 1, restaurant: restaurant.name })}
                 </p>
               )}
             </div>
