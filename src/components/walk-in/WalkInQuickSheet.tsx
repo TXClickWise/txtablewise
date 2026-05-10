@@ -221,7 +221,7 @@ export function WalkInQuickSheet({ open, onOpenChange, prefill, onPlaced }: Prop
             </SheetTitle>
             <SheetDescription>
               {format(new Date(), "EEEE d MMMM · HH:mm", { locale: nl })} ·
-              {" "}Geen gastgegevens nodig voor snelle plaatsing.
+              {" "}Alleen aantal personen volstaat — naam en telefoon zijn optioneel.
             </SheetDescription>
           </SheetHeader>
         </div>
