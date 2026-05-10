@@ -358,9 +358,9 @@ export type LoyverseConnectionStatus = {
 } | null;
 
 async function invokeLoyverse(action: string, body?: Record<string, unknown>) {
-  const { data, error } = await supabase.functions.invoke(`loyverse_oauth?action=${action}`, {
+  const { data, error } = await supabase.functions.invoke("loyverse_oauth", {
     method: "POST",
-    body: body ?? {},
+    body: { action, ...(body ?? {}) },
   });
   if (error) throw error;
   return data as Record<string, unknown>;

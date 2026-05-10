@@ -193,7 +193,7 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
   const url = new URL(req.url);
-  const action = url.searchParams.get("action") ?? "";
+  let action = url.searchParams.get("action") ?? "";
 
   try {
     // ---- BROWSER callback (no JWT, comes from Loyverse) ----
@@ -249,15 +249,17 @@ Deno.serve(async (req) => {
       return htmlRedirect(`${FRONTEND_FALLBACK}?loyverse=connected`, "Loyverse gekoppeld!");
     }
 
+    const body = req.method === "POST" ? await req.json().catch(() => ({})) : {};
+    if (!action && body.action) action = body.action as string;
+
     // ---- AUTH-required actions ----
     const userId = await getUserId(req.headers.get("Authorization"));
-    if (!userId) return new Response(JSON.stringify({ error: "unauthorized" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    if (!userId) return new Response(JSON.stringify({ error: "unauthorized", hasAuth: !!req.headers.get("Authorization") }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
     if (!CLIENT_ID || !CLIENT_SECRET) {
       return new Response(JSON.stringify({ error: "loyverse credentials not configured" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    const body = req.method === "POST" ? await req.json().catch(() => ({})) : {};
     const restaurantId = (body.restaurant_id as string) ?? url.searchParams.get("restaurant_id") ?? "";
     if (!restaurantId) return new Response(JSON.stringify({ error: "restaurant_id required" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     if (!(await isManager(restaurantId, userId))) {
