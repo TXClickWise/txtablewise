@@ -193,7 +193,17 @@ const ClickWiseIntegrationPage = () => {
       toast.error(e instanceof Error ? e.message : "Kon batch niet verwerken.");
     } finally { setProcessing(false); }
   };
-  const handleEnableLive = async () => {
+  const handleTestConnection = async () => {
+    if (!restaurantId) return;
+    setProcessing(true);
+    try {
+      const r = await testClickWiseConnection(restaurantId);
+      if (r.ok) toast.success(`Verbinding OK (HTTP ${r.http_status}, ${r.latency_ms}ms)`);
+      else toast.error(`Verbinding mislukt${r.http_status ? ` (HTTP ${r.http_status})` : ""}${r.message ? ` — ${r.message}` : ""}`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Test mislukt.");
+    } finally { setProcessing(false); }
+  };
     if (!restaurantId) return;
     const r = await enableClickWiseLiveMode(restaurantId);
     if (!r.ok) return toast.error(r.error);
