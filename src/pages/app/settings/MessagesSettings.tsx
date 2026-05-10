@@ -148,32 +148,12 @@ function TemplateEditor({
 
         {LOCALES.map((l) => {
           const row = byLocale[l.code];
-          const Field = ({ field, multiline, lbl }: { field: keyof TplRow; multiline?: boolean; lbl: string }) => {
-            const [val, setVal] = useState<string>((row?.[field] as string) || "");
-            const Cmp: any = multiline ? Textarea : Input;
-            return (
-              <div>
-                <Label className="text-xs">{lbl}</Label>
-                <Cmp
-                  rows={multiline ? 3 : undefined}
-                  value={val}
-                  onChange={(e: any) => setVal(e.target.value)}
-                  onBlur={() => {
-                    if (val !== ((row?.[field] as string) || "")) {
-                      save.mutate({ locale: l.code, patch: { [field]: val } as any });
-                    }
-                  }}
-                />
-              </div>
-            );
-          };
           return (
             <TabsContent key={l.code} value={l.code} className="space-y-3 mt-4">
-              <Field field="subject" lbl="Onderwerp" />
-              <Field field="heading" lbl="Kop" />
-              <Field field="body_intro" multiline lbl="Intro" />
-              <Field field="body_outro" multiline lbl="Afsluiting" />
-              <Field field="signature" lbl="Ondertekening" />
+              <LocaleFields
+                row={row}
+                onSave={(field, val) => save.mutate({ locale: l.code, patch: { [field]: val } as any })}
+              />
               <p className="text-xs text-muted-foreground">
                 {row ? "" : "Nog niet opgeslagen — standaardtekst wordt gebruikt."}
               </p>
@@ -182,6 +162,76 @@ function TemplateEditor({
         })}
       </Tabs>
     </Card>
+  );
+}
+
+function LocaleFields({
+  row,
+  onSave,
+}: {
+  row: TplRow | undefined;
+  onSave: (field: keyof TplRow, val: string) => void;
+}) {
+  const [local, setLocal] = useState({
+    subject: row?.subject || "",
+    heading: row?.heading || "",
+    body_intro: row?.body_intro || "",
+    body_outro: row?.body_outro || "",
+    signature: row?.signature || "",
+  });
+  // Reset local when row changes (e.g. after AI translation)
+  const rowKey = `${row?.subject}|${row?.heading}|${row?.body_intro}|${row?.body_outro}|${row?.signature}`;
+  const [seenKey, setSeenKey] = useState(rowKey);
+  if (rowKey !== seenKey) {
+    setSeenKey(rowKey);
+    setLocal({
+      subject: row?.subject || "",
+      heading: row?.heading || "",
+      body_intro: row?.body_intro || "",
+      body_outro: row?.body_outro || "",
+      signature: row?.signature || "",
+    });
+  }
+
+  const onBlur = (field: keyof TplRow) => {
+    const val = (local as any)[field];
+    const orig = (row?.[field] as string) || "";
+    if (val !== orig) onSave(field, val);
+  };
+
+  return (
+    <>
+      <div>
+        <Label className="text-xs">Onderwerp</Label>
+        <Input value={local.subject}
+          onChange={(e) => setLocal({ ...local, subject: e.target.value })}
+          onBlur={() => onBlur("subject")} />
+      </div>
+      <div>
+        <Label className="text-xs">Kop</Label>
+        <Input value={local.heading}
+          onChange={(e) => setLocal({ ...local, heading: e.target.value })}
+          onBlur={() => onBlur("heading")} />
+      </div>
+      <div>
+        <Label className="text-xs">Intro</Label>
+        <Textarea rows={3} value={local.body_intro}
+          onChange={(e) => setLocal({ ...local, body_intro: e.target.value })}
+          onBlur={() => onBlur("body_intro")} />
+      </div>
+      <div>
+        <Label className="text-xs">Afsluiting</Label>
+        <Textarea rows={3} value={local.body_outro}
+          onChange={(e) => setLocal({ ...local, body_outro: e.target.value })}
+          onBlur={() => onBlur("body_outro")} />
+      </div>
+      <div>
+        <Label className="text-xs">Ondertekening</Label>
+        <Input value={local.signature}
+          onChange={(e) => setLocal({ ...local, signature: e.target.value })}
+          onBlur={() => onBlur("signature")} />
+      </div>
+    </>
   );
 }
 
