@@ -344,6 +344,78 @@ const POSIntegrationPage = () => {
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Loyverse Access Token Dialog */}
+      <Dialog open={tokenDialogOpen} onOpenChange={(o) => { setTokenDialogOpen(o); if (!o) { setTokenInput(""); setShowToken(false); } }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Koppel met Loyverse</DialogTitle>
+            <DialogDescription>
+              Plak je persoonlijke Loyverse access token. We testen direct of hij geldig is.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-3">
+            <button
+              type="button"
+              onClick={() => setTokenHelpOpen((v) => !v)}
+              className="text-xs text-primary hover:underline text-left"
+            >
+              {tokenHelpOpen ? "▾" : "▸"} Hoe vind ik mijn access token in Loyverse?
+            </button>
+            {tokenHelpOpen && (
+              <ol className="text-xs text-muted-foreground space-y-1 pl-4 list-decimal">
+                <li>Open je Loyverse Back Office.</li>
+                <li>Ga naar <strong>Instellingen → Access tokens</strong>.</li>
+                <li>Klik <strong>+ Nieuwe token toevoegen</strong>, geef hem een naam (bijv. "TableWise").</li>
+                <li>Kopieer de getoonde token-waarde.</li>
+                <li>Plak die hieronder en klik op Verbinden.</li>
+                <li>
+                  <a
+                    href="https://r.loyverse.com/dashboard/#/integrations"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-1 text-primary hover:underline"
+                  >
+                    Open Loyverse integraties <ExternalLink className="h-3 w-3" />
+                  </a>
+                </li>
+              </ol>
+            )}
+
+            <div className="space-y-1.5">
+              <Label htmlFor="loyverse-token" className="text-xs">Access token</Label>
+              <div className="flex gap-2">
+                <Input
+                  id="loyverse-token"
+                  type={showToken ? "text" : "password"}
+                  placeholder="3878ee588caa…"
+                  value={tokenInput}
+                  onChange={(e) => setTokenInput(e.target.value)}
+                  autoComplete="off"
+                  spellCheck={false}
+                />
+                <Button type="button" size="icon" variant="outline" onClick={() => setShowToken((v) => !v)} aria-label={showToken ? "Verbergen" : "Tonen"}>
+                  {showToken ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </Button>
+              </div>
+              <p className="text-[10px] text-muted-foreground">
+                Token wordt veilig versleuteld opgeslagen en alleen server-side gebruikt om bonnen op te halen.
+              </p>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setTokenDialogOpen(false)} disabled={loyverseBusy === "connect"}>
+              Annuleer
+            </Button>
+            <Button onClick={handleLoyverseConnect} disabled={loyverseBusy === "connect" || tokenInput.trim().length < 10}>
+              {loyverseBusy === "connect" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <LinkIcon className="mr-2 h-4 w-4" />}
+              Verbinden
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
