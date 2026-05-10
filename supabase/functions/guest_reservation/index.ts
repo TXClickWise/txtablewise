@@ -16,6 +16,7 @@ type Body = {
   token: string;
   action?: Action;
   reason?: string;
+  locale?: string;
   // For request_change:
   desired_date?: string;
   desired_time?: string;
@@ -24,6 +25,7 @@ type Body = {
 };
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const VALID_LOCALES = new Set(["nl", "en", "de", "fr"]);
 
 // Statuses that disallow further guest mutation. View remains allowed.
 const FINAL_STATUSES = new Set(["cancelled", "no_show", "completed"]);
@@ -46,8 +48,8 @@ Deno.serve(async (req) => {
     // Look up by manage_token first, then cancel_token.
     // We DO need to fetch magic_token_expires_at server-side, but it never leaves this function.
     const cols =
-      "id, restaurant_id, reservation_date, start_time, end_time, party_size, status, " +
-      "confirmation_code, reminder_confirmed_at, special_requests, magic_token_expires_at";
+      "id, restaurant_id, guest_id, reservation_date, start_time, end_time, party_size, status, " +
+      "confirmation_code, reminder_confirmed_at, special_requests, magic_token_expires_at, guest_language";
 
     const { data: byManage } = await supabase
       .from("reservations").select(cols)
@@ -94,6 +96,23 @@ Deno.serve(async (req) => {
       email: restaurant.email,
       timezone: restaurant.timezone,
     };
+
+    // Persist guest's chosen language across all follow-up communication.
+    // Fire-and-forget: any action (incl. view) is a signal of the current preference.
+    if (body.locale && VALID_LOCALES.has(body.locale) && body.locale !== reservation.guest_language) {
+      try {
+        await supabase.from("reservations")
+          .update({ guest_language: body.locale })
+          .eq("id", reservation.id);
+        if (reservation.guest_id) {
+          await supabase.from("guests")
+            .update({ language: body.locale })
+            .eq("id", reservation.guest_id);
+        }
+      } catch (e) {
+        console.error("guest locale persist failed (non-fatal)", e);
+      }
+    }
 
     // Final-status reservations: only allow view, return a stable error code per status.
     if (FINAL_STATUSES.has(reservation.status) && action !== "view") {
