@@ -1357,6 +1357,7 @@ export type Database = {
           end_time: string
           external_reference: string | null
           guest_id: string | null
+          guest_language: string | null
           hold_expires_at: string | null
           id: string
           internal_notes: string | null
@@ -1410,6 +1411,7 @@ export type Database = {
           end_time: string
           external_reference?: string | null
           guest_id?: string | null
+          guest_language?: string | null
           hold_expires_at?: string | null
           id?: string
           internal_notes?: string | null
@@ -1463,6 +1465,7 @@ export type Database = {
           end_time?: string
           external_reference?: string | null
           guest_id?: string | null
+          guest_language?: string | null
           hold_expires_at?: string | null
           id?: string
           internal_notes?: string | null
@@ -1516,6 +1519,62 @@ export type Database = {
             columns: ["table_combination_id"]
             isOneToOne: false
             referencedRelation: "table_combinations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      restaurant_email_templates: {
+        Row: {
+          body_intro: string
+          body_outro: string
+          created_at: string
+          heading: string
+          id: string
+          is_ai_generated: boolean
+          is_edited: boolean
+          locale: string
+          restaurant_id: string
+          signature: string
+          subject: string
+          template_key: string
+          updated_at: string
+        }
+        Insert: {
+          body_intro?: string
+          body_outro?: string
+          created_at?: string
+          heading?: string
+          id?: string
+          is_ai_generated?: boolean
+          is_edited?: boolean
+          locale: string
+          restaurant_id: string
+          signature?: string
+          subject?: string
+          template_key: string
+          updated_at?: string
+        }
+        Update: {
+          body_intro?: string
+          body_outro?: string
+          created_at?: string
+          heading?: string
+          id?: string
+          is_ai_generated?: boolean
+          is_edited?: boolean
+          locale?: string
+          restaurant_id?: string
+          signature?: string
+          subject?: string
+          template_key?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "restaurant_email_templates_restaurant_id_fkey"
+            columns: ["restaurant_id"]
+            isOneToOne: false
+            referencedRelation: "restaurants"
             referencedColumns: ["id"]
           },
         ]
@@ -1598,6 +1657,7 @@ export type Database = {
           created_at: string
           custom_widget_domain: string | null
           default_language: string
+          default_locale: string
           default_reservation_minutes: number
           deleted_at: string | null
           deposit_default_amount_cents: number
@@ -1689,6 +1749,7 @@ export type Database = {
           created_at?: string
           custom_widget_domain?: string | null
           default_language?: string
+          default_locale?: string
           default_reservation_minutes?: number
           deleted_at?: string | null
           deposit_default_amount_cents?: number
@@ -1780,6 +1841,7 @@ export type Database = {
           created_at?: string
           custom_widget_domain?: string | null
           default_language?: string
+          default_locale?: string
           default_reservation_minutes?: number
           deleted_at?: string | null
           deposit_default_amount_cents?: number

@@ -1,0 +1,19 @@
+{
+  "title": "Ma réservation",
+  "loading": "Chargement de la réservation…",
+  "notFound": "Réservation introuvable ou plus valide.",
+  "details": "Détails",
+  "datetime": "Date & heure",
+  "guests": "Nombre de convives",
+  "status": "Statut",
+  "cancelTitle": "Annuler la réservation",
+  "cancelDescription": "Réfléchissez bien. Une fois annulée, la réservation ne peut pas être restaurée.",
+  "cancelButton": "Annuler la réservation",
+  "cancelConfirm": "Êtes-vous sûr(e) ?",
+  "cancelYes": "Oui, annuler",
+  "cancelNo": "Non, conserver",
+  "cancelled": "Réservation annulée",
+  "cancelledBody": "Nous avons annulé votre réservation. Merci de nous l'avoir signalé.",
+  "thanks": "Merci — à bientôt.",
+  "needHelp": "Des questions ? Répondez à l'e-mail de confirmation pour contacter le restaurant."
+}

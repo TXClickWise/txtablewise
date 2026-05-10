@@ -1,0 +1,19 @@
+{
+  "title": "Meine Reservierung",
+  "loading": "Reservierung wird geladen…",
+  "notFound": "Reservierung nicht gefunden oder nicht mehr gültig.",
+  "details": "Details",
+  "datetime": "Datum & Uhrzeit",
+  "guests": "Anzahl Gäste",
+  "status": "Status",
+  "cancelTitle": "Reservierung stornieren",
+  "cancelDescription": "Bitte sorgfältig prüfen. Eine Stornierung kann nicht rückgängig gemacht werden.",
+  "cancelButton": "Reservierung stornieren",
+  "cancelConfirm": "Sind Sie sicher?",
+  "cancelYes": "Ja, stornieren",
+  "cancelNo": "Nein, behalten",
+  "cancelled": "Reservierung storniert",
+  "cancelledBody": "Wir haben Ihre Reservierung storniert. Danke für die Mitteilung.",
+  "thanks": "Vielen Dank — bis zum nächsten Mal.",
+  "needHelp": "Fragen? Antworten Sie auf die Bestätigungs-E-Mail, um das Restaurant zu erreichen."
+}

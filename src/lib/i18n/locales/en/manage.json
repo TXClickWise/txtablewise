@@ -1,0 +1,19 @@
+{
+  "title": "My booking",
+  "loading": "Loading booking…",
+  "notFound": "Booking not found or no longer valid.",
+  "details": "Details",
+  "datetime": "Date & time",
+  "guests": "Number of guests",
+  "status": "Status",
+  "cancelTitle": "Cancel booking",
+  "cancelDescription": "Please consider carefully. Once cancelled, this booking cannot be restored.",
+  "cancelButton": "Cancel booking",
+  "cancelConfirm": "Are you sure?",
+  "cancelYes": "Yes, cancel",
+  "cancelNo": "No, keep it",
+  "cancelled": "Booking cancelled",
+  "cancelledBody": "We've cancelled your booking. Thanks for letting us know.",
+  "thanks": "Thank you — see you next time.",
+  "needHelp": "Questions? Reply to the confirmation email to contact the restaurant."
+}

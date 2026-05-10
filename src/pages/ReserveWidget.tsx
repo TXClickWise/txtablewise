@@ -16,10 +16,17 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useSearchParams, Link } from "react-router-dom";
 import { format } from "date-fns";
-import { nl } from "date-fns/locale";
+import { nl, enGB, de, fr } from "date-fns/locale";
+import { useTranslation } from "react-i18next";
+import "@/lib/i18n";
+import { detectGuestLocale, persistGuestLocale, type Locale } from "@/lib/i18n/detectLocale";
+import { setI18nLocale } from "@/lib/i18n";
+import { LanguageSwitcher } from "@/components/widget/LanguageSwitcher";
 import {
   CalendarIcon, Users, Clock, ChevronRight, Check, ArrowLeft, MapPin, Heart, Sparkles, ListPlus, ChevronDown,
 } from "lucide-react";
+
+const DATE_FNS_LOCALES = { nl, en: enGB, de, fr } as const;
 import { z } from "zod";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
@@ -88,29 +95,17 @@ function hexToHslTokens(hex: string): string | null {
   return `${Math.round(h * 360)} ${Math.round(s * 100)}% ${Math.round(l * 100)}%`;
 }
 
-const guestSchema = z.object({
-  first_name: z.string().trim().min(1, "Voornaam is verplicht").max(80),
+const makeGuestSchema = (t: (k: string) => string) => z.object({
+  first_name: z.string().trim().min(1, t("errors.firstNameRequired")).max(80),
   last_name: z.string().trim().max(80).optional(),
-  email: z.string().trim().email("Geldig e-mailadres vereist").max(255).optional().or(z.literal("")),
-  phone: z.string().trim().min(6, "Telefoonnummer is verplicht").max(40),
+  email: z.string().trim().email(t("errors.emailInvalid")).max(255).optional().or(z.literal("")),
+  phone: z.string().trim().min(6, t("errors.phoneRequired")).max(40),
 });
 
 type Step = BookingStepId | "large_group" | "waitlist";
 
-const ZONES = [
-  { id: "no_pref", label: "Geen voorkeur" },
-  { id: "indoor", label: "Binnen" },
-  { id: "terrace", label: "Terras" },
-] as const;
-
-const OCCASIONS = [
-  { id: "", label: "Geen" },
-  { id: "birthday", label: "Verjaardag" },
-  { id: "anniversary", label: "Jubileum" },
-  { id: "business", label: "Zakelijk" },
-  { id: "date_night", label: "Date night" },
-  { id: "other", label: "Anders" },
-] as const;
+const ZONE_IDS = ["no_pref", "indoor", "terrace"] as const;
+const OCCASION_IDS = ["", "birthday", "anniversary", "business", "date_night", "other"] as const;
 
 const Chip = ({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) => (
   <button
@@ -130,10 +125,33 @@ const Chip = ({ active, onClick, children }: { active: boolean; onClick: () => v
 const ReserveWidget = () => {
   const { slug } = useParams<{ slug: string }>();
   const [searchParams] = useSearchParams();
+  const { t } = useTranslation("widget");
   const sourceInfo = useMemo(
     () => resolveSourceChannel(searchParams.get("source")),
     [searchParams],
   );
+
+  // Locale state — auto-detect, persistable, mirrors into i18next + date-fns
+  const initialLocale = useMemo<Locale>(
+    () => detectGuestLocale({ slug, urlLang: searchParams.get("lang") }),
+    [slug, searchParams],
+  );
+  const [locale, setLocale] = useState<Locale>(initialLocale);
+  useEffect(() => { setI18nLocale(locale); }, [locale]);
+  const dfLocale = DATE_FNS_LOCALES[locale];
+  const ZONES = useMemo(
+    () => ZONE_IDS.map((id) => ({ id, label: t(`zones.${id}`) })),
+    [t, locale],
+  );
+  const OCCASIONS = useMemo(
+    () => OCCASION_IDS.map((id) => ({ id, label: id === "" ? t("occasions.none") : t(`occasions.${id}`) })),
+    [t, locale],
+  );
+  const guestSchema = useMemo(() => makeGuestSchema((k) => t(`errors.${k.replace("errors.", "")}`)), [t, locale]);
+  const handleLocaleChange = (next: Locale) => {
+    setLocale(next);
+    if (slug) persistGuestLocale(slug, next);
+  };
 
   const [restaurant, setRestaurant] = useState<RestaurantInfo | null>(null);
   const [step, setStep] = useState<Step>("select");
@@ -205,7 +223,7 @@ const ReserveWidget = () => {
         .select("id, name, slug, timezone, max_party_size_online, large_group_threshold, large_group_manual_approval_from, large_group_extra_info_from, large_group_max_online_request, large_group_confirmation_text, preorders_enabled, preorders_allow_free_text, allow_zone_preference, brand_primary, logo_url, booking_horizon_days")
         .eq("slug", slug).maybeSingle();
       if (error || !data) {
-        setRestaurantError("Reserveren is op dit moment niet mogelijk. Probeer het later opnieuw of bel het restaurant.");
+        setRestaurantError(t("errors.unavailable"));
         return;
       }
       setRestaurant(data as RestaurantInfo);
@@ -236,11 +254,11 @@ const ReserveWidget = () => {
         return;
       }
       if (data.closed) {
-        setClosedReason(data.message ?? "Gesloten op deze dag.");
+        setClosedReason(data.message ?? t("closedOnDay"));
       }
       setSlots(data.slots ?? []);
     } catch (e) {
-      toast.error("Er ging iets mis bij het controleren van de beschikbaarheid.");
+      toast.error(t("errors.availabilityFailed"));
     } finally {
       setLoadingSlots(false);
     }
@@ -274,8 +292,8 @@ const ReserveWidget = () => {
       setStep("large_group");
       return;
     }
-    if (!date) return toast.error("Kies een datum");
-    if (!selectedSlot) return toast.error("Kies een tijd");
+    if (!date) return toast.error(t("errors.chooseDate"));
+    if (!selectedSlot) return toast.error(t("errors.chooseTime"));
     if (requiresMessage) setShowExtras(true);
     setStep("details");
   };
@@ -286,14 +304,14 @@ const ReserveWidget = () => {
     if (!parsed.success) return toast.error(parsed.error.errors[0].message);
     if (requiresMessage && !requests.trim()) {
       setShowExtras(true);
-      return toast.error("Voeg even een korte toelichting toe voor het restaurant");
+      return toast.error(t("errors.messageRequired"));
     }
 
     const gate = canAttemptBooking();
     if (!gate.allowed) {
       const mins = Math.ceil((gate.retryInSeconds ?? 60) / 60);
-      toast.error("Te veel pogingen", {
-        description: `Je hebt het maximale aantal pogingen bereikt. Probeer het over ${mins} minuut${mins === 1 ? "" : "en"} opnieuw.`,
+      toast.error(t("errors.rateLimitTitle"), {
+        description: t("errors.rateLimitBody", { minutes: mins, plural: mins === 1 ? "" : (locale === "nl" ? "ten" : locale === "de" ? "n" : "s") }),
       });
       return;
     }
@@ -319,7 +337,7 @@ const ReserveWidget = () => {
           last_name: parsed.data.last_name,
           email: parsed.data.email || undefined,
           phone: parsed.data.phone,
-          language: "nl",
+          language: locale,
         },
         special_requests: combinedRequests || undefined,
         dietary_notes: allergies.trim() || undefined,
@@ -367,7 +385,7 @@ const ReserveWidget = () => {
   if (!restaurant) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-muted-foreground">Laden…</div>
+        <div className="text-muted-foreground">{t("errors.loading")}</div>
       </div>
     );
   }
@@ -394,11 +412,14 @@ const ReserveWidget = () => {
             ) : null}
             <span className="font-display text-base sm:text-lg truncate">{restaurant.name}</span>
           </div>
-          {!hideTableWiseLogo && (
-            <Link to="/" className="text-xs text-muted-foreground hover:text-foreground whitespace-nowrap">
-              powered by <span className="font-display text-primary">TX TableWise</span>
-            </Link>
-          )}
+          <div className="flex items-center gap-2">
+            <LanguageSwitcher value={locale} onChange={handleLocaleChange} />
+            {!hideTableWiseLogo && (
+              <Link to="/" className="text-xs text-muted-foreground hover:text-foreground whitespace-nowrap hidden sm:inline">
+                powered by <span className="font-display text-primary">TX TableWise</span>
+              </Link>
+            )}
+          </div>
         </div>
       </header>
 
@@ -413,14 +434,14 @@ const ReserveWidget = () => {
         {step === "select" && (
           <div className="space-y-6 animate-in fade-in duration-300">
             <div>
-              <h1 className="font-display text-3xl sm:text-4xl mb-2">Reserveer een tafel</h1>
-              <p className="text-muted-foreground">Bij {restaurant.name}.</p>
+              <h1 className="font-display text-3xl sm:text-4xl mb-2">{t("title")}</h1>
+              <p className="text-muted-foreground">{t("atRestaurant", { name: restaurant.name })}</p>
             </div>
 
             {/* Party size */}
             <div className="space-y-2">
               <Label className="text-sm flex items-center gap-2">
-                <Users className="h-4 w-4" /> Aantal gasten
+                <Users className="h-4 w-4" /> {t("party")}
               </Label>
               <div className="grid grid-cols-4 sm:grid-cols-8 gap-2">
                 {partyOptions.map((n) => (

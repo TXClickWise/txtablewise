@@ -260,6 +260,7 @@ Deno.serve(async (req) => {
       requires_manual_approval: requiresManualApproval,
       large_group_status: largeGroupStatus,
       table_combination_id: chosenCombinationId,
+      guest_language: body.guest?.language && ["nl","en","de","fr"].includes(body.guest.language) ? body.guest.language : null,
     }).select("*").single();
 
     if (resErr) return json({ error: resErr.message }, 500);

@@ -1,0 +1,10 @@
+{
+  "unsubscribe": {
+    "title": "Abmelden",
+    "description": "Klicken Sie unten, um keine E-Mails mehr von diesem Restaurant zu erhalten.",
+    "confirm": "Abmeldung bestätigen",
+    "success": "Sie sind abgemeldet. Vielen Dank!",
+    "invalid": "Dieser Link ist nicht mehr gültig.",
+    "alreadyDone": "Sie sind bereits abgemeldet."
+  }
+}
