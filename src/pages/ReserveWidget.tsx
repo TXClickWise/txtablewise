@@ -672,6 +672,7 @@ const ReserveWidget = () => {
                     </p>
                   )}
                 </div>
+              </CollapsibleContent>
             </Collapsible>
 
             {/* Optional pre-orders (collapsible) */}
