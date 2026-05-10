@@ -1,79 +1,126 @@
 ## Doel
 
-Status van een reservering op de snelst mogelijke manier kunnen aanpassen, met dezelfde knoppenset overal: agenda (dag/tabel-grid), lijst, Floor Mode en tafelplan. Eén tap = één statusovergang, met bevestiging alleen waar nodig (annuleren, no-show).
+Gast-emails activeren vanuit TableWise zelf, met Reply-To naar het restaurant zodat conversaties (vooral bij grote-groep custom berichten) in hun eigen inbox terechtkomen. Hybride met ClickWise: ClickWise neemt over zodra dat live staat.
 
-## Huidige statussen (ter referentie voor de gebruiker)
+## Architectuur
 
-`hold` · `pending` · `confirmed` · `seated` · `finished` · `completed` · `no_show` · `cancelled`
+```text
+Trigger (reservering / reminder / large-group reply)
+        │
+        ▼
+emailDispatcher service
+   ├─ ClickWise live?  →  integration_events  → ClickWise verzendt
+   └─ anders          →  send-transactional-email edge function
+                              │
+                              ▼
+                       Lovable Emails queue
+                              │
+                              ▼
+                    From: reservations@reservations.txtablewise.nl
+                    From-name: "Bistro X via TableWise"
+                    Reply-To: <restaurant.guest_reply_to_email>
+```
 
-In de UI tonen we de werkbare set: **Bevestigd → Aan tafel → Klaar/Afgerond → Afgerekend**, plus **No-show** en **Annuleren** als zijacties. `hold` en `pending` zijn meestal automatisch / via large-group flow.
+## Onderdeel 1 — E-mail domein & infrastructuur
 
-## Onderdeel 1 — Nieuwe component `ReservationStatusQuickBar`
+- Subdomein **`reservations.txtablewise.nl`** opzetten via de domein-setup dialog.
+- Email-infra wordt automatisch aangemaakt (queue, suppression, log).
+- Transactional templates worden gescaffold.
 
-`src/components/reservations/ReservationStatusQuickBar.tsx`
+## Onderdeel 2 — Database
 
-Eén herbruikbare horizontale knoppenstrip met logica op één plek:
+Nieuw veld op `restaurants`:
+- `guest_reply_to_email text` — adres waar antwoorden van gasten heen gaan (ingesteld door owner).
+- `guest_email_enabled boolean default true` — kill-switch per restaurant.
 
-- Bevestigen (alleen bij `pending`)
-- Aan tafel (`confirmed` / `pending` → `seated`)
-- Klaar (`seated` → `finished`) — alleen tonen als finished gebruikt wordt
-- Afgerond (`seated`/`finished` → `completed`)
-- No-show (`confirmed`/`pending` → `no_show`) — met bevestigingsdialoog
-- Annuleren (`pending`/`confirmed`/`seated`/`hold` → `cancelled`) — met bevestigingsdialoog
+Nieuwe tabel `guest_email_log` (alleen aanvullend op `email_send_log` voor app-level context):
+- `restaurant_id`, `reservation_id`, `large_group_request_id`, `kind` (confirmation/reminder/cancellation/large_group_reply/custom), `recipient_email`, `message_id`, `status`, `sent_at`, `error`.
+- RLS: leden van het restaurant kunnen lezen.
 
-Props: `reservation`, `size` (`sm` | `md` | `lg` voor floor mode tablet), `layout` (`row` | `grid`), `onChanged` callback. Gebruikt `reservations.markSeated/markCompleted/markNoShow/cancel/changeStatus` uit `src/services/reservations.ts`. Loading-state per knop, toast bij succes/fout, query-invalidatie via `useQueryClient`.
+## Onderdeel 3 — Templates (React Email)
 
-Eindstatussen (`completed`, `cancelled`, `no_show`) → strip toont alleen badge "Afgerond / Geannuleerd / No-show" met optionele "Heropenen"-knop (terug naar `confirmed`).
+Onder `supabase/functions/_shared/transactional-email-templates/`:
 
-## Onderdeel 2 — Inbouwen op alle plekken
+1. **`reservation-confirmation.tsx`** — bevestiging na booking. Props: restaurant naam/adres/tel, datum, tijd, partySize, manage-link, cancel-link.
+2. **`reservation-reminder.tsx`** — 24u herinnering, met reconfirm-link wanneer aan.
+3. **`reservation-cancellation.tsx`** — bevestiging van annulering.
+4. **`large-group-message.tsx`** — custom bericht vanuit large-group scherm. Props: bodyText (door medewerker getypt), restaurantnaam, medewerker-naam, party_size, preferred_date.
+5. **`large-group-decision.tsx`** — bij goedkeuring/afwijzing van een groepsaanvraag.
 
-| Plek | Bestand | Aanpassing |
+Alle templates: brand-kleuren uit `index.css`, witte body, Nederlands, gastvrije toon. Onderaan elk template — **niet** als unsubscribe (die voegt het systeem toe) maar als duidelijke hint:
+
+> *"Heeft u een vraag of wilt u iets wijzigen? Beantwoord deze mail — uw bericht komt direct bij {restaurant.name} terecht."*
+
+## Onderdeel 4 — Service-laag
+
+Nieuwe `src/services/guestEmail.ts`:
+
+```ts
+sendGuestEmail({
+  restaurantId, kind, recipientEmail, reservationId?, largeGroupRequestId?,
+  templateData, replyToOverride?
+})
+```
+
+Logica:
+1. Laad restaurant: `guest_email_enabled`, `guest_reply_to_email`, ClickWise live-status, naam.
+2. Als ClickWise live = `true` en `kind` is iets dat ClickWise afhandelt → schrijf `integration_event` en stop. Geen dubbele mail.
+3. Anders: bouw payload met:
+   - `templateName`
+   - `recipientEmail`
+   - `idempotencyKey` = `${kind}-${reservationId|largeGroupRequestId}`
+   - `templateData` inclusief `restaurantName`, `replyHintEmail`
+   - `replyTo` = `replyToOverride ?? guest_reply_to_email ?? null`
+   - `fromName` = `"${restaurant.name} via TableWise"`
+4. Roep `send-transactional-email` aan.
+5. Log naar `guest_email_log` met message_id.
+
+## Onderdeel 5 — Edge function aanpassing
+
+`send-transactional-email` heeft standaard geen `replyTo`/`fromName` per call. We breiden de request body uit met optionele `replyTo` en `fromName` velden en geven die door aan de Mailgun call (`h:Reply-To` header). Defaults blijven werken voor andere mails.
+
+## Onderdeel 6 — Trigger-punten in de app
+
+| Trigger | Locatie | Kind |
 |---|---|---|
-| Reservering-kaart (lijst / vandaag / zoek) | `src/components/reservations/ReservationCard.tsx` | Inline knoppen vervangen door `<ReservationStatusQuickBar size="sm" layout="row" />` |
-| Reservering detail-sheet | `src/components/reservations/ReservationDetailSheet.tsx` | `size="md"`, bovenaan onder de header, sticky |
-| Reservering detail-dialog (oud) | `src/components/ReservationDetailDialog.tsx` | Idem |
-| Agenda — dag/tabel-grid | `src/components/reservations/views/DayView.tsx`, `views/TableGridView.tsx` | In de hover/tap-popover van een blok; tablet-friendly `size="md"` |
-| Floor Mode tafelkaart | `src/pages/app/FloorModePage.tsx` | In de tafel-detail sheet (wanneer tafel geopend wordt): `size="lg"`, `layout="grid"`, grote touch-knoppen via `QuickActionButton` |
-| Tafelplan (floor plan) | `src/components/floor-plan/FloorPlanEditor.tsx` (of bijbehorend detailpaneel) | Idem als Floor Mode |
-| Walk-in detail | `src/components/walk-in/*` | Idem |
+| Nieuwe bevestigde reservering | `book_reservation` edge function | confirmation |
+| 24u reminder (cron) | `reminder_scheduler` edge function | reminder |
+| Annulering (gast of restaurant) | `manage_reservation` action `cancel` | cancellation |
+| Large-group goedkeuring/afwijzing | `manage_reservation` action `approve_large_group` / `decline_large_group` | large_group_decision |
+| Custom bericht vanuit `LargeGroupsPage` | nieuwe knop "Bericht sturen" → dialoog → `sendGuestEmail` met `kind: 'large_group_message'` en `bodyText` | large_group_message |
 
-`QuickActionsMenu` (kebab) blijft bestaan voor secundaire acties (Verplaatsen, Tafel toewijzen, Bericht sturen, Gastprofiel). Statusovergangen verhuizen volledig naar de `QuickStatusBar`.
+Bestaande knop "Bericht sturen" gaat nu via `guestEmail` i.p.v. alleen ClickWise event (met dezelfde hybride logica).
 
-## Onderdeel 3 — Tablet/Floor Mode variant
+## Onderdeel 7 — Settings UI
 
-Voor `size="lg"` (Floor Mode + tafelplan):
-- Min 56px hoog, gebruik `QuickActionButton` uit `src/components/touch/QuickActionButton.tsx`
-- Layout = 2×3 grid op tablet
-- Kleurcodering volgens `--status-*` tokens uit `index.css`, consistent met `StatusBadge`
-- Sticky bovenaan (StickyActionBar) zodat scrollen niet de knoppen verbergt
+Op `/app/settings/general` (of nieuw blok "Gast-emails"):
+- Toggle **"Stuur emails naar gasten vanuit TableWise"** → `guest_email_enabled`.
+- Tekstveld **"Antwoordadres voor gastmail"** → `guest_reply_to_email` (placeholder: `reservations@uwrestaurant.nl`).
+- Helptext: *"Wanneer een gast antwoordt op een mail van TableWise, komt het antwoord op dit adres binnen. Laat leeg om antwoorden uit te schakelen — dan staat in de mail een telefoonnummer als terugkoppeling."*
+- Validatie: geldig e-mail formaat.
+- Status-indicator: badge "ClickWise actief" als ClickWise live, met uitleg dat ClickWise dan reserveringsmail verstuurt.
 
-## Onderdeel 4 — Bevestigingsdialogen
+## Onderdeel 8 — Large-group conversatie UI
 
-Hergebruik `ConfirmActionDialog` uit `src/components/touch/ConfirmActionDialog.tsx` voor:
-- No-show: "Markeer als no-show? Dit wordt bewaard in de gastgeschiedenis."
-- Annuleren: "Reservering annuleren? De tafel komt weer beschikbaar."
-- Heropenen (vanuit eindstatus): "Reservering heropenen?"
+In `LargeGroupsPage` per aanvraag:
+- Lijst van eerder verzonden custom berichten (uit `guest_email_log` waar `kind='large_group_message'`).
+- Knop **"Bericht sturen"** → dialoog met textarea, kies "Aanvullende vraag" of "Antwoord op vraag van gast", verzendknop.
+- Onderaan de uitleg: *"Antwoord van de gast komt binnen op {guest_reply_to_email}."*
+- Geen inbound parsing in dit plan — antwoord komt fysiek in de inbox van het restaurant.
 
-Geen dialoog voor Aan tafel / Afgerond — die zijn één tap zonder bevestiging (sneller werken).
+## Onderdeel 9 — Wat verandert er NIET
 
-## Onderdeel 5 — Realtime + invalidation
+- Geen wijziging aan `auth-email-hook` (login-mails blijven default).
+- Geen marketing-mails.
+- Geen inbound mail parsing (komt eventueel in een later plan).
+- ClickWise live blijft de aangewezen route voor white-label op eigen domein.
 
-Na elke statuswijziging:
-- `qc.invalidateQueries()` op de relevante keys (`reservations`, `floor-mode-reservations`, `agenda-day`, etc.)
-- Toast met gastvrije copy ("Gast staat op 'aangekomen'", "Bezoek afgerond", etc.)
-- Geen page reload — alle views updaten via React Query
+## QA
 
-## Wat er niét verandert
-
-- Geen wijziging in `manage_reservation` edge function of database
-- Geen nieuwe statuswaardes
-- Bestaande logica in `reservations.ts` blijft het enige toegangspad
-- `ReservationCard` blijft visueel hetzelfde, alleen knoppen worden geconsolideerd
-
-## QA na implementatie
-
-- Lijst-kaart: confirmed → tap Aan tafel → status flipt direct, kaart toont nu "Afgerond"-knop
-- Floor Mode: tafel met seated reservering → grote knop "Afgerond" → tafel komt vrij in de visualisatie
-- No-show: tap → dialog → bevestig → status + toast + gastgeschiedenis
-- Eindstatus: knoppen verdwijnen, "Heropenen" beschikbaar
-- Tablet 768px+: knoppen blijven 56px+, geen overlap met andere elementen
+1. Domein verifiëren in Cloud → Emails.
+2. Test-reservering aanmaken (publiek widget) → bevestigingsmail komt aan met restaurantnaam in From-naam.
+3. Antwoorden op de mail → komt aan op `guest_reply_to_email`.
+4. ClickWise live aanzetten op een testrestaurant → bij volgende reservering verstuurt TableWise zelf NIET, alleen integration_event.
+5. Large-group custom bericht versturen → mail aan gast met duidelijke "antwoord komt bij restaurant" hint.
+6. Annulering door gast → cancellation-mail.
+7. `guest_email_log` toont alles met message_id en status.
