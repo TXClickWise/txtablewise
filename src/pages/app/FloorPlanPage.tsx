@@ -16,6 +16,7 @@ import {
 import { WalkInQuickSheet } from "@/components/walk-in/WalkInQuickSheet";
 import { StatusBadge } from "@/components/StatusBadge";
 import { AIQuickSeatSheet } from "@/components/floor-plan/AIQuickSeatSheet";
+import { MoveReservationSheet } from "@/components/reservations/MoveReservationSheet";
 
 type Zone = { id: string; name: string };
 type Table = {
@@ -380,16 +381,13 @@ const FloorPlanPage = () => {
                   }}
                 />
               ) : (
-                <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <Button size="lg" className="h-14" onClick={() => {
+                <div className="mt-6">
+                  <Button size="lg" className="h-14 w-full" onClick={() => {
                     setPrefilledTable({ id: selectedTable.id, label: selectedTable.label });
                     setSelectedTableId(null);
                     setWalkInOpen(true);
                   }}>
                     <UserPlus className="mr-2 h-5 w-5" /> Walk-in op deze tafel
-                  </Button>
-                  <Button size="lg" variant="outline" className="h-14" onClick={() => setSelectedTableId(null)} disabled>
-                    <Move className="mr-2 h-5 w-5" /> Reservering verplaatsen
                   </Button>
                 </div>
               )}
@@ -437,6 +435,7 @@ function ReservationActions({
 }) {
   const minutesUntil = Math.round((new Date(res.start_time).getTime() - now.getTime()) / 60_000);
   const minutesSeated = differenceInMinutes(now, new Date(res.start_time));
+  const [moveOpen, setMoveOpen] = useState(false);
 
   return (
     <div className="mt-4 space-y-4">
@@ -484,8 +483,8 @@ function ReservationActions({
             <LogOut className="mr-2 h-5 w-5" /> Afgerond
           </Button>
         )}
-        <Button size="lg" variant="outline" className="h-14 col-span-2 sm:col-span-1" disabled>
-          <Move className="mr-2 h-5 w-5" /> Verplaats tafel
+        <Button size="lg" variant="outline" className="h-14 col-span-2 sm:col-span-1" onClick={() => setMoveOpen(true)}>
+          <Move className="mr-2 h-5 w-5" /> Verplaats reservering
         </Button>
         <Button
           size="lg"
@@ -496,6 +495,14 @@ function ReservationActions({
           <UserX className="mr-2 h-5 w-5" /> No-show
         </Button>
       </div>
+
+      <MoveReservationSheet
+        reservationId={res.id}
+        initialDate={format(new Date(res.start_time), "yyyy-MM-dd")}
+        initialTime={format(new Date(res.start_time), "HH:mm")}
+        open={moveOpen}
+        onOpenChange={setMoveOpen}
+      />
     </div>
   );
 }

@@ -1694,6 +1694,8 @@ export type Database = {
           max_party_size_online: number
           metadata: Json
           name: string
+          noshow_auto_mark_enabled: boolean
+          noshow_auto_mark_grace_minutes: number
           noshow_cancel_message: string | null
           noshow_cancellation_cutoff_minutes: number
           noshow_confirmation_enabled: boolean
@@ -1786,6 +1788,8 @@ export type Database = {
           max_party_size_online?: number
           metadata?: Json
           name: string
+          noshow_auto_mark_enabled?: boolean
+          noshow_auto_mark_grace_minutes?: number
           noshow_cancel_message?: string | null
           noshow_cancellation_cutoff_minutes?: number
           noshow_confirmation_enabled?: boolean
@@ -1878,6 +1882,8 @@ export type Database = {
           max_party_size_online?: number
           metadata?: Json
           name?: string
+          noshow_auto_mark_enabled?: boolean
+          noshow_auto_mark_grace_minutes?: number
           noshow_cancel_message?: string | null
           noshow_cancellation_cutoff_minutes?: number
           noshow_confirmation_enabled?: boolean

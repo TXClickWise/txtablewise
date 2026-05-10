@@ -33,6 +33,9 @@ type Form = {
   deposit_exempt_vip: boolean;
   deposit_exempt_regulars: boolean;
   deposit_guest_message: string;
+  // Auto no-show
+  noshow_auto_mark_enabled: boolean;
+  noshow_auto_mark_grace_minutes: number;
 };
 
 const defaults: Form = {
@@ -51,6 +54,8 @@ const defaults: Form = {
   deposit_exempt_vip: true,
   deposit_exempt_regulars: true,
   deposit_guest_message: "",
+  noshow_auto_mark_enabled: false,
+  noshow_auto_mark_grace_minutes: 20,
 };
 
 const NoShowSettings = () => {
@@ -66,7 +71,7 @@ const NoShowSettings = () => {
       const { data } = await supabase
         .from("restaurants")
         .select(
-          "noshow_confirmation_enabled,noshow_reminder_24h_enabled,noshow_reminder_2h_enabled,noshow_reconfirm_enabled,noshow_reconfirmation_hours_before,noshow_cancellation_cutoff_minutes,noshow_guest_cancel_link_enabled,noshow_risk_signal_enabled,noshow_cancel_message,noshow_deposit_rules_prepared,deposit_default_amount_cents,deposit_voucher_credit_possible,deposit_exempt_vip,deposit_exempt_regulars,deposit_guest_message",
+          "noshow_confirmation_enabled,noshow_reminder_24h_enabled,noshow_reminder_2h_enabled,noshow_reconfirm_enabled,noshow_reconfirmation_hours_before,noshow_cancellation_cutoff_minutes,noshow_guest_cancel_link_enabled,noshow_risk_signal_enabled,noshow_cancel_message,noshow_deposit_rules_prepared,deposit_default_amount_cents,deposit_voucher_credit_possible,deposit_exempt_vip,deposit_exempt_regulars,deposit_guest_message,noshow_auto_mark_enabled,noshow_auto_mark_grace_minutes",
         )
         .eq("id", restaurantId)
         .maybeSingle();
@@ -184,6 +189,34 @@ const NoShowSettings = () => {
               />
             </Field>
           </AdvancedSection>
+        </CardContent>
+      </Card>
+
+      {/* Auto no-show marking */}
+      <Card>
+        <CardContent className="pt-6 space-y-4">
+          <div className="flex items-center gap-2">
+            <ShieldCheck className="h-5 w-5 text-primary" />
+            <h3 className="font-medium">Automatische no-show markering</h3>
+          </div>
+          <p className="text-sm text-muted-foreground">
+            Reserveringen die na X minuten na starttijd nog niet aan tafel zitten,
+            worden automatisch als no-show gemarkeerd. Personeel kan dit altijd
+            handmatig terugdraaien via "Heropenen".
+          </p>
+          <ToggleRow
+            checked={form.noshow_auto_mark_enabled}
+            onChange={(v) => set("noshow_auto_mark_enabled", v)}
+            title="Automatisch markeren aanzetten"
+            help="Standaard uit. Zet alleen aan wanneer jullie zeker zijn dat dit past bij je vloer-routine."
+          />
+          <Field label="Wachttijd na starttijd (minuten)">
+            <Input
+              type="number" min={5} max={180}
+              value={form.noshow_auto_mark_grace_minutes}
+              onChange={(e) => set("noshow_auto_mark_grace_minutes", parseInt(e.target.value) || 20)}
+            />
+          </Field>
         </CardContent>
       </Card>
 

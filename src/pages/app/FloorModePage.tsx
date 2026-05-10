@@ -22,6 +22,7 @@ import { WalkInQuickSheet } from "@/components/walk-in/WalkInQuickSheet";
 import { StatusBadge } from "@/components/StatusBadge";
 import { ReservationBadges } from "@/components/reservations/ReservationBadges";
 import { ReservationStatusQuickBar } from "@/components/reservations/ReservationStatusQuickBar";
+import { MoveReservationSheet } from "@/components/reservations/MoveReservationSheet";
 import { PacingIndicator, pacingLevelFromCovers } from "@/components/reservations/PacingIndicator";
 import { AIQuickSeatSheet } from "@/components/floor-plan/AIQuickSeatSheet";
 import { LastMinuteFillPanel } from "@/components/waitlist/LastMinuteFillPanel";
@@ -924,9 +925,6 @@ function DetailPanel({
               <Button size="lg" className="w-full h-14" onClick={onWalkIn}>
                 <UserPlus className="mr-2 h-5 w-5" /> Walk-in op deze tafel
               </Button>
-              <Button size="lg" variant="outline" className="w-full h-14" disabled title="Komt later">
-                <ChevronRight className="mr-2 h-5 w-5" /> Reservering toewijzen
-              </Button>
             </div>
           )}
 
@@ -1021,7 +1019,35 @@ function ActiveReservationActions({
         size="lg"
         layout="grid"
       />
+
+      <MoveReservationButton
+        reservationId={r.id}
+        startTimeIso={r.start_time}
+      />
     </div>
+  );
+}
+
+function MoveReservationButton({ reservationId, startTimeIso }: { reservationId: string; startTimeIso: string }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <Button
+        size="lg"
+        variant="outline"
+        className="w-full h-14"
+        onClick={() => setOpen(true)}
+      >
+        <ChevronRight className="mr-2 h-5 w-5" /> Verplaats reservering
+      </Button>
+      <MoveReservationSheet
+        reservationId={reservationId}
+        initialDate={format(new Date(startTimeIso), "yyyy-MM-dd")}
+        initialTime={format(new Date(startTimeIso), "HH:mm")}
+        open={open}
+        onOpenChange={setOpen}
+      />
+    </>
   );
 }
 

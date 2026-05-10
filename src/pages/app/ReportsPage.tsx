@@ -15,6 +15,7 @@ import {
   getWalkInMetrics, getLargeGroupMetrics, getPreOrderMetrics, getReviewMetrics,
   getGuestMetrics, getPOSRevenueMetrics, getPacingMetrics, buildInsightCards, formatEuro,
   getHourlyOccupancy, getTopSeatingMetrics, getReminderMetrics, getAIPerformanceMetrics,
+  getWeeklyTrend,
   formatDuration,
 } from "@/services/reporting";
 
@@ -42,6 +43,7 @@ type AllMetrics = {
   topSeating: Awaited<ReturnType<typeof getTopSeatingMetrics>>;
   reminders: Awaited<ReturnType<typeof getReminderMetrics>>;
   ai: Awaited<ReturnType<typeof getAIPerformanceMetrics>>;
+  weeklyTrend: Awaited<ReturnType<typeof getWeeklyTrend>>;
 };
 
 const ReportsPage = () => {
@@ -75,8 +77,9 @@ const ReportsPage = () => {
       getTopSeatingMetrics(restaurantId, range),
       getReminderMetrics(restaurantId, range),
       getAIPerformanceMetrics(restaurantId, range),
-    ]).then(([reservations, channels, noShow, waitlist, walkIn, largeGroup, preOrder, reviews, guests, pos, pacing, hourly, topSeating, reminders, ai]) => {
-      setData({ reservations, channels, noShow, waitlist, walkIn, largeGroup, preOrder, reviews, guests, pos, pacing, hourly, topSeating, reminders, ai });
+      getWeeklyTrend(restaurantId, 8, range.to),
+    ]).then(([reservations, channels, noShow, waitlist, walkIn, largeGroup, preOrder, reviews, guests, pos, pacing, hourly, topSeating, reminders, ai, weeklyTrend]) => {
+      setData({ reservations, channels, noShow, waitlist, walkIn, largeGroup, preOrder, reviews, guests, pos, pacing, hourly, topSeating, reminders, ai, weeklyTrend });
     }).catch((e: Error) => setError(e.message)).finally(() => setLoading(false));
   }, [restaurantId, range]);
 
@@ -474,6 +477,29 @@ const ReportsPage = () => {
                   </Card>
                 )}
               </>
+            )}
+          </ReportSection>
+
+          {/* Weekly trend (last 8 weeks) */}
+          <ReportSection title="Trend laatste 8 weken" status="live"
+            description="Wekelijkse reserveringen en covers — om patronen en groei te zien los van de gekozen periode.">
+            {data.weeklyTrend.every((w) => w.reservations === 0) ? (
+              <EmptyState title="Nog geen trenddata" message="Zodra er reserveringen binnenkomen verschijnt hier een wekelijkse trend." />
+            ) : (
+              <div className="grid gap-3 md:grid-cols-2">
+                <Card>
+                  <CardHeader className="pb-2"><CardTitle className="text-sm font-display">Reserveringen per week</CardTitle></CardHeader>
+                  <CardContent>
+                    <SimpleBarChart data={data.weeklyTrend.map((w) => ({ label: w.label, value: w.reservations }))} />
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader className="pb-2"><CardTitle className="text-sm font-display">Covers per week</CardTitle></CardHeader>
+                  <CardContent>
+                    <SimpleBarChart data={data.weeklyTrend.map((w) => ({ label: w.label, value: w.covers }))} />
+                  </CardContent>
+                </Card>
+              </div>
             )}
           </ReportSection>
 
