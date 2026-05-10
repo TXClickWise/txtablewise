@@ -95,29 +95,17 @@ function hexToHslTokens(hex: string): string | null {
   return `${Math.round(h * 360)} ${Math.round(s * 100)}% ${Math.round(l * 100)}%`;
 }
 
-const guestSchema = z.object({
-  first_name: z.string().trim().min(1, "Voornaam is verplicht").max(80),
+const makeGuestSchema = (t: (k: string) => string) => z.object({
+  first_name: z.string().trim().min(1, t("errors.firstNameRequired")).max(80),
   last_name: z.string().trim().max(80).optional(),
-  email: z.string().trim().email("Geldig e-mailadres vereist").max(255).optional().or(z.literal("")),
-  phone: z.string().trim().min(6, "Telefoonnummer is verplicht").max(40),
+  email: z.string().trim().email(t("errors.emailInvalid")).max(255).optional().or(z.literal("")),
+  phone: z.string().trim().min(6, t("errors.phoneRequired")).max(40),
 });
 
 type Step = BookingStepId | "large_group" | "waitlist";
 
-const ZONES = [
-  { id: "no_pref", label: "Geen voorkeur" },
-  { id: "indoor", label: "Binnen" },
-  { id: "terrace", label: "Terras" },
-] as const;
-
-const OCCASIONS = [
-  { id: "", label: "Geen" },
-  { id: "birthday", label: "Verjaardag" },
-  { id: "anniversary", label: "Jubileum" },
-  { id: "business", label: "Zakelijk" },
-  { id: "date_night", label: "Date night" },
-  { id: "other", label: "Anders" },
-] as const;
+const ZONE_IDS = ["no_pref", "indoor", "terrace"] as const;
+const OCCASION_IDS = ["", "birthday", "anniversary", "business", "date_night", "other"] as const;
 
 const Chip = ({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) => (
   <button
