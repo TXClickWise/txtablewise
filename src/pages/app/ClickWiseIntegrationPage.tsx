@@ -325,6 +325,10 @@ const ClickWiseIntegrationPage = () => {
               <RefreshCw className={`h-4 w-4 mr-1 ${processing ? "animate-spin" : ""}`} />
               Verwerk pending events
             </Button>
+            <Button variant="outline" onClick={handleTestConnection} disabled={processing}>
+              <Plug className="h-4 w-4 mr-1" />
+              Test verbinding
+            </Button>
           </div>
           {!readiness?.secrets_present && (
             <p className="text-xs text-muted-foreground">
