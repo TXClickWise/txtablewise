@@ -20,6 +20,7 @@ import {
   Clock, Bell, History, Plug, Phone,
 } from "lucide-react";
 import { reservations as resService } from "@/services/reservations";
+import { ReservationStatusQuickBar } from "./ReservationStatusQuickBar";
 import { toast } from "sonner";
 import { Link } from "react-router-dom";
 import { cn } from "@/lib/utils";
