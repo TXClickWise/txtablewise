@@ -10,14 +10,10 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
-import {
-  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
-  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   RefreshCw, Sparkles, UserPlus, Users, Clock, Crown, Beer,
-  AlertTriangle, MapPin, Check, LogOut, UserX, ListChecks, ChevronRight, ChevronLeft, Search,
+  AlertTriangle, MapPin, ListChecks, ChevronRight, ChevronLeft, Search,
   Calendar as CalendarIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
