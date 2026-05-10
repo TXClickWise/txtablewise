@@ -438,6 +438,35 @@ export function WalkInQuickSheet({ open, onOpenChange, prefill, onPlaced }: Prop
             )}
           </section>
 
+          {/* Gast (optioneel) — altijd zichtbaar voor snelle invoer */}
+          <section>
+            <h3 className="text-sm font-medium mb-2 flex items-center gap-1.5">
+              <UserPlus className="h-4 w-4 text-muted-foreground" /> Gast (optioneel)
+            </h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <Input
+                value={firstName}
+                maxLength={100}
+                onChange={(e) => setFirstName(e.target.value)}
+                className="h-12"
+                placeholder="Naam"
+                autoComplete="off"
+              />
+              <Input
+                value={phone}
+                maxLength={40}
+                onChange={(e) => setPhone(e.target.value)}
+                className="h-12"
+                placeholder="Telefoon"
+                inputMode="tel"
+                autoComplete="off"
+              />
+            </div>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Niet nodig voor snelle plaatsing — laat leeg om direct te plaatsen.
+            </p>
+          </section>
+
           {/* Meer opties */}
           <Collapsible open={moreOpen} onOpenChange={setMoreOpen}>
             <CollapsibleTrigger asChild>
