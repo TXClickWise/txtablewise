@@ -3,8 +3,17 @@
     "title": "Uitschrijven",
     "description": "Klik hieronder om geen e-mails meer te ontvangen van dit restaurant.",
     "confirm": "Bevestig uitschrijven",
-    "success": "Je bent uitgeschreven. Bedankt!",
-    "invalid": "Deze link is niet meer geldig.",
-    "alreadyDone": "Je bent al uitgeschreven."
+    "submitting": "Bezig…",
+    "checking": "Even controleren…",
+    "confirmTitle": "Uitschrijven bevestigen",
+    "confirmDescription": "Bevestig hieronder dat je geen mails meer wil ontvangen. Je kan altijd opnieuw reserveren — dan ontvang je weer de bevestiging van die reservering.",
+    "success": "Je bent uitgeschreven",
+    "successBody": "We sturen je geen mails meer. Bedankt dat je het hebt laten weten.",
+    "alreadyTitle": "Al uitgeschreven",
+    "alreadyBody": "Dit mailadres staat al op de uitschrijflijst.",
+    "invalidTitle": "Ongeldige link",
+    "invalidBody": "Deze link is niet meer geldig. Mogelijk is hij al gebruikt of verlopen.",
+    "errorTitle": "Er ging iets mis",
+    "errorBody": "Probeer het later nog eens, of neem contact op met het restaurant."
   }
 }

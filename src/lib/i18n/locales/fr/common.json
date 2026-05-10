@@ -1,10 +1,19 @@
 {
   "unsubscribe": {
-    "title": "Se désinscrire",
+    "title": "Se désabonner",
     "description": "Cliquez ci-dessous pour ne plus recevoir d'e-mails de ce restaurant.",
-    "confirm": "Confirmer la désinscription",
-    "success": "Vous êtes désinscrit(e). Merci !",
-    "invalid": "Ce lien n'est plus valide.",
-    "alreadyDone": "Vous êtes déjà désinscrit(e)."
+    "confirm": "Confirmer le désabonnement",
+    "submitting": "Un instant…",
+    "checking": "Vérification…",
+    "confirmTitle": "Confirmer le désabonnement",
+    "confirmDescription": "Confirmez ci-dessous que vous ne souhaitez plus recevoir d'e-mails. Vous pouvez toujours réserver à nouveau — vous recevrez alors la confirmation correspondante.",
+    "success": "Vous êtes désabonné",
+    "successBody": "Nous ne vous enverrons plus d'e-mails. Merci de nous l'avoir fait savoir.",
+    "alreadyTitle": "Déjà désabonné",
+    "alreadyBody": "Cette adresse e-mail figure déjà sur la liste de désabonnement.",
+    "invalidTitle": "Lien invalide",
+    "invalidBody": "Ce lien n'est plus valide. Il a peut-être déjà été utilisé ou il a expiré.",
+    "errorTitle": "Une erreur est survenue",
+    "errorBody": "Veuillez réessayer plus tard ou contacter le restaurant."
   }
 }

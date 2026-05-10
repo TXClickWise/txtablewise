@@ -3,8 +3,17 @@
     "title": "Abmelden",
     "description": "Klicken Sie unten, um keine E-Mails mehr von diesem Restaurant zu erhalten.",
     "confirm": "Abmeldung bestätigen",
-    "success": "Sie sind abgemeldet. Vielen Dank!",
-    "invalid": "Dieser Link ist nicht mehr gültig.",
-    "alreadyDone": "Sie sind bereits abgemeldet."
+    "submitting": "Einen Moment…",
+    "checking": "Bitte warten…",
+    "confirmTitle": "Abmeldung bestätigen",
+    "confirmDescription": "Bestätigen Sie unten, dass Sie keine E-Mails mehr erhalten möchten. Sie können jederzeit neu reservieren — dann erhalten Sie wieder die Bestätigung dieser Reservierung.",
+    "success": "Sie sind abgemeldet",
+    "successBody": "Wir senden Ihnen keine E-Mails mehr. Vielen Dank für Ihre Nachricht.",
+    "alreadyTitle": "Bereits abgemeldet",
+    "alreadyBody": "Diese E-Mail-Adresse steht bereits auf der Abmeldeliste.",
+    "invalidTitle": "Ungültiger Link",
+    "invalidBody": "Dieser Link ist nicht mehr gültig. Möglicherweise wurde er bereits verwendet oder ist abgelaufen.",
+    "errorTitle": "Etwas ist schiefgelaufen",
+    "errorBody": "Bitte versuchen Sie es später erneut oder kontaktieren Sie das Restaurant."
   }
 }

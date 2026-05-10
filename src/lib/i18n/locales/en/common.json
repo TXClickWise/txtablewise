@@ -3,8 +3,17 @@
     "title": "Unsubscribe",
     "description": "Click below to stop receiving emails from this restaurant.",
     "confirm": "Confirm unsubscribe",
-    "success": "You've been unsubscribed. Thank you!",
-    "invalid": "This link is no longer valid.",
-    "alreadyDone": "You're already unsubscribed."
+    "submitting": "Working…",
+    "checking": "Just a moment…",
+    "confirmTitle": "Confirm unsubscribe",
+    "confirmDescription": "Confirm below that you no longer wish to receive emails. You can always book again — you will then receive a fresh confirmation for that reservation.",
+    "success": "You're unsubscribed",
+    "successBody": "We won't email you again. Thanks for letting us know.",
+    "alreadyTitle": "Already unsubscribed",
+    "alreadyBody": "This email address is already on the unsubscribe list.",
+    "invalidTitle": "Invalid link",
+    "invalidBody": "This link is no longer valid. It may have been used already or expired.",
+    "errorTitle": "Something went wrong",
+    "errorBody": "Please try again later, or contact the restaurant."
   }
 }
