@@ -138,20 +138,46 @@ const POSIntegrationPage = () => {
             <CardHeader className="space-y-2">
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <CardTitle className="text-base flex items-center gap-2">Loyverse POS <Badge variant="secondary" className="text-xs"><Sparkles className="mr-1 h-3 w-3" /> Aanbevolen starter-POS</Badge></CardTitle>
+                  <CardTitle className="text-base flex items-center gap-2">
+                    Loyverse POS
+                    <Badge variant="secondary" className="text-xs"><Sparkles className="mr-1 h-3 w-3" /> Aanbevolen starter-POS</Badge>
+                    {loyverse?.status === "active" && <Badge variant="default" className="text-xs">Gekoppeld</Badge>}
+                    {loyverse?.status === "pending" && <Badge variant="outline" className="text-xs">In afwachting</Badge>}
+                  </CardTitle>
                   <CardDescription className="mt-1 max-w-2xl">
-                    Loyverse heeft een gratis POS-basis die nuttig kan zijn voor kleine horeca. TableWise is voorbereid om later
-                    omzetdata uit Loyverse te koppelen aan reserveringen, tafels en gasten. Geavanceerde Loyverse-functies kunnen
-                    betaalde add-ons vereisen.
+                    Loyverse heeft een gratis POS-basis die nuttig kan zijn voor kleine horeca. Koppel je Loyverse-account
+                    om bonnen automatisch te importeren en te matchen aan reserveringen.
                   </CardDescription>
+                  {loyverse?.status === "active" && (
+                    <div className="text-xs text-muted-foreground mt-2 space-y-0.5">
+                      {loyverse.display_name && <div>Account: <strong>{loyverse.display_name}</strong></div>}
+                      <div>Laatste sync: {loyverse.last_synced_at ? format(new Date(loyverse.last_synced_at), "d MMM HH:mm", { locale: nl }) : "—"}</div>
+                      {loyverse.last_error && <div className="text-destructive">Fout: {loyverse.last_error}</div>}
+                    </div>
+                  )}
                 </div>
-                <Badge variant="outline">Demo-ready</Badge>
+                <Badge variant="outline">{loyverse?.status === "active" ? "Live" : "Demo-ready"}</Badge>
               </div>
             </CardHeader>
             <CardContent className="flex flex-wrap gap-2">
-              <Button size="sm" onClick={() => { selectProvider(restaurantId, "loyverse"); toast.success("Loyverse gekozen als provider", { description: "Voorbereid — koppeling later." }); setReload((r) => r + 1); }}>Mapping voorbereiden</Button>
-              <Button size="sm" variant="outline" onClick={() => toast("Demo-flow", { description: "Maak een demo-bon aan op het tabblad ‘Demo bon’." })}>Demo bekijken</Button>
-              <Button size="sm" variant="ghost" disabled>Koppeling later instellen</Button>
+              {loyverse?.status !== "active" ? (
+                <Button size="sm" onClick={handleLoyverseConnect} disabled={loyverseBusy === "connect"}>
+                  {loyverseBusy === "connect" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <LinkIcon className="mr-2 h-4 w-4" />}
+                  Koppel met Loyverse
+                </Button>
+              ) : (
+                <>
+                  <Button size="sm" onClick={handleLoyverseSync} disabled={loyverseBusy === "sync"}>
+                    {loyverseBusy === "sync" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
+                    Synchroniseer nu
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={handleLoyverseDisconnect} disabled={loyverseBusy === "disconnect"}>
+                    <Unlink className="mr-2 h-4 w-4" /> Ontkoppel
+                  </Button>
+                </>
+              )}
+              <Button size="sm" variant="ghost" onClick={() => { selectProvider(restaurantId, "loyverse"); toast.success("Loyverse gekozen als provider"); setReload((r) => r + 1); }}>Mapping voorbereiden</Button>
+              <Button size="sm" variant="ghost" onClick={() => toast("Demo-flow", { description: "Maak een demo-bon aan op het tabblad ‘Demo bon’." })}>Demo bekijken</Button>
             </CardContent>
           </Card>
 
