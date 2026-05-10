@@ -156,6 +156,11 @@ export function ReservationFormSheet({ open, onOpenChange, prefill }: Props) {
         </SheetHeader>
 
         <div className="space-y-4 py-4">
+          {prefill?.tableLabel && (
+            <div className="rounded-md border border-primary/30 bg-primary/5 px-3 py-2 text-sm">
+              Tafel <strong>{prefill.tableLabel}</strong> wordt toegewezen na bevestigen.
+            </div>
+          )}
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label>Datum</Label>
