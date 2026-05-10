@@ -48,8 +48,8 @@ Deno.serve(async (req) => {
     // Look up by manage_token first, then cancel_token.
     // We DO need to fetch magic_token_expires_at server-side, but it never leaves this function.
     const cols =
-      "id, restaurant_id, reservation_date, start_time, end_time, party_size, status, " +
-      "confirmation_code, reminder_confirmed_at, special_requests, magic_token_expires_at";
+      "id, restaurant_id, guest_id, reservation_date, start_time, end_time, party_size, status, " +
+      "confirmation_code, reminder_confirmed_at, special_requests, magic_token_expires_at, guest_language";
 
     const { data: byManage } = await supabase
       .from("reservations").select(cols)
