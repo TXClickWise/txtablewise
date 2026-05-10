@@ -197,7 +197,64 @@ async function doStatusChange(
     start_time: current.start_time,
     reason: reason ?? null,
   });
+
+  // Wachtlijst auto-match: bij annulering zoek passende wachtende gasten en emit notificatie-events.
+  if (newStatus === "cancelled") {
+    try {
+      await notifyWaitlistOnCancel(admin, current);
+    } catch (e) {
+      console.error("[manage_reservation] waitlist notify failed", e);
+    }
+  }
+
   return json({ ok: true, reservation: updated });
+}
+
+// Zoek wachtlijst-entries die binnen het tijdvenster van de geannuleerde reservering passen
+// en emit `waitlist.notification_requested` events voor de eerste 3 matches.
+// deno-lint-ignore no-explicit-any
+async function notifyWaitlistOnCancel(admin: any, cancelled: any) {
+  const startMs = new Date(cancelled.start_time).getTime();
+  const date = cancelled.reservation_date;
+
+  const { data: entries } = await admin
+    .from("waitlist_entries")
+    .select("id, party_size, desired_time_from, desired_time_to, flexible_minutes, status, notified_at")
+    .eq("restaurant_id", cancelled.restaurant_id)
+    .eq("desired_date", date)
+    .eq("status", "waiting")
+    .lte("party_size", cancelled.party_size)
+    .order("created_at", { ascending: true })
+    .limit(20);
+
+  if (!entries || entries.length === 0) return;
+
+  const candidates: string[] = [];
+  for (const e of entries) {
+    if (e.notified_at) continue;
+    const flex = (e.flexible_minutes ?? 30) * 60_000;
+    const [fh, fm] = String(e.desired_time_from).split(":").map(Number);
+    const [th, tm] = String(e.desired_time_to).split(":").map(Number);
+    const fromMs = new Date(date).setHours(fh ?? 0, fm ?? 0, 0, 0);
+    const toMs = new Date(date).setHours(th ?? 23, tm ?? 59, 0, 0);
+    if (startMs >= fromMs - flex && startMs <= toMs + flex) {
+      candidates.push(e.id);
+      if (candidates.length >= 3) break;
+    }
+  }
+
+  for (const id of candidates) {
+    await admin.from("waitlist_entries")
+      .update({ notified_at: new Date().toISOString() })
+      .eq("id", id);
+    await emitEvent(admin, cancelled.restaurant_id, "waitlist.notification_requested", {
+      waitlist_entry_id: id,
+      trigger: "reservation.cancelled",
+      cancelled_reservation_id: cancelled.id,
+      start_time: cancelled.start_time,
+      party_size: cancelled.party_size,
+    });
+  }
 }
 
 async function doCancel(
