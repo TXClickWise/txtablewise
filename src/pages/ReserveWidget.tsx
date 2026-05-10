@@ -462,13 +462,13 @@ const ReserveWidget = () => {
               </div>
               {canRequestLargerOnline && (
                 <div className="flex items-center gap-2 pt-1">
-                  <Label className="text-xs text-muted-foreground whitespace-nowrap">Grotere groep?</Label>
+                  <Label className="text-xs text-muted-foreground whitespace-nowrap">{t("largerGroup")}</Label>
                   <Input
                     type="number"
                     min={(restaurant?.max_party_size_online ?? 0) + 1}
                     max={200}
                     value={partySize > (restaurant?.max_party_size_online ?? 0) ? partySize : ""}
-                    placeholder={`bv. ${maxOnlineRequest} personen`}
+                    placeholder={t("largerGroupPlaceholder", { n: maxOnlineRequest })}
                     onChange={(e) => {
                       const v = parseInt(e.target.value, 10);
                       if (!Number.isNaN(v) && v >= 1) setPartySize(Math.min(v, 200));
@@ -480,12 +480,12 @@ const ReserveWidget = () => {
               {showsApprovalBanner && partySize <= maxOnlineRequest && (
                 <p className="text-xs text-muted-foreground">
                   {restaurant?.large_group_confirmation_text?.trim() ||
-                    `Reserveringen vanaf ${manualApprovalFrom} personen worden persoonlijk bevestigd door ${restaurant?.name}.`}
+                    t("manualApprovalDefault", { n: manualApprovalFrom, restaurant: restaurant?.name })}
                 </p>
               )}
               {restaurant && partySize > maxOnlineRequest && (
                 <p className="text-xs text-muted-foreground">
-                  Vanaf {maxOnlineRequest + 1} personen sturen we je door naar een korte groepsaanvraag — dan plant {restaurant.name} jullie persoonlijk in.
+                  {t("largerGroupRedirect", { n: maxOnlineRequest + 1, restaurant: restaurant.name })}
                 </p>
               )}
             </div>
@@ -493,13 +493,13 @@ const ReserveWidget = () => {
             {/* Date */}
             <div className="space-y-2">
               <Label className="text-sm flex items-center gap-2">
-                <CalendarIcon className="h-4 w-4" /> Datum
+                <CalendarIcon className="h-4 w-4" /> {t("date")}
               </Label>
               <div className="grid grid-cols-3 gap-2">
                 {[
-                  { label: "Vandaag", offset: 0 },
-                  { label: "Morgen", offset: 1 },
-                  { label: "Overmorgen", offset: 2 },
+                  { label: t("today"), offset: 0 },
+                  { label: t("tomorrow"), offset: 1 },
+                  { label: t("dayAfter"), offset: 2 },
                 ].map((q) => {
                   const d = new Date(); d.setDate(d.getDate() + q.offset); d.setHours(0, 0, 0, 0);
                   const sel = date && format(date, "yyyy-MM-dd") === format(d, "yyyy-MM-dd");
@@ -518,11 +518,11 @@ const ReserveWidget = () => {
                 <PopoverTrigger asChild>
                   <Button variant="outline" className="w-full h-12 justify-start text-base font-normal">
                     <CalendarIcon className="mr-2 h-4 w-4" />
-                    {date ? format(date, "EEEE d MMMM yyyy", { locale: nl }) : "Andere datum kiezen"}
+                    {date ? format(date, "EEEE d MMMM yyyy", { locale: dfLocale }) : t("chooseDate")}
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar mode="single" selected={date} onSelect={(d) => d && setDate(d)} initialFocus locale={nl}
+                  <Calendar mode="single" selected={date} onSelect={(d) => d && setDate(d)} initialFocus locale={dfLocale}
                     disabled={(d) => d < new Date(new Date().setHours(0, 0, 0, 0)) || d > new Date(Date.now() + (restaurant.booking_horizon_days ?? 30) * 24 * 60 * 60 * 1000)}
                     className={cn("p-3 pointer-events-auto")} />
                 </PopoverContent>
@@ -532,7 +532,7 @@ const ReserveWidget = () => {
             {/* Time slots */}
             <div className="space-y-2">
               <Label className="text-sm flex items-center gap-2">
-                <Clock className="h-4 w-4" /> Tijd
+                <Clock className="h-4 w-4" /> {t("time")}
               </Label>
               {loadingSlots ? (
                 <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
@@ -550,9 +550,9 @@ const ReserveWidget = () => {
               ) : slots.length === 0 ? (
                 <Card>
                   <CardContent className="py-6 text-center space-y-3">
-                    <p className="text-sm text-muted-foreground">Er zijn op deze dag helaas geen tijden beschikbaar.</p>
+                    <p className="text-sm text-muted-foreground">{t("noSlots")}</p>
                     <Button size="sm" variant="outline" onClick={() => setStep("waitlist")}>
-                      Op de wachtlijst
+                      {t("joinWaitlist")}
                     </Button>
                   </CardContent>
                 </Card>
@@ -573,17 +573,17 @@ const ReserveWidget = () => {
                               : "border-border/40 bg-muted text-muted-foreground/50 cursor-not-allowed",
                           s.available && s.peak_warning && selectedSlot?.start_iso !== s.start_iso && "ring-1 ring-warning/40",
                         )}
-                        title={!s.available ? "Vol" : s.peak_warning ? "Beperkt beschikbaar" : "Beschikbaar"}
+                        title={!s.available ? t("slotFull") : s.peak_warning ? t("slotLimited") : t("slotAvailable")}
                       >
                         {s.time}
                       </button>
                     ))}
                   </div>
                   {slots.every((s) => !s.available) && (
-                    <PublicBookingNotice variant="warning" title="Geen plek meer op deze dag">
+                    <PublicBookingNotice variant="warning" title={t("fullTitle")}>
                       <div className="space-y-3">
-                        <p>Wil je op de wachtlijst? We nemen contact op zodra er iets vrijkomt.</p>
-                        <Button size="sm" onClick={() => setStep("waitlist")}>Op de wachtlijst</Button>
+                        <p>{t("fullBody")}</p>
+                        <Button size="sm" onClick={() => setStep("waitlist")}>{t("joinWaitlist")}</Button>
                       </div>
                     </PublicBookingNotice>
                   )}
@@ -596,7 +596,7 @@ const ReserveWidget = () => {
               onClick={goToDetails}
               disabled={!selectedSlot || !date || loadingSlots}
             >
-              Tafel reserveren <ChevronRight className="ml-1 h-4 w-4" />
+              {t("bookTable")} <ChevronRight className="ml-1 h-4 w-4" />
             </Button>
           </div>
         )}
