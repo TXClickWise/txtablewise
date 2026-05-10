@@ -20,6 +20,8 @@ type Form = {
   large_group_manual_approval_from: number;
   large_group_deposit_recommended_from: number;
   large_group_auto_book_max: number;
+  large_group_extra_info_from: number | "";
+  large_group_max_online_request: number | "";
   large_group_default_status: string;
   large_group_confirmation_text: string;
   large_group_cancellation_terms: string;
@@ -32,6 +34,8 @@ const defaults: Form = {
   large_group_manual_approval_from: 10,
   large_group_deposit_recommended_from: 8,
   large_group_auto_book_max: 12,
+  large_group_extra_info_from: "",
+  large_group_max_online_request: "",
   large_group_default_status: "pending",
   large_group_confirmation_text: "",
   large_group_cancellation_terms: "",
