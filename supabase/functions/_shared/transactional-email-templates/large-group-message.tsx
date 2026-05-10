@@ -3,58 +3,89 @@ import {
   Body, Container, Head, Heading, Html, Preview, Section, Text,
 } from 'npm:@react-email/components@0.0.22'
 import type { TemplateEntry } from './registry.ts'
+import type { CopyFields, LocaleCopy } from './i18n.ts'
 
 interface Props {
-  restaurantName?: string
+  copy: CopyFields
   guestName?: string
   messageBody?: string
   staffName?: string
+  restaurantName?: string
+  locale?: string
 }
 
-// Custom bericht vanuit het grote-groep-scherm. Reply-To = inbox restaurant,
-// dus de gast kan direct antwoorden naar het restaurant.
-const LargeGroupMessage = ({
-  restaurantName = 'het restaurant',
-  guestName,
-  messageBody = '',
-  staffName,
-}: Props) => (
-  <Html lang="nl" dir="ltr">
+const LargeGroupMessage = ({ copy, messageBody = '', staffName, restaurantName, locale = 'nl' }: Props) => (
+  <Html lang={locale} dir="ltr">
     <Head />
-    <Preview>Bericht van {restaurantName}</Preview>
+    <Preview>{copy.preview || copy.subject}</Preview>
     <Body style={main}>
       <Container style={container}>
-        <Heading style={h1}>Hallo{guestName ? ` ${guestName}` : ''},</Heading>
-        <Text style={text}>
-          We hebben een bericht voor je over je groepsaanvraag bij <strong>{restaurantName}</strong>:
-        </Text>
+        <Heading style={h1}>{copy.heading}</Heading>
+        <Text style={text}>{copy.intro}</Text>
         <Section style={card}>
           {messageBody.split('\n').map((line, i) => (
             <Text key={i} style={cardLine}>{line || '\u00A0'}</Text>
           ))}
         </Section>
-        <Text style={text}>
-          <strong>Beantwoord deze mail</strong> om direct contact op te nemen met {restaurantName}. Je antwoord komt bij ons binnen en wordt persoonlijk opgevolgd door een medewerker.
-        </Text>
-        <Text style={footer}>
-          Met vriendelijke groet,<br />
-          {staffName ? `${staffName} — ` : ''}{restaurantName}
-        </Text>
+        {copy.outro && <Text style={text}>{copy.outro}</Text>}
+        {(copy.signature || staffName) && (
+          <Text style={footer}>
+            {copy.signature}
+            {staffName ? <><br />{staffName}{restaurantName ? ` — ${restaurantName}` : ''}</> : null}
+          </Text>
+        )}
       </Container>
     </Body>
   </Html>
 )
 
+export const defaultCopy: LocaleCopy = {
+  nl: {
+    subject: 'Bericht van {{restaurantName}}',
+    preview: 'Bericht van {{restaurantName}}',
+    heading: 'Hallo {{guestName}},',
+    intro: 'We hebben een bericht voor je over je groepsaanvraag bij {{restaurantName}}:',
+    outro: 'Beantwoord deze mail om direct contact op te nemen met {{restaurantName}}. Je antwoord komt bij ons binnen en wordt persoonlijk opgevolgd.',
+    signature: 'Met vriendelijke groet,',
+  },
+  en: {
+    subject: 'Message from {{restaurantName}}',
+    preview: 'Message from {{restaurantName}}',
+    heading: 'Hi {{guestName}},',
+    intro: 'We have a message for you about your group request at {{restaurantName}}:',
+    outro: 'Reply to this email to get in touch with {{restaurantName}} directly — your reply reaches us and is personally handled by a team member.',
+    signature: 'Kind regards,',
+  },
+  de: {
+    subject: 'Nachricht von {{restaurantName}}',
+    preview: 'Nachricht von {{restaurantName}}',
+    heading: 'Hallo {{guestName}},',
+    intro: 'Wir haben eine Nachricht zu Ihrer Gruppenanfrage bei {{restaurantName}}:',
+    outro: 'Antworten Sie auf diese E-Mail, um direkt mit {{restaurantName}} in Kontakt zu treten. Ihre Antwort wird persönlich von uns bearbeitet.',
+    signature: 'Herzliche Grüße,',
+  },
+  fr: {
+    subject: 'Message du {{restaurantName}}',
+    preview: 'Message du {{restaurantName}}',
+    heading: 'Bonjour {{guestName}},',
+    intro: 'Nous avons un message concernant votre demande de groupe au {{restaurantName}} :',
+    outro: 'Répondez à cet e-mail pour joindre directement {{restaurantName}} — votre message nous parvient et est traité personnellement par un membre de l’équipe.',
+    signature: 'Cordialement,',
+  },
+}
+
 export const template = {
   component: LargeGroupMessage,
-  subject: (d: Record<string, any>) =>
-    d.subjectLine || `Bericht van ${d.restaurantName || 'het restaurant'}`,
+  subject: (d: Record<string, any>) => d.copy?.subject || defaultCopy.nl.subject,
   displayName: 'Groep — custom bericht',
+  templateKey: 'large-group-message',
+  defaultCopy,
   previewData: {
-    restaurantName: 'Restaurant De Kroon',
+    copy: defaultCopy.nl,
     guestName: 'Jane',
-    messageBody: 'Bedankt voor je aanvraag voor een groep van 12 personen. Kunnen jullie aangeven of er allergieën zijn en of een aanbetaling van €10 p.p. akkoord is?',
+    messageBody: 'Bedankt voor je aanvraag voor 12 personen. Kunnen jullie aangeven of er allergieën zijn?',
     staffName: 'Sofie',
+    restaurantName: 'Restaurant De Kroon',
   },
 } satisfies TemplateEntry
 
