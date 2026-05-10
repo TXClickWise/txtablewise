@@ -464,7 +464,7 @@ const ReserveWidget = () => {
               )}
               {restaurant && partySize > maxOnlineRequest && (
                 <p className="text-xs text-muted-foreground">
-                  Voor groepen groter dan {maxOnlineRequest} personen vragen we een aparte aanvraag.
+                  Vanaf {maxOnlineRequest + 1} personen sturen we je door naar een korte groepsaanvraag — dan plant {restaurant.name} jullie persoonlijk in.
                 </p>
               )}
             </div>
