@@ -1,94 +1,39 @@
-# Plan: Eén workflow voor grote groepen — volledig configureerbaar per tenant
+## Doel
 
-Alle drempels blijven per restaurant instelbaar in **Instellingen → Reserveringen → Grote groepen** en **Capaciteit**. De voorbeelden hieronder (8/10/18) zijn fictief — elke tenant kiest zelf de waarden.
+Een gast die een groep groter dan `large_group_max_online_request` (in jouw geval 18) opgeeft, moet automatisch in de **Groepsaanvraag**-flow (handmatige aanvraag, tot 200 pers.) terechtkomen — niet stilletjes worden teruggeknipt naar 18.
 
-## Principe
+## Probleem
 
-Eén pad voor álle groepsgroottes binnen `max_party_size_online`:
-- Onder `large_group_manual_approval_from` → direct bevestigd online
-- Vanaf `large_group_manual_approval_from` t/m `max_party_size_online` → `pending`, personeel keurt goed in app
+In `src/pages/ReserveWidget.tsx`, het "Grotere groep?"-inputveld (regels 442–458):
 
-Boven `max_party_size_online` → **óók `pending`**, maar met verplicht extra "bericht aan restaurant" veld. Het losse `LargeGroupForm` vervalt als primaire route.
+- `max={maxOnlineRequest}` blokkeert invoer >18 in de browser.
+- `onChange` doet `setPartySize(Math.min(v, maxOnlineRequest))` — clamped elke waarde naar 18.
 
-## Nieuwe / aangepaste instellingen op `restaurants`
+Hierdoor wordt de switch naar `step="large_group"` in `goToDetails` (regel 273) onbereikbaar via dit veld. De groepsaanvraag-flow zelf werkt al (regels 865–937, met `min={large_group_threshold} max={200}`).
 
-| Veld | Doel | Bestaand? |
-|---|---|---|
-| `max_party_size_online` | Hard maximum dat de widget aanbiedt als time-slot keuze | bestaat |
-| `large_group_manual_approval_from` | Vanaf dit aantal `pending` ipv `confirmed` | bestaat |
-| `large_group_threshold` | Vanaf hier "grote groep" markering + extra verblijfsduur | bestaat |
-| `large_group_extra_info_from` *(nieuw)* | Vanaf hier verplicht "bericht aan restaurant" veld in widget | toevoegen |
-| `large_group_max_online_request` *(nieuw)* | Bovengrens voor `pending` aanvragen via widget (boven `max_party_size_online`). Default = `max_party_size_online`. Boven dit aantal volgt fallback naar los formulier of melding "neem telefonisch contact op" | toevoegen |
+## Wijziging (UI-only, één bestand)
 
-Defaults houden we conservatief, identiek aan huidige veldwaarden, zodat niets breekt voor bestaande tenants.
+Bestand: `src/pages/ReserveWidget.tsx`
 
-## Wijzigingen frontend (widget)
+1. **Veld niet meer hard-clampen.** In het "Grotere groep?"-blok:
+   - `max` attribuut weghalen (of op een ruim platform-maximum zetten, bv. 200).
+   - `onChange` vereenvoudigen tot: `if (!Number.isNaN(v) && v >= 1) setPartySize(v);` — geen `Math.min` meer.
+   - `value` zo houden dat het veld ook getoond wordt zodra `partySize > max_party_size_online`, ook als de waarde > `maxOnlineRequest` is.
+   - Placeholder houden als `tot {maxOnlineRequest} personen` of aanpassen naar `bv. 25 personen` zodat duidelijk is dat groter ook kan.
 
-`src/pages/ReserveWidget.tsx`:
-- Party-size selector toont **1 t/m `max_party_size_online`** ipv hard cap op 8.
-- Als gevraagd `party_size > max_party_size_online` maar `≤ large_group_max_online_request` → toon time-slots + verplicht "bericht aan restaurant" textarea als `party_size ≥ large_group_extra_info_from`.
-- Boven `large_group_max_online_request` → fallback naar bestaand `LargeGroupForm` (of telefoon-melding, instelbaar later).
-- Bij groepen `≥ large_group_manual_approval_from` toon banner: "Je aanvraag wordt binnen X uur persoonlijk bevestigd" met `large_group_confirmation_text`.
+2. **Hint-tekst** onder het veld (regels 465–469) blijft staan: zodra `partySize > maxOnlineRequest` toont hij al "Voor groepen groter dan {maxOnlineRequest} personen vragen we een aparte aanvraag." — eventueel iets gastvrijer maken: "Vanaf {maxOnlineRequest+1} personen sturen we je door naar een korte groepsaanvraag — dan plant {restaurant.name} jullie persoonlijk in."
 
-## Wijzigingen frontend (instellingen)
+3. **Doorroutering.** `goToDetails` (regel 271–281) doet al `if (partySize > maxOnlineRequest) setStep("large_group")`. Dit werkt automatisch zodra de clamp weg is. Geen verdere wijziging nodig.
 
-`src/pages/app/settings/LargeGroupSettings.tsx`:
-- Twee nieuwe velden: `large_group_extra_info_from`, `large_group_max_online_request`.
-- Korte uitleg per veld in NL met hospitality-toon.
-- Validatie: `large_group_manual_approval_from ≤ max_party_size_online ≤ large_group_max_online_request`.
+4. **`partyOptions`-knoppen** (regel 353): blijven gecapt op `max_party_size_online` (typisch 8–10). Onveranderd; het invoerveld is voor afwijkende aantallen.
 
-`src/pages/app/settings/CapacitySettings.tsx`:
-- Geen wijziging; `max_party_size_online` blijft in Algemeen / Widget settings (waar het nu staat).
+## Wat NIET wijzigt
 
-## Wijzigingen backend (edge functions)
+- Datamodel, edge functions, `LargeGroupSettings.tsx`, `publicBooking.ts`: ongewijzigd. Het is puur een widget-UX-fix.
+- De instelling blijft per tenant configureerbaar via Instellingen → Grote groepen.
 
-`supabase/functions/book_reservation/index.ts` en `public_api`:
-- Accepteer `party_size` tot `large_group_max_online_request` (ipv harde grens op `max_party_size_online`).
-- Verplicht `message` als `party_size ≥ large_group_extra_info_from`.
-- Forceer `status = pending` + `requires_manual_approval = true` vanaf `large_group_manual_approval_from`.
-- Gebruik consistent `findAvailableCombination` (al aanwezig in `_shared/reservation-utils.ts`) voor groepen die niet op één tafel passen.
+## QA
 
-`supabase/functions/manage_reservation/index.ts`:
-- Idem: bij wijziging valt logica terug op tafelcombinaties.
-
-`supabase/functions/availability/index.ts`:
-- Toon time-slots tot `large_group_max_online_request` mits er een actieve combinatie bestaat die past.
-
-## Wijzigingen walk-in / operator flows
-
-`src/components/walk-in/WalkInQuickSheet.tsx` + `src/services/walkIn.ts`:
-- Bij grote groep zonder vrije enkele tafel: zoek actieve combinatie via dezelfde util en wijs combinatie toe (gebruikt `reservation_tables` + `table_combination_id`).
-
-`src/components/reservations/ReservationFormSheet.tsx`:
-- Idem fallback naar combinaties in operator-boekingen.
-
-## Database migratie
-
-Twee kolommen toevoegen op `restaurants`, beiden nullable met defaults gelijk aan bestaand gedrag:
-
-```text
-large_group_extra_info_from        integer null  -- bv. 15, null = nooit verplicht
-large_group_max_online_request     integer null  -- null = gelijk aan max_party_size_online
-```
-
-Geen RLS-wijzigingen nodig; bestaande policies dekken dit.
-
-## Wat blijft er bestaan?
-
-- `large_group_requests` tabel + `LargeGroupForm` blijven beschikbaar als fallback boven `large_group_max_online_request` of wanneer een datum/tijd geen openingstijd heeft.
-- Bestaande grote-groepen pagina (`/app/large-groups`) toont nu zowel `pending` reserveringen als losse aanvragen in dezelfde inbox.
-
-## Validatie
-
-- Test met drie tenant-profielen (klein bistro, middelgroot restaurant, eventlocatie) met sterk verschillende drempels om te bevestigen dat niets gehardcodeerd is.
-- Edge function unit-checks op grenswaarden.
-- Visueel: widget toont juiste max in dropdown per tenant.
-
-## Volgorde uitvoer
-
-1. Migratie: twee kolommen toevoegen op `restaurants`
-2. `LargeGroupSettings` UI: velden + validatie
-3. Widget `ReserveWidget.tsx`: dynamische party-size + bericht-veld
-4. Edge functions `book_reservation`, `availability`, `public_api`, `manage_reservation`: drempel-logica + combinatie-fallback
-5. Walk-in + operator: combinatie-fallback consistent maken
-6. Tests met meerdere tenant-configuraties
+- Met `large_group_max_online_request = 18`: typ "25" in "Grotere groep?" → widget springt naar Groepsaanvraag-stap, formulier accepteert tot 200.
+- Met veld leeg (fallback op `max_party_size_online`): zelfde gedrag op basis van fallback-waarde.
+- Onder de drempel (bv. 6): normale beschikbaarheidsflow blijft werken.

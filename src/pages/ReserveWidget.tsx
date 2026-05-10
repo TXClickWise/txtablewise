@@ -445,12 +445,12 @@ const ReserveWidget = () => {
                   <Input
                     type="number"
                     min={(restaurant?.max_party_size_online ?? 0) + 1}
-                    max={maxOnlineRequest}
+                    max={200}
                     value={partySize > (restaurant?.max_party_size_online ?? 0) ? partySize : ""}
-                    placeholder={`tot ${maxOnlineRequest} personen`}
+                    placeholder={`bv. ${maxOnlineRequest} personen`}
                     onChange={(e) => {
                       const v = parseInt(e.target.value, 10);
-                      if (!Number.isNaN(v) && v >= 1) setPartySize(Math.min(v, maxOnlineRequest));
+                      if (!Number.isNaN(v) && v >= 1) setPartySize(Math.min(v, 200));
                     }}
                     className="h-10 max-w-[10rem]"
                   />
