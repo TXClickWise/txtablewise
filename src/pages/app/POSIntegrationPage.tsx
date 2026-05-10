@@ -14,7 +14,7 @@ import {
   POS_PROVIDERS, POS_FIELD_MAPPING,
   listPOSReceipts, suggestReservationMatches, matchReceiptToReservation, ignoreReceipt, getRevenuePreview,
   listPOSEvents, selectProvider, formatEuro,
-  getLoyverseAuthorizeUrl, getLoyverseStatus, syncLoyverseNow, disconnectLoyverse, type LoyverseConnectionStatus,
+  connectLoyverseWithToken, getLoyverseStatus, syncLoyverseNow, disconnectLoyverse, type LoyverseConnectionStatus,
   type POSReceipt, type RevenuePreview,
 } from "@/services/pos";
 import { POSReceiptForm } from "@/components/pos/POSReceiptForm";
