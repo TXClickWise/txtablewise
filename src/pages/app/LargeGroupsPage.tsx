@@ -407,9 +407,18 @@ function GroupReservationRow({
   );
 }
 
-function RequestRow({ req }: { req: LargeGroupRequest }) {
+function RequestRow({ req, onOpen }: { req: LargeGroupRequest; onOpen: () => void }) {
+  const statusLabel: Record<string, string> = {
+    new: "nieuw",
+    in_progress: "in overleg",
+    confirmed: "omgezet",
+    declined: "afgewezen",
+  };
   return (
-    <div className="rounded-md border border-border p-3 space-y-1">
+    <button
+      onClick={onOpen}
+      className="w-full text-left rounded-md border border-border p-3 space-y-1 hover:border-primary/40 transition-colors"
+    >
       <div className="flex items-center gap-2 flex-wrap">
         <MessageSquare className="h-4 w-4 text-muted-foreground" />
         <span className="font-medium">{req.contact_name}</span>
@@ -418,8 +427,11 @@ function RequestRow({ req }: { req: LargeGroupRequest }) {
         </span>
         <span className={cn(
           "text-[11px] rounded-md px-1.5 py-0.5",
-          req.status === "new" ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground",
-        )}>{req.status}</span>
+          req.status === "new" ? "bg-primary/10 text-primary" :
+          req.status === "confirmed" ? "bg-success/10 text-success" :
+          req.status === "declined" ? "bg-destructive/10 text-destructive" :
+          "bg-muted text-muted-foreground",
+        )}>{statusLabel[req.status] ?? req.status}</span>
         <span className="text-xs text-muted-foreground ml-auto">
           {format(new Date(req.created_at), "d MMM HH:mm", { locale: nl })}
         </span>
@@ -435,7 +447,7 @@ function RequestRow({ req }: { req: LargeGroupRequest }) {
       {req.message && (
         <div className="text-sm italic mt-1 bg-muted/30 rounded px-2 py-1.5">"{req.message}"</div>
       )}
-    </div>
+    </button>
   );
 }
 
