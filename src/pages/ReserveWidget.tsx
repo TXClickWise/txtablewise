@@ -445,12 +445,12 @@ const ReserveWidget = () => {
                   <Input
                     type="number"
                     min={(restaurant?.max_party_size_online ?? 0) + 1}
-                    max={maxOnlineRequest}
+                    max={200}
                     value={partySize > (restaurant?.max_party_size_online ?? 0) ? partySize : ""}
-                    placeholder={`tot ${maxOnlineRequest} personen`}
+                    placeholder={`bv. ${maxOnlineRequest} personen`}
                     onChange={(e) => {
                       const v = parseInt(e.target.value, 10);
-                      if (!Number.isNaN(v) && v >= 1) setPartySize(Math.min(v, maxOnlineRequest));
+                      if (!Number.isNaN(v) && v >= 1) setPartySize(Math.min(v, 200));
                     }}
                     className="h-10 max-w-[10rem]"
                   />
@@ -464,7 +464,7 @@ const ReserveWidget = () => {
               )}
               {restaurant && partySize > maxOnlineRequest && (
                 <p className="text-xs text-muted-foreground">
-                  Voor groepen groter dan {maxOnlineRequest} personen vragen we een aparte aanvraag.
+                  Vanaf {maxOnlineRequest + 1} personen sturen we je door naar een korte groepsaanvraag — dan plant {restaurant.name} jullie persoonlijk in.
                 </p>
               )}
             </div>
