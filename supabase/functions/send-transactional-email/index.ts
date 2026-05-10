@@ -316,12 +316,19 @@ Deno.serve(async (req) => {
     status: 'pending',
   })
 
+  // Sanitize From-name to avoid header injection / RFC 5322 issues
+  const safeFromName = (fromNameOverride || SITE_NAME)
+    .replace(/[\r\n"<>]/g, '')
+    .trim()
+    .slice(0, 80) || SITE_NAME
+
   const { error: enqueueError } = await supabase.rpc('enqueue_email', {
     queue_name: 'transactional_emails',
     payload: {
       message_id: messageId,
       to: effectiveRecipient,
-      from: `${SITE_NAME} <noreply@${FROM_DOMAIN}>`,
+      from: `${safeFromName} <noreply@${FROM_DOMAIN}>`,
+      reply_to: replyToOverride,
       sender_domain: SENDER_DOMAIN,
       subject: resolvedSubject,
       html,
