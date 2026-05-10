@@ -335,7 +335,20 @@ const ReservationsPage = () => {
       )}
 
       {view === "grid" && restaurantId && (
-        <TableGridView date={date} restaurantId={restaurantId} onOpen={setSelectedId} />
+        <TableGridView
+          date={date}
+          restaurantId={restaurantId}
+          onOpen={setSelectedId}
+          onCreate={(p) => {
+            setCreatePrefill({
+              date: format(date, "yyyy-MM-dd"),
+              time: p.startTime,
+              tableId: p.tableId,
+              tableLabel: p.tableLabel,
+            });
+            setCreateOpen(true);
+          }}
+        />
       )}
 
       {view === "day" && (
