@@ -1,7 +1,7 @@
 // ReservationFormSheet — operator flow to create a reservation.
 // Uses the public availability edge function to preview a slot and book_reservation
 // with channel='manager' so it bypasses the online lead-time / pacing limits.
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { format } from "date-fns";
 import { Loader2, Search, CalendarPlus } from "lucide-react";
 import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from "@/components/ui/sheet";
