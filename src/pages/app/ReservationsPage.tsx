@@ -70,6 +70,7 @@ const ReservationsPage = () => {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [editorId, setEditorId] = useState<string | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
+  const [createPrefill, setCreatePrefill] = useState<{ date?: string; time?: string; tableId?: string; tableLabel?: string } | undefined>(undefined);
   const [walkInOpen, setWalkInOpen] = useState(false);
 
   // Restaurant config
