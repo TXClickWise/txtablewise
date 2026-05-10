@@ -16,6 +16,7 @@ type Body = {
   token: string;
   action?: Action;
   reason?: string;
+  locale?: string;
   // For request_change:
   desired_date?: string;
   desired_time?: string;
@@ -24,6 +25,7 @@ type Body = {
 };
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const VALID_LOCALES = new Set(["nl", "en", "de", "fr"]);
 
 // Statuses that disallow further guest mutation. View remains allowed.
 const FINAL_STATUSES = new Set(["cancelled", "no_show", "completed"]);
