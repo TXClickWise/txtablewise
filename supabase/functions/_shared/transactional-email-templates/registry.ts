@@ -1,5 +1,6 @@
 /// <reference types="npm:@types/react@18.3.1" />
 import * as React from 'npm:react@18.3.1'
+import type { LocaleCopy } from './i18n.ts'
 
 export interface TemplateEntry {
   component: React.ComponentType<any>
@@ -7,18 +8,22 @@ export interface TemplateEntry {
   to?: string
   displayName?: string
   previewData?: Record<string, any>
+  templateKey?: string
+  defaultCopy?: LocaleCopy
 }
 
 import { template as reservationConfirmation } from './reservation-confirmation.tsx'
 import { template as reservationReminder } from './reservation-reminder.tsx'
 import { template as reservationCancellation } from './reservation-cancellation.tsx'
 import { template as largeGroupMessage } from './large-group-message.tsx'
-import { template as largeGroupDecision } from './large-group-decision.tsx'
+import { template as largeGroupApproved } from './large-group-approved.tsx'
+import { template as largeGroupRejected } from './large-group-rejected.tsx'
 
 export const TEMPLATES: Record<string, TemplateEntry> = {
   'reservation-confirmation': reservationConfirmation,
   'reservation-reminder': reservationReminder,
   'reservation-cancellation': reservationCancellation,
   'large-group-message': largeGroupMessage,
-  'large-group-decision': largeGroupDecision,
+  'large-group-approved': largeGroupApproved,
+  'large-group-rejected': largeGroupRejected,
 }
