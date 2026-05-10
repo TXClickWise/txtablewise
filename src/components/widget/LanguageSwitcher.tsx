@@ -30,7 +30,7 @@ export function LanguageSwitcher({ value, onChange, className }: Props) {
           <DropdownMenuItem
             key={loc}
             onClick={() => onChange(loc)}
-            aria-current={value === loc}
+            aria-current={value === loc ? "true" : undefined}
             className={value === loc ? "font-medium" : ""}
           >
             <span className="mr-2">{LOCALE_FLAGS[loc]}</span>
