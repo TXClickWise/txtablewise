@@ -271,38 +271,14 @@ export function ReservationDetailDialog({ reservationId, open, onOpenChange }: P
                 </div>
               )}
 
-              {/* Operator quick-actions */}
-              <div className="grid grid-cols-2 gap-2">
-                <Button
-                  variant="secondary" size="lg" className="h-12 justify-start gap-2"
-                  disabled={!canSeat || busy}
-                  onClick={() => runStatusAction("seated")}
-                >
-                  <UserCheck className="h-4 w-4" /> Aangekomen
-                </Button>
-                <Button
-                  variant="secondary" size="lg" className="h-12 justify-start gap-2"
-                  disabled={!canComplete || busy}
-                  onClick={() => runStatusAction("completed")}
-                >
-                  <CheckCircle2 className="h-4 w-4" /> Bezoek voltooid
-                </Button>
-                <Button
-                  variant="outline" size="lg" className="h-12 justify-start gap-2"
-                  disabled={!canNoShow || busy}
-                  onClick={() => askConfirm("no_show")}
-                >
-                  <AlertOctagon className="h-4 w-4" /> Markeer no-show
-                </Button>
-                <Button
-                  variant="outline" size="lg"
-                  className="h-12 justify-start gap-2 text-destructive hover:text-destructive"
-                  disabled={!canCancel || busy}
-                  onClick={() => askConfirm("cancel")}
-                >
-                  <XCircle className="h-4 w-4" /> Annuleer
-                </Button>
-              </div>
+              {/* Operator quick-actions — uniform via QuickStatusBar */}
+              <ReservationStatusQuickBar
+                reservationId={data.id}
+                status={data.status}
+                size="lg"
+                layout="grid"
+                onChanged={refresh}
+              />
 
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
