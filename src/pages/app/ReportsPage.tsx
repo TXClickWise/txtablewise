@@ -15,6 +15,7 @@ import {
   getWalkInMetrics, getLargeGroupMetrics, getPreOrderMetrics, getReviewMetrics,
   getGuestMetrics, getPOSRevenueMetrics, getPacingMetrics, buildInsightCards, formatEuro,
   getHourlyOccupancy, getTopSeatingMetrics, getReminderMetrics, getAIPerformanceMetrics,
+  getWeeklyTrend,
   formatDuration,
 } from "@/services/reporting";
 
@@ -42,6 +43,7 @@ type AllMetrics = {
   topSeating: Awaited<ReturnType<typeof getTopSeatingMetrics>>;
   reminders: Awaited<ReturnType<typeof getReminderMetrics>>;
   ai: Awaited<ReturnType<typeof getAIPerformanceMetrics>>;
+  weeklyTrend: Awaited<ReturnType<typeof getWeeklyTrend>>;
 };
 
 const ReportsPage = () => {
@@ -75,8 +77,9 @@ const ReportsPage = () => {
       getTopSeatingMetrics(restaurantId, range),
       getReminderMetrics(restaurantId, range),
       getAIPerformanceMetrics(restaurantId, range),
-    ]).then(([reservations, channels, noShow, waitlist, walkIn, largeGroup, preOrder, reviews, guests, pos, pacing, hourly, topSeating, reminders, ai]) => {
-      setData({ reservations, channels, noShow, waitlist, walkIn, largeGroup, preOrder, reviews, guests, pos, pacing, hourly, topSeating, reminders, ai });
+      getWeeklyTrend(restaurantId, 8, range.to),
+    ]).then(([reservations, channels, noShow, waitlist, walkIn, largeGroup, preOrder, reviews, guests, pos, pacing, hourly, topSeating, reminders, ai, weeklyTrend]) => {
+      setData({ reservations, channels, noShow, waitlist, walkIn, largeGroup, preOrder, reviews, guests, pos, pacing, hourly, topSeating, reminders, ai, weeklyTrend });
     }).catch((e: Error) => setError(e.message)).finally(() => setLoading(false));
   }, [restaurantId, range]);
 
