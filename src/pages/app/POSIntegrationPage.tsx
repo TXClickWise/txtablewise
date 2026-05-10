@@ -38,13 +38,63 @@ const POSIntegrationPage = () => {
   const [revenue, setRevenue] = useState<RevenuePreview | null>(null);
   const [events, setEvents] = useState<Array<{ id: string; event_type: string; status: string; created_at: string }>>([]);
   const [reload, setReload] = useState(0);
+  const [loyverse, setLoyverse] = useState<LoyverseConnectionStatus>(null);
+  const [loyverseBusy, setLoyverseBusy] = useState<null | "connect" | "sync" | "disconnect">(null);
 
   useEffect(() => {
     if (!restaurantId) return;
     listPOSReceipts(restaurantId).then(setReceipts);
     getRevenuePreview(restaurantId).then(setRevenue);
     listPOSEvents(restaurantId).then((e) => setEvents(e));
+    getLoyverseStatus(restaurantId).then(setLoyverse).catch(() => setLoyverse(null));
   }, [restaurantId, reload]);
+
+  // Handle OAuth return (?loyverse=connected / error)
+  useEffect(() => {
+    const sp = new URLSearchParams(window.location.search);
+    const ly = sp.get("loyverse");
+    if (!ly) return;
+    if (ly === "connected") toast.success("Loyverse gekoppeld");
+    else toast.error("Loyverse koppeling mislukt", { description: sp.get("reason") ?? undefined });
+    sp.delete("loyverse"); sp.delete("reason");
+    window.history.replaceState({}, "", `${window.location.pathname}${sp.toString() ? "?" + sp.toString() : ""}`);
+    setReload((r) => r + 1);
+  }, []);
+
+  async function handleLoyverseConnect() {
+    if (!restaurantId) return;
+    setLoyverseBusy("connect");
+    try {
+      const { url } = await getLoyverseAuthorizeUrl(restaurantId);
+      window.location.href = url;
+    } catch (e) {
+      toast.error("Koppelen mislukt", { description: (e as Error).message });
+      setLoyverseBusy(null);
+    }
+  }
+  async function handleLoyverseSync() {
+    if (!restaurantId) return;
+    setLoyverseBusy("sync");
+    try {
+      const r = await syncLoyverseNow(restaurantId);
+      toast.success("Synchronisatie klaar", { description: `${r.imported} nieuw, ${r.skipped} overgeslagen` });
+      setReload((x) => x + 1);
+    } catch (e) {
+      toast.error("Sync mislukt", { description: (e as Error).message });
+    } finally { setLoyverseBusy(null); }
+  }
+  async function handleLoyverseDisconnect() {
+    if (!restaurantId) return;
+    if (!confirm("Loyverse koppeling verbreken?")) return;
+    setLoyverseBusy("disconnect");
+    try {
+      await disconnectLoyverse(restaurantId);
+      toast.success("Loyverse ontkoppeld");
+      setReload((x) => x + 1);
+    } catch (e) {
+      toast.error("Ontkoppelen mislukt", { description: (e as Error).message });
+    } finally { setLoyverseBusy(null); }
+  }
 
   const unmatched = useMemo(() => receipts.filter((r) => r.matching_status === "unmatched"), [receipts]);
   const matched = useMemo(() => receipts.filter((r) => r.matching_status === "matched"), [receipts]);
