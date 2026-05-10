@@ -434,14 +434,14 @@ const ReserveWidget = () => {
         {step === "select" && (
           <div className="space-y-6 animate-in fade-in duration-300">
             <div>
-              <h1 className="font-display text-3xl sm:text-4xl mb-2">Reserveer een tafel</h1>
-              <p className="text-muted-foreground">Bij {restaurant.name}.</p>
+              <h1 className="font-display text-3xl sm:text-4xl mb-2">{t("title")}</h1>
+              <p className="text-muted-foreground">{t("atRestaurant", { name: restaurant.name })}</p>
             </div>
 
             {/* Party size */}
             <div className="space-y-2">
               <Label className="text-sm flex items-center gap-2">
-                <Users className="h-4 w-4" /> Aantal gasten
+                <Users className="h-4 w-4" /> {t("party")}
               </Label>
               <div className="grid grid-cols-4 sm:grid-cols-8 gap-2">
                 {partyOptions.map((n) => (
