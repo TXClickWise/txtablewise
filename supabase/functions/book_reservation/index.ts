@@ -59,8 +59,16 @@ Deno.serve(async (req) => {
     if (rErr) return json({ error: rErr.message, error_code: "internal" }, 500);
     if (!restaurant) return json({ error: "Restaurant not found", error_code: "not_found", field: "restaurant_id" }, 404);
 
-    if (body.party_size > restaurant.max_party_size_online && body.channel !== "manager") {
+    const onlineHardCap: number = restaurant.large_group_max_online_request ?? restaurant.max_party_size_online;
+    if (body.party_size > onlineHardCap && body.channel !== "manager" && body.channel !== "walk_in") {
       return json({ error: "Party size exceeds online limit", error_code: "large_group_required_manual", field: "party_size", large_group: true }, 400);
+    }
+    const extraInfoFrom: number | null = restaurant.large_group_extra_info_from ?? null;
+    if (extraInfoFrom !== null && body.party_size >= extraInfoFrom && body.channel !== "manager" && body.channel !== "walk_in") {
+      const msg = (body.special_requests ?? "").trim();
+      if (!msg) {
+        return json({ error: "Bericht aan restaurant verplicht voor deze groepsgrootte", error_code: "message_required", field: "special_requests" }, 400);
+      }
     }
 
     const tz: string = restaurant.timezone;
