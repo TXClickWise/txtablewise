@@ -337,7 +337,7 @@ const ReserveWidget = () => {
           last_name: parsed.data.last_name,
           email: parsed.data.email || undefined,
           phone: parsed.data.phone,
-          language: "nl",
+          language: locale,
         },
         special_requests: combinedRequests || undefined,
         dietary_notes: allergies.trim() || undefined,
