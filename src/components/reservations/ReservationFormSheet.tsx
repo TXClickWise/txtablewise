@@ -121,9 +121,15 @@ export function ReservationFormSheet({ open, onOpenChange, prefill }: Props) {
       },
     });
     setSubmitting(false);
-    const fnErr = (data as { error?: string }) || {};
-    if (error || fnErr.error) {
-      return toast.error(fnErr.error || "De reservering is niet opgeslagen. Probeer het opnieuw.");
+    const payload = (data as { error?: string; reservation?: { id?: string } }) || {};
+    if (error || payload.error) {
+      return toast.error(payload.error || "De reservering is niet opgeslagen. Probeer het opnieuw.");
+    }
+    // Tafel forceren als operator een specifieke tafel koos in het tafelgrid
+    const newId = payload.reservation?.id;
+    if (newId && prefill?.tableId) {
+      await supabase.from("reservation_tables").delete().eq("reservation_id", newId);
+      await supabase.from("reservation_tables").insert([{ reservation_id: newId, table_id: prefill.tableId }]);
     }
     toast.success("Reservering aangemaakt.");
     qc.invalidateQueries();
