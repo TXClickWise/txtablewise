@@ -57,7 +57,8 @@ const LargeGroupSettings = () => {
         .select(`
           large_group_threshold, large_group_extra_minutes, large_group_manual_approval_from,
           large_group_deposit_recommended_from, large_group_auto_book_max, large_group_default_status,
-          large_group_confirmation_text, large_group_cancellation_terms, noshow_deposit_rules_prepared
+          large_group_confirmation_text, large_group_cancellation_terms, noshow_deposit_rules_prepared,
+          large_group_extra_info_from, large_group_max_online_request
         `)
         .eq("id", restaurantId).maybeSingle();
       if (data) {
@@ -67,6 +68,8 @@ const LargeGroupSettings = () => {
           large_group_manual_approval_from: data.large_group_manual_approval_from ?? defaults.large_group_manual_approval_from,
           large_group_deposit_recommended_from: data.large_group_deposit_recommended_from ?? defaults.large_group_deposit_recommended_from,
           large_group_auto_book_max: data.large_group_auto_book_max ?? defaults.large_group_auto_book_max,
+          large_group_extra_info_from: (data as any).large_group_extra_info_from ?? "",
+          large_group_max_online_request: (data as any).large_group_max_online_request ?? "",
           large_group_default_status: data.large_group_default_status ?? defaults.large_group_default_status,
           large_group_confirmation_text: data.large_group_confirmation_text ?? "",
           large_group_cancellation_terms: data.large_group_cancellation_terms ?? "",
@@ -80,7 +83,12 @@ const LargeGroupSettings = () => {
   const save = async () => {
     if (!restaurantId) return;
     setSaving(true);
-    const { error } = await supabase.from("restaurants").update(form).eq("id", restaurantId);
+    const payload = {
+      ...form,
+      large_group_extra_info_from: form.large_group_extra_info_from === "" ? null : Number(form.large_group_extra_info_from),
+      large_group_max_online_request: form.large_group_max_online_request === "" ? null : Number(form.large_group_max_online_request),
+    };
+    const { error } = await supabase.from("restaurants").update(payload as any).eq("id", restaurantId);
     setSaving(false);
     if (error) {
       toast.error("Opslaan mislukt: " + error.message);
