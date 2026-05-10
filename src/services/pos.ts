@@ -358,17 +358,24 @@ export type LoyverseConnectionStatus = {
 } | null;
 
 async function invokeLoyverse(action: string, body?: Record<string, unknown>) {
-  const { data, error } = await supabase.functions.invoke("loyverse_oauth", {
+  const { data, error } = await supabase.functions.invoke("loyverse_connect", {
     method: "POST",
     body: { action, ...(body ?? {}) },
   });
   if (error) throw error;
+  if (data && typeof data === "object" && (data as Record<string, unknown>).error) {
+    const msg = (data as Record<string, unknown>).message as string | undefined;
+    throw new Error(msg ?? String((data as Record<string, unknown>).error));
+  }
   return data as Record<string, unknown>;
 }
 
-export async function getLoyverseAuthorizeUrl(restaurantId: string): Promise<{ url: string; redirect_uri: string }> {
-  const r = await invokeLoyverse("authorize_url", { restaurant_id: restaurantId });
-  return { url: r.url as string, redirect_uri: r.redirect_uri as string };
+export async function connectLoyverseWithToken(
+  restaurantId: string,
+  accessToken: string,
+): Promise<LoyverseConnectionStatus> {
+  const r = await invokeLoyverse("connect", { restaurant_id: restaurantId, access_token: accessToken });
+  return (r.connection as LoyverseConnectionStatus) ?? null;
 }
 
 export async function getLoyverseStatus(restaurantId: string): Promise<LoyverseConnectionStatus> {

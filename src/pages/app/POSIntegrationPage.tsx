@@ -8,13 +8,16 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Sparkles, Receipt, Link as LinkIcon, FileSpreadsheet, Webhook, AlertCircle, CheckCircle2, X, RefreshCw, Unlink, Loader2 } from "lucide-react";
+import { Sparkles, Receipt, Link as LinkIcon, FileSpreadsheet, Webhook, AlertCircle, CheckCircle2, X, RefreshCw, Unlink, Loader2, Eye, EyeOff, ExternalLink } from "lucide-react";
 import {
   POS_PROVIDERS, POS_FIELD_MAPPING,
   listPOSReceipts, suggestReservationMatches, matchReceiptToReservation, ignoreReceipt, getRevenuePreview,
   listPOSEvents, selectProvider, formatEuro,
-  getLoyverseAuthorizeUrl, getLoyverseStatus, syncLoyverseNow, disconnectLoyverse, type LoyverseConnectionStatus,
+  connectLoyverseWithToken, getLoyverseStatus, syncLoyverseNow, disconnectLoyverse, type LoyverseConnectionStatus,
   type POSReceipt, type RevenuePreview,
 } from "@/services/pos";
 import { POSReceiptForm } from "@/components/pos/POSReceiptForm";
@@ -40,6 +43,10 @@ const POSIntegrationPage = () => {
   const [reload, setReload] = useState(0);
   const [loyverse, setLoyverse] = useState<LoyverseConnectionStatus>(null);
   const [loyverseBusy, setLoyverseBusy] = useState<null | "connect" | "sync" | "disconnect">(null);
+  const [tokenDialogOpen, setTokenDialogOpen] = useState(false);
+  const [tokenInput, setTokenInput] = useState("");
+  const [showToken, setShowToken] = useState(false);
+  const [tokenHelpOpen, setTokenHelpOpen] = useState(false);
 
   useEffect(() => {
     if (!restaurantId) return;
@@ -49,26 +56,23 @@ const POSIntegrationPage = () => {
     getLoyverseStatus(restaurantId).then(setLoyverse).catch(() => setLoyverse(null));
   }, [restaurantId, reload]);
 
-  // Handle OAuth return (?loyverse=connected / error)
-  useEffect(() => {
-    const sp = new URLSearchParams(window.location.search);
-    const ly = sp.get("loyverse");
-    if (!ly) return;
-    if (ly === "connected") toast.success("Loyverse gekoppeld");
-    else toast.error("Loyverse koppeling mislukt", { description: sp.get("reason") ?? undefined });
-    sp.delete("loyverse"); sp.delete("reason");
-    window.history.replaceState({}, "", `${window.location.pathname}${sp.toString() ? "?" + sp.toString() : ""}`);
-    setReload((r) => r + 1);
-  }, []);
-
   async function handleLoyverseConnect() {
     if (!restaurantId) return;
+    const token = tokenInput.trim();
+    if (token.length < 10) {
+      toast.error("Token lijkt ongeldig", { description: "Plak de volledige access token uit Loyverse." });
+      return;
+    }
     setLoyverseBusy("connect");
     try {
-      const { url } = await getLoyverseAuthorizeUrl(restaurantId);
-      window.location.href = url;
+      await connectLoyverseWithToken(restaurantId, token);
+      toast.success("Loyverse gekoppeld");
+      setTokenDialogOpen(false);
+      setTokenInput("");
+      setReload((x) => x + 1);
     } catch (e) {
       toast.error("Koppelen mislukt", { description: (e as Error).message });
+    } finally {
       setLoyverseBusy(null);
     }
   }
@@ -161,8 +165,8 @@ const POSIntegrationPage = () => {
             </CardHeader>
             <CardContent className="flex flex-wrap gap-2">
               {loyverse?.status !== "active" ? (
-                <Button size="sm" onClick={handleLoyverseConnect} disabled={loyverseBusy === "connect"}>
-                  {loyverseBusy === "connect" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <LinkIcon className="mr-2 h-4 w-4" />}
+                <Button size="sm" onClick={() => setTokenDialogOpen(true)} disabled={loyverseBusy === "connect"}>
+                  <LinkIcon className="mr-2 h-4 w-4" />
                   Koppel met Loyverse
                 </Button>
               ) : (
@@ -340,6 +344,78 @@ const POSIntegrationPage = () => {
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Loyverse Access Token Dialog */}
+      <Dialog open={tokenDialogOpen} onOpenChange={(o) => { setTokenDialogOpen(o); if (!o) { setTokenInput(""); setShowToken(false); } }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Koppel met Loyverse</DialogTitle>
+            <DialogDescription>
+              Plak je persoonlijke Loyverse access token. We testen direct of hij geldig is.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-3">
+            <button
+              type="button"
+              onClick={() => setTokenHelpOpen((v) => !v)}
+              className="text-xs text-primary hover:underline text-left"
+            >
+              {tokenHelpOpen ? "▾" : "▸"} Hoe vind ik mijn access token in Loyverse?
+            </button>
+            {tokenHelpOpen && (
+              <ol className="text-xs text-muted-foreground space-y-1 pl-4 list-decimal">
+                <li>Open je Loyverse Back Office.</li>
+                <li>Ga naar <strong>Instellingen → Access tokens</strong>.</li>
+                <li>Klik <strong>+ Nieuwe token toevoegen</strong>, geef hem een naam (bijv. "TableWise").</li>
+                <li>Kopieer de getoonde token-waarde.</li>
+                <li>Plak die hieronder en klik op Verbinden.</li>
+                <li>
+                  <a
+                    href="https://r.loyverse.com/dashboard/#/integrations"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-1 text-primary hover:underline"
+                  >
+                    Open Loyverse integraties <ExternalLink className="h-3 w-3" />
+                  </a>
+                </li>
+              </ol>
+            )}
+
+            <div className="space-y-1.5">
+              <Label htmlFor="loyverse-token" className="text-xs">Access token</Label>
+              <div className="flex gap-2">
+                <Input
+                  id="loyverse-token"
+                  type={showToken ? "text" : "password"}
+                  placeholder="3878ee588caa…"
+                  value={tokenInput}
+                  onChange={(e) => setTokenInput(e.target.value)}
+                  autoComplete="off"
+                  spellCheck={false}
+                />
+                <Button type="button" size="icon" variant="outline" onClick={() => setShowToken((v) => !v)} aria-label={showToken ? "Verbergen" : "Tonen"}>
+                  {showToken ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </Button>
+              </div>
+              <p className="text-[10px] text-muted-foreground">
+                Token wordt veilig versleuteld opgeslagen en alleen server-side gebruikt om bonnen op te halen.
+              </p>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setTokenDialogOpen(false)} disabled={loyverseBusy === "connect"}>
+              Annuleer
+            </Button>
+            <Button onClick={handleLoyverseConnect} disabled={loyverseBusy === "connect" || tokenInput.trim().length < 10}>
+              {loyverseBusy === "connect" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <LinkIcon className="mr-2 h-4 w-4" />}
+              Verbinden
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

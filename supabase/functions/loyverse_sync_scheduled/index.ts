@@ -37,17 +37,24 @@ async function loyverseFetch(token: string, path: string, query: Record<string, 
 async function syncOne(admin: ReturnType<typeof createClient>, conn: Record<string, unknown>) {
   let access = conn.access_token_encrypted as string | null;
   const refresh = conn.refresh_token_encrypted as string | null;
+  const cfg = (conn.config ?? {}) as Record<string, unknown>;
+  const authMethod = (cfg.auth_method as string) ?? (refresh ? "oauth" : "personal_token");
   const expiresAt = conn.token_expires_at ? new Date(conn.token_expires_at as string).getTime() : 0;
-  if (!refresh) throw new Error("no refresh token");
 
-  if (!access || expiresAt < Date.now() + 60_000) {
-    const t = await refreshAccessToken(refresh);
-    access = t.access_token;
-    await admin.from("pos_connections").update({
-      access_token_encrypted: t.access_token,
-      refresh_token_encrypted: t.refresh_token ?? refresh,
-      token_expires_at: new Date(Date.now() + (t.expires_in - 30) * 1000).toISOString(),
-    }).eq("id", conn.id as string);
+  if (authMethod === "oauth") {
+    if (!refresh) throw new Error("no refresh token");
+    if (!access || expiresAt < Date.now() + 60_000) {
+      const t = await refreshAccessToken(refresh);
+      access = t.access_token;
+      await admin.from("pos_connections").update({
+        access_token_encrypted: t.access_token,
+        refresh_token_encrypted: t.refresh_token ?? refresh,
+        token_expires_at: new Date(Date.now() + (t.expires_in - 30) * 1000).toISOString(),
+      }).eq("id", conn.id as string);
+    }
+  } else {
+    // personal_token — token does not expire; just ensure we have one
+    if (!access) throw new Error("no access token");
   }
 
   const since = conn.last_synced_at
@@ -103,11 +110,7 @@ async function syncOne(admin: ReturnType<typeof createClient>, conn: Record<stri
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
-  if (!CLIENT_ID || !CLIENT_SECRET) {
-    return new Response(JSON.stringify({ error: "loyverse credentials missing" }), {
-      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
-  }
+  // OAuth credentials are optional now (only needed for legacy OAuth connections).
 
   const admin = createClient(SUPABASE_URL, SERVICE_KEY);
   const { data: conns, error } = await admin.from("pos_connections").select("*")
