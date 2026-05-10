@@ -284,6 +284,10 @@ const ReserveWidget = () => {
     if (!restaurant || !selectedSlot || !date) return;
     const parsed = guestSchema.safeParse({ first_name: firstName, last_name: lastName, email, phone });
     if (!parsed.success) return toast.error(parsed.error.errors[0].message);
+    if (requiresMessage && !requests.trim()) {
+      setShowExtras(true);
+      return toast.error("Voeg even een korte toelichting toe voor het restaurant");
+    }
 
     const gate = canAttemptBooking();
     if (!gate.allowed) {
