@@ -50,6 +50,10 @@ type RestaurantInfo = {
   timezone: string;
   max_party_size_online: number;
   large_group_threshold: number;
+  large_group_manual_approval_from: number | null;
+  large_group_extra_info_from: number | null;
+  large_group_max_online_request: number | null;
+  large_group_confirmation_text: string | null;
   preorders_enabled: boolean;
   preorders_allow_free_text: boolean;
   allow_zone_preference: boolean;
