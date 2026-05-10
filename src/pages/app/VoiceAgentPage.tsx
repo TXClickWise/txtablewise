@@ -195,6 +195,7 @@ export default function VoiceAgentPage() {
                   Telefoonnummer: <strong>{settings.phone_number}</strong>
                 </div>
               )}
+              <VoiceTestButton restaurantId={rid!} disabled={!activeKey} />
             </CardContent>
           </Card>
 
@@ -450,5 +451,41 @@ export default function VoiceAgentPage() {
         </TabsContent>
       </Tabs>
     </div>
+  );
+}
+
+function VoiceTestButton({ restaurantId, disabled }: { restaurantId: string; disabled?: boolean }) {
+  const [busy, setBusy] = useState(false);
+  const run = async () => {
+    setBusy(true);
+    try {
+      const today = new Date();
+      const date = today.toISOString().slice(0, 10);
+      const projectId = (import.meta as any).env?.VITE_SUPABASE_PROJECT_ID;
+      const sess = await supabase.auth.getSession();
+      const accessToken = sess.data.session?.access_token;
+      const res = await fetch(`https://${projectId}.supabase.co/functions/v1/integration_test/availability`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+        },
+        body: JSON.stringify({ restaurant_id: restaurantId, date, party_size: 2 }),
+      });
+      const out = await res.json().catch(() => ({}));
+      if (!res.ok || out?.error) {
+        toast.error(`Test mislukt: ${out?.error ?? `HTTP ${res.status}`}`);
+      } else {
+        const slots = Array.isArray(out?.slots) ? out.slots.length : (Array.isArray(out?.available_slots) ? out.available_slots.length : "?");
+        toast.success(`Voice-flow test OK — ${slots} slots voor vandaag`);
+      }
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Test mislukt");
+    } finally { setBusy(false); }
+  };
+  return (
+    <Button onClick={run} disabled={busy || disabled} className="h-11">
+      {busy ? "Testen…" : "Test verbinding (beschikbaarheid)"}
+    </Button>
   );
 }

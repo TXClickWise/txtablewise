@@ -27,7 +27,7 @@ import {
   buildSamplePayload, CONTACT_MAPPING,
   DEFAULT_TAG_MAPPING, DEFAULT_CUSTOM_FIELDS, DEFAULT_WORKFLOWS,
   checkClickWiseReadiness, enableClickWiseLiveMode, disableClickWiseLiveMode,
-  processIntegrationEvent, processPendingClickWiseEvents,
+  processIntegrationEvent, processPendingClickWiseEvents, testClickWiseConnection,
   type ClickWiseSettings, type IntegrationEventRow, type EventFilter,
   type ClickWiseReadiness,
 } from "@/services/clickwise";
@@ -193,6 +193,17 @@ const ClickWiseIntegrationPage = () => {
       toast.error(e instanceof Error ? e.message : "Kon batch niet verwerken.");
     } finally { setProcessing(false); }
   };
+  const handleTestConnection = async () => {
+    if (!restaurantId) return;
+    setProcessing(true);
+    try {
+      const r = await testClickWiseConnection(restaurantId);
+      if (r.ok) toast.success(`Verbinding OK (HTTP ${r.http_status}, ${r.latency_ms}ms)`);
+      else toast.error(`Verbinding mislukt${r.http_status ? ` (HTTP ${r.http_status})` : ""}${r.message ? ` — ${r.message}` : ""}`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Test mislukt.");
+    } finally { setProcessing(false); }
+  };
   const handleEnableLive = async () => {
     if (!restaurantId) return;
     const r = await enableClickWiseLiveMode(restaurantId);
@@ -313,6 +324,10 @@ const ClickWiseIntegrationPage = () => {
             <Button variant="outline" onClick={handleProcessPending} disabled={processing}>
               <RefreshCw className={`h-4 w-4 mr-1 ${processing ? "animate-spin" : ""}`} />
               Verwerk pending events
+            </Button>
+            <Button variant="outline" onClick={handleTestConnection} disabled={processing}>
+              <Plug className="h-4 w-4 mr-1" />
+              Test verbinding
             </Button>
           </div>
           {!readiness?.secrets_present && (

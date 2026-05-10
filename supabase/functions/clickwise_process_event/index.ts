@@ -605,6 +605,36 @@ Deno.serve(async (req) => {
       return ok({ ok: true, processed: results.length, live_mode: liveAllowed, results });
     }
 
+    if (action === "test_connection") {
+      const restaurantId = body.restaurant_id as string;
+      if (!restaurantId) return fail("restaurant_id required");
+      const { data: m } = await userClient
+        .from("restaurant_members").select("id, role").eq("restaurant_id", restaurantId).maybeSingle();
+      if (!m || !["owner", "manager"].includes((m as { role: string }).role)) return fail("forbidden", 403);
+      const settings = await loadSettings(admin, restaurantId);
+      if (!SECRETS_PRESENT) {
+        return ok({ ok: false, reason: "secrets_missing", message: "ClickWise API-secrets staan niet server-side ingesteld." });
+      }
+      const locId = settings?.location_id || CLICKWISE_LOCATION_ID;
+      if (!locId) {
+        return ok({ ok: false, reason: "location_missing", message: "Location ID ontbreekt." });
+      }
+      const startedAt = Date.now();
+      const r = await callClickWise(`/locations/${encodeURIComponent(locId)}`, {}, "GET");
+      await admin.from("integration_logs").insert({
+        restaurant_id: restaurantId,
+        source: "clickwise",
+        action: "test_connection",
+        status: r.ok ? "success" : "failed",
+        http_status: r.status,
+        latency_ms: Date.now() - startedAt,
+        error_message: r.ok ? null : `HTTP ${r.status}`,
+        request_payload: { path: `/locations/${locId}` },
+        response_payload: maskPayload(r.body) as Json,
+      } as any);
+      return ok({ ok: r.ok, http_status: r.status, latency_ms: Date.now() - startedAt, body: maskPayload(r.body) });
+    }
+
     return fail("unknown_action");
   } catch (e) {
     const msg = e instanceof Error ? e.message : "unknown_error";

@@ -46,6 +46,8 @@ export default function IntegrationLogsPage() {
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<IntegrationLog | null>(null);
   const [retrying, setRetrying] = useState<string | null>(null);
+  const [bulkIds, setBulkIds] = useState<Set<string>>(new Set());
+  const [bulkRunning, setBulkRunning] = useState(false);
 
   const load = async () => {
     if (!rid) return;
@@ -82,6 +84,37 @@ export default function IntegrationLogsPage() {
     } finally {
       setRetrying(null);
     }
+  };
+
+  const retryableLogs = useMemo(
+    () => logs.filter((l) => l.retry_safe && l.status !== "success"),
+    [logs],
+  );
+  const toggleBulk = (id: string) => {
+    setBulkIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+  const toggleBulkAll = () => {
+    if (bulkIds.size === retryableLogs.length) setBulkIds(new Set());
+    else setBulkIds(new Set(retryableLogs.map((l) => l.id)));
+  };
+  const onBulkRetry = async () => {
+    if (bulkIds.size === 0) return;
+    setBulkRunning(true);
+    let ok = 0, fail = 0;
+    for (const id of Array.from(bulkIds)) {
+      try {
+        const r = await retryIntegrationLog(id);
+        r.ok ? ok++ : fail++;
+      } catch { fail++; }
+    }
+    setBulkRunning(false);
+    setBulkIds(new Set());
+    toast.success(`Retry klaar — ${ok} gelukt, ${fail} gefaald`);
+    await load();
   };
 
   return (
@@ -159,6 +192,29 @@ export default function IntegrationLogsPage() {
         </CardContent>
       </Card>
 
+      {retryableLogs.length > 0 && (
+        <Card>
+          <CardContent className="p-3 flex flex-wrap items-center gap-3">
+            <label className="flex items-center gap-2 text-sm cursor-pointer">
+              <input
+                type="checkbox"
+                className="h-4 w-4 rounded border"
+                checked={bulkIds.size === retryableLogs.length && retryableLogs.length > 0}
+                onChange={toggleBulkAll}
+              />
+              Selecteer alle retry-veilige ({retryableLogs.length})
+            </label>
+            <span className="text-xs text-muted-foreground">{bulkIds.size} geselecteerd</span>
+            <div className="ml-auto">
+              <Button size="sm" onClick={onBulkRetry} disabled={bulkIds.size === 0 || bulkRunning}>
+                {bulkRunning ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5 mr-1" />}
+                Retry geselecteerde
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       <Card>
         <CardContent className="p-0">
           {loading ? (
@@ -167,33 +223,50 @@ export default function IntegrationLogsPage() {
             <p className="p-6 text-sm text-muted-foreground">Geen logs binnen deze filters.</p>
           ) : (
             <div className="divide-y divide-border">
-              {logs.map((log) => (
-                <button
+              {logs.map((log) => {
+                const canRetry = log.retry_safe && log.status !== "success";
+                return (
+                <div
                   key={log.id}
-                  onClick={() => setSelected(log)}
-                  className="w-full text-left p-3 hover:bg-muted/40 transition-colors flex items-start gap-3"
+                  className="w-full p-3 hover:bg-muted/40 transition-colors flex items-start gap-3"
                 >
-                  <div className={`mt-0.5 inline-flex items-center gap-1 rounded border px-1.5 py-0.5 text-xs ${statusColor(log.status)}`}>
-                    {statusIcon(log.status)} {log.status}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap text-sm">
-                      <span className="font-mono text-xs text-muted-foreground">
-                        {format(new Date(log.created_at), "d MMM HH:mm:ss", { locale: nl })}
-                      </span>
-                      <Badge variant="secondary" className="text-[10px]">{log.source}</Badge>
-                      <span className="font-medium">{log.action}</span>
-                      {log.http_status != null && <span className="text-xs text-muted-foreground">HTTP {log.http_status}</span>}
-                      {log.latency_ms != null && <span className="text-xs text-muted-foreground">{log.latency_ms}ms</span>}
-                      {log.error_code && (
-                        <code className="text-[10px] px-1.5 py-0.5 rounded bg-destructive/10 text-destructive">{log.error_code}</code>
+                  {canRetry ? (
+                    <input
+                      type="checkbox"
+                      className="h-4 w-4 mt-1 rounded border"
+                      checked={bulkIds.has(log.id)}
+                      onChange={(e) => { e.stopPropagation(); toggleBulk(log.id); }}
+                      onClick={(e) => e.stopPropagation()}
+                    />
+                  ) : (
+                    <span className="w-4" />
+                  )}
+                  <button
+                    onClick={() => setSelected(log)}
+                    className="flex-1 text-left flex items-start gap-3 min-w-0"
+                  >
+                    <div className={`mt-0.5 inline-flex items-center gap-1 rounded border px-1.5 py-0.5 text-xs ${statusColor(log.status)}`}>
+                      {statusIcon(log.status)} {log.status}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap text-sm">
+                        <span className="font-mono text-xs text-muted-foreground">
+                          {format(new Date(log.created_at), "d MMM HH:mm:ss", { locale: nl })}
+                        </span>
+                        <Badge variant="secondary" className="text-[10px]">{log.source}</Badge>
+                        <span className="font-medium">{log.action}</span>
+                        {log.http_status != null && <span className="text-xs text-muted-foreground">HTTP {log.http_status}</span>}
+                        {log.latency_ms != null && <span className="text-xs text-muted-foreground">{log.latency_ms}ms</span>}
+                        {log.error_code && (
+                          <code className="text-[10px] px-1.5 py-0.5 rounded bg-destructive/10 text-destructive">{log.error_code}</code>
+                        )}
+                      </div>
+                      {log.possible_cause && (
+                        <div className="text-xs text-muted-foreground mt-0.5">→ {log.possible_cause}</div>
                       )}
                     </div>
-                    {log.possible_cause && (
-                      <div className="text-xs text-muted-foreground mt-0.5">→ {log.possible_cause}</div>
-                    )}
-                  </div>
-                  {log.retry_safe && log.status !== "success" && (
+                  </button>
+                  {canRetry && (
                     <Button
                       size="sm"
                       variant="outline"
@@ -203,8 +276,9 @@ export default function IntegrationLogsPage() {
                       {retrying === log.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
                     </Button>
                   )}
-                </button>
-              ))}
+                </div>
+                );
+              })}
             </div>
           )}
         </CardContent>
