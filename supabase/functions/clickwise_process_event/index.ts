@@ -435,13 +435,62 @@ async function processEvent(
     return { ok: false, error: "workflow_mapping_missing" };
   }
 
+  // Resolve guest locale centrally so ALL outgoing ClickWise events
+  // (reminders, confirmations, reconfirmations, reviews, waitlist, …) carry
+  // the right language. Priority: reservations.guest_language →
+  // guests.language → restaurants.default_locale → 'nl'.
+  const SUPPORTED_LOCALES = new Set(["nl", "en", "de", "fr"]);
+  const normalizeLocale = (v: unknown): string | null => {
+    if (typeof v !== "string") return null;
+    const short = v.toLowerCase().slice(0, 2);
+    return SUPPORTED_LOCALES.has(short) ? short : null;
+  };
+  let resolvedLocale: string | null = normalizeLocale((ev.payload as Record<string, unknown>)?.locale);
+  let localeSource = resolvedLocale ? "payload" : "fallback";
+  const reservationId = (ev.payload?.reservation_id as string | undefined)
+    ?? (ev.event_type.startsWith("reservation.") ? (ev.payload?.id as string | undefined) : undefined);
+  if (!resolvedLocale && reservationId) {
+    const { data: resRow } = await admin.from("reservations")
+      .select("guest_language, guest_id").eq("id", reservationId).maybeSingle();
+    const fromRes = normalizeLocale((resRow as { guest_language?: string } | null)?.guest_language);
+    if (fromRes) { resolvedLocale = fromRes; localeSource = "reservation"; }
+    else if ((resRow as { guest_id?: string } | null)?.guest_id) {
+      const { data: g } = await admin.from("guests")
+        .select("language").eq("id", (resRow as { guest_id: string }).guest_id).maybeSingle();
+      const fromGuest = normalizeLocale((g as { language?: string } | null)?.language);
+      if (fromGuest) { resolvedLocale = fromGuest; localeSource = "guest"; }
+    }
+  }
+  if (!resolvedLocale) {
+    const guestId = (ev.payload?.guest_id as string | undefined);
+    if (guestId) {
+      const { data: g } = await admin.from("guests")
+        .select("language").eq("id", guestId).maybeSingle();
+      const fromGuest = normalizeLocale((g as { language?: string } | null)?.language);
+      if (fromGuest) { resolvedLocale = fromGuest; localeSource = "guest"; }
+    }
+  }
+  if (!resolvedLocale) {
+    const { data: rest } = await admin.from("restaurants")
+      .select("default_locale").eq("id", ev.restaurant_id).maybeSingle();
+    const fromRest = normalizeLocale((rest as { default_locale?: string } | null)?.default_locale);
+    if (fromRest) { resolvedLocale = fromRest; localeSource = "restaurant_default"; }
+  }
+  if (!resolvedLocale) { resolvedLocale = "nl"; localeSource = "hardcoded_fallback"; }
+
   // Call: workflow trigger pattern (HighLevel: POST /workflows/{id}/trigger)
   const locationId = settings?.location_id || CLICKWISE_LOCATION_ID;
+  const enrichedPayload = {
+    ...(ev.payload as Record<string, unknown>),
+    locale: resolvedLocale,
+    language: resolvedLocale,
+  };
   const result = await callClickWise(`/workflows/${wfId}/trigger`, {
     locationId,
     contactId,
-    payload: ev.payload,
+    payload: enrichedPayload,
   });
+
 
   if (result.ok) {
     await admin.from("integration_events").update({
@@ -453,6 +502,8 @@ async function processEvent(
         response: result.body,
         http_status: result.status,
         contact_upsert: contactUpsertResult,
+        locale: resolvedLocale,
+        locale_source: localeSource,
         mode: "live",
       },
     }).eq("id", ev.id);

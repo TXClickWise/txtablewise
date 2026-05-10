@@ -10,14 +10,10 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
-import {
-  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
-  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   RefreshCw, Sparkles, UserPlus, Users, Clock, Crown, Beer,
-  AlertTriangle, MapPin, Check, LogOut, UserX, ListChecks, ChevronRight, ChevronLeft, Search,
+  AlertTriangle, MapPin, ListChecks, ChevronRight, ChevronLeft, Search,
   Calendar as CalendarIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -25,6 +21,7 @@ import { toast } from "sonner";
 import { WalkInQuickSheet } from "@/components/walk-in/WalkInQuickSheet";
 import { StatusBadge } from "@/components/StatusBadge";
 import { ReservationBadges } from "@/components/reservations/ReservationBadges";
+import { ReservationStatusQuickBar } from "@/components/reservations/ReservationStatusQuickBar";
 import { PacingIndicator, pacingLevelFromCovers } from "@/components/reservations/PacingIndicator";
 import { AIQuickSeatSheet } from "@/components/floor-plan/AIQuickSeatSheet";
 import { LastMinuteFillPanel } from "@/components/waitlist/LastMinuteFillPanel";
@@ -1018,48 +1015,12 @@ function ActiveReservationActions({
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-2">
-        {!isSeated ? (
-          <>
-            <Button size="lg" className="h-14" onClick={() => onMarkSeated(r.id)}>
-              <Check className="mr-2 h-5 w-5" /> Seated
-            </Button>
-            <Button size="lg" variant="outline" className="h-14" onClick={() => onMarkArrived(r.id)}>
-              Aangekomen
-            </Button>
-          </>
-        ) : (
-          <Button size="lg" className="col-span-2 h-14" onClick={() => onMarkComplete(r.id)}>
-            <LogOut className="mr-2 h-5 w-5" /> Tafel vrijmaken
-          </Button>
-        )}
-
-        <AlertDialog>
-          <AlertDialogTrigger asChild>
-            <Button
-              size="lg" variant="outline"
-              className="col-span-2 h-12 text-destructive border-destructive/30 hover:bg-destructive/10 hover:text-destructive"
-            >
-              <UserX className="mr-2 h-5 w-5" /> No-show markeren
-            </Button>
-          </AlertDialogTrigger>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Markeren als no-show?</AlertDialogTitle>
-              <AlertDialogDescription>
-                Deze gast wordt geregistreerd als no-show. Dit beïnvloedt het gastprofiel en eventuele aanbetalingsregels.
-                Je kunt eerst proberen contact op te nemen.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Nog wachten</AlertDialogCancel>
-              <AlertDialogAction onClick={() => onMarkNoShow(r.id)}>
-                No-show bevestigen
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-      </div>
+      <ReservationStatusQuickBar
+        reservationId={r.id}
+        status={r.status}
+        size="lg"
+        layout="grid"
+      />
     </div>
   );
 }
