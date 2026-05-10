@@ -412,11 +412,14 @@ const ReserveWidget = () => {
             ) : null}
             <span className="font-display text-base sm:text-lg truncate">{restaurant.name}</span>
           </div>
-          {!hideTableWiseLogo && (
-            <Link to="/" className="text-xs text-muted-foreground hover:text-foreground whitespace-nowrap">
-              powered by <span className="font-display text-primary">TX TableWise</span>
-            </Link>
-          )}
+          <div className="flex items-center gap-2">
+            <LanguageSwitcher value={locale} onChange={handleLocaleChange} />
+            {!hideTableWiseLogo && (
+              <Link to="/" className="text-xs text-muted-foreground hover:text-foreground whitespace-nowrap hidden sm:inline">
+                powered by <span className="font-display text-primary">TX TableWise</span>
+              </Link>
+            )}
+          </div>
         </div>
       </header>
 
