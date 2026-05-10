@@ -28,8 +28,9 @@ async function getUserId(authHeader: string | null): Promise<string | null> {
   const sb = createClient(SUPABASE_URL, ANON_KEY, {
     global: { headers: { Authorization: authHeader } },
   });
-  const { data } = await sb.auth.getClaims(authHeader.replace("Bearer ", ""));
-  return data?.claims?.sub ?? null;
+  const { data, error } = await sb.auth.getUser();
+  if (error) return null;
+  return data?.user?.id ?? null;
 }
 
 async function isManager(restaurantId: string, userId: string): Promise<boolean> {
