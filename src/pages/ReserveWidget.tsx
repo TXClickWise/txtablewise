@@ -16,10 +16,17 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useSearchParams, Link } from "react-router-dom";
 import { format } from "date-fns";
-import { nl } from "date-fns/locale";
+import { nl, enGB, de, fr } from "date-fns/locale";
+import { useTranslation } from "react-i18next";
+import "@/lib/i18n";
+import { detectGuestLocale, persistGuestLocale, type Locale } from "@/lib/i18n/detectLocale";
+import { setI18nLocale } from "@/lib/i18n";
+import { LanguageSwitcher } from "@/components/widget/LanguageSwitcher";
 import {
   CalendarIcon, Users, Clock, ChevronRight, Check, ArrowLeft, MapPin, Heart, Sparkles, ListPlus, ChevronDown,
 } from "lucide-react";
+
+const DATE_FNS_LOCALES = { nl, en: enGB, de, fr } as const;
 import { z } from "zod";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
