@@ -26,6 +26,7 @@ import { announceLastMinuteOpportunity } from "@/services/waitlist";
 import { ReservationAftercareSection } from "@/components/reviews/ReservationAftercareSection";
 import { createReviewRequestForReservation } from "@/services/reviews";
 import { ReservationPOSSection } from "@/components/pos/ReservationPOSSection";
+import { ReservationStatusQuickBar } from "@/components/reservations/ReservationStatusQuickBar";
 
 type Props = {
   reservationId: string | null;
