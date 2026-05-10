@@ -372,6 +372,12 @@ export async function processPendingClickWiseEvents(restaurantId: string, limit 
   });
 }
 
+export async function testClickWiseConnection(restaurantId: string) {
+  return invokeProcessor<{ ok: boolean; http_status?: number; latency_ms?: number; reason?: string; message?: string; body?: unknown }>({
+    action: "test_connection", restaurant_id: restaurantId,
+  });
+}
+
 /**
  * Activeer live mode. Geblokkeerd zolang readiness niet groen is.
  * Geen secrets in frontend — readiness wordt server-side gevalideerd.
