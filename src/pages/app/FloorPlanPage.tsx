@@ -434,6 +434,7 @@ function ReservationActions({
 }) {
   const minutesUntil = Math.round((new Date(res.start_time).getTime() - now.getTime()) / 60_000);
   const minutesSeated = differenceInMinutes(now, new Date(res.start_time));
+  const [moveOpen, setMoveOpen] = useState(false);
 
   return (
     <div className="mt-4 space-y-4">
@@ -481,8 +482,8 @@ function ReservationActions({
             <LogOut className="mr-2 h-5 w-5" /> Afgerond
           </Button>
         )}
-        <Button size="lg" variant="outline" className="h-14 col-span-2 sm:col-span-1" disabled>
-          <Move className="mr-2 h-5 w-5" /> Verplaats tafel
+        <Button size="lg" variant="outline" className="h-14 col-span-2 sm:col-span-1" onClick={() => setMoveOpen(true)}>
+          <Move className="mr-2 h-5 w-5" /> Verplaats reservering
         </Button>
         <Button
           size="lg"
@@ -493,6 +494,14 @@ function ReservationActions({
           <UserX className="mr-2 h-5 w-5" /> No-show
         </Button>
       </div>
+
+      <MoveReservationSheet
+        reservationId={res.id}
+        initialDate={format(new Date(res.start_time), "yyyy-MM-dd")}
+        initialTime={format(new Date(res.start_time), "HH:mm")}
+        open={moveOpen}
+        onOpenChange={setMoveOpen}
+      />
     </div>
   );
 }
