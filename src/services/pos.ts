@@ -344,3 +344,43 @@ export async function selectProvider(restaurantId: string, provider: POSProvider
 export function formatEuro(cents: number): string {
   return new Intl.NumberFormat("nl-NL", { style: "currency", currency: "EUR" }).format(cents / 100);
 }
+
+// ---- Loyverse OAuth client helpers ----
+export type LoyverseConnectionStatus = {
+  id: string;
+  status: string;
+  display_name: string | null;
+  last_synced_at: string | null;
+  last_error: string | null;
+  token_expires_at: string | null;
+  external_account_id: string | null;
+  created_at: string;
+} | null;
+
+async function invokeLoyverse(action: string, body?: Record<string, unknown>) {
+  const { data, error } = await supabase.functions.invoke(`loyverse_oauth?action=${action}`, {
+    method: "POST",
+    body: body ?? {},
+  });
+  if (error) throw error;
+  return data as Record<string, unknown>;
+}
+
+export async function getLoyverseAuthorizeUrl(restaurantId: string): Promise<{ url: string; redirect_uri: string }> {
+  const r = await invokeLoyverse("authorize_url", { restaurant_id: restaurantId });
+  return { url: r.url as string, redirect_uri: r.redirect_uri as string };
+}
+
+export async function getLoyverseStatus(restaurantId: string): Promise<LoyverseConnectionStatus> {
+  const r = await invokeLoyverse("status", { restaurant_id: restaurantId });
+  return (r.connection as LoyverseConnectionStatus) ?? null;
+}
+
+export async function syncLoyverseNow(restaurantId: string): Promise<{ imported: number; skipped: number }> {
+  const r = await invokeLoyverse("sync_now", { restaurant_id: restaurantId });
+  return { imported: (r.imported as number) ?? 0, skipped: (r.skipped as number) ?? 0 };
+}
+
+export async function disconnectLoyverse(restaurantId: string): Promise<void> {
+  await invokeLoyverse("disconnect", { restaurant_id: restaurantId });
+}
