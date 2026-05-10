@@ -197,7 +197,7 @@ Deno.serve(async (req) => {
 
   try {
     // ---- BROWSER callback (no JWT, comes from Loyverse) ----
-    if (action === "callback" && req.method === "GET") {
+    if ((action === "callback" || (req.method === "GET" && url.searchParams.has("code"))) && req.method === "GET") {
       const code = url.searchParams.get("code");
       const state = url.searchParams.get("state");
       const err = url.searchParams.get("error");
