@@ -350,9 +350,10 @@ const ReserveWidget = () => {
   };
 
   const partyOptions = useMemo(() => {
-    const max = Math.min(8, restaurant?.max_party_size_online ?? 8);
+    const max = Math.max(1, restaurant?.max_party_size_online ?? 8);
     return Array.from({ length: max }, (_, i) => i + 1);
   }, [restaurant]);
+  const canRequestLargerOnline = !!restaurant && maxOnlineRequest > (restaurant.max_party_size_online ?? 0);
 
   if (restaurantError) {
     return (
