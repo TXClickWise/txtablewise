@@ -297,20 +297,81 @@ Deno.serve(async (req) => {
     )
   }
 
-  // 4. Render React Email template to HTML and plain text
+  // 4. Resolve locale + copy (multi-language support)
+  // Priority: requested locale → restaurant.default_locale → 'nl'.
+  let restaurantDefaultLocale: string | undefined
+  let restaurantName: string | undefined
+  if (restaurantId) {
+    const { data: r } = await supabase
+      .from('restaurants')
+      .select('default_locale, name')
+      .eq('id', restaurantId)
+      .maybeSingle()
+    restaurantDefaultLocale = r?.default_locale
+    restaurantName = r?.name
+  }
+  const locale = resolveLocale(requestedLocale, restaurantDefaultLocale)
+
+  // Fetch per-restaurant DB override for this template_key + locale
+  let dbRow: any = null
+  if (restaurantId && template.templateKey) {
+    const { data } = await supabase
+      .from('restaurant_email_templates')
+      .select('subject, heading, body_intro, body_outro, signature')
+      .eq('restaurant_id', restaurantId)
+      .eq('template_key', template.templateKey)
+      .eq('locale', locale)
+      .maybeSingle()
+    if (data) {
+      // Map DB column names to CopyFields shape
+      dbRow = {
+        subject: data.subject,
+        heading: data.heading,
+        intro: data.body_intro,
+        outro: data.body_outro,
+        signature: data.signature,
+      }
+    }
+  }
+
+  // Merge defaultCopy[locale] with DB overrides, then interpolate {{vars}}
+  const defaultCopy = template.defaultCopy
+  const baseCopy = defaultCopy
+    ? mergeCopy(defaultCopy, locale as any, dbRow)
+    : null
+
+  const interpolationVars = {
+    restaurantName: restaurantName || templateData.restaurantName || 'het restaurant',
+    guestName: templateData.guestName || '',
+    dateLabel: templateData.dateLabel || '',
+    timeLabel: templateData.timeLabel || '',
+    partySize: templateData.partySize || '',
+  }
+
+  const finalCopy = baseCopy ? interpolateCopy(baseCopy, interpolationVars) : null
+
+  // Build final props for the React Email component
+  const renderProps = {
+    ...templateData,
+    ...interpolationVars,
+    copy: finalCopy,
+    locale,
+  }
+
+  // 5. Render React Email template to HTML and plain text
   const html = await renderAsync(
-    React.createElement(template.component, templateData)
+    React.createElement(template.component, renderProps)
   )
   const plainText = await renderAsync(
-    React.createElement(template.component, templateData),
+    React.createElement(template.component, renderProps),
     { plainText: true }
   )
 
-  // Resolve subject — supports static string or dynamic function
-  const resolvedSubject =
-    typeof template.subject === 'function'
-      ? template.subject(templateData)
-      : template.subject
+  // Resolve subject — prefer interpolated copy.subject, else template's subject fn
+  const resolvedSubject = finalCopy?.subject ||
+    (typeof template.subject === 'function'
+      ? template.subject(renderProps)
+      : template.subject)
 
   // 5. Enqueue the pre-rendered email for async processing by the dispatcher.
   // The dispatcher (process-email-queue) handles sending, retries, and rate-limit backoff.
