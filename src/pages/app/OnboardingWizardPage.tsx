@@ -43,6 +43,7 @@ import MessagesSettings from "@/pages/app/settings/MessagesSettings";
 import { useStepStatuses, type WizardStepKey } from "@/components/onboarding/useStepStatuses";
 import { StepStatusBadge, StepStatusDot } from "@/components/onboarding/StepStatusBadge";
 import { getWidgetUrl } from "@/lib/widgetUrl";
+import { DemoDataResetCard } from "@/components/pilot/DemoDataResetCard";
 
 type StepCtx = {
   restaurantId: string;
@@ -602,6 +603,15 @@ const STEPS: Step[] = [
           <Button asChild size="lg"><Link to="/app">Naar dashboard</Link></Button>
           <Button asChild size="lg" variant="outline"><Link to="/app/floor">Floor Mode</Link></Button>
           <Button asChild size="lg" variant="outline"><Link to="/app/instellingen">Instellingen</Link></Button>
+        </div>
+        <Separator />
+        <div>
+          <p className="text-sm font-medium mb-2">Voor je live gaat — start met een schone database</p>
+          <p className="text-xs text-muted-foreground mb-3">
+            Heb je tijdens het instellen demo- of test-data ingevoerd? Wis die nu zodat je vanaf nul begint.
+            Tafels, zones, openingstijden en instellingen blijven behouden.
+          </p>
+          <DemoDataResetCard />
         </div>
       </div>
     ),

@@ -19,17 +19,18 @@ export function LanguageSwitcher({ value, onChange, className }: Props) {
           variant="ghost"
           size="sm"
           className={className}
-          aria-label={LOCALE_LABELS[value]}
+          aria-label={`Taal wijzigen (huidige taal: ${LOCALE_LABELS[value]})`}
         >
-          <Globe className="h-4 w-4 mr-1.5" />
+          <Globe className="h-4 w-4 mr-1.5" aria-hidden="true" />
           <span className="text-sm">{LOCALE_FLAGS[value]} {value.toUpperCase()}</span>
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="min-w-[160px]">
+      <DropdownMenuContent align="end" className="min-w-[160px]" aria-label="Talen">
         {SUPPORTED_LOCALES.map((loc) => (
           <DropdownMenuItem
             key={loc}
             onClick={() => onChange(loc)}
+            aria-current={value === loc ? "true" : undefined}
             className={value === loc ? "font-medium" : ""}
           >
             <span className="mr-2">{LOCALE_FLAGS[loc]}</span>

@@ -32,6 +32,8 @@ export function usePilotReadiness(restaurantId: string | undefined) {
         { count: zonesCount },
         { count: tablesCount },
         { count: ownerCount },
+        { count: templatesCount },
+        { count: testReservationCount },
       ] = await Promise.all([
         supabase.from("restaurants").select("*").eq("id", rid).maybeSingle(),
         supabase.from("opening_hours").select("id", { count: "exact", head: true }).eq("restaurant_id", rid).eq("is_closed", false),
@@ -39,6 +41,8 @@ export function usePilotReadiness(restaurantId: string | undefined) {
         supabase.from("zones").select("id", { count: "exact", head: true }).eq("restaurant_id", rid),
         supabase.from("tables").select("id", { count: "exact", head: true }).eq("restaurant_id", rid).eq("is_active", true),
         supabase.from("restaurant_members").select("id", { count: "exact", head: true }).eq("restaurant_id", rid).eq("role", "owner"),
+        supabase.from("restaurant_email_templates").select("id", { count: "exact", head: true }).eq("restaurant_id", rid),
+        supabase.from("reservations").select("id", { count: "exact", head: true }).eq("restaurant_id", rid),
       ]);
 
       const restaurant: any = r ?? {};
@@ -123,6 +127,22 @@ export function usePilotReadiness(restaurantId: string | undefined) {
           required: false,
           hint: "Optionele communicatie-integratie.",
           link: "/app/koppelingen?tab=clickwise",
+        },
+        {
+          key: "email_templates",
+          label: "E-mailtemplates aangepast",
+          ok: (templatesCount ?? 0) > 0,
+          required: false,
+          hint: "Pas minimaal één gast-email aan met je eigen toon.",
+          link: "/app/instellingen/berichten",
+        },
+        {
+          key: "test_reservation",
+          label: "Test-reservering uitgevoerd",
+          ok: (testReservationCount ?? 0) > 0,
+          required: false,
+          hint: "Maak één test-reservering om de volledige flow te valideren.",
+          link: "/app/onboarding",
         },
         {
           key: "reminder_scheduler",
