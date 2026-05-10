@@ -18,13 +18,6 @@ import {
   type POSReceipt, type RevenuePreview,
 } from "@/services/pos";
 import { POSReceiptForm } from "@/components/pos/POSReceiptForm";
-import {
-  POS_PROVIDERS, POS_FIELD_MAPPING,
-  listPOSReceipts, suggestReservationMatches, matchReceiptToReservation, ignoreReceipt, getRevenuePreview,
-  listPOSEvents, selectProvider, formatEuro,
-  type POSReceipt, type RevenuePreview,
-} from "@/services/pos";
-import { POSReceiptForm } from "@/components/pos/POSReceiptForm";
 
 function StatusBadge({ status }: { status: string }) {
   const map: Record<string, { v: "default" | "secondary" | "outline" | "destructive"; label: string }> = {
