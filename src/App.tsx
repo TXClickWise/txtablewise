@@ -56,6 +56,7 @@ import GastenTabsPage from "./pages/app/GastenTabsPage.tsx";
 import GastcommunicatiePage from "./pages/app/GastcommunicatiePage.tsx";
 import AIHostVoicePage from "./pages/app/AIHostVoicePage.tsx";
 import KoppelingenTabsPage from "./pages/app/KoppelingenTabsPage.tsx";
+import Unsubscribe from "./pages/Unsubscribe.tsx";
 import NotFound from "./pages/NotFound.tsx";
 
 const queryClient = new QueryClient();
