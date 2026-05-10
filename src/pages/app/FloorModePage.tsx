@@ -94,7 +94,7 @@ const FloorModePage = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
 
-  const [now, setNow] = useState(() => new Date());
+  const [clockNow, setClockNow] = useState(() => new Date());
   const initialSelected = (() => {
     const p = searchParams.get("date");
     if (p) {
@@ -111,11 +111,11 @@ const FloorModePage = () => {
     else next.set("date", format(d, "yyyy-MM-dd"));
     setSearchParams(next, { replace: true });
   };
-  const isToday = isSameDay(selectedDate, now);
+  const isToday = isSameDay(selectedDate, clockNow);
   const dateStr = format(selectedDate, "yyyy-MM-dd");
-  // Reference time used for status calculations (overdue/almostFree/etc).
-  // On non-today views we anchor to start-of-day so nothing appears "live".
-  const referenceTime = isToday ? now : startOfDay(selectedDate);
+  // For status comparisons (overdue/seated/etc.) anchor to start-of-day on
+  // non-today views so the timeline renders as a static planning view.
+  const now = isToday ? clockNow : startOfDay(selectedDate);
   const today = dateStr; // backward-compat alias used below
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
   const [selectedTableId, setSelectedTableId] = useState<string | null>(null);
