@@ -1,14 +1,189 @@
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
+import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useRestaurant } from "@/hooks/useRestaurant";
 import { Card } from "@/components/ui/card";
-import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Send, MessageSquare, Mail } from "lucide-react";
+import { Sparkles, Loader2 } from "lucide-react";
+
+const LOCALES = [
+  { code: "nl", label: "Nederlands" },
+  { code: "en", label: "English" },
+  { code: "de", label: "Deutsch" },
+  { code: "fr", label: "Français" },
+] as const;
+
+const TEMPLATE_KEYS = [
+  { key: "reservation-confirmation", label: "Reservering bevestigd" },
+  { key: "reservation-reminder", label: "Reservering — herinnering" },
+  { key: "reservation-cancellation", label: "Reservering — geannuleerd" },
+  { key: "large-group-approved", label: "Groep — bevestigd" },
+  { key: "large-group-rejected", label: "Groep — afgewezen" },
+  { key: "large-group-message", label: "Groep — custom bericht" },
+] as const;
+
+interface TplRow {
+  subject: string;
+  heading: string;
+  body_intro: string;
+  body_outro: string;
+  signature: string;
+  is_ai_generated: boolean;
+  is_edited: boolean;
+}
+
+function TemplateEditor({
+  restaurantId,
+  templateKey,
+  label,
+}: {
+  restaurantId: string;
+  templateKey: string;
+  label: string;
+}) {
+  const qc = useQueryClient();
+  const [translating, setTranslating] = useState(false);
+
+  const { data: rows = [] } = useQuery({
+    queryKey: ["email-templates", restaurantId, templateKey],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("restaurant_email_templates")
+        .select("locale, subject, heading, body_intro, body_outro, signature, is_ai_generated, is_edited")
+        .eq("restaurant_id", restaurantId)
+        .eq("template_key", templateKey);
+      if (error) throw error;
+      return data || [];
+    },
+  });
+
+  const byLocale: Record<string, TplRow | undefined> = {};
+  for (const r of rows as any[]) byLocale[r.locale] = r;
+
+  const save = useMutation({
+    mutationFn: async ({ locale, patch }: { locale: string; patch: Partial<TplRow> }) => {
+      const existing = byLocale[locale] || {
+        subject: "", heading: "", body_intro: "", body_outro: "", signature: "",
+        is_ai_generated: false, is_edited: false,
+      };
+      const { error } = await supabase
+        .from("restaurant_email_templates")
+        .upsert({
+          restaurant_id: restaurantId,
+          template_key: templateKey,
+          locale,
+          subject: existing.subject,
+          heading: existing.heading,
+          body_intro: existing.body_intro,
+          body_outro: existing.body_outro,
+          signature: existing.signature,
+          ...patch,
+          is_edited: true,
+        }, { onConflict: "restaurant_id,template_key,locale" });
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["email-templates", restaurantId, templateKey] }),
+    onError: (e: any) => toast.error("Opslaan mislukt: " + e.message),
+  });
+
+  const onTranslate = async () => {
+    setTranslating(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("translate-email-templates", {
+        body: { restaurantId, templateKey, targetLocales: ["en", "de", "fr"] },
+      });
+      if (error) throw error;
+      const results = (data as any)?.results || {};
+      const ok = Object.values(results).filter((r: any) => r.status === "translated").length;
+      const skipped = Object.entries(results).filter(([, r]: any) => r.status === "skipped");
+      toast.success(`${ok} vertaling${ok === 1 ? "" : "en"} gemaakt`);
+      if (skipped.length > 0) {
+        toast.info(`${skipped.length} overgeslagen (handmatig bewerkt of ongeldig)`);
+      }
+      qc.invalidateQueries({ queryKey: ["email-templates", restaurantId, templateKey] });
+    } catch (e: any) {
+      toast.error("Vertalen mislukt: " + e.message);
+    } finally {
+      setTranslating(false);
+    }
+  };
+
+  return (
+    <Card className="p-6">
+      <div className="flex items-start justify-between gap-4 mb-4">
+        <div>
+          <h3 className="font-display text-lg">{label}</h3>
+          <p className="text-xs text-muted-foreground mt-1">
+            Bewerk de Nederlandse tekst en laat AI hem vertalen, of pas elke taal handmatig aan.
+            Beschikbare placeholders: <code>{`{{restaurantName}}`}</code>, <code>{`{{guestName}}`}</code>, <code>{`{{dateLabel}}`}</code>, <code>{`{{timeLabel}}`}</code>, <code>{`{{partySize}}`}</code>.
+          </p>
+        </div>
+        <Button size="sm" variant="outline" onClick={onTranslate} disabled={translating}>
+          {translating ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Sparkles className="h-4 w-4 mr-2" />}
+          Vertaal met AI
+        </Button>
+      </div>
+
+      <Tabs defaultValue="nl">
+        <TabsList>
+          {LOCALES.map((l) => {
+            const row = byLocale[l.code];
+            return (
+              <TabsTrigger key={l.code} value={l.code} className="gap-2">
+                {l.label}
+                {row?.is_edited ? <Badge variant="secondary" className="text-[10px]">Bewerkt</Badge> :
+                  row?.is_ai_generated ? <Badge variant="outline" className="text-[10px]">AI</Badge> :
+                  !row ? <Badge variant="outline" className="text-[10px]">Standaard</Badge> : null}
+              </TabsTrigger>
+            );
+          })}
+        </TabsList>
+
+        {LOCALES.map((l) => {
+          const row = byLocale[l.code];
+          const Field = ({ field, multiline, lbl }: { field: keyof TplRow; multiline?: boolean; lbl: string }) => {
+            const [val, setVal] = useState<string>((row?.[field] as string) || "");
+            const Cmp: any = multiline ? Textarea : Input;
+            return (
+              <div>
+                <Label className="text-xs">{lbl}</Label>
+                <Cmp
+                  rows={multiline ? 3 : undefined}
+                  value={val}
+                  onChange={(e: any) => setVal(e.target.value)}
+                  onBlur={() => {
+                    if (val !== ((row?.[field] as string) || "")) {
+                      save.mutate({ locale: l.code, patch: { [field]: val } as any });
+                    }
+                  }}
+                />
+              </div>
+            );
+          };
+          return (
+            <TabsContent key={l.code} value={l.code} className="space-y-3 mt-4">
+              <Field field="subject" lbl="Onderwerp" />
+              <Field field="heading" lbl="Kop" />
+              <Field field="body_intro" multiline lbl="Intro" />
+              <Field field="body_outro" multiline lbl="Afsluiting" />
+              <Field field="signature" lbl="Ondertekening" />
+              <p className="text-xs text-muted-foreground">
+                {row ? "" : "Nog niet opgeslagen — standaardtekst wordt gebruikt."}
+              </p>
+            </TabsContent>
+          );
+        })}
+      </Tabs>
+    </Card>
+  );
+}
 
 export default function MessagesSettings() {
   const { current } = useRestaurant();
@@ -43,176 +218,72 @@ export default function MessagesSettings() {
     qc.invalidateQueries({ queryKey: ["onboarding-step-statuses", restaurantId] });
   };
 
-  if (!r) return <div className="text-muted-foreground p-4">Laden…</div>;
-
-  const Toggle = ({
-    label,
-    description,
-    field,
-  }: {
-    label: string;
-    description?: string;
-    field: string;
-  }) => (
-    <div className="flex items-start justify-between gap-4 py-3">
-      <div className="flex-1">
-        <p className="text-sm font-medium">{label}</p>
-        {description && (
-          <p className="text-xs text-muted-foreground mt-0.5">{description}</p>
-        )}
-      </div>
-      <Switch
-        checked={!!(r as any)[field]}
-        onCheckedChange={(v) => patch({ [field]: v })}
-      />
-    </div>
-  );
+  if (!r || !restaurantId) return <div className="text-muted-foreground p-4">Laden…</div>;
 
   return (
     <div className="space-y-6">
       <Card className="p-6">
-        <div className="flex items-start gap-3 mb-1">
-          <Mail className="h-5 w-5 text-primary mt-0.5" />
-          <div>
-            <h2 className="font-display text-xl">E-mail aan gasten</h2>
-            <p className="text-sm text-muted-foreground">
-              Gasten ontvangen bevestigingen, herinneringen en groepsberichten van <strong>{r.name}</strong> via <code className="text-xs">reservations@notify.reservations.txtablewise.nl</code>. Antwoorden komen rechtstreeks in jullie inbox.
-            </p>
-          </div>
-        </div>
-        <div className="divide-y divide-border mt-4">
-          <Toggle
-            label="E-mails aan gasten versturen"
-            description="Zet uit als je communicatie volledig via ClickWise (WhatsApp/SMS) wil laten lopen."
-            field="guest_email_enabled"
-          />
-          <div className="py-3">
-            <Label className="text-sm">Reply-to inbox van het restaurant</Label>
-            <p className="text-xs text-muted-foreground mt-0.5 mb-2">
-              Wanneer een gast op een TableWise-mail antwoordt, komt het bericht hier binnen. Laat leeg om reply-to van TableWise zelf te gebruiken (niet aanbevolen).
-            </p>
-            <Input
-              type="email"
-              placeholder="reserveringen@jouwrestaurant.nl"
-              defaultValue={r.guest_reply_to_email ?? ""}
-              onBlur={(e) => {
-                const v = e.target.value.trim();
-                if (v && !/^\S+@\S+\.\S+$/.test(v)) {
-                  toast.error("Vul een geldig e-mailadres in");
-                  return;
-                }
-                patch({ guest_reply_to_email: v || null });
-              }}
-            />
-          </div>
-        </div>
-      </Card>
-
-      <Card className="p-6">
-        <h2 className="font-display text-xl mb-1">Bevestigingen & reminders</h2>
+        <h2 className="font-display text-xl mb-2">Standaardtaal voor gasten</h2>
         <p className="text-sm text-muted-foreground mb-4">
-          TableWise stuurt zelf geen WhatsApp/SMS — deze events triggeren je ClickWise-workflows.
+          Wanneer een gast geen specifieke taal kiest in het reserveringsformulier, gebruiken we deze taal voor e-mails en de manage-pagina.
         </p>
-        <div className="divide-y divide-border">
-          <Toggle
-            label="Bevestiging direct na boeking"
-            description="Stuur de gast een vriendelijke bevestiging zodra de reservering binnen is."
-            field="noshow_confirmation_enabled"
-          />
-          <Toggle
-            label="Reminder 24 uur vooraf"
-            field="noshow_reminder_24h_enabled"
-          />
-          <Toggle
-            label="Reminder 2 uur vooraf"
-            field="noshow_reminder_2h_enabled"
-          />
-          <Toggle
-            label="Herbevestiging vragen"
-            description="Korte tap-to-confirm link kort voor het bezoek."
-            field="noshow_reconfirm_enabled"
-          />
-          <Toggle
-            label="Annuleren via gastlink"
-            description="Maak afzeggen laagdrempelig — beter dan niet komen opdagen."
-            field="noshow_guest_cancel_link_enabled"
-          />
-          <Toggle
-            label="Aftercare na bezoek"
-            description="Korte review-vraag, alleen na bevestigd bezoek."
-            field="aftercare_enabled"
-          />
-        </div>
-      </Card>
-
-      <Card className="p-6">
-        <h2 className="font-display text-xl mb-1">Herbevestiging timing</h2>
-        <div className="grid sm:grid-cols-2 gap-4 mt-4">
-          <div>
-            <Label className="text-sm">Herbevestiging — uren vooraf</Label>
-            <Input
-              type="number"
-              min={1}
-              defaultValue={r.noshow_reconfirmation_hours_before ?? 24}
-              onBlur={(e) =>
-                patch({ noshow_reconfirmation_hours_before: parseInt(e.target.value) || 24 })
-              }
-            />
-          </div>
-          <div>
-            <Label className="text-sm">Annuleer-cutoff — minuten vooraf</Label>
-            <Input
-              type="number"
-              min={0}
-              defaultValue={r.noshow_cancellation_cutoff_minutes ?? 120}
-              onBlur={(e) =>
-                patch({
-                  noshow_cancellation_cutoff_minutes: parseInt(e.target.value) || 0,
-                })
-              }
-            />
-          </div>
-        </div>
-      </Card>
-
-      <Card className="p-6">
-        <h2 className="font-display text-xl mb-1">Gastvrije copy</h2>
-        <p className="text-sm text-muted-foreground mb-4">
-          Optionele eigen tekst voor cancel-bericht. Laat leeg voor TableWise standaardtekst.
-        </p>
-        <Textarea
-          rows={4}
-          placeholder="Bijv: We rekenen op je. Plannen veranderd? Laat het ons gerust weten via de link."
-          defaultValue={r.noshow_cancel_message ?? ""}
-          onBlur={(e) => patch({ noshow_cancel_message: e.target.value })}
-        />
-      </Card>
-
-      <Card className="p-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="font-display text-xl mb-1">Testbericht</h2>
-            <p className="text-sm text-muted-foreground">
-              Plaatst een test-event in de wachtrij naar ClickWise.
-            </p>
-          </div>
-          <Button
-            onClick={async () => {
-              if (!restaurantId) return;
-              const { error } = await supabase.from("integration_events").insert({
-                restaurant_id: restaurantId,
-                event_type: "test_message",
-                payload: { source: "settings_test", at: new Date().toISOString() },
-              } as any);
-              if (error) toast.error("Mislukt: " + error.message);
-              else toast.success("Test-event verzonden");
-            }}
+        <div className="max-w-xs">
+          <Select
+            value={r.default_locale || "nl"}
+            onValueChange={(v) => patch({ default_locale: v })}
           >
-            <Send className="h-4 w-4 mr-2" />
-            Stuur testbericht
-          </Button>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>
+              {LOCALES.map((l) => (
+                <SelectItem key={l.code} value={l.code}>{l.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
       </Card>
+
+      <Card className="p-6">
+        <h2 className="font-display text-xl mb-2">E-mail aan gasten</h2>
+        <p className="text-sm text-muted-foreground mb-4">
+          Gasten ontvangen bevestigingen, herinneringen en groepsberichten van <strong>{r.name}</strong>. Antwoorden komen rechtstreeks in jullie inbox.
+        </p>
+        <div className="py-3">
+          <Label className="text-sm">Reply-to inbox van het restaurant</Label>
+          <p className="text-xs text-muted-foreground mt-0.5 mb-2">
+            Wanneer een gast op een TableWise-mail antwoordt, komt het bericht hier binnen.
+          </p>
+          <Input
+            type="email"
+            placeholder="reserveringen@jouwrestaurant.nl"
+            defaultValue={r.guest_reply_to_email ?? ""}
+            onBlur={(e) => {
+              const v = e.target.value.trim();
+              if (v && !/^\S+@\S+\.\S+$/.test(v)) {
+                toast.error("Vul een geldig e-mailadres in");
+                return;
+              }
+              patch({ guest_reply_to_email: v || null });
+            }}
+          />
+        </div>
+      </Card>
+
+      <div>
+        <h2 className="font-display text-xl mb-2">E-mailteksten per taal</h2>
+        <p className="text-sm text-muted-foreground mb-4">
+          Pas de standaardtekst van elke e-mail aan en laat AI hem automatisch vertalen naar Engels, Duits en Frans.
+        </p>
+        <div className="space-y-4">
+          {TEMPLATE_KEYS.map((t) => (
+            <TemplateEditor
+              key={t.key}
+              restaurantId={restaurantId}
+              templateKey={t.key}
+              label={t.label}
+            />
+          ))}
+        </div>
+      </div>
     </div>
   );
 }
