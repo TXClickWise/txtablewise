@@ -7,8 +7,9 @@
 // - "Nu"-lijn en auto-recenter na inactiviteit op vandaag
 // - Statussnelknoppen verschijnen automatisch in ReservationDetailDialog bij tap op blok
 import { useEffect, useMemo, useRef, useState } from "react";
-import { format, addDays, subDays, isSameDay } from "date-fns";
+import { format, addDays, subDays, isSameDay, parseISO, isValid } from "date-fns";
 import { nl } from "date-fns/locale";
+import { useSearchParams } from "react-router-dom";
 import {
   ChevronLeft, ChevronRight, Calendar as CalendarIcon,
   ZoomIn, ZoomOut, MoveVertical, UserPlus, Plus,
