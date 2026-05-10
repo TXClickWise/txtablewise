@@ -28,6 +28,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { reservations as resService } from "@/services/reservations";
 import { ReservationDetailDialog } from "@/components/ReservationDetailDialog";
+import { LargeGroupRequestDialog } from "@/components/large-groups/LargeGroupRequestDialog";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
