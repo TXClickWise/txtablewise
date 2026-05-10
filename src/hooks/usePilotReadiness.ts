@@ -129,6 +129,22 @@ export function usePilotReadiness(restaurantId: string | undefined) {
           link: "/app/koppelingen?tab=clickwise",
         },
         {
+          key: "email_templates",
+          label: "E-mailtemplates aangepast",
+          ok: (templatesCount ?? 0) > 0,
+          required: false,
+          hint: "Pas minimaal één gast-email aan met je eigen toon.",
+          link: "/app/instellingen/berichten",
+        },
+        {
+          key: "test_reservation",
+          label: "Test-reservering uitgevoerd",
+          ok: (testReservationCount ?? 0) > 0,
+          required: false,
+          hint: "Maak één test-reservering om de volledige flow te valideren.",
+          link: "/app/onboarding",
+        },
+        {
           key: "reminder_scheduler",
           label: "Reminder scheduler (handmatige setup)",
           ok: false,
