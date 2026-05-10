@@ -659,11 +659,19 @@ const ReserveWidget = () => {
                     placeholder="Bijv. notenallergie, vegetarisch" />
                 </div>
                 <div className="space-y-1.5">
-                  <Label htmlFor="rq">Andere wensen</Label>
+                  <Label htmlFor="rq">
+                    {requiresMessage ? "Bericht aan het restaurant *" : "Andere wensen"}
+                  </Label>
                   <Textarea id="rq" value={requests} onChange={(e) => setRequests(e.target.value)} rows={3}
-                    placeholder="Bijv. liefst tafel bij raam" />
+                    placeholder={requiresMessage
+                      ? "Bijv. gelegenheid, gewenste menu-opzet, drankarrangement…"
+                      : "Bijv. liefst tafel bij raam"} />
+                  {requiresMessage && (
+                    <p className="text-xs text-muted-foreground">
+                      Voor groepen vanaf {extraInfoFrom} personen helpt een korte toelichting ons om alles goed voor te bereiden.
+                    </p>
+                  )}
                 </div>
-              </CollapsibleContent>
             </Collapsible>
 
             {/* Optional pre-orders (collapsible) */}
