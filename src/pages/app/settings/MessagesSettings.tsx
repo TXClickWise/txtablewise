@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { Send, MessageSquare } from "lucide-react";
+import { Send, MessageSquare, Mail } from "lucide-react";
 
 export default function MessagesSettings() {
   const { current } = useRestaurant();
@@ -70,6 +70,44 @@ export default function MessagesSettings() {
 
   return (
     <div className="space-y-6">
+      <Card className="p-6">
+        <div className="flex items-start gap-3 mb-1">
+          <Mail className="h-5 w-5 text-primary mt-0.5" />
+          <div>
+            <h2 className="font-display text-xl">E-mail aan gasten</h2>
+            <p className="text-sm text-muted-foreground">
+              Gasten ontvangen bevestigingen, herinneringen en groepsberichten van <strong>{r.name}</strong> via <code className="text-xs">reservations@notify.reservations.txtablewise.nl</code>. Antwoorden komen rechtstreeks in jullie inbox.
+            </p>
+          </div>
+        </div>
+        <div className="divide-y divide-border mt-4">
+          <Toggle
+            label="E-mails aan gasten versturen"
+            description="Zet uit als je communicatie volledig via ClickWise (WhatsApp/SMS) wil laten lopen."
+            field="guest_email_enabled"
+          />
+          <div className="py-3">
+            <Label className="text-sm">Reply-to inbox van het restaurant</Label>
+            <p className="text-xs text-muted-foreground mt-0.5 mb-2">
+              Wanneer een gast op een TableWise-mail antwoordt, komt het bericht hier binnen. Laat leeg om reply-to van TableWise zelf te gebruiken (niet aanbevolen).
+            </p>
+            <Input
+              type="email"
+              placeholder="reserveringen@jouwrestaurant.nl"
+              defaultValue={r.guest_reply_to_email ?? ""}
+              onBlur={(e) => {
+                const v = e.target.value.trim();
+                if (v && !/^\S+@\S+\.\S+$/.test(v)) {
+                  toast.error("Vul een geldig e-mailadres in");
+                  return;
+                }
+                patch({ guest_reply_to_email: v || null });
+              }}
+            />
+          </div>
+        </div>
+      </Card>
+
       <Card className="p-6">
         <h2 className="font-display text-xl mb-1">Bevestigingen & reminders</h2>
         <p className="text-sm text-muted-foreground mb-4">
