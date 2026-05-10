@@ -1,107 +1,94 @@
+# Plan: Eén workflow voor grote groepen — volledig configureerbaar per tenant
 
-# Plan — Landingpage Redesign (Prompt 26)
+Alle drempels blijven per restaurant instelbaar in **Instellingen → Reserveringen → Grote groepen** en **Capaciteit**. De voorbeelden hieronder (8/10/18) zijn fictief — elke tenant kiest zelf de waarden.
 
-## Doel
-Volledige herschrijving van `src/pages/Index.tsx` naar een premium, Nederlandstalige B2B-conversiepagina gericht op horecaondernemers. Eén conversiedoel: demo aanvragen. Geen verwijzingen naar "Reserveer een tafel" of technisch jargon.
+## Principe
 
-## Wijzigingen in 1 oogopslag
+Eén pad voor álle groepsgroottes binnen `max_party_size_online`:
+- Onder `large_group_manual_approval_from` → direct bevestigd online
+- Vanaf `large_group_manual_approval_from` t/m `max_party_size_online` → `pending`, personeel keurt goed in app
+
+Boven `max_party_size_online` → **óók `pending`**, maar met verplicht extra "bericht aan restaurant" veld. Het losse `LargeGroupForm` vervalt als primaire route.
+
+## Nieuwe / aangepaste instellingen op `restaurants`
+
+| Veld | Doel | Bestaand? |
+|---|---|---|
+| `max_party_size_online` | Hard maximum dat de widget aanbiedt als time-slot keuze | bestaat |
+| `large_group_manual_approval_from` | Vanaf dit aantal `pending` ipv `confirmed` | bestaat |
+| `large_group_threshold` | Vanaf hier "grote groep" markering + extra verblijfsduur | bestaat |
+| `large_group_extra_info_from` *(nieuw)* | Vanaf hier verplicht "bericht aan restaurant" veld in widget | toevoegen |
+| `large_group_max_online_request` *(nieuw)* | Bovengrens voor `pending` aanvragen via widget (boven `max_party_size_online`). Default = `max_party_size_online`. Boven dit aantal volgt fallback naar los formulier of melding "neem telefonisch contact op" | toevoegen |
+
+Defaults houden we conservatief, identiek aan huidige veldwaarden, zodat niets breekt voor bestaande tenants.
+
+## Wijzigingen frontend (widget)
+
+`src/pages/ReserveWidget.tsx`:
+- Party-size selector toont **1 t/m `max_party_size_online`** ipv hard cap op 8.
+- Als gevraagd `party_size > max_party_size_online` maar `≤ large_group_max_online_request` → toon time-slots + verplicht "bericht aan restaurant" textarea als `party_size ≥ large_group_extra_info_from`.
+- Boven `large_group_max_online_request` → fallback naar bestaand `LargeGroupForm` (of telefoon-melding, instelbaar later).
+- Bij groepen `≥ large_group_manual_approval_from` toon banner: "Je aanvraag wordt binnen X uur persoonlijk bevestigd" met `large_group_confirmation_text`.
+
+## Wijzigingen frontend (instellingen)
+
+`src/pages/app/settings/LargeGroupSettings.tsx`:
+- Twee nieuwe velden: `large_group_extra_info_from`, `large_group_max_online_request`.
+- Korte uitleg per veld in NL met hospitality-toon.
+- Validatie: `large_group_manual_approval_from ≤ max_party_size_online ≤ large_group_max_online_request`.
+
+`src/pages/app/settings/CapacitySettings.tsx`:
+- Geen wijziging; `max_party_size_online` blijft in Algemeen / Widget settings (waar het nu staat).
+
+## Wijzigingen backend (edge functions)
+
+`supabase/functions/book_reservation/index.ts` en `public_api`:
+- Accepteer `party_size` tot `large_group_max_online_request` (ipv harde grens op `max_party_size_online`).
+- Verplicht `message` als `party_size ≥ large_group_extra_info_from`.
+- Forceer `status = pending` + `requires_manual_approval = true` vanaf `large_group_manual_approval_from`.
+- Gebruik consistent `findAvailableCombination` (al aanwezig in `_shared/reservation-utils.ts`) voor groepen die niet op één tafel passen.
+
+`supabase/functions/manage_reservation/index.ts`:
+- Idem: bij wijziging valt logica terug op tafelcombinaties.
+
+`supabase/functions/availability/index.ts`:
+- Toon time-slots tot `large_group_max_online_request` mits er een actieve combinatie bestaat die past.
+
+## Wijzigingen walk-in / operator flows
+
+`src/components/walk-in/WalkInQuickSheet.tsx` + `src/services/walkIn.ts`:
+- Bij grote groep zonder vrije enkele tafel: zoek actieve combinatie via dezelfde util en wijs combinatie toe (gebruikt `reservation_tables` + `table_combination_id`).
+
+`src/components/reservations/ReservationFormSheet.tsx`:
+- Idem fallback naar combinaties in operator-boekingen.
+
+## Database migratie
+
+Twee kolommen toevoegen op `restaurants`, beiden nullable met defaults gelijk aan bestaand gedrag:
 
 ```text
-src/pages/Index.tsx                  → volledig herschreven
-src/components/landing/              → nieuwe map met subcomponenten
-  ├── LandingHeader.tsx              → sticky header + mobiel hamburgermenu
-  ├── HeroSection.tsx                → hero met 2 CTA's + vertrouwenstrip
-  ├── PainPointsSection.tsx          → 3 herkenbare scenario's
-  ├── SolutionGrid.tsx               → 6 features (icon + titel + 1 zin)
-  ├── TrustSection.tsx               → "gebouwd voor NL horeca" + product mockup
-  ├── PricingSection.tsx             → Trial / Basic / Pro (op aanvraag)
-  ├── DemoRequestForm.tsx            → formulier → Supabase
-  └── LandingFooter.tsx              → minimale footer
-supabase/migrations/<ts>_demo_requests.sql  → nieuwe tabel + RLS
+large_group_extra_info_from        integer null  -- bv. 15, null = nooit verplicht
+large_group_max_online_request     integer null  -- null = gelijk aan max_party_size_online
 ```
 
-## Database
+Geen RLS-wijzigingen nodig; bestaande policies dekken dit.
 
-Nieuwe tabel `public.demo_requests`:
+## Wat blijft er bestaan?
 
-| kolom | type | notitie |
-|---|---|---|
-| id | uuid pk | gen_random_uuid() |
-| restaurant_name | text not null | |
-| contact_name | text not null | |
-| email | text not null | |
-| phone | text | optioneel |
-| status | text | default 'new' (new/contacted/converted/closed) |
-| created_at | timestamptz | default now() |
+- `large_group_requests` tabel + `LargeGroupForm` blijven beschikbaar als fallback boven `large_group_max_online_request` of wanneer een datum/tijd geen openingstijd heeft.
+- Bestaande grote-groepen pagina (`/app/large-groups`) toont nu zowel `pending` reserveringen als losse aanvragen in dezelfde inbox.
 
-RLS:
-- `INSERT` toegestaan voor `anon` + `authenticated` met simpele lengte-checks (naam ≤ 200, email ≤ 255, message niet relevant)
-- `SELECT/UPDATE` alleen voor `is_system_admin()`
+## Validatie
 
-## Pagina-structuur (mobile-first, 375px)
+- Test met drie tenant-profielen (klein bistro, middelgroot restaurant, eventlocatie) met sterk verschillende drempels om te bevestigen dat niets gehardcodeerd is.
+- Edge function unit-checks op grenswaarden.
+- Visueel: widget toont juiste max in dropdown per tenant.
 
-### 1. Header (sticky, transparant over hero, wordt solid bij scroll)
-- Logo "TX TableWise" links
-- Desktop nav: Functies · Tarieven · Contact
-- CTA-knop "Gratis demo" altijd zichtbaar (scrollt naar `#contact`)
-- Mobiel: hamburger met nav + Inloggen-link
+## Volgorde uitvoer
 
-### 2. Hero
-- Achtergrond: bestaande `hero-restaurant.jpg` met donkere warm-overlay (gradient hero token)
-- H1: "Minder no-shows. Vollere tafels. Rustiger team."
-- Sub: "TX TableWise is het reserveringssysteem voor restaurants die hun eigen gasten willen beheren — zonder commissie, zonder gedoe."
-- Primair: **Plan een demo** → `#contact`
-- Secundair: **Bekijk wat het kan** → `#functies`
-- Vertrouwenstrip: "Commissievrij · Eigen gastdata · Klaar in 15 minuten"
-- Mobiel: H1 max 3 regels, knoppen full-width 48px hoog
-
-### 3. Pijnpunt-sectie ("Herkenbaar?")
-3 cards op licht canvas:
-- Gasten die niet komen opdagen
-- Drie systemen, nul overzicht
-- Geen tijd voor opvolging
-
-### 4. Oplossing (`#functies`)
-6 blokken (icon + titel + 1 zin):
-Reserveringen · Tafelplan op tablet · No-show preventie · Wachtlijst · Gastprofielen · AI-host
-Lucide icons, geen jargon (geen ClickWise/POS/CRM op homepage).
-
-### 5. Trust-sectie
-- Linker kolom: 4 bullets (NL support, geen commissie, eigenaar gastdata, direct live)
-- Rechter kolom: dashboard mockup in afgerond device-frame met soft shadow. Gemaakt als pure HTML/CSS preview (geen externe asset) met demo-reservering rijen — premium, lichtgrijs canvas
-
-### 6. Tarieven (`#tarieven`)
-3 kaarten:
-- **Trial** — Gratis · 14 dagen → "Start gratis trial" → `/auth`
-- **Basic** — Op aanvraag → "Plan een demo"
-- **Pro** — Op aanvraag, badge "Aanbevolen" → "Plan een demo"
-- Onderschrift: "Transparante maandprijzen, geen commissie per couvert, maandelijks opzegbaar."
-
-### 7. Contact (`#contact`) — Demo formulier
-Velden: restaurant_name, contact_name, email, phone (optioneel)
-- Validatie via zod (`trim`, `email`, lengte-limieten)
-- Submit via supabase client → `demo_requests` insert
-- Success-state met dankboodschap, error-state met toast
-- Tekst onder knop: "We nemen binnen 24 uur contact op. Geen verplichtingen."
-
-### 8. Footer
-Logo + links (Functies, Tarieven, Contact, Inloggen, Privacybeleid placeholder) + copyright "© 2026 TX TableWise — Commissievrij reserveren voor moderne horeca"
-
-## Design / responsive
-- Hergebruik bestaande tokens: `bg-background`, `text-foreground`, `bg-primary`, `bg-accent`, `shadow-elegant`, `bg-gradient-hero`, `bg-gradient-warm`, radius `--radius`
-- Geen hardcoded HSL — alles via tokens
-- Breakpoints: mobiel single column, `md:` 2-kolom, `lg:` 3-kolom waar passend
-- Scroll-fade-in via `IntersectionObserver` hook (klein, inline) — geen extra dependencies
-- Lazy-load hero met `loading="eager"` (above-the-fold) maar `decoding="async"`
-
-## Wat wegvalt
-- "Reserveer een tafel" knoppen (overal)
-- "−42% no-shows" en alle verzonnen statistieken
-- Differentiators sectie met ClickWise / Loyverse referenties
-- "AI-first" badges
-
-## Verificatie
-- `/` op 375px → hero past, geen horizontaal scroll, CTA's tikbaar
-- Demo-formulier insert → check via `supabase--read_query` op `demo_requests`
-- Inlog-link → `/auth`
-- Geen "Reserveer" tekst meer in `Index.tsx`
+1. Migratie: twee kolommen toevoegen op `restaurants`
+2. `LargeGroupSettings` UI: velden + validatie
+3. Widget `ReserveWidget.tsx`: dynamische party-size + bericht-veld
+4. Edge functions `book_reservation`, `availability`, `public_api`, `manage_reservation`: drempel-logica + combinatie-fallback
+5. Walk-in + operator: combinatie-fallback consistent maken
+6. Tests met meerdere tenant-configuraties
