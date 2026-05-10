@@ -162,8 +162,8 @@ const POSIntegrationPage = () => {
             </CardHeader>
             <CardContent className="flex flex-wrap gap-2">
               {loyverse?.status !== "active" ? (
-                <Button size="sm" onClick={handleLoyverseConnect} disabled={loyverseBusy === "connect"}>
-                  {loyverseBusy === "connect" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <LinkIcon className="mr-2 h-4 w-4" />}
+                <Button size="sm" onClick={() => setTokenDialogOpen(true)} disabled={loyverseBusy === "connect"}>
+                  <LinkIcon className="mr-2 h-4 w-4" />
                   Koppel met Loyverse
                 </Button>
               ) : (
