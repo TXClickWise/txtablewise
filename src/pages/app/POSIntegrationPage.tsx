@@ -113,7 +113,7 @@ const POSIntegrationPage = () => {
 
       {/* Sectie 1 — POS-overzicht */}
       <section className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
-        <Card><CardContent className="p-4"><div className="text-xs text-muted-foreground">Verbonden POS</div><div className="font-display text-lg">Niet gekoppeld</div><div className="text-[10px] text-muted-foreground">Demo-ready</div></CardContent></Card>
+        <Card><CardContent className="p-4"><div className="text-xs text-muted-foreground">Verbonden POS</div><div className="font-display text-lg">{loyverse?.status === "active" ? "Loyverse" : "Niet gekoppeld"}</div><div className="text-[10px] text-muted-foreground">{loyverse?.status === "active" ? (loyverse.display_name ?? "Live") : "Demo-ready"}</div></CardContent></Card>
         <Card><CardContent className="p-4"><div className="text-xs text-muted-foreground">Gematchte bonnen</div><div className="font-display text-2xl">{matched.length}</div></CardContent></Card>
         <Card><CardContent className="p-4"><div className="text-xs text-muted-foreground">Niet-gematchte bonnen</div><div className="font-display text-2xl">{unmatched.length}</div></CardContent></Card>
         <Card><CardContent className="p-4"><div className="text-xs text-muted-foreground">Omzet vandaag (demo)</div><div className="font-display text-2xl">{revenue ? formatEuro(revenue.todayCents) : "—"}</div></CardContent></Card>
