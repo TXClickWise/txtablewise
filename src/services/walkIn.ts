@@ -66,18 +66,12 @@ export async function createWalkIn(raw: WalkInInput): Promise<WalkInResult> {
       : "Walk-in";
   const trimmedEmail = v.guest?.email?.trim();
   const trimmedPhone = v.guest?.phone?.trim();
-  const guestEmail = trimmedEmail && trimmedEmail.length > 0 ? trimmedEmail : null;
   const guestPhone = trimmedPhone && trimmedPhone.length > 0 ? trimmedPhone : undefined;
-
-  // book_reservation vereist email OF telefoon. Voor anonieme walk-ins zonder
-  // beide velden geven we een duidelijke melding in plaats van een nep e-mail.
-  if (!guestEmail && !guestPhone) {
-    return {
-      ok: false,
-      reason_code: "validation",
-      error: "Voeg een telefoonnummer of e-mailadres toe om de walk-in te plaatsen.",
-    };
-  }
+  // Anonieme walk-ins zijn toegestaan: zonder e-mail genereren we een synthetisch adres
+  // zodat book_reservation (dat een e-mail verwacht) gewoon doorgaat.
+  const guestEmail = trimmedEmail && trimmedEmail.length > 0
+    ? trimmedEmail
+    : `walkin-${Date.now()}@walkin.local`;
 
   const body: Record<string, unknown> = {
     restaurant_id: v.restaurantId,
