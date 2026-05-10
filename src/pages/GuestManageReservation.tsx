@@ -55,6 +55,12 @@ export default function GuestManageReservation() {
   const handleLocaleChange = (next: Locale) => {
     setLocale(next);
     if (token) persistGuestLocale(`manage-${token}`, next);
+    // Persist preference server-side so reminders/aftercare follow the guest's choice.
+    fetch(FUNCTION_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ token, action: "view", locale: next }),
+    }).catch(() => { /* non-fatal */ });
   };
 
   const [loading, setLoading] = useState(true);
