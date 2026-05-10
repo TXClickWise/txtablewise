@@ -8,8 +8,11 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Sparkles, Receipt, Link as LinkIcon, FileSpreadsheet, Webhook, AlertCircle, CheckCircle2, X, RefreshCw, Unlink, Loader2 } from "lucide-react";
+import { Sparkles, Receipt, Link as LinkIcon, FileSpreadsheet, Webhook, AlertCircle, CheckCircle2, X, RefreshCw, Unlink, Loader2, Eye, EyeOff, ExternalLink } from "lucide-react";
 import {
   POS_PROVIDERS, POS_FIELD_MAPPING,
   listPOSReceipts, suggestReservationMatches, matchReceiptToReservation, ignoreReceipt, getRevenuePreview,
