@@ -78,6 +78,7 @@ const LargeGroupsPage = () => {
   const qc = useQueryClient();
 
   const [selectedReservationId, setSelectedReservationId] = useState<string | null>(null);
+  const [selectedRequest, setSelectedRequest] = useState<LargeGroupRequest | null>(null);
   const [decision, setDecision] = useState<{ id: string; kind: "approve" | "decline" } | null>(null);
   const [declineReason, setDeclineReason] = useState("");
   const [busy, setBusy] = useState(false);
