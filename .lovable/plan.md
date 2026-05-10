@@ -1,37 +1,79 @@
 ## Doel
 
-Walk-in plaatsen via "klik op vrije tafel" moet écht in 3-5 seconden kunnen: alleen aantal personen verplicht, en als je tóch een naam of telefoon wilt invullen moet dat direct zichtbaar zijn (geen "Meer opties" eerst openen).
+Status van een reservering op de snelst mogelijke manier kunnen aanpassen, met dezelfde knoppenset overal: agenda (dag/tabel-grid), lijst, Floor Mode en tafelplan. Eén tap = één statusovergang, met bevestiging alleen waar nodig (annuleren, no-show).
 
-## Wijzigingen
+## Huidige statussen (ter referentie voor de gebruiker)
 
-### 1. Anonieme walk-ins toestaan — `src/services/walkIn.ts`
+`hold` · `pending` · `confirmed` · `seated` · `finished` · `completed` · `no_show` · `cancelled`
 
-Op dit moment blokkeert de service een walk-in zonder e-mail én telefoon met de melding *"Voeg een telefoonnummer of e-mailadres toe"*. Dat is precies wat de gebruiker niet wil.
+In de UI tonen we de werkbare set: **Bevestigd → Aan tafel → Klaar/Afgerond → Afgerekend**, plus **No-show** en **Annuleren** als zijacties. `hold` en `pending` zijn meestal automatisch / via large-group flow.
 
-- Validatie verwijderen: aantal personen blijft het enige verplichte veld (al gedekt door Zod min 1).
-- Wanneer geen e-mail én geen telefoon: synthetisch e-mailadres genereren (`walkin-{timestamp}@walkin.local`) zodat `book_reservation` blij blijft. Dit patroon gebruikt de oude `WalkInDialog` al, dus geen backend-wijziging nodig.
-- Wanneer geen voornaam: blijft fallback `"Walk-in"` (bestaat al).
+## Onderdeel 1 — Nieuwe component `ReservationStatusQuickBar`
 
-### 2. Snelle invoer voor naam & telefoon — `src/components/walk-in/WalkInQuickSheet.tsx`
+`src/components/reservations/ReservationStatusQuickBar.tsx`
 
-Naam en Telefoon zitten nu verstopt in `<Collapsible open={moreOpen}>`. Die verplaatsen we naar een altijd-zichtbare compacte sectie boven de "Plaats nu"-knop, zodat één tik volstaat om te beginnen typen.
+Eén herbruikbare horizontale knoppenstrip met logica op één plek:
 
-- Nieuwe sectie **"Gast (optioneel)"** direct ná de tafelaanbeveling, vóór "Meer opties":
-  - Twee velden naast elkaar (op mobiel onder elkaar): `Naam (optioneel)` en `Telefoon (optioneel)`.
-  - `h-12` inputs, `inputMode="tel"` op telefoon, `autoComplete="off"`, geen labels boven de velden — alleen placeholders ("Naam", "Telefoon") + kleine helptekst *"Niet nodig voor snelle plaatsing"*.
-- "Meer opties" houdt enkel nog: **Verwachte duur** en **Notitie**. Naam/telefoon eruit halen.
-- Header description aanpassen: *"Geen gastgegevens nodig — alleen aantal personen volstaat."*
-- CTA-knop "Plaats nu" blijft enabled zodra een tafel gekozen is, ongeacht naam/telefoon.
+- Bevestigen (alleen bij `pending`)
+- Aan tafel (`confirmed` / `pending` → `seated`)
+- Klaar (`seated` → `finished`) — alleen tonen als finished gebruikt wordt
+- Afgerond (`seated`/`finished` → `completed`)
+- No-show (`confirmed`/`pending` → `no_show`) — met bevestigingsdialoog
+- Annuleren (`pending`/`confirmed`/`seated`/`hold` → `cancelled`) — met bevestigingsdialoog
 
-## QA
+Props: `reservation`, `size` (`sm` | `md` | `lg` voor floor mode tablet), `layout` (`row` | `grid`), `onChanged` callback. Gebruikt `reservations.markSeated/markCompleted/markNoShow/cancel/changeStatus` uit `src/services/reservations.ts`. Loading-state per knop, toast bij succes/fout, query-invalidatie via `useQueryClient`.
 
-1. Open Walk-in sheet → kies 2p → tafel auto-geselecteerd → "Plaats nu" → reservering verschijnt zonder ooit een veld te hebben aangeraakt.
-2. Open sheet → tik direct op het zichtbare veld "Naam" of "Telefoon" → typen werkt zonder eerst ergens op te klikken.
-3. "Meer opties" bevat nu enkel duur + notitie.
-4. Bestaande prefill-flow (vanaf Floor Mode/Tafelplan klik op vrije tafel) blijft werken: `prefill.firstName` vult het altijd-zichtbare veld in.
+Eindstatussen (`completed`, `cancelled`, `no_show`) → strip toont alleen badge "Afgerond / Geannuleerd / No-show" met optionele "Heropenen"-knop (terug naar `confirmed`).
 
-## Niet aanraken
+## Onderdeel 2 — Inbouwen op alle plekken
 
-- `book_reservation` edge function (synthetisch e-mail volstaat).
-- Pacing/conflict-logica.
-- Layout van overige walk-in entrypoints (AI Quick Seat, WalkInDialog).
+| Plek | Bestand | Aanpassing |
+|---|---|---|
+| Reservering-kaart (lijst / vandaag / zoek) | `src/components/reservations/ReservationCard.tsx` | Inline knoppen vervangen door `<ReservationStatusQuickBar size="sm" layout="row" />` |
+| Reservering detail-sheet | `src/components/reservations/ReservationDetailSheet.tsx` | `size="md"`, bovenaan onder de header, sticky |
+| Reservering detail-dialog (oud) | `src/components/ReservationDetailDialog.tsx` | Idem |
+| Agenda — dag/tabel-grid | `src/components/reservations/views/DayView.tsx`, `views/TableGridView.tsx` | In de hover/tap-popover van een blok; tablet-friendly `size="md"` |
+| Floor Mode tafelkaart | `src/pages/app/FloorModePage.tsx` | In de tafel-detail sheet (wanneer tafel geopend wordt): `size="lg"`, `layout="grid"`, grote touch-knoppen via `QuickActionButton` |
+| Tafelplan (floor plan) | `src/components/floor-plan/FloorPlanEditor.tsx` (of bijbehorend detailpaneel) | Idem als Floor Mode |
+| Walk-in detail | `src/components/walk-in/*` | Idem |
+
+`QuickActionsMenu` (kebab) blijft bestaan voor secundaire acties (Verplaatsen, Tafel toewijzen, Bericht sturen, Gastprofiel). Statusovergangen verhuizen volledig naar de `QuickStatusBar`.
+
+## Onderdeel 3 — Tablet/Floor Mode variant
+
+Voor `size="lg"` (Floor Mode + tafelplan):
+- Min 56px hoog, gebruik `QuickActionButton` uit `src/components/touch/QuickActionButton.tsx`
+- Layout = 2×3 grid op tablet
+- Kleurcodering volgens `--status-*` tokens uit `index.css`, consistent met `StatusBadge`
+- Sticky bovenaan (StickyActionBar) zodat scrollen niet de knoppen verbergt
+
+## Onderdeel 4 — Bevestigingsdialogen
+
+Hergebruik `ConfirmActionDialog` uit `src/components/touch/ConfirmActionDialog.tsx` voor:
+- No-show: "Markeer als no-show? Dit wordt bewaard in de gastgeschiedenis."
+- Annuleren: "Reservering annuleren? De tafel komt weer beschikbaar."
+- Heropenen (vanuit eindstatus): "Reservering heropenen?"
+
+Geen dialoog voor Aan tafel / Afgerond — die zijn één tap zonder bevestiging (sneller werken).
+
+## Onderdeel 5 — Realtime + invalidation
+
+Na elke statuswijziging:
+- `qc.invalidateQueries()` op de relevante keys (`reservations`, `floor-mode-reservations`, `agenda-day`, etc.)
+- Toast met gastvrije copy ("Gast staat op 'aangekomen'", "Bezoek afgerond", etc.)
+- Geen page reload — alle views updaten via React Query
+
+## Wat er niét verandert
+
+- Geen wijziging in `manage_reservation` edge function of database
+- Geen nieuwe statuswaardes
+- Bestaande logica in `reservations.ts` blijft het enige toegangspad
+- `ReservationCard` blijft visueel hetzelfde, alleen knoppen worden geconsolideerd
+
+## QA na implementatie
+
+- Lijst-kaart: confirmed → tap Aan tafel → status flipt direct, kaart toont nu "Afgerond"-knop
+- Floor Mode: tafel met seated reservering → grote knop "Afgerond" → tafel komt vrij in de visualisatie
+- No-show: tap → dialog → bevestig → status + toast + gastgeschiedenis
+- Eindstatus: knoppen verdwijnen, "Heropenen" beschikbaar
+- Tablet 768px+: knoppen blijven 56px+, geen overlap met andere elementen
