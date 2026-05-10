@@ -480,6 +480,29 @@ const ReportsPage = () => {
             )}
           </ReportSection>
 
+          {/* Weekly trend (last 8 weeks) */}
+          <ReportSection title="Trend laatste 8 weken" status="live"
+            description="Wekelijkse reserveringen en covers — om patronen en groei te zien los van de gekozen periode.">
+            {data.weeklyTrend.every((w) => w.reservations === 0) ? (
+              <EmptyState title="Nog geen trenddata" message="Zodra er reserveringen binnenkomen verschijnt hier een wekelijkse trend." />
+            ) : (
+              <div className="grid gap-3 md:grid-cols-2">
+                <Card>
+                  <CardHeader className="pb-2"><CardTitle className="text-sm font-display">Reserveringen per week</CardTitle></CardHeader>
+                  <CardContent>
+                    <SimpleBarChart data={data.weeklyTrend.map((w) => ({ label: w.label, value: w.reservations }))} />
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader className="pb-2"><CardTitle className="text-sm font-display">Covers per week</CardTitle></CardHeader>
+                  <CardContent>
+                    <SimpleBarChart data={data.weeklyTrend.map((w) => ({ label: w.label, value: w.covers }))} />
+                  </CardContent>
+                </Card>
+              </div>
+            )}
+          </ReportSection>
+
           {/* Pacing */}
           <ReportSection title="Drukte & pacing" status="live"
             description="Welke tijdslots zijn structureel druk?">
