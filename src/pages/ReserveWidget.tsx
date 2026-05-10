@@ -254,11 +254,11 @@ const ReserveWidget = () => {
         return;
       }
       if (data.closed) {
-        setClosedReason(data.message ?? "Gesloten op deze dag.");
+        setClosedReason(data.message ?? t("closedOnDay"));
       }
       setSlots(data.slots ?? []);
     } catch (e) {
-      toast.error("Er ging iets mis bij het controleren van de beschikbaarheid.");
+      toast.error(t("errors.availabilityFailed"));
     } finally {
       setLoadingSlots(false);
     }
