@@ -50,6 +50,10 @@ type RestaurantInfo = {
   timezone: string;
   max_party_size_online: number;
   large_group_threshold: number;
+  large_group_manual_approval_from: number | null;
+  large_group_extra_info_from: number | null;
+  large_group_max_online_request: number | null;
+  large_group_confirmation_text: string | null;
   preorders_enabled: boolean;
   preorders_allow_free_text: boolean;
   allow_zone_preference: boolean;
@@ -198,7 +202,7 @@ const ReserveWidget = () => {
     (async () => {
       const { data, error } = await supabase
         .from("restaurants")
-        .select("id, name, slug, timezone, max_party_size_online, large_group_threshold, preorders_enabled, preorders_allow_free_text, allow_zone_preference, brand_primary, logo_url, booking_horizon_days")
+        .select("id, name, slug, timezone, max_party_size_online, large_group_threshold, large_group_manual_approval_from, large_group_extra_info_from, large_group_max_online_request, large_group_confirmation_text, preorders_enabled, preorders_allow_free_text, allow_zone_preference, brand_primary, logo_url, booking_horizon_days")
         .eq("slug", slug).maybeSingle();
       if (error || !data) {
         setRestaurantError("Reserveren is op dit moment niet mogelijk. Probeer het later opnieuw of bel het restaurant.");
@@ -256,14 +260,23 @@ const ReserveWidget = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [slots, step, initialTime]);
 
+  const maxOnlineRequest = restaurant
+    ? (restaurant.large_group_max_online_request ?? restaurant.max_party_size_online)
+    : 0;
+  const extraInfoFrom = restaurant?.large_group_extra_info_from ?? null;
+  const manualApprovalFrom = restaurant?.large_group_manual_approval_from ?? null;
+  const requiresMessage = !!extraInfoFrom && partySize >= extraInfoFrom;
+  const showsApprovalBanner = !!manualApprovalFrom && partySize >= manualApprovalFrom;
+
   const goToDetails = () => {
     if (!restaurant) return;
-    if (partySize > restaurant.max_party_size_online) {
+    if (partySize > maxOnlineRequest) {
       setStep("large_group");
       return;
     }
     if (!date) return toast.error("Kies een datum");
     if (!selectedSlot) return toast.error("Kies een tijd");
+    if (requiresMessage) setShowExtras(true);
     setStep("details");
   };
 
@@ -271,6 +284,10 @@ const ReserveWidget = () => {
     if (!restaurant || !selectedSlot || !date) return;
     const parsed = guestSchema.safeParse({ first_name: firstName, last_name: lastName, email, phone });
     if (!parsed.success) return toast.error(parsed.error.errors[0].message);
+    if (requiresMessage && !requests.trim()) {
+      setShowExtras(true);
+      return toast.error("Voeg even een korte toelichting toe voor het restaurant");
+    }
 
     const gate = canAttemptBooking();
     if (!gate.allowed) {
@@ -333,9 +350,10 @@ const ReserveWidget = () => {
   };
 
   const partyOptions = useMemo(() => {
-    const max = Math.min(8, restaurant?.max_party_size_online ?? 8);
+    const max = Math.max(1, restaurant?.max_party_size_online ?? 8);
     return Array.from({ length: max }, (_, i) => i + 1);
   }, [restaurant]);
+  const canRequestLargerOnline = !!restaurant && maxOnlineRequest > (restaurant.max_party_size_online ?? 0);
 
   if (restaurantError) {
     return (
@@ -421,9 +439,32 @@ const ReserveWidget = () => {
                   </button>
                 ))}
               </div>
-              {restaurant && partySize > restaurant.max_party_size_online && (
+              {canRequestLargerOnline && (
+                <div className="flex items-center gap-2 pt-1">
+                  <Label className="text-xs text-muted-foreground whitespace-nowrap">Grotere groep?</Label>
+                  <Input
+                    type="number"
+                    min={(restaurant?.max_party_size_online ?? 0) + 1}
+                    max={maxOnlineRequest}
+                    value={partySize > (restaurant?.max_party_size_online ?? 0) ? partySize : ""}
+                    placeholder={`tot ${maxOnlineRequest} personen`}
+                    onChange={(e) => {
+                      const v = parseInt(e.target.value, 10);
+                      if (!Number.isNaN(v) && v >= 1) setPartySize(Math.min(v, maxOnlineRequest));
+                    }}
+                    className="h-10 max-w-[10rem]"
+                  />
+                </div>
+              )}
+              {showsApprovalBanner && partySize <= maxOnlineRequest && (
                 <p className="text-xs text-muted-foreground">
-                  Vanaf {restaurant.large_group_threshold} personen wordt dit een aanvraag.
+                  {restaurant?.large_group_confirmation_text?.trim() ||
+                    `Reserveringen vanaf ${manualApprovalFrom} personen worden persoonlijk bevestigd door ${restaurant?.name}.`}
+                </p>
+              )}
+              {restaurant && partySize > maxOnlineRequest && (
+                <p className="text-xs text-muted-foreground">
+                  Voor groepen groter dan {maxOnlineRequest} personen vragen we een aparte aanvraag.
                 </p>
               )}
             </div>
@@ -618,9 +659,18 @@ const ReserveWidget = () => {
                     placeholder="Bijv. notenallergie, vegetarisch" />
                 </div>
                 <div className="space-y-1.5">
-                  <Label htmlFor="rq">Andere wensen</Label>
+                  <Label htmlFor="rq">
+                    {requiresMessage ? "Bericht aan het restaurant *" : "Andere wensen"}
+                  </Label>
                   <Textarea id="rq" value={requests} onChange={(e) => setRequests(e.target.value)} rows={3}
-                    placeholder="Bijv. liefst tafel bij raam" />
+                    placeholder={requiresMessage
+                      ? "Bijv. gelegenheid, gewenste menu-opzet, drankarrangement…"
+                      : "Bijv. liefst tafel bij raam"} />
+                  {requiresMessage && (
+                    <p className="text-xs text-muted-foreground">
+                      Voor groepen vanaf {extraInfoFrom} personen helpt een korte toelichting ons om alles goed voor te bereiden.
+                    </p>
+                  )}
                 </div>
               </CollapsibleContent>
             </Collapsible>

@@ -20,6 +20,8 @@ type Form = {
   large_group_manual_approval_from: number;
   large_group_deposit_recommended_from: number;
   large_group_auto_book_max: number;
+  large_group_extra_info_from: number | "";
+  large_group_max_online_request: number | "";
   large_group_default_status: string;
   large_group_confirmation_text: string;
   large_group_cancellation_terms: string;
@@ -32,6 +34,8 @@ const defaults: Form = {
   large_group_manual_approval_from: 10,
   large_group_deposit_recommended_from: 8,
   large_group_auto_book_max: 12,
+  large_group_extra_info_from: "",
+  large_group_max_online_request: "",
   large_group_default_status: "pending",
   large_group_confirmation_text: "",
   large_group_cancellation_terms: "",
@@ -53,7 +57,8 @@ const LargeGroupSettings = () => {
         .select(`
           large_group_threshold, large_group_extra_minutes, large_group_manual_approval_from,
           large_group_deposit_recommended_from, large_group_auto_book_max, large_group_default_status,
-          large_group_confirmation_text, large_group_cancellation_terms, noshow_deposit_rules_prepared
+          large_group_confirmation_text, large_group_cancellation_terms, noshow_deposit_rules_prepared,
+          large_group_extra_info_from, large_group_max_online_request
         `)
         .eq("id", restaurantId).maybeSingle();
       if (data) {
@@ -63,6 +68,8 @@ const LargeGroupSettings = () => {
           large_group_manual_approval_from: data.large_group_manual_approval_from ?? defaults.large_group_manual_approval_from,
           large_group_deposit_recommended_from: data.large_group_deposit_recommended_from ?? defaults.large_group_deposit_recommended_from,
           large_group_auto_book_max: data.large_group_auto_book_max ?? defaults.large_group_auto_book_max,
+          large_group_extra_info_from: (data as any).large_group_extra_info_from ?? "",
+          large_group_max_online_request: (data as any).large_group_max_online_request ?? "",
           large_group_default_status: data.large_group_default_status ?? defaults.large_group_default_status,
           large_group_confirmation_text: data.large_group_confirmation_text ?? "",
           large_group_cancellation_terms: data.large_group_cancellation_terms ?? "",
@@ -76,7 +83,12 @@ const LargeGroupSettings = () => {
   const save = async () => {
     if (!restaurantId) return;
     setSaving(true);
-    const { error } = await supabase.from("restaurants").update(form).eq("id", restaurantId);
+    const payload = {
+      ...form,
+      large_group_extra_info_from: form.large_group_extra_info_from === "" ? null : Number(form.large_group_extra_info_from),
+      large_group_max_online_request: form.large_group_max_online_request === "" ? null : Number(form.large_group_max_online_request),
+    };
+    const { error } = await supabase.from("restaurants").update(payload as any).eq("id", restaurantId);
     setSaving(false);
     if (error) {
       toast.error("Opslaan mislukt: " + error.message);
@@ -130,6 +142,16 @@ const LargeGroupSettings = () => {
                 <option value="pending">In afwachting</option>
                 <option value="hold">Voorlopig</option>
               </select>
+            </Field>
+            <Field label="Maximale online groepsaanvraag (personen)" hint='Bovengrens voor aanvragen via de widget. Boven dit aantal wijst de widget de gast door naar het losse groepsformulier. Laat leeg om gelijk te trekken met "Max online groepsgrootte".'>
+              <Input type="number" min={1} placeholder="bv. 18"
+                value={form.large_group_max_online_request}
+                onChange={(e) => setForm({ ...form, large_group_max_online_request: e.target.value === "" ? "" : (Number(e.target.value) || 1) })} />
+            </Field>
+            <Field label="Toelichting verplicht vanaf (personen)" hint="Vanaf dit aantal moet de gast in de widget een korte toelichting meesturen (gelegenheid, menuwens, etc.). Laat leeg om nooit te verplichten.">
+              <Input type="number" min={1} placeholder="bv. 12"
+                value={form.large_group_extra_info_from}
+                onChange={(e) => setForm({ ...form, large_group_extra_info_from: e.target.value === "" ? "" : (Number(e.target.value) || 1) })} />
             </Field>
           </div>
         </CardContent>

@@ -1529,8 +1529,10 @@ export type Database = {
           large_group_confirmation_text: string | null
           large_group_default_status: string
           large_group_deposit_recommended_from: number
+          large_group_extra_info_from: number | null
           large_group_extra_minutes: number
           large_group_manual_approval_from: number
+          large_group_max_online_request: number | null
           large_group_minutes: number
           large_group_threshold: number
           legal_name: string | null
@@ -1616,8 +1618,10 @@ export type Database = {
           large_group_confirmation_text?: string | null
           large_group_default_status?: string
           large_group_deposit_recommended_from?: number
+          large_group_extra_info_from?: number | null
           large_group_extra_minutes?: number
           large_group_manual_approval_from?: number
+          large_group_max_online_request?: number | null
           large_group_minutes?: number
           large_group_threshold?: number
           legal_name?: string | null
@@ -1703,8 +1707,10 @@ export type Database = {
           large_group_confirmation_text?: string | null
           large_group_default_status?: string
           large_group_deposit_recommended_from?: number
+          large_group_extra_info_from?: number | null
           large_group_extra_minutes?: number
           large_group_manual_approval_from?: number
+          large_group_max_online_request?: number | null
           large_group_minutes?: number
           large_group_threshold?: number
           legal_name?: string | null
