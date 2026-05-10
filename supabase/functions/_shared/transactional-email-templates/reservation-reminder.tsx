@@ -3,52 +3,86 @@ import {
   Body, Container, Head, Heading, Html, Preview, Section, Text,
 } from 'npm:@react-email/components@0.0.22'
 import type { TemplateEntry } from './registry.ts'
+import type { CopyFields, LocaleCopy } from './i18n.ts'
 
 interface Props {
-  restaurantName?: string
+  copy: CopyFields
   guestName?: string
   dateLabel?: string
   timeLabel?: string
   partySize?: number
+  locale?: string
 }
 
-const ReservationReminder = ({
-  restaurantName = 'het restaurant',
-  guestName,
-  dateLabel = '',
-  timeLabel = '',
-  partySize,
-}: Props) => (
-  <Html lang="nl" dir="ltr">
+const ReservationReminder = ({ copy, dateLabel, timeLabel, partySize, locale = 'nl' }: Props) => (
+  <Html lang={locale} dir="ltr">
     <Head />
-    <Preview>Tot morgen bij {restaurantName}</Preview>
+    <Preview>{copy.preview || copy.subject}</Preview>
     <Body style={main}>
       <Container style={container}>
-        <Heading style={h1}>Tot morgen{guestName ? `, ${guestName}` : ''}!</Heading>
-        <Text style={text}>
-          Een vriendelijke herinnering aan je reservering bij <strong>{restaurantName}</strong>.
-        </Text>
-        <Section style={card}>
-          {dateLabel && <Text style={cardLine}><strong>Datum:</strong> {dateLabel}</Text>}
-          {timeLabel && <Text style={cardLine}><strong>Tijd:</strong> {timeLabel}</Text>}
-          {partySize && <Text style={cardLine}><strong>Aantal gasten:</strong> {partySize}</Text>}
-        </Section>
-        <Text style={text}>
-          Plannen veranderd? Beantwoord deze mail om contact op te nemen met {restaurantName}, dan zorgen we ervoor dat je tafel beschikbaar blijft voor andere gasten.
-        </Text>
-        <Text style={footer}>Tot snel, het team van {restaurantName}</Text>
+        <Heading style={h1}>{copy.heading}</Heading>
+        <Text style={text}>{copy.intro}</Text>
+        {(dateLabel || timeLabel || partySize) && (
+          <Section style={card}>
+            {dateLabel && <Text style={cardLine}><strong>{copy.labelDate}:</strong> {dateLabel}</Text>}
+            {timeLabel && <Text style={cardLine}><strong>{copy.labelTime}:</strong> {timeLabel}</Text>}
+            {partySize && <Text style={cardLine}><strong>{copy.labelParty}:</strong> {partySize}</Text>}
+          </Section>
+        )}
+        {copy.outro && <Text style={text}>{copy.outro}</Text>}
+        {copy.signature && <Text style={footer}>{copy.signature}</Text>}
       </Container>
     </Body>
   </Html>
 )
 
+export const defaultCopy: LocaleCopy = {
+  nl: {
+    subject: 'Tot morgen bij {{restaurantName}}',
+    preview: 'Een herinnering aan je reservering bij {{restaurantName}}',
+    heading: 'Tot morgen, {{guestName}}!',
+    intro: 'Een vriendelijke herinnering aan je reservering bij {{restaurantName}}.',
+    outro: 'Plannen veranderd? Beantwoord deze mail om contact op te nemen met {{restaurantName}}, dan zorgen we dat je tafel beschikbaar blijft voor andere gasten.',
+    signature: 'Tot snel, het team van {{restaurantName}}',
+    labelDate: 'Datum', labelTime: 'Tijd', labelParty: 'Aantal gasten',
+  },
+  en: {
+    subject: 'See you tomorrow at {{restaurantName}}',
+    preview: 'A reminder about your reservation at {{restaurantName}}',
+    heading: 'See you tomorrow, {{guestName}}!',
+    intro: 'A friendly reminder of your reservation at {{restaurantName}}.',
+    outro: 'Plans changed? Reply to this email to let {{restaurantName}} know, and we will free up your table for other guests.',
+    signature: 'See you soon, the team at {{restaurantName}}',
+    labelDate: 'Date', labelTime: 'Time', labelParty: 'Guests',
+  },
+  de: {
+    subject: 'Bis morgen bei {{restaurantName}}',
+    preview: 'Eine Erinnerung an Ihre Reservierung bei {{restaurantName}}',
+    heading: 'Bis morgen, {{guestName}}!',
+    intro: 'Eine freundliche Erinnerung an Ihre Reservierung bei {{restaurantName}}.',
+    outro: 'Pläne geändert? Antworten Sie auf diese E-Mail, damit {{restaurantName}} den Tisch für andere Gäste freigeben kann.',
+    signature: 'Bis bald, das Team von {{restaurantName}}',
+    labelDate: 'Datum', labelTime: 'Uhrzeit', labelParty: 'Gäste',
+  },
+  fr: {
+    subject: 'À demain au {{restaurantName}}',
+    preview: 'Un rappel concernant votre réservation au {{restaurantName}}',
+    heading: 'À demain, {{guestName}} !',
+    intro: 'Un rappel amical concernant votre réservation au {{restaurantName}}.',
+    outro: 'Vos plans changent ? Répondez à cet e-mail pour prévenir {{restaurantName}}, nous libérerons votre table pour d’autres convives.',
+    signature: 'À très vite, l’équipe du {{restaurantName}}',
+    labelDate: 'Date', labelTime: 'Heure', labelParty: 'Convives',
+  },
+}
+
 export const template = {
   component: ReservationReminder,
-  subject: (d: Record<string, any>) =>
-    `Tot morgen${d.restaurantName ? ` bij ${d.restaurantName}` : ''}`,
+  subject: (d: Record<string, any>) => d.copy?.subject || defaultCopy.nl.subject,
   displayName: 'Reservering herinnering',
+  templateKey: 'reservation-reminder',
+  defaultCopy,
   previewData: {
-    restaurantName: 'Restaurant De Kroon',
+    copy: defaultCopy.nl,
     guestName: 'Jane',
     dateLabel: 'morgen',
     timeLabel: '19:30',
