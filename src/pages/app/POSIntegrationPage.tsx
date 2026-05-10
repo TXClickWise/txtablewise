@@ -272,11 +272,27 @@ const POSIntegrationPage = () => {
 
         {/* Import & middleware */}
         <TabsContent value="import" className="space-y-3">
-          <div className="grid gap-3 md:grid-cols-3">
-            <Card><CardHeader><CardTitle className="text-sm flex items-center gap-2"><FileSpreadsheet className="h-4 w-4" /> CSV-import</CardTitle></CardHeader><CardContent><p className="text-xs text-muted-foreground">Bonnen later importeren via CSV en handmatig matchen.</p><Button variant="outline" size="sm" className="mt-3" disabled>Binnenkort</Button></CardContent></Card>
-            <Card><CardHeader><CardTitle className="text-sm flex items-center gap-2"><Webhook className="h-4 w-4" /> Make / Zapier / n8n</CardTitle></CardHeader><CardContent><p className="text-xs text-muted-foreground">Receipts ontvangen via webhook met sync-logs.</p><Button variant="outline" size="sm" className="mt-3" disabled>Binnenkort</Button></CardContent></Card>
-            <Card><CardHeader><CardTitle className="text-sm flex items-center gap-2"><LinkIcon className="h-4 w-4" /> Custom API</CardTitle></CardHeader><CardContent><p className="text-xs text-muted-foreground">Provider-agnostic API voor maatwerk-koppelingen.</p><Button variant="outline" size="sm" className="mt-3" disabled>Binnenkort</Button></CardContent></Card>
-          </div>
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Meer koppelingen op komst</CardTitle>
+              <CardDescription>
+                We bouwen extra POS- en middleware-koppelingen op basis van wat onze pilotrestaurants nodig hebben.
+                Voor nu kun je bonnen handmatig invoeren of via Loyverse synchroniseren.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <ul className="text-sm text-muted-foreground space-y-1.5">
+                <li className="flex items-center gap-2"><FileSpreadsheet className="h-4 w-4" /> CSV-import van bonnen</li>
+                <li className="flex items-center gap-2"><Webhook className="h-4 w-4" /> Make / Zapier / n8n webhooks</li>
+                <li className="flex items-center gap-2"><LinkIcon className="h-4 w-4" /> Provider-agnostische custom API</li>
+              </ul>
+              <Button asChild variant="outline" size="sm">
+                <a href="mailto:support@txtablewise.nl?subject=POS-koppeling%20aanvraag">
+                  Laat ons weten welke koppeling je nodig hebt
+                </a>
+              </Button>
+            </CardContent>
+          </Card>
         </TabsContent>
 
         {/* Sync & logs */}

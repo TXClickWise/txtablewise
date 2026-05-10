@@ -342,8 +342,8 @@ const PreOrderDrinksPage = () => {
             </div>
             <div className="flex items-center justify-between">
               <div>
-                <Label>Betaling vereist (voorbereid)</Label>
-                <p className="text-xs text-muted-foreground">Wordt nog niet echt afgerekend.</p>
+                <Label>Aanbetaling vereist</Label>
+                <p className="text-xs text-muted-foreground">Markeert dit item als betaal-vereist in het datamodel. Aanbetalingen worden later geactiveerd via de Aanbetalingen-module.</p>
               </div>
               <Switch checked={form.requires_payment}
                 onCheckedChange={(v) => setForm({ ...form, requires_payment: v })} />

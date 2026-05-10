@@ -1,53 +1,29 @@
+# Sprint 6 — Polish
 
-# Loyverse koppeling — overstappen op Personal Access Token
+Vier kleine items uit de audit, geen nieuwe features.
 
-## Doel
-De huidige OAuth-flow (eigen developer-app + redirects + 500/401 errors) vervangen door één eenvoudig pad: het restaurant plakt zijn Loyverse **Personal Access Token** uit het Loyverse-dashboard → opslaan → sync werkt direct. Geen client ID/secret, geen callback, geen refresh.
+## 1. `?lang=` deeplink op `/r/:slug/manage` (#11)
+- Vitest test toevoegen die `detectLocale` aanroept met een gesimuleerde `?lang=de|fr|en|nl` en bevestigt dat de juiste locale gekozen wordt, ook als de browser-locale anders is.
+- Eén round-trip rendertest van `GuestManageReservation` met `?lang=fr` om te bevestigen dat i18n-strings uit `fr/manage.json` getoond worden.
+- Bestand: `src/test/i18n-deeplink.test.ts` (nieuw).
 
-## Wat de gebruiker straks doet
-1. In Loyverse → Instellingen → Access tokens → **+ Nieuwe token** → kopieer de waarde (zie screenshot 2 van de gebruiker).
-2. In TableWise → /app/integraties/pos → "Koppel met Loyverse" → veld plakken → Opslaan.
-3. Token wordt direct getest tegen `GET https://api.loyverse.com/v1.0/merchant`. Bij 200 → status `active`, naam getoond. Bij 401 → vriendelijke foutmelding ("token niet geldig").
+## 2. Uitschrijf/cancel-reden copy in DE & FR (#12)
+- Bij controle blijken `cancelDescription` en `cancelReasonPlaceholder` al aanwezig in alle 4 locales (NL/EN/DE/FR). 
+- Wel ontbreekt nog een expliciete `reason`-veld-label voor de unsubscribe-flow. Toevoegen aan `unsubscribe`-blok in alle 4 `common.json`'s: `reasonLabel` ("Reden (optioneel)") + `reasonPlaceholder`. UI aanpassen in `src/pages/Unsubscribe.tsx` om dit veld te tonen indien gewenst — als de pagina geen reden-veld heeft, alleen vertalingen toevoegen voor consistentie en geen UI-wijziging.
 
-## Wijzigingen
+## 3. Console warnings opruimen (#27)
+Twee React Router v7 future-flag warnings actief. Oplossing: `BrowserRouter` opt-in voor toekomstige flags.
+- `src/App.tsx`: `<BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>`.
+- Daarna preview verifiëren — geen router-warnings meer.
 
-### Datamodel
-- Tabel `pos_connections` blijft, maar:
-  - Nieuwe kolom `access_token` (text, encrypted-at-rest is al via Supabase secret manager niet nodig — gewoon kolom, alleen leesbaar voor service role).
-  - Veld `auth_method` toevoegen met default `'personal_token'`. OAuth-velden (`refresh_token`, `token_expires_at`, `oauth_state`) blijven staan voor backwards compat maar worden niet meer gebruikt.
-- RLS: restaurant-managers kunnen status zien (geconnecteerd ja/nee, display_name, last_synced_at), maar **niet** het token zelf lezen. Token enkel server-side via service role in edge functions.
+## 4. "Binnenkort"-knoppen opruimen (#28)
+- **`POSIntegrationPage.tsx`** regels 276–278: drie disabled "Binnenkort"-kaarten (CSV-import, Make/Zapier/n8n, Custom API). Vervangen door één informatieve `SectionCard` met tekst: "Meer koppelingen volgen — laat het ons weten welke je nodig hebt", inclusief mailto/feedback-link. Geen valse knoppen meer.
+- **`PreOrderDrinksPage.tsx`** regel 346: switch "Betaling vereist (voorbereid)" met copy "Wordt nog niet echt afgerekend". Aanpassen naar duidelijkere copy: "Markeert dit item als betaald-vereist in het datamodel. Aanbetalingen worden later geactiveerd via Aanbetalingen-module." — switch blijft functioneel (vlag wordt opgeslagen, conform "payment-ready" memory).
 
-### Edge functions
-- **Nieuw: `loyverse_connect`** — vervangt `loyverse_oauth`:
-  - `POST { restaurant_id, access_token }` → valideert token tegen Loyverse `/merchant` → slaat op in `pos_connections` met `status='active'`, `display_name`, `auth_method='personal_token'`.
-  - `POST { restaurant_id, action: 'disconnect' }` → markeert connectie als revoked, wist token.
-  - `POST { restaurant_id, action: 'status' }` → leest status (zonder token uit te lekken).
-  - JWT-validatie via `getClaims` (volgens huidige patroon) + check `is_restaurant_manager`.
-- **`loyverse_sync_scheduled`** + on-demand sync blijven werken, maar lezen voortaan token uit `pos_connections.access_token` in plaats van OAuth-refresh-flow.
-- **Verwijderen / archiveren**: huidige OAuth `authorize_url` / `callback` paden in `loyverse_oauth/index.ts`. Hele functie kan weg (of behouden als no-op die 410 Gone teruggeeft, om oude callbacks netjes af te handelen).
+## Verificatie
+- `bunx vitest run` voor nieuwe test.
+- Preview-check: `/app` → geen router-warnings in console; `/app/koppelingen/pos` → geen "Binnenkort"-knoppen meer; `/app/pre-orders` → nieuwe copy zichtbaar.
 
-### Frontend
-- `src/services/pos.ts`:
-  - Verwijder `getLoyverseAuthorizeUrl`.
-  - Voeg toe: `connectLoyverseWithToken(restaurantId, token)`, gebruikt `supabase.functions.invoke("loyverse_connect", { body: { restaurant_id, access_token } })`.
-  - `disconnectLoyverse` en `getLoyverseStatus` aanpassen naar nieuwe function.
-- `src/pages/app/POSIntegrationPage.tsx`:
-  - "Koppel met Loyverse"-knop opent een **dialog** met:
-    - Korte uitleg + link "Hoe vind ik mijn Loyverse access token?" (collapsible met stappen + verwijzing naar Loyverse → Settings → Access tokens).
-    - Inputveld (`type="password"`, toggle "Toon").
-    - Knop "Verbinden" → toont loading → bij succes toast + status-card update; bij 401 vriendelijke foutmelding.
-  - Verwijder de `useEffect` die `?loyverse=connected` query-param afhandelt (niet meer nodig).
-- Gastvrije microcopy, Nederlands, geen technische termen.
-
-### Secrets
-- `LOYVERSE_CLIENT_ID` en `LOYVERSE_CLIENT_SECRET` worden niet meer gebruikt. We laten ze voor nu staan (niet schadelijk) en kunnen ze later opruimen.
-
-## Voordelen t.o.v. OAuth
-- Geen redirect-/callback-bugs meer (oorzaak van huidige fout).
-- Geen token-refresh-logic; Loyverse personal tokens verlopen niet tenzij ingetrokken.
-- Restaurant heeft volledige controle — kan token op elk moment intrekken in Loyverse.
-- Werkt identiek voor 1 of 100 restaurants zonder developer-app onderhoud.
-
-## Niet in scope
-- Loyverse webhooks (kan later, vereist publieke endpoint + signature check).
-- Andere POS-providers — datamodel `auth_method` is alvast voorbereid voor `oauth` / `api_key` per provider.
+## Niet in deze sprint
+- #13 Aanbetalingen UI (apart traject).
+- #20 Wachtlijst-conversie meting (apart traject).
