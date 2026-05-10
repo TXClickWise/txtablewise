@@ -439,9 +439,32 @@ const ReserveWidget = () => {
                   </button>
                 ))}
               </div>
-              {restaurant && partySize > restaurant.max_party_size_online && (
+              {canRequestLargerOnline && (
+                <div className="flex items-center gap-2 pt-1">
+                  <Label className="text-xs text-muted-foreground whitespace-nowrap">Grotere groep?</Label>
+                  <Input
+                    type="number"
+                    min={(restaurant?.max_party_size_online ?? 0) + 1}
+                    max={maxOnlineRequest}
+                    value={partySize > (restaurant?.max_party_size_online ?? 0) ? partySize : ""}
+                    placeholder={`tot ${maxOnlineRequest} personen`}
+                    onChange={(e) => {
+                      const v = parseInt(e.target.value, 10);
+                      if (!Number.isNaN(v) && v >= 1) setPartySize(Math.min(v, maxOnlineRequest));
+                    }}
+                    className="h-10 max-w-[10rem]"
+                  />
+                </div>
+              )}
+              {showsApprovalBanner && partySize <= maxOnlineRequest && (
                 <p className="text-xs text-muted-foreground">
-                  Vanaf {restaurant.large_group_threshold} personen wordt dit een aanvraag.
+                  {restaurant?.large_group_confirmation_text?.trim() ||
+                    `Reserveringen vanaf ${manualApprovalFrom} personen worden persoonlijk bevestigd door ${restaurant?.name}.`}
+                </p>
+              )}
+              {restaurant && partySize > maxOnlineRequest && (
+                <p className="text-xs text-muted-foreground">
+                  Voor groepen groter dan {maxOnlineRequest} personen vragen we een aparte aanvraag.
                 </p>
               )}
             </div>
