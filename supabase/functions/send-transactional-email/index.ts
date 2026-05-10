@@ -60,6 +60,8 @@ Deno.serve(async (req) => {
   let idempotencyKey: string
   let messageId: string
   let templateData: Record<string, any> = {}
+  let fromNameOverride: string | undefined
+  let replyToOverride: string | undefined
   try {
     const body = await req.json()
     templateName = body.templateName || body.template_name
@@ -68,6 +70,12 @@ Deno.serve(async (req) => {
     idempotencyKey = body.idempotencyKey || body.idempotency_key || messageId
     if (body.templateData && typeof body.templateData === 'object') {
       templateData = body.templateData
+    }
+    if (typeof body.fromName === 'string' && body.fromName.trim()) {
+      fromNameOverride = body.fromName.trim()
+    }
+    if (typeof body.replyTo === 'string' && body.replyTo.trim()) {
+      replyToOverride = body.replyTo.trim()
     }
   } catch {
     return new Response(
