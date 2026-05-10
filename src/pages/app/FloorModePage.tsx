@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { format, differenceInMinutes } from "date-fns";
+import { format, differenceInMinutes, addDays, subDays, isSameDay, parseISO, isValid, startOfDay } from "date-fns";
 import { nl } from "date-fns/locale";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -8,6 +8,8 @@ import { reservations as resService } from "@/services/reservations";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
@@ -15,7 +17,8 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   RefreshCw, Sparkles, UserPlus, Users, Clock, Crown, Beer,
-  AlertTriangle, MapPin, Check, LogOut, UserX, ListChecks, ChevronRight, Search,
+  AlertTriangle, MapPin, Check, LogOut, UserX, ListChecks, ChevronRight, ChevronLeft, Search,
+  Calendar as CalendarIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -26,7 +29,7 @@ import { PacingIndicator, pacingLevelFromCovers } from "@/components/reservation
 import { AIQuickSeatSheet } from "@/components/floor-plan/AIQuickSeatSheet";
 import { LastMinuteFillPanel } from "@/components/waitlist/LastMinuteFillPanel";
 import { PreOrderReadyList } from "@/components/pre-orders/PreOrderReadyList";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 
 type Zone = { id: string; name: string };
 type Table = {
