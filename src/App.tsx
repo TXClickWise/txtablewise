@@ -75,6 +75,7 @@ const App = () => (
             <Route path="/reserveer/:slug" element={<ErrorBoundary label="ReserveWidget"><ReserveWidget /></ErrorBoundary>} />
             <Route path="/book/:slug" element={<ErrorBoundary label="ReserveWidget"><ReserveWidget /></ErrorBoundary>} />
             <Route path="/r/manage/:token" element={<GuestManageReservation />} />
+            <Route path="/unsubscribe" element={<Unsubscribe />} />
             <Route path="/onboarding" element={<RequireAuth><Onboarding /></RequireAuth>} />
             <Route path="/app" element={<RequireAuth><AppShell /></RequireAuth>}>
               <Route index element={<ErrorBoundary label="TodayPage"><TodayPage /></ErrorBoundary>} />
