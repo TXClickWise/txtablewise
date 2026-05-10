@@ -70,6 +70,7 @@ const ReservationsPage = () => {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [editorId, setEditorId] = useState<string | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
+  const [createPrefill, setCreatePrefill] = useState<{ date?: string; time?: string; tableId?: string; tableLabel?: string } | undefined>(undefined);
   const [walkInOpen, setWalkInOpen] = useState(false);
 
   // Restaurant config
@@ -334,7 +335,20 @@ const ReservationsPage = () => {
       )}
 
       {view === "grid" && restaurantId && (
-        <TableGridView date={date} restaurantId={restaurantId} onOpen={setSelectedId} />
+        <TableGridView
+          date={date}
+          restaurantId={restaurantId}
+          onOpen={setSelectedId}
+          onCreate={(p) => {
+            setCreatePrefill({
+              date: format(date, "yyyy-MM-dd"),
+              time: p.startTime,
+              tableId: p.tableId,
+              tableLabel: p.tableLabel,
+            });
+            setCreateOpen(true);
+          }}
+        />
       )}
 
       {view === "day" && (
@@ -409,7 +423,11 @@ const ReservationsPage = () => {
         open={!!editorId}
         onOpenChange={(o) => !o && setEditorId(null)}
       />
-      <ReservationFormSheet open={createOpen} onOpenChange={setCreateOpen} />
+      <ReservationFormSheet
+        open={createOpen}
+        onOpenChange={(o) => { setCreateOpen(o); if (!o) setCreatePrefill(undefined); }}
+        prefill={createPrefill}
+      />
       <WalkInDialog open={walkInOpen} onOpenChange={setWalkInOpen} />
     </div>
   );

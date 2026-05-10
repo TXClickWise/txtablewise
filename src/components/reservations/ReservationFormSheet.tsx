@@ -1,7 +1,7 @@
 // ReservationFormSheet — operator flow to create a reservation.
 // Uses the public availability edge function to preview a slot and book_reservation
 // with channel='manager' so it bypasses the online lead-time / pacing limits.
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { format } from "date-fns";
 import { Loader2, Search, CalendarPlus } from "lucide-react";
 import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from "@/components/ui/sheet";
@@ -24,12 +24,21 @@ type Preview = {
   error?: string;
 } | null;
 
+export type ReservationFormPrefill = {
+  date?: string;
+  time?: string;
+  partySize?: number;
+  tableId?: string;
+  tableLabel?: string;
+};
+
 type Props = {
   open: boolean;
   onOpenChange: (v: boolean) => void;
+  prefill?: ReservationFormPrefill;
 };
 
-export function ReservationFormSheet({ open, onOpenChange }: Props) {
+export function ReservationFormSheet({ open, onOpenChange, prefill }: Props) {
   const { current } = useRestaurant();
   const qc = useQueryClient();
   const [date, setDate] = useState(format(new Date(), "yyyy-MM-dd"));
@@ -43,6 +52,15 @@ export function ReservationFormSheet({ open, onOpenChange }: Props) {
   const [occasion, setOccasion] = useState("");
   const [preview, setPreview] = useState<Preview>(null);
   const [submitting, setSubmitting] = useState(false);
+
+  // Prefill toepassen wanneer sheet opent
+  useEffect(() => {
+    if (!open || !prefill) return;
+    if (prefill.date) setDate(prefill.date);
+    if (prefill.time) setTime(prefill.time);
+    if (prefill.partySize) setPartySize(prefill.partySize);
+    setPreview(null);
+  }, [open, prefill]);
 
   // Pull large-group thresholds so the operator sees a heads-up while booking.
   const { data: lgConfig } = useQuery({
@@ -103,9 +121,15 @@ export function ReservationFormSheet({ open, onOpenChange }: Props) {
       },
     });
     setSubmitting(false);
-    const fnErr = (data as { error?: string }) || {};
-    if (error || fnErr.error) {
-      return toast.error(fnErr.error || "De reservering is niet opgeslagen. Probeer het opnieuw.");
+    const payload = (data as { error?: string; reservation?: { id?: string } }) || {};
+    if (error || payload.error) {
+      return toast.error(payload.error || "De reservering is niet opgeslagen. Probeer het opnieuw.");
+    }
+    // Tafel forceren als operator een specifieke tafel koos in het tafelgrid
+    const newId = payload.reservation?.id;
+    if (newId && prefill?.tableId) {
+      await supabase.from("reservation_tables").delete().eq("reservation_id", newId);
+      await supabase.from("reservation_tables").insert([{ reservation_id: newId, table_id: prefill.tableId }]);
     }
     toast.success("Reservering aangemaakt.");
     qc.invalidateQueries();
@@ -132,6 +156,11 @@ export function ReservationFormSheet({ open, onOpenChange }: Props) {
         </SheetHeader>
 
         <div className="space-y-4 py-4">
+          {prefill?.tableLabel && (
+            <div className="rounded-md border border-primary/30 bg-primary/5 px-3 py-2 text-sm">
+              Tafel <strong>{prefill.tableLabel}</strong> wordt toegewezen na bevestigen.
+            </div>
+          )}
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label>Datum</Label>
