@@ -90,6 +90,19 @@ export function LandingHeader() {
         </nav>
 
         <div className="flex items-center gap-2">
+          <Button
+            asChild
+            variant="ghost"
+            size="sm"
+            className={cn(
+              "hidden h-10 px-4 font-medium md:inline-flex",
+              scrolled
+                ? "text-foreground hover:bg-muted"
+                : "text-primary-foreground hover:bg-primary-foreground/10 hover:text-primary-foreground",
+            )}
+          >
+            <Link to="/auth">Inloggen</Link>
+          </Button>
           <Button asChild size="sm" className="h-10 px-4 font-medium">
             <a href="#contact">Gratis demo</a>
           </Button>
