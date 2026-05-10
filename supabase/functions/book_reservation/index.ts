@@ -315,6 +315,39 @@ Deno.serve(async (req) => {
       },
     });
 
+    // Gastvrij bevestigingsmail via TableWise (alleen wanneer aangezet + email aanwezig)
+    if (body.guest.email && restaurant.guest_email_enabled !== false && status !== "hold") {
+      try {
+        const dt = new Date(start_iso);
+        const dateLabel = dt.toLocaleDateString("nl-NL", {
+          weekday: "long", day: "numeric", month: "long",
+          timeZone: restaurant.timezone || "Europe/Amsterdam",
+        });
+        const timeLabel = dt.toLocaleTimeString("nl-NL", {
+          hour: "2-digit", minute: "2-digit",
+          timeZone: restaurant.timezone || "Europe/Amsterdam",
+        });
+        await supabase.functions.invoke("send-transactional-email", {
+          body: {
+            templateName: "reservation-confirmation",
+            recipientEmail: body.guest.email,
+            idempotencyKey: `reservation-confirmation-${reservation.id}`,
+            fromName: restaurant.name,
+            replyTo: restaurant.guest_reply_to_email || undefined,
+            templateData: {
+              restaurantName: restaurant.name,
+              guestName: body.guest.first_name || undefined,
+              dateLabel,
+              timeLabel,
+              partySize: body.party_size,
+            },
+          },
+        });
+      } catch (mailErr) {
+        console.error("guest confirmation email failed (non-fatal)", mailErr);
+      }
+    }
+
     return json({
       ok: true,
       reservation: {
