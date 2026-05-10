@@ -125,7 +125,7 @@ const FloorModePage = () => {
 
   // tick every 30s — keeps timers/late labels fresh without thrashing renders
   useEffect(() => {
-    const id = setInterval(() => setNow(new Date()), 30_000);
+    const id = setInterval(() => setClockNow(new Date()), 30_000);
     return () => clearInterval(id);
   }, []);
 
