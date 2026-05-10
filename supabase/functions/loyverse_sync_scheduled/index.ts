@@ -110,11 +110,7 @@ async function syncOne(admin: ReturnType<typeof createClient>, conn: Record<stri
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
-  if (!CLIENT_ID || !CLIENT_SECRET) {
-    return new Response(JSON.stringify({ error: "loyverse credentials missing" }), {
-      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
-  }
+  // OAuth credentials are optional now (only needed for legacy OAuth connections).
 
   const admin = createClient(SUPABASE_URL, SERVICE_KEY);
   const { data: conns, error } = await admin.from("pos_connections").select("*")
