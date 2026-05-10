@@ -65,6 +65,8 @@ Deno.serve(async (req) => {
   let templateData: Record<string, any> = {}
   let fromNameOverride: string | undefined
   let replyToOverride: string | undefined
+  let restaurantId: string | undefined
+  let requestedLocale: string | undefined
   try {
     const body = await req.json()
     templateName = body.templateName || body.template_name
@@ -80,6 +82,8 @@ Deno.serve(async (req) => {
     if (typeof body.replyTo === 'string' && body.replyTo.trim()) {
       replyToOverride = body.replyTo.trim()
     }
+    if (typeof body.restaurantId === 'string') restaurantId = body.restaurantId
+    if (typeof body.locale === 'string') requestedLocale = body.locale
   } catch {
     return new Response(
       JSON.stringify({ error: 'Invalid JSON in request body' }),
