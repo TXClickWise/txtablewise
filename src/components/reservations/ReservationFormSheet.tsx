@@ -24,12 +24,21 @@ type Preview = {
   error?: string;
 } | null;
 
+export type ReservationFormPrefill = {
+  date?: string;
+  time?: string;
+  partySize?: number;
+  tableId?: string;
+  tableLabel?: string;
+};
+
 type Props = {
   open: boolean;
   onOpenChange: (v: boolean) => void;
+  prefill?: ReservationFormPrefill;
 };
 
-export function ReservationFormSheet({ open, onOpenChange }: Props) {
+export function ReservationFormSheet({ open, onOpenChange, prefill }: Props) {
   const { current } = useRestaurant();
   const qc = useQueryClient();
   const [date, setDate] = useState(format(new Date(), "yyyy-MM-dd"));
@@ -43,6 +52,15 @@ export function ReservationFormSheet({ open, onOpenChange }: Props) {
   const [occasion, setOccasion] = useState("");
   const [preview, setPreview] = useState<Preview>(null);
   const [submitting, setSubmitting] = useState(false);
+
+  // Prefill toepassen wanneer sheet opent
+  useEffect(() => {
+    if (!open || !prefill) return;
+    if (prefill.date) setDate(prefill.date);
+    if (prefill.time) setTime(prefill.time);
+    if (prefill.partySize) setPartySize(prefill.partySize);
+    setPreview(null);
+  }, [open, prefill]);
 
   // Pull large-group thresholds so the operator sees a heads-up while booking.
   const { data: lgConfig } = useQuery({
