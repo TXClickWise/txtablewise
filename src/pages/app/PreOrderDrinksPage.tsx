@@ -18,7 +18,7 @@ import {
 import { toast } from "sonner";
 import {
   archiveItem, createItem, formatPrice, listItems, getReadyListForToday,
-  PRE_ORDER_CATEGORIES, seedStandardItems, updateItem,
+  PRE_ORDER_CATEGORIES, seedStandardItems, updateItem, setShowInWidget,
   type PreOrderItem, type ReadyListEntry,
 } from "@/services/preOrders";
 import { PreOrderStatusBadge } from "@/components/pre-orders/PreOrderStatusBadge";
