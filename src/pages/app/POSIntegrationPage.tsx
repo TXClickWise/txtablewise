@@ -164,6 +164,7 @@ const POSIntegrationPage = () => {
                     <div className="text-xs text-muted-foreground mt-2 space-y-0.5">
                       {loyverse.display_name && <div>Account: <strong>{loyverse.display_name}</strong></div>}
                       <div>Laatste sync: {loyverse.last_synced_at ? format(new Date(loyverse.last_synced_at), "d MMM HH:mm", { locale: nl }) : "—"}</div>
+                      <div>Producten gesynchroniseerd: <strong>{loyverseItemCount}</strong></div>
                       {loyverse.last_error && <div className="text-destructive">Fout: {loyverse.last_error}</div>}
                     </div>
                   )}
