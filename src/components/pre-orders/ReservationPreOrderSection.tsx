@@ -29,13 +29,55 @@ export function ReservationPreOrderSection({
   const [loading, setLoading] = useState(true);
   const [addOpen, setAddOpen] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [pushStatus, setPushStatus] = useState<{ pushed_at: string | null; status: string | null; receipt_id: string | null }>({ pushed_at: null, status: null, receipt_id: null });
+  const [pushing, setPushing] = useState(false);
+
+  const refreshPushStatus = async () => {
+    const { data } = await (supabase as unknown as { from: (t: string) => { select: (s: string) => { eq: (c: string, v: unknown) => { maybeSingle: () => Promise<{ data: { pos_preorder_pushed_at: string | null; pos_preorder_status: string | null; pos_preorder_receipt_id: string | null } | null }> } } } })
+      .from("reservations").select("pos_preorder_pushed_at,pos_preorder_status,pos_preorder_receipt_id").eq("id", reservationId).maybeSingle();
+    setPushStatus({
+      pushed_at: data?.pos_preorder_pushed_at ?? null,
+      status: data?.pos_preorder_status ?? null,
+      receipt_id: data?.pos_preorder_receipt_id ?? null,
+    });
+  };
 
   const refresh = async () => {
     setLoading(true);
-    try { setItems(await listForReservation(reservationId)); } finally { setLoading(false); }
+    try {
+      setItems(await listForReservation(reservationId));
+      await refreshPushStatus();
+    } finally { setLoading(false); }
   };
 
   useEffect(() => { refresh(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [reservationId]);
+
+  const handlePush = async () => {
+    setPushing(true);
+    try {
+      const r = await pushPreorderToLoyverse(reservationId);
+      if (r.ok) {
+        toast.success("Bon klaargezet in Loyverse", { description: r.receipt_id ? `Bonnr ${r.receipt_id}` : undefined });
+      } else if (r.skipped) {
+        const map: Record<string, string> = {
+          already_pushed: "Bon is al eerder gepusht.",
+          not_connected: "Loyverse is niet gekoppeld.",
+          push_disabled: "Automatisch pushen staat uit — schakel het in op de POS-pagina.",
+          no_preorders: "Geen pre-order items op deze reservering.",
+          no_loyverse_mapped_items: "Geen items zijn aan een Loyverse-product gekoppeld.",
+          status_blocks_push: "Reservering is geannuleerd of afgerond.",
+        };
+        toast.message("Niet gepusht", { description: map[r.skipped] ?? r.skipped });
+      } else {
+        toast.error("Pushen mislukt", { description: r.error });
+      }
+      await refreshPushStatus();
+    } catch (e) {
+      toast.error("Pushen mislukt", { description: (e as Error).message });
+    } finally {
+      setPushing(false);
+    }
+  };
 
   const setStatus = async (id: string, next: "confirmed" | "prepared" | "served") => {
     setBusyId(id);
