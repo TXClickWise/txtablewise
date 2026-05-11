@@ -32,12 +32,15 @@ type FormState = {
   is_active: boolean;
   requires_payment: boolean;
   sort_order: number;
+  show_in_widget: boolean;
 };
 
 const EMPTY: FormState = {
   name: "", description: "", category: "Aperitief", price_cents: "",
-  is_active: true, requires_payment: false, sort_order: 100,
+  is_active: true, requires_payment: false, sort_order: 100, show_in_widget: true,
 };
+
+type SourceFilter = "guest" | "loyverse" | "all";
 
 const PreOrderDrinksPage = () => {
   const { current } = useRestaurant();
