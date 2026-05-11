@@ -286,7 +286,7 @@ Deno.serve(async (req) => {
       const payload = {
         restaurant_id: restaurantId,
         provider: "loyverse",
-        status: "active",
+        status: "connected",
         display_name: displayName,
         external_account_id: externalAccountId || null,
         access_token_encrypted: token,
