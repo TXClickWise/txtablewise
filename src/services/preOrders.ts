@@ -20,6 +20,9 @@ export type PreOrderItem = {
   sort_order: number;
   metadata: Record<string, unknown>;
   deleted_at: string | null;
+  show_in_widget: boolean;
+  pos_provider: string | null;
+  external_product_id: string | null;
 };
 
 export type ReservationPreOrder = {
