@@ -355,7 +355,7 @@ Deno.serve(async (req) => {
 
     if (action === "disconnect") {
       await admin().from("pos_connections").update({
-        status: "revoked",
+        status: "disconnected",
         access_token_encrypted: null,
         refresh_token_encrypted: null,
         token_expires_at: null,
