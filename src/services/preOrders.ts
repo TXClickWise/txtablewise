@@ -145,7 +145,7 @@ export async function updateItem(restaurantId: string, id: string, patch: Partia
   if (patch.requires_payment !== undefined) updates.requires_payment = patch.requires_payment;
   if (patch.sort_order !== undefined) updates.sort_order = patch.sort_order;
   if (patch.show_in_widget !== undefined) updates.show_in_widget = patch.show_in_widget;
-  const { data, error } = await supabase.from("pre_order_items").update(updates).eq("id", id).select("*").single();
+  const { data, error } = await supabase.from("pre_order_items").update(updates as never).eq("id", id).select("*").single();
   if (error) throw error;
   await logAudit(restaurantId, "pre_order.item_updated", "pre_order_item", id, { before, after: data });
   await logEvent(restaurantId, "pre_order.item_updated", { item_id: id });
