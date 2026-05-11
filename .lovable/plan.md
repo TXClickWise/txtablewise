@@ -1,69 +1,103 @@
 ## Doel
 
-Loyverse-items mogen automatisch gesynct worden naar `pre_order_items` voor matching/rapportage, maar de gast in het reserveringswidget krijgt **alleen** een kleine, door jou gekozen selectie te zien. Plus duidelijkheid over wat er met demo-items gebeurt bij go-live.
+Pre-order drankjes van een gast automatisch als **open ticket** in Loyverse klaarzetten, **X minuten vóór aanvang** van de reservering. Personeel ziet de bon meteen op de POS staan zodra de gast arriveert en rekent af.
 
-## 1. Datamodel — `show_in_widget` kolom
+## Belangrijke eerlijkheid vooraf (Loyverse API-realiteit)
 
-Migratie:
+Loyverse's public Receipts API maakt **afgeronde** bonnen aan, niet expliciet "open tickets" zoals in de POS-app. Wat we wél betrouwbaar kunnen:
+
+- Een receipt POST met `payments: []` en `note` → in veel Loyverse-setups verschijnt dit als een onafgeronde bon op de gekoppelde tafel (`dining_option_id`). Dit werkt mits dining options aanstaan in Loyverse.
+- Alternatief plan B (als A onbetrouwbaar blijkt bij test): we maken een gedetailleerde "tafelnotitie" met de pre-order items, gekoppeld aan tafel + gastnaam, en het personeel scant items zelf in op de POS.
+
+Daarom bouwen we dit met een **feature flag** + grondige test in admin voordat we het bij echte gasten activeren.
+
+## 1. Datamodel — nieuwe velden
 
 ```sql
-ALTER TABLE public.pre_order_items
-  ADD COLUMN show_in_widget boolean NOT NULL DEFAULT false;
+-- per-restaurant configuratie
+ALTER TABLE public.clickwise_settings -- of beter: een aparte pos_push_settings
+-- gebruik bestaande pos_connections.config jsonb:
+-- config = { ..., push_preorders: { enabled: false, minutes_before: 30, dining_option_id: null } }
 
--- backfill: bestaande, handmatig aangemaakte items (geen POS-provider) blijven
--- zichtbaar voor de gast zodat de huidige widget-ervaring niet verandert
-UPDATE public.pre_order_items
-   SET show_in_widget = true
- WHERE pos_provider IS NULL
-   AND is_active = true
-   AND deleted_at IS NULL;
-
-CREATE INDEX IF NOT EXISTS pre_order_items_widget_idx
-  ON public.pre_order_items (restaurant_id, show_in_widget)
-  WHERE deleted_at IS NULL;
+-- per-reservering tracking
+ALTER TABLE public.reservations
+  ADD COLUMN pos_preorder_pushed_at timestamptz,
+  ADD COLUMN pos_preorder_receipt_id text,
+  ADD COLUMN pos_preorder_status text;  -- pending | pushed | failed | skipped
 ```
 
-Loyverse-sync raakt `show_in_widget` nooit aan → nieuwe Loyverse-items komen default **niet** in het widget.
+Geen nieuwe tabel; alles via bestaande `pos_connections.config` (jsonb) en `reservations.*` velden. Past bij POS-agnostisch datamodel.
 
-## 2. Widget-query
+## 2. Edge function `loyverse_push_preorder`
 
-`src/services/publicBooking.ts` → `getActivePreOrderItems()` krijgt extra filter `.eq("show_in_widget", true)`. Niets anders aan de gast-flow verandert.
+Eén function met twee modi:
 
-## 3. Operator UI — `PreOrderDrinksPage`
+- **`mode = "scheduled"`** (cron-aanroep, zonder auth): vindt alle reserveringen waarvan
+  - `start_time` ligt tussen `now()` en `now() + minutes_before`
+  - `pos_preorder_pushed_at IS NULL`
+  - status ∈ {confirmed, pending} (niet cancelled/no_show)
+  - heeft minimaal 1 `pre_orders` rij
+  - restaurant heeft Loyverse connected én `push_preorders.enabled = true`
+- **`mode = "manual"`** (vanuit UI, met auth + manager-check): één specifieke `reservation_id` direct pushen of opnieuw proberen.
 
-- Per item een tweede schakelaar **"Tonen in gast-widget"** naast "Actief", inclusief in het edit-dialog.
-- Een extra filter-tab bovenaan: **Gast-selectie** (default, `show_in_widget = true`) / **Uit Loyverse** (`pos_provider = 'loyverse'`) / **Alles**.
-- Op een Loyverse-rij een snelactie **"Toon in widget"** die in één klik `show_in_widget = true` zet.
-- Subtiele teller bovenaan: "X items zichtbaar voor gasten · Y uit Loyverse".
+Per reservering:
+1. Items ophalen uit `pre_orders` joined met `pre_order_items` (voor `external_product_id`).
+2. Loyverse-tafel bepalen: eerst proberen via tafel-mapping (later), anders default `dining_option_id` uit config.
+3. POST naar Loyverse `/receipts`:
+   ```json
+   {
+     "store_id": "<from connection>",
+     "dining_option_id": "<from config>",
+     "note": "Pre-order — <gastnaam> · <party_size>p · <tijd>",
+     "line_items": [
+       { "variant_id": "<external_product_id>", "quantity": 2, "price": 950 }
+     ],
+     "payments": []
+   }
+   ```
+4. Bij success: `pos_preorder_pushed_at = now()`, `pos_preorder_receipt_id = receipt.id`, `pos_preorder_status = 'pushed'`, audit-log + `integration_logs` regel.
+5. Bij failure: `pos_preorder_status = 'failed'`, foutboodschap in `integration_logs`, geen retry in dezelfde run (volgende cron-tick pakt het op tot een limiet).
 
-## 4. POS-pagina
+Annulering: als een reservering die al gepusht is wordt geannuleerd, wordt de bon **niet** automatisch verwijderd uit Loyverse — wel een waarschuwing in Floor Mode "Open bon in Loyverse — annuleer handmatig" (Loyverse DELETE /receipts/:id bestaat niet voor open receipts).
 
-Op `/app/integraties/pos` in de "Pre-order mapping"-tab een infoblok + link **"Beheer gast-selectie →"** naar `/app/instellingen/pre-orders` met de teller "X van Y Loyverse-items zichtbaar in widget". Maakt de relatie tussen sync en gast-selectie duidelijk.
+## 3. Cron-job
 
-## 5. Service / types
+Identiek patroon als `reminder_scheduler`: elke 5 minuten via `pg_cron` + `pg_net`, aangemaakt via `supabase--insert` (niet migratie, want bevat anon-key per project).
 
-- `src/services/preOrders.ts`: `show_in_widget: boolean` toevoegen aan `PreOrderItem` type, default `true` in `createItem` (handmatige items blijven zichtbaar), meenemen in `updateItem`. Helper `setShowInWidget(id, value)`.
-- `src/services/pos.ts`: in de Loyverse-card-teller `countLoyverseItems` uitbreiden met `visibleInWidget` count.
+## 4. UI — POS-pagina (`/app/integraties/pos`)
 
-## 6. Demo-items bij go-live — beleidskeuze
+Nieuwe sectie **"Pre-orders naar Loyverse pushen"**:
+- Toggle **Automatisch open ticket aanmaken** (off by default).
+- Slider/select **Minuten voor aanvang** (15 / 30 / 45 / 60), default 30.
+- Select **Dining option / tafelgroep in Loyverse** (handmatig in te vullen, met "Test verbinding" knop die dining_options ophaalt indien de API dat geeft).
+- Status-card: "Vandaag X bons gepusht, Y mislukt", link naar `integration_logs`.
 
-Aanvulling op de bestaande "Demo-data wissen"-flow. De huidige `purge_restaurant_operational_data` RPC raakt `pre_order_items` bewust niet aan; jouw 8 starter-drankjes blijven dus staan. Voorstel:
+## 5. UI — Reservering / Floor Mode
 
-- Géén automatische verwijdering bij go-live (de starter-set is bruikbaar als basis).
-- Wél een **aparte, expliciete knop** op de demo-reset card: **"Demo-drankjes ook archiveren"** (checkbox), die de 8 originele standaard-items (te herkennen aan `metadata.demo_seed = true`) op `is_active = false` zet. Dat is omkeerbaar en niet destructief.
-- Daarvoor markeren we in een tweede migratie alle nu-bestaande seed-items met `metadata = metadata || jsonb_build_object('demo_seed', true)` zodat we ze later veilig kunnen onderscheiden van items die jij zelf hebt aangemaakt.
+In `ReservationDetailDialog` en op tafel-tile bij een reservering met pre-orders:
+- Status-pill: **"Bon klaargezet in Loyverse"** ✓ / **"Bon staat gepland"** ⏱ / **"Pushen mislukt — opnieuw proberen"** ✕.
+- Manager-knop **"Nu naar Loyverse sturen"** (handmatige modus van de function).
+- Bij annulering van een al-gepushte reservering: rustige hospitality-copy "Vergeet niet de bon in Loyverse te annuleren" (geen valse claim dat we het automatisch doen).
 
-Als je dit te ver vindt gaan voor nu, kunnen we punt 6 ook overslaan en uitsluitend punt 1–5 doen.
+## 6. Verificatie
 
-## Verificatie
+1. Reservering aanmaken met 2 pre-order items, `start_time = now() + 25 min`, push-config 30 min, toggle aan.
+2. Cron-run → reservering gevonden → POST naar Loyverse → `pos_preorder_pushed_at` gevuld → bon zichtbaar op Loyverse POS.
+3. Reservering annuleren ná push → Floor Mode toont waarschuwing.
+4. Toggle uit → cron slaat over, `pos_preorder_status` blijft leeg.
+5. Loyverse-token kapot → `failed` met duidelijke melding in logs.
+6. Handmatige knop in dialog: één klik → status binnen 3 sec naar "Bon klaargezet".
 
-1. Migratie draait, bestaande 8 items hebben `show_in_widget = true`, Loyverse-items uit eerdere sync krijgen `show_in_widget = false` (alleen handmatige rijen zonder `pos_provider` worden ge-backfilled).
-2. Loyverse opnieuw syncen → nieuwe items komen binnen met `show_in_widget = false`.
-3. Public widget `/r/<slug>` toont nog steeds dezelfde 8 items.
-4. In `/app/instellingen/pre-orders` → tab "Uit Loyverse" laat alle gesynchroniseerde items zien; toggle "Tonen in widget" werkt; widget toont het item na refresh.
-5. POS-pagina toont teller "X van Y Loyverse-items zichtbaar".
+## 7. Beveiliging / kwaliteit
 
-## Niet in scope
+- Function valideert per restaurant: alleen pushen als connection `status = 'connected'` én `push_preorders.enabled = true`.
+- Manager-only in handmatige modus (JWT check).
+- `integration_logs` regel per poging, met `request_payload` (zonder token) en `response_payload`.
+- Rate-limit: max 1 push per reservering per 60 sec (idempotency via `pos_preorder_pushed_at` check vlak voor POST).
 
-- Drank/gerechten splitsen in twee aparte widget-secties.
-- Loyverse-categorieën als bulk-selectie ("alle items uit categorie X zichtbaar").
+## Niet in scope (later)
+
+- Automatisch annuleren / corrigeren van bon in Loyverse bij wijziging pre-order.
+- Tafel-mapping per zone (nu één default `dining_option_id`).
+- Andere POS-systemen — model is wel provider-agnostisch (`pos_preorder_*` velden), pusher-implementatie is Loyverse-specifiek.
+- Splits per gast / aparte bonnen per persoon.
