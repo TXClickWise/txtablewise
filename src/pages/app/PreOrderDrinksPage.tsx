@@ -1,7 +1,7 @@
 // Drankjes vooraf — beheer pagina (CRUD voor pre_order_items + overzicht reserveringen met pre-orders).
 import { useEffect, useMemo, useState } from "react";
 import { format } from "date-fns";
-import { Plus, Wine, Sparkles, Pencil, Archive, RefreshCw } from "lucide-react";
+import { Plus, Wine, Sparkles, Pencil, Archive, RefreshCw, Eye, EyeOff } from "lucide-react";
 import { useRestaurant } from "@/hooks/useRestaurant";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
