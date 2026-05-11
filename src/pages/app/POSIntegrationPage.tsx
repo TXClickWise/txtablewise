@@ -125,7 +125,7 @@ const POSIntegrationPage = () => {
 
       {/* Sectie 1 — POS-overzicht */}
       <section className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
-        <Card><CardContent className="p-4"><div className="text-xs text-muted-foreground">Verbonden POS</div><div className="font-display text-lg">{loyverse?.status === "active" ? "Loyverse" : "Niet gekoppeld"}</div><div className="text-[10px] text-muted-foreground">{loyverse?.status === "active" ? (loyverse.display_name ?? "Live") : "Demo-ready"}</div></CardContent></Card>
+        <Card><CardContent className="p-4"><div className="text-xs text-muted-foreground">Verbonden POS</div><div className="font-display text-lg">{loyverse?.status === "connected" ? "Loyverse" : "Niet gekoppeld"}</div><div className="text-[10px] text-muted-foreground">{loyverse?.status === "connected" ? (loyverse.display_name ?? "Live") : "Demo-ready"}</div></CardContent></Card>
         <Card><CardContent className="p-4"><div className="text-xs text-muted-foreground">Gematchte bonnen</div><div className="font-display text-2xl">{matched.length}</div></CardContent></Card>
         <Card><CardContent className="p-4"><div className="text-xs text-muted-foreground">Niet-gematchte bonnen</div><div className="font-display text-2xl">{unmatched.length}</div></CardContent></Card>
         <Card><CardContent className="p-4"><div className="text-xs text-muted-foreground">Omzet vandaag (demo)</div><div className="font-display text-2xl">{revenue ? formatEuro(revenue.todayCents) : "—"}</div></CardContent></Card>
@@ -153,14 +153,14 @@ const POSIntegrationPage = () => {
                   <CardTitle className="text-base flex items-center gap-2">
                     Loyverse POS
                     <Badge variant="secondary" className="text-xs"><Sparkles className="mr-1 h-3 w-3" /> Aanbevolen starter-POS</Badge>
-                    {loyverse?.status === "active" && <Badge variant="default" className="text-xs">Gekoppeld</Badge>}
+                    {loyverse?.status === "connected" && <Badge variant="default" className="text-xs">Gekoppeld</Badge>}
                     {loyverse?.status === "pending" && <Badge variant="outline" className="text-xs">In afwachting</Badge>}
                   </CardTitle>
                   <CardDescription className="mt-1 max-w-2xl">
                     Loyverse heeft een gratis POS-basis die nuttig kan zijn voor kleine horeca. Koppel je Loyverse-account
                     om bonnen automatisch te importeren en te matchen aan reserveringen.
                   </CardDescription>
-                  {loyverse?.status === "active" && (
+                  {loyverse?.status === "connected" && (
                     <div className="text-xs text-muted-foreground mt-2 space-y-0.5">
                       {loyverse.display_name && <div>Account: <strong>{loyverse.display_name}</strong></div>}
                       <div>Laatste sync: {loyverse.last_synced_at ? format(new Date(loyverse.last_synced_at), "d MMM HH:mm", { locale: nl }) : "—"}</div>
@@ -169,7 +169,7 @@ const POSIntegrationPage = () => {
                     </div>
                   )}
                 </div>
-                <Badge variant="outline">{loyverse?.status === "active" ? "Live" : "Demo-ready"}</Badge>
+                <Badge variant="outline">{loyverse?.status === "connected" ? "Live" : "Demo-ready"}</Badge>
               </div>
             </CardHeader>
             <CardContent className="flex flex-wrap gap-2">
