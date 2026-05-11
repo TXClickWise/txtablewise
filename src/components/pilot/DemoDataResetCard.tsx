@@ -136,6 +136,20 @@ export const DemoDataResetCard = () => {
                   placeholder="VERWIJDEREN"
                   autoFocus
                 />
+                <label className="flex items-start gap-2 pt-3 cursor-pointer text-sm">
+                  <Checkbox
+                    checked={archiveDemoDrinks}
+                    onCheckedChange={(v) => setArchiveDemoDrinks(!!v)}
+                    className="mt-0.5"
+                  />
+                  <span>
+                    <span className="font-medium">Demo-drankjes ook archiveren</span>
+                    <span className="block text-muted-foreground text-xs mt-0.5">
+                      Zet de 8 standaard starter-drankjes (Prosecco, Borrelplank, etc.) op inactief.
+                      Omkeerbaar — je kunt ze later weer activeren in Pre-orders.
+                    </span>
+                  </span>
+                </label>
               </div>
               <DialogFooter>
                 <Button variant="outline" onClick={reset} disabled={busy}>Annuleren</Button>
