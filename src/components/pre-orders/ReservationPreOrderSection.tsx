@@ -99,14 +99,32 @@ export function ReservationPreOrderSection({
 
   return (
     <div className="rounded-lg border bg-card p-3 space-y-3">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-2">
         <div className="flex items-center gap-2">
           <Beer className="h-4 w-4 text-primary" />
           <span className="text-sm font-medium">Drankjes & extra's</span>
+          {pushStatus.status === "pushed" && (
+            <Badge variant="outline" className="gap-1 text-[10px] bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/30">
+              <CheckCircle2 className="h-3 w-3" /> Bon klaargezet in Loyverse
+            </Badge>
+          )}
+          {pushStatus.status === "failed" && (
+            <Badge variant="outline" className="gap-1 text-[10px] bg-destructive/10 text-destructive border-destructive/30">
+              <AlertCircle className="h-3 w-3" /> Loyverse-push mislukt
+            </Badge>
+          )}
         </div>
-        <Button size="sm" variant="outline" className="h-8" onClick={() => setAddOpen(true)}>
-          <Plus className="h-3.5 w-3.5 mr-1" /> Toevoegen
-        </Button>
+        <div className="flex items-center gap-2">
+          {items.length > 0 && pushStatus.status !== "pushed" && (
+            <Button size="sm" variant="outline" className="h-8" disabled={pushing} onClick={handlePush}>
+              {pushing ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : <Send className="h-3.5 w-3.5 mr-1" />}
+              Nu naar Loyverse
+            </Button>
+          )}
+          <Button size="sm" variant="outline" className="h-8" onClick={() => setAddOpen(true)}>
+            <Plus className="h-3.5 w-3.5 mr-1" /> Toevoegen
+          </Button>
+        </div>
       </div>
 
       {loading ? (
