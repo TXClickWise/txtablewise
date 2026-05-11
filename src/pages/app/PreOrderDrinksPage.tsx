@@ -55,6 +55,7 @@ const PreOrderDrinksPage = () => {
   const [busy, setBusy] = useState(false);
   const [filterActive, setFilterActive] = useState<"all" | "active" | "inactive">("active");
   const [filterCategory, setFilterCategory] = useState<string>("all");
+  const [filterSource, setFilterSource] = useState<SourceFilter>("guest");
 
   const refresh = async () => {
     if (!restaurantId) return;
@@ -71,12 +72,19 @@ const PreOrderDrinksPage = () => {
 
   useEffect(() => { refresh(); /* eslint-disable-next-line */ }, [restaurantId]);
 
+  const counts = useMemo(() => ({
+    widget: items.filter((i) => i.show_in_widget && i.is_active && !i.deleted_at).length,
+    loyverse: items.filter((i) => i.pos_provider === "loyverse").length,
+  }), [items]);
+
   const filtered = useMemo(() => items.filter((i) => {
     if (filterActive === "active" && !i.is_active) return false;
     if (filterActive === "inactive" && i.is_active) return false;
     if (filterCategory !== "all" && i.category !== filterCategory) return false;
+    if (filterSource === "guest" && !i.show_in_widget) return false;
+    if (filterSource === "loyverse" && i.pos_provider !== "loyverse") return false;
     return true;
-  }), [items, filterActive, filterCategory]);
+  }), [items, filterActive, filterCategory, filterSource]);
 
   const openNew = () => {
     setEditing(null); setForm(EMPTY); setOpenForm(true);
@@ -91,8 +99,20 @@ const PreOrderDrinksPage = () => {
       is_active: it.is_active,
       requires_payment: it.requires_payment,
       sort_order: it.sort_order,
+      show_in_widget: it.show_in_widget,
     });
     setOpenForm(true);
+  };
+
+  const toggleWidget = async (it: PreOrderItem) => {
+    if (!restaurantId) return;
+    try {
+      await setShowInWidget(restaurantId, it.id, !it.show_in_widget);
+      setItems((prev) => prev.map((p) => p.id === it.id ? { ...p, show_in_widget: !it.show_in_widget } : p));
+      toast.success(it.show_in_widget ? "Item verborgen voor gasten." : "Item zichtbaar in gast-widget.");
+    } catch {
+      toast.error("Kon zichtbaarheid niet aanpassen.");
+    }
   };
 
   const save = async () => {
