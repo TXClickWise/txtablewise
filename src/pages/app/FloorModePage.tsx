@@ -28,6 +28,7 @@ import { AIQuickSeatSheet } from "@/components/floor-plan/AIQuickSeatSheet";
 import { LastMinuteFillPanel } from "@/components/waitlist/LastMinuteFillPanel";
 import { PreOrderReadyList } from "@/components/pre-orders/PreOrderReadyList";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import { useIsCompact } from "@/hooks/use-breakpoint";
 
 type Zone = { id: string; name: string };
 type Table = {
@@ -120,6 +121,7 @@ const FloorModePage = () => {
   const [walkInOpen, setWalkInOpen] = useState(false);
   const [quickSeatOpen, setQuickSeatOpen] = useState(false);
   const [prefilledTable, setPrefilledTable] = useState<{ id: string; label: string } | undefined>();
+  const isCompact = useIsCompact();
 
   // tick every 30s — keeps timers/late labels fresh without thrashing renders
   useEffect(() => {
@@ -571,7 +573,7 @@ const FloorModePage = () => {
       </div>
 
       {/* Bottom sheet detail (tablet portrait + mobile) */}
-      <Sheet open={!!selectedTableId} onOpenChange={(o) => !o && setSelectedTableId(null)}>
+      <Sheet open={isCompact && !!selectedTableId} onOpenChange={(o) => !o && setSelectedTableId(null)}>
         <SheetContent side="bottom" className="rounded-t-2xl max-h-[85vh] xl:hidden">
           <SheetHeader className="text-left">
             <SheetTitle className="font-display text-2xl">
