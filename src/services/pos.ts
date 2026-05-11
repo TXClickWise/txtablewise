@@ -383,9 +383,24 @@ export async function getLoyverseStatus(restaurantId: string): Promise<LoyverseC
   return (r.connection as LoyverseConnectionStatus) ?? null;
 }
 
-export async function syncLoyverseNow(restaurantId: string): Promise<{ imported: number; skipped: number }> {
+export async function syncLoyverseNow(restaurantId: string): Promise<{ imported_items: number; imported_receipts: number; skipped: number }> {
   const r = await invokeLoyverse("sync_now", { restaurant_id: restaurantId });
-  return { imported: (r.imported as number) ?? 0, skipped: (r.skipped as number) ?? 0 };
+  return {
+    imported_items: (r.imported_items as number) ?? 0,
+    imported_receipts: (r.imported_receipts as number) ?? 0,
+    skipped: (r.skipped as number) ?? 0,
+  };
+}
+
+export async function countLoyverseItems(restaurantId: string): Promise<number> {
+  const { count } = await (supabase as unknown as {
+    from: (t: string) => { select: (s: string, opts: { count: string; head: boolean }) => { eq: (c: string, v: unknown) => { eq: (c: string, v: unknown) => { eq: (c: string, v: unknown) => Promise<{ count: number | null }> } } } };
+  }).from("pre_order_items")
+    .select("id", { count: "exact", head: true })
+    .eq("restaurant_id", restaurantId)
+    .eq("pos_provider", "loyverse")
+    .eq("is_active", true);
+  return count ?? 0;
 }
 
 export async function disconnectLoyverse(restaurantId: string): Promise<void> {
