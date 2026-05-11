@@ -128,6 +128,7 @@ const PreOrderDrinksPage = () => {
         is_active: form.is_active,
         requires_payment: form.requires_payment,
         sort_order: form.sort_order,
+        show_in_widget: form.show_in_widget,
       };
       if (editing) await updateItem(restaurantId, editing.id, payload);
       else await createItem(restaurantId, payload);
