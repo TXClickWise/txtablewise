@@ -18,6 +18,7 @@ export const DemoDataResetCard = () => {
   const qc = useQueryClient();
   const [step, setStep] = useState<0 | 1 | 2>(0);
   const [confirmText, setConfirmText] = useState("");
+  const [archiveDemoDrinks, setArchiveDemoDrinks] = useState(false);
   const [busy, setBusy] = useState(false);
 
   // Owner-only
@@ -26,6 +27,7 @@ export const DemoDataResetCard = () => {
   const reset = () => {
     setStep(0);
     setConfirmText("");
+    setArchiveDemoDrinks(false);
   };
 
   const handlePurge = async () => {
@@ -38,8 +40,25 @@ export const DemoDataResetCard = () => {
       );
       if (error) throw error;
       const counts = (data ?? {}) as Record<string, number>;
+
+      let archivedItems = 0;
+      if (archiveDemoDrinks) {
+        const { data: archived, error: archErr } = await supabase
+          .from("pre_order_items")
+          .update({ is_active: false })
+          .eq("restaurant_id", current.restaurant_id)
+          .filter("metadata->>demo_seed", "eq", "true")
+          .eq("is_active", true)
+          .select("id");
+        if (archErr) {
+          toast.error("Demo-drankjes archiveren mislukt", { description: archErr.message });
+        } else {
+          archivedItems = archived?.length ?? 0;
+        }
+      }
+
       toast.success("Demodata verwijderd", {
-        description: `${counts.reservations ?? 0} reserveringen en ${counts.guests ?? 0} gasten verwijderd. Tafels en instellingen behouden.`,
+        description: `${counts.reservations ?? 0} reserveringen en ${counts.guests ?? 0} gasten verwijderd${archiveDemoDrinks ? `, ${archivedItems} demo-drankjes gearchiveerd` : ""}. Tafels en instellingen behouden.`,
       });
       qc.invalidateQueries();
       reset();
