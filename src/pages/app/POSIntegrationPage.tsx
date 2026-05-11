@@ -173,7 +173,7 @@ const POSIntegrationPage = () => {
               </div>
             </CardHeader>
             <CardContent className="flex flex-wrap gap-2">
-              {loyverse?.status !== "active" ? (
+              {loyverse?.status !== "connected" ? (
                 <Button size="sm" onClick={() => setTokenDialogOpen(true)} disabled={loyverseBusy === "connect"}>
                   <LinkIcon className="mr-2 h-4 w-4" />
                   Koppel met Loyverse
