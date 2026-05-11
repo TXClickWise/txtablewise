@@ -370,12 +370,24 @@ async function invokeLoyverse(action: string, body?: Record<string, unknown>) {
   return data as Record<string, unknown>;
 }
 
+export type LoyverseConnectResult = {
+  connection: LoyverseConnectionStatus;
+  imported_items: number;
+  imported_receipts: number;
+  sync_error: string | null;
+};
+
 export async function connectLoyverseWithToken(
   restaurantId: string,
   accessToken: string,
-): Promise<LoyverseConnectionStatus> {
+): Promise<LoyverseConnectResult> {
   const r = await invokeLoyverse("connect", { restaurant_id: restaurantId, access_token: accessToken });
-  return (r.connection as LoyverseConnectionStatus) ?? null;
+  return {
+    connection: (r.connection as LoyverseConnectionStatus) ?? null,
+    imported_items: (r.imported_items as number) ?? 0,
+    imported_receipts: (r.imported_receipts as number) ?? 0,
+    sync_error: (r.sync_error as string | null) ?? null,
+  };
 }
 
 export async function getLoyverseStatus(restaurantId: string): Promise<LoyverseConnectionStatus> {
