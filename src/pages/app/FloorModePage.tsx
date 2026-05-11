@@ -121,6 +121,7 @@ const FloorModePage = () => {
   const [walkInOpen, setWalkInOpen] = useState(false);
   const [quickSeatOpen, setQuickSeatOpen] = useState(false);
   const [prefilledTable, setPrefilledTable] = useState<{ id: string; label: string } | undefined>();
+  const isCompact = useIsCompact();
 
   // tick every 30s — keeps timers/late labels fresh without thrashing renders
   useEffect(() => {
