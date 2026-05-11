@@ -1374,6 +1374,9 @@ export type Database = {
           party_size: number
           payment_status: string | null
           pos_order_id: string | null
+          pos_preorder_pushed_at: string | null
+          pos_preorder_receipt_id: string | null
+          pos_preorder_status: string | null
           pos_provider: string | null
           pos_receipt_id: string | null
           receipt_total: number | null
@@ -1428,6 +1431,9 @@ export type Database = {
           party_size: number
           payment_status?: string | null
           pos_order_id?: string | null
+          pos_preorder_pushed_at?: string | null
+          pos_preorder_receipt_id?: string | null
+          pos_preorder_status?: string | null
           pos_provider?: string | null
           pos_receipt_id?: string | null
           receipt_total?: number | null
@@ -1482,6 +1488,9 @@ export type Database = {
           party_size?: number
           payment_status?: string | null
           pos_order_id?: string | null
+          pos_preorder_pushed_at?: string | null
+          pos_preorder_receipt_id?: string | null
+          pos_preorder_status?: string | null
           pos_provider?: string | null
           pos_receipt_id?: string | null
           receipt_total?: number | null

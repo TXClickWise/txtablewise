@@ -21,6 +21,7 @@ import {
   type POSReceipt, type RevenuePreview,
 } from "@/services/pos";
 import { POSReceiptForm } from "@/components/pos/POSReceiptForm";
+import { PreorderPushConfigCard } from "@/components/pos/PreorderPushConfigCard";
 
 function StatusBadge({ status }: { status: string }) {
   const map: Record<string, { v: "default" | "secondary" | "outline" | "destructive"; label: string }> = {
@@ -267,13 +268,14 @@ const POSIntegrationPage = () => {
 
         {/* Pre-order POS mapping */}
         <TabsContent value="preorder" className="space-y-3">
+          <PreorderPushConfigCard restaurantId={restaurantId} loyverse={loyverse} />
           <Card>
             <CardHeader><CardTitle className="text-base">Pre-order ↔ POS mapping</CardTitle>
-              <CardDescription>Pre-orders kunnen later aan POS-producten worden gekoppeld. Voor MVP blijven ze operationele hospitality-notities.</CardDescription>
+              <CardDescription>Loyverse-items in TableWise zijn gekoppeld via <code className="font-mono">external_product_id</code>. Items zonder Loyverse-koppeling worden in de bon-notitie meegegeven, zodat personeel ze handmatig kan toevoegen.</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="rounded border p-3 text-sm text-muted-foreground">
-                Mapping wordt actief zodra er een POS-koppeling is. Velden voorbereid: <code className="font-mono">pos_provider</code>, <code className="font-mono">external_product_id</code>.
+                Beheer welke items zichtbaar zijn voor de gast in <code className="font-mono">/app/instellingen/pre-orders</code>. Items met <code className="font-mono">pos_provider = loyverse</code> kunnen automatisch op de bon worden gezet.
               </div>
             </CardContent>
           </Card>

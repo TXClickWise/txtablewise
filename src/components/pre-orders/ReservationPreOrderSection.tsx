@@ -1,12 +1,15 @@
 // Sectie binnen reserveringsdetail: alle drankjes & extra's voor deze reservering.
 import { useEffect, useState } from "react";
-import { Plus, Beer, Trash2 } from "lucide-react";
+import { Plus, Beer, Trash2, Send, CheckCircle2, AlertCircle, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 import {
   changeStatus, listForReservation, cancelPreOrder, formatPrice,
   getHospitalitySuggestions, type ReservationPreOrder,
 } from "@/services/preOrders";
+import { pushPreorderToLoyverse } from "@/services/pos";
 import { PreOrderStatusBadge } from "./PreOrderStatusBadge";
 import { AddPreOrderSheet } from "./AddPreOrderSheet";
 
@@ -26,13 +29,55 @@ export function ReservationPreOrderSection({
   const [loading, setLoading] = useState(true);
   const [addOpen, setAddOpen] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [pushStatus, setPushStatus] = useState<{ pushed_at: string | null; status: string | null; receipt_id: string | null }>({ pushed_at: null, status: null, receipt_id: null });
+  const [pushing, setPushing] = useState(false);
+
+  const refreshPushStatus = async () => {
+    const { data } = await (supabase as unknown as { from: (t: string) => { select: (s: string) => { eq: (c: string, v: unknown) => { maybeSingle: () => Promise<{ data: { pos_preorder_pushed_at: string | null; pos_preorder_status: string | null; pos_preorder_receipt_id: string | null } | null }> } } } })
+      .from("reservations").select("pos_preorder_pushed_at,pos_preorder_status,pos_preorder_receipt_id").eq("id", reservationId).maybeSingle();
+    setPushStatus({
+      pushed_at: data?.pos_preorder_pushed_at ?? null,
+      status: data?.pos_preorder_status ?? null,
+      receipt_id: data?.pos_preorder_receipt_id ?? null,
+    });
+  };
 
   const refresh = async () => {
     setLoading(true);
-    try { setItems(await listForReservation(reservationId)); } finally { setLoading(false); }
+    try {
+      setItems(await listForReservation(reservationId));
+      await refreshPushStatus();
+    } finally { setLoading(false); }
   };
 
   useEffect(() => { refresh(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [reservationId]);
+
+  const handlePush = async () => {
+    setPushing(true);
+    try {
+      const r = await pushPreorderToLoyverse(reservationId);
+      if (r.ok) {
+        toast.success("Bon klaargezet in Loyverse", { description: r.receipt_id ? `Bonnr ${r.receipt_id}` : undefined });
+      } else if (r.skipped) {
+        const map: Record<string, string> = {
+          already_pushed: "Bon is al eerder gepusht.",
+          not_connected: "Loyverse is niet gekoppeld.",
+          push_disabled: "Automatisch pushen staat uit — schakel het in op de POS-pagina.",
+          no_preorders: "Geen pre-order items op deze reservering.",
+          no_loyverse_mapped_items: "Geen items zijn aan een Loyverse-product gekoppeld.",
+          status_blocks_push: "Reservering is geannuleerd of afgerond.",
+        };
+        toast.message("Niet gepusht", { description: map[r.skipped] ?? r.skipped });
+      } else {
+        toast.error("Pushen mislukt", { description: r.error });
+      }
+      await refreshPushStatus();
+    } catch (e) {
+      toast.error("Pushen mislukt", { description: (e as Error).message });
+    } finally {
+      setPushing(false);
+    }
+  };
 
   const setStatus = async (id: string, next: "confirmed" | "prepared" | "served") => {
     setBusyId(id);
@@ -54,14 +99,32 @@ export function ReservationPreOrderSection({
 
   return (
     <div className="rounded-lg border bg-card p-3 space-y-3">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-2">
         <div className="flex items-center gap-2">
           <Beer className="h-4 w-4 text-primary" />
           <span className="text-sm font-medium">Drankjes & extra's</span>
+          {pushStatus.status === "pushed" && (
+            <Badge variant="outline" className="gap-1 text-[10px] bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/30">
+              <CheckCircle2 className="h-3 w-3" /> Bon klaargezet in Loyverse
+            </Badge>
+          )}
+          {pushStatus.status === "failed" && (
+            <Badge variant="outline" className="gap-1 text-[10px] bg-destructive/10 text-destructive border-destructive/30">
+              <AlertCircle className="h-3 w-3" /> Loyverse-push mislukt
+            </Badge>
+          )}
         </div>
-        <Button size="sm" variant="outline" className="h-8" onClick={() => setAddOpen(true)}>
-          <Plus className="h-3.5 w-3.5 mr-1" /> Toevoegen
-        </Button>
+        <div className="flex items-center gap-2">
+          {items.length > 0 && pushStatus.status !== "pushed" && (
+            <Button size="sm" variant="outline" className="h-8" disabled={pushing} onClick={handlePush}>
+              {pushing ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : <Send className="h-3.5 w-3.5 mr-1" />}
+              Nu naar Loyverse
+            </Button>
+          )}
+          <Button size="sm" variant="outline" className="h-8" onClick={() => setAddOpen(true)}>
+            <Plus className="h-3.5 w-3.5 mr-1" /> Toevoegen
+          </Button>
+        </div>
       </div>
 
       {loading ? (
