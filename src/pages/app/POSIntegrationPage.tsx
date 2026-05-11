@@ -67,8 +67,12 @@ const POSIntegrationPage = () => {
     }
     setLoyverseBusy("connect");
     try {
-      await connectLoyverseWithToken(restaurantId, token);
-      toast.success("Loyverse gekoppeld");
+      const result = await connectLoyverseWithToken(restaurantId, token);
+      const items = result?.imported_items ?? 0;
+      const receipts = result?.imported_receipts ?? 0;
+      toast.success("Loyverse gekoppeld", {
+        description: `${items} producten en ${receipts} bonnen geïmporteerd${result?.sync_error ? " (met waarschuwing)" : ""}.`,
+      });
       setTokenDialogOpen(false);
       setTokenInput("");
       setReload((x) => x + 1);
@@ -83,7 +87,9 @@ const POSIntegrationPage = () => {
     setLoyverseBusy("sync");
     try {
       const r = await syncLoyverseNow(restaurantId);
-      toast.success("Synchronisatie klaar", { description: `${r.imported} nieuw, ${r.skipped} overgeslagen` });
+      toast.success("Synchronisatie klaar", {
+        description: `${r.imported_items} producten, ${r.imported_receipts} nieuwe bonnen (${r.skipped} overgeslagen)`,
+      });
       setReload((x) => x + 1);
     } catch (e) {
       toast.error("Sync mislukt", { description: (e as Error).message });
