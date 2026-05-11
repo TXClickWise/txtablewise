@@ -369,7 +369,7 @@ Deno.serve(async (req) => {
     if (action === "sync_now" || action === "sync_items") {
       const { data: conn } = await admin().from("pos_connections").select("*")
         .eq("restaurant_id", restaurantId).eq("provider", "loyverse")
-        .eq("status", "active").maybeSingle();
+        .eq("status", "connected").maybeSingle();
       if (!conn) {
         return new Response(JSON.stringify({ error: "not_connected" }), {
           status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
