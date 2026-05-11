@@ -21,6 +21,7 @@ import {
   type POSReceipt, type RevenuePreview,
 } from "@/services/pos";
 import { POSReceiptForm } from "@/components/pos/POSReceiptForm";
+import { PreorderPushConfigCard } from "@/components/pos/PreorderPushConfigCard";
 
 function StatusBadge({ status }: { status: string }) {
   const map: Record<string, { v: "default" | "secondary" | "outline" | "destructive"; label: string }> = {
