@@ -43,6 +43,7 @@ const POSIntegrationPage = () => {
   const [reload, setReload] = useState(0);
   const [loyverse, setLoyverse] = useState<LoyverseConnectionStatus>(null);
   const [loyverseBusy, setLoyverseBusy] = useState<null | "connect" | "sync" | "disconnect">(null);
+  const [loyverseItemCount, setLoyverseItemCount] = useState<number>(0);
   const [tokenDialogOpen, setTokenDialogOpen] = useState(false);
   const [tokenInput, setTokenInput] = useState("");
   const [showToken, setShowToken] = useState(false);
@@ -54,6 +55,7 @@ const POSIntegrationPage = () => {
     getRevenuePreview(restaurantId).then(setRevenue);
     listPOSEvents(restaurantId).then((e) => setEvents(e));
     getLoyverseStatus(restaurantId).then(setLoyverse).catch(() => setLoyverse(null));
+    countLoyverseItems(restaurantId).then(setLoyverseItemCount).catch(() => setLoyverseItemCount(0));
   }, [restaurantId, reload]);
 
   async function handleLoyverseConnect() {
