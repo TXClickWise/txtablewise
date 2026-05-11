@@ -1,6 +1,5 @@
 // Loyverse Personal Access Token connect/sync function.
-// Replaces the OAuth flow with a simpler "paste your token" model.
-// Actions: connect, status, disconnect, sync_now
+// Actions: connect, status, disconnect, sync_now, sync_items
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { corsHeaders } from "../_shared/cors.ts";
 
@@ -34,14 +33,15 @@ async function isManager(restaurantId: string, userId: string): Promise<boolean>
 }
 
 async function logEvent(restaurantId: string, eventType: string, payload: Record<string, unknown>) {
-  await admin().from("integration_events").insert({
+  const { error } = await admin().from("integration_events").insert({
     restaurant_id: restaurantId,
     event_type: eventType,
     target: "pos",
     payload,
-    status: "processed",
+    status: "sent",
     processed_at: new Date().toISOString(),
   });
+  if (error) console.error("logEvent failed", eventType, error.message);
 }
 
 async function loyverseFetch(token: string, path: string, query: Record<string, string> = {}) {
@@ -71,13 +71,104 @@ function statusView(conn: Record<string, unknown> | null) {
   };
 }
 
-async function syncReceipts(restaurantId: string, conn: Record<string, unknown>): Promise<{ imported: number; skipped: number }> {
+async function syncItems(restaurantId: string, conn: Record<string, unknown>): Promise<{ imported: number; updated: number; deactivated: number }> {
+  const token = conn.access_token_encrypted as string | null;
+  if (!token) throw new Error("no access token");
+
+  // Build category map for friendlier labels
+  const categoryMap = new Map<string, string>();
+  try {
+    const cats = await loyverseFetch(token, "/categories", { limit: "250" }) as { categories?: Array<{ id: string; name: string }> };
+    for (const c of (cats.categories ?? [])) categoryMap.set(c.id, c.name);
+  } catch (_) { /* non-fatal */ }
+
+  // Paginate items
+  const seenIds = new Set<string>();
+  let cursor: string | undefined;
+  let imported = 0;
+  let updated = 0;
+
+  for (let page = 0; page < 20; page++) {
+    const params: Record<string, string> = { limit: "250" };
+    if (cursor) params.cursor = cursor;
+    const data = await loyverseFetch(token, "/items", params) as { items?: Array<Record<string, unknown>>; cursor?: string };
+    const items = data.items ?? [];
+    if (items.length === 0) break;
+
+    for (const it of items) {
+      const extId = String(it.id ?? "");
+      if (!extId) continue;
+      seenIds.add(extId);
+
+      const variants = (it.variants as Array<Record<string, unknown>>) ?? [];
+      const firstVariant = variants[0] ?? {};
+      const price = Number(firstVariant.default_price ?? 0);
+      const priceCents = Math.round(price * 100);
+      const categoryId = it.category_id as string | undefined;
+      const category = (categoryId && categoryMap.get(categoryId)) || null;
+
+      const { data: existing } = await admin().from("pre_order_items").select("id")
+        .eq("restaurant_id", restaurantId)
+        .eq("pos_provider", "loyverse")
+        .eq("external_product_id", extId)
+        .maybeSingle();
+
+      const row = {
+        restaurant_id: restaurantId,
+        name: String(it.item_name ?? it.name ?? "Naamloos item"),
+        description: (it.description as string) ?? null,
+        category,
+        price_cents: priceCents > 0 ? priceCents : null,
+        external_product_id: extId,
+        pos_provider: "loyverse",
+        is_active: true,
+        deleted_at: null,
+        metadata: {
+          loyverse_item_id: extId,
+          loyverse_variant_id: firstVariant.variant_id ?? null,
+          reference_id: it.reference_id ?? null,
+        },
+      };
+
+      if (existing) {
+        const { error } = await admin().from("pre_order_items").update(row).eq("id", (existing as { id: string }).id);
+        if (error) { console.error("item update failed", extId, error.message); continue; }
+        updated++;
+      } else {
+        const { error } = await admin().from("pre_order_items").insert(row);
+        if (error) { console.error("item insert failed", extId, error.message); continue; }
+        imported++;
+      }
+    }
+
+    cursor = data.cursor;
+    if (!cursor) break;
+  }
+
+  // Soft-deactivate items no longer in Loyverse (only those previously synced from loyverse)
+  let deactivated = 0;
+  if (seenIds.size > 0) {
+    const { data: stale } = await admin().from("pre_order_items").select("id, external_product_id")
+      .eq("restaurant_id", restaurantId)
+      .eq("pos_provider", "loyverse")
+      .eq("is_active", true);
+    const toDeactivate = (stale ?? []).filter((r: { external_product_id: string }) => !seenIds.has(r.external_product_id));
+    for (const r of toDeactivate) {
+      await admin().from("pre_order_items").update({ is_active: false }).eq("id", (r as { id: string }).id);
+      deactivated++;
+    }
+  }
+
+  return { imported, updated, deactivated };
+}
+
+async function syncReceipts(restaurantId: string, conn: Record<string, unknown>, windowDays = 30): Promise<{ imported: number; skipped: number }> {
   const token = conn.access_token_encrypted as string | null;
   if (!token) throw new Error("no access token");
 
   const since = conn.last_synced_at
     ? new Date(conn.last_synced_at as string).toISOString()
-    : new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+    : new Date(Date.now() - windowDays * 24 * 60 * 60 * 1000).toISOString();
 
   const data = await loyverseFetch(token, "/receipts", { created_at_min: since, limit: "100" }) as { receipts?: Array<Record<string, unknown>> };
   const receipts = data.receipts ?? [];
@@ -94,7 +185,7 @@ async function syncReceipts(restaurantId: string, conn: Record<string, unknown>)
 
     const totalCents = Math.round(Number(rec.total_money ?? 0) * 100);
     const taxCents = Math.round(Number(rec.total_tax ?? 0) * 100);
-    await admin().from("pos_orders").insert({
+    const { error } = await admin().from("pos_orders").insert({
       restaurant_id: restaurantId,
       pos_connection_id: conn.id,
       provider: "loyverse",
@@ -114,12 +205,12 @@ async function syncReceipts(restaurantId: string, conn: Record<string, unknown>)
       metadata: { store_id: rec.store_id, receipt_number: rec.receipt_number },
       raw_payload: rec,
     });
+    if (error) { console.error("receipt insert failed", externalId, error.message); skipped++; continue; }
     imported++;
   }
 
   await admin().from("pos_connections").update({
     last_synced_at: new Date().toISOString(),
-    status: "active",
     last_error: null,
   }).eq("id", conn.id as string);
 
@@ -151,7 +242,6 @@ Deno.serve(async (req) => {
       });
     }
 
-    // ── status ──────────────────────────────────────────────
     if (action === "status") {
       const { data } = await admin().from("pos_connections").select("*")
         .eq("restaurant_id", restaurantId).eq("provider", "loyverse")
@@ -161,7 +251,6 @@ Deno.serve(async (req) => {
       });
     }
 
-    // ── connect (validate token + save) ─────────────────────
     if (action === "connect") {
       const token = String(body.access_token ?? "").trim();
       if (token.length < 10) {
@@ -170,7 +259,6 @@ Deno.serve(async (req) => {
         });
       }
 
-      // Validate by calling /merchant
       let merchant: Record<string, unknown> = {};
       try {
         merchant = await loyverseFetch(token, "/merchant") as Record<string, unknown>;
@@ -187,9 +275,13 @@ Deno.serve(async (req) => {
       const displayName = String(merchant.business_name ?? merchant.name ?? "Loyverse");
       const externalAccountId = String(merchant.id ?? "");
 
-      // Upsert: one connection per (restaurant, provider)
-      const { data: existing } = await admin().from("pos_connections").select("id")
+      const { data: existing, error: selErr } = await admin().from("pos_connections").select("id")
         .eq("restaurant_id", restaurantId).eq("provider", "loyverse").maybeSingle();
+      if (selErr) {
+        return new Response(JSON.stringify({ error: "db_error", message: `select: ${selErr.message}` }), {
+          status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
 
       const payload = {
         restaurant_id: restaurantId,
@@ -205,21 +297,62 @@ Deno.serve(async (req) => {
       };
 
       if (existing) {
-        await admin().from("pos_connections").update(payload).eq("id", (existing as { id: string }).id);
+        const { error: upErr } = await admin().from("pos_connections").update(payload).eq("id", (existing as { id: string }).id);
+        if (upErr) {
+          return new Response(JSON.stringify({ error: "db_error", message: `update: ${upErr.message}` }), {
+            status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
       } else {
-        await admin().from("pos_connections").insert(payload);
+        const { error: insErr } = await admin().from("pos_connections").insert(payload);
+        if (insErr) {
+          return new Response(JSON.stringify({ error: "db_error", message: `insert: ${insErr.message}` }), {
+            status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
       }
 
       await logEvent(restaurantId, "pos.loyverse.connected", { method: "personal_token", merchant: displayName });
 
+      // Read the connection back, run initial sync best-effort.
+      const { data: conn } = await admin().from("pos_connections").select("*")
+        .eq("restaurant_id", restaurantId).eq("provider", "loyverse").maybeSingle();
+
+      let initialItems = { imported: 0, updated: 0, deactivated: 0 };
+      let initialReceipts = { imported: 0, skipped: 0 };
+      let syncError: string | null = null;
+      if (conn) {
+        try {
+          initialItems = await syncItems(restaurantId, conn as Record<string, unknown>);
+        } catch (e) {
+          syncError = `items: ${(e as Error).message}`;
+          console.error("initial item sync failed", syncError);
+        }
+        try {
+          initialReceipts = await syncReceipts(restaurantId, conn as Record<string, unknown>, 30);
+        } catch (e) {
+          syncError = (syncError ? syncError + " | " : "") + `receipts: ${(e as Error).message}`;
+          console.error("initial receipt sync failed", syncError);
+        }
+        if (syncError) {
+          await admin().from("pos_connections").update({ last_error: syncError }).eq("id", (conn as { id: string }).id);
+        }
+      }
+
       const { data: fresh } = await admin().from("pos_connections").select("*")
         .eq("restaurant_id", restaurantId).eq("provider", "loyverse").maybeSingle();
-      return new Response(JSON.stringify({ ok: true, connection: statusView(fresh) }), {
+
+      return new Response(JSON.stringify({
+        ok: true,
+        connection: statusView(fresh),
+        imported_items: initialItems.imported + initialItems.updated,
+        imported_receipts: initialReceipts.imported,
+        sync_error: syncError,
+      }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // ── disconnect ──────────────────────────────────────────
     if (action === "disconnect") {
       await admin().from("pos_connections").update({
         status: "revoked",
@@ -233,8 +366,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    // ── sync_now ────────────────────────────────────────────
-    if (action === "sync_now") {
+    if (action === "sync_now" || action === "sync_items") {
       const { data: conn } = await admin().from("pos_connections").select("*")
         .eq("restaurant_id", restaurantId).eq("provider", "loyverse")
         .eq("status", "active").maybeSingle();
@@ -244,11 +376,18 @@ Deno.serve(async (req) => {
         });
       }
       try {
-        const r = await syncReceipts(restaurantId, conn as Record<string, unknown>);
-        await logEvent(restaurantId, "pos.loyverse.sync", r);
-        return new Response(JSON.stringify({ ok: true, ...r }), {
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
+        const itemR = await syncItems(restaurantId, conn as Record<string, unknown>);
+        const receiptR = action === "sync_now"
+          ? await syncReceipts(restaurantId, conn as Record<string, unknown>, 30)
+          : { imported: 0, skipped: 0 };
+        await logEvent(restaurantId, "pos.loyverse.sync", { items: itemR, receipts: receiptR });
+        return new Response(JSON.stringify({
+          ok: true,
+          imported_items: itemR.imported + itemR.updated,
+          imported_receipts: receiptR.imported,
+          skipped: receiptR.skipped,
+          deactivated_items: itemR.deactivated,
+        }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
       } catch (e) {
         const msg = (e as Error).message;
         await admin().from("pos_connections").update({ last_error: msg })
