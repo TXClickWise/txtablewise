@@ -1,43 +1,69 @@
-## Diagnose
+## Doel
 
-De edge function `loyverse_connect` gebruikt status-waardes die niet in de DB-enum staan.
+Loyverse-items mogen automatisch gesynct worden naar `pre_order_items` voor matching/rapportage, maar de gast in het reserveringswidget krijgt **alleen** een kleine, door jou gekozen selectie te zien. Plus duidelijkheid over wat er met demo-items gebeurt bij go-live.
 
-| Wat de code schrijft | Wat de enum toestaat |
-|----------------------|----------------------|
-| `"active"` | `pending`, `connected`, `error`, `disconnected` |
-| `"revoked"` | idem |
+## 1. Datamodel — `show_in_widget` kolom
 
-Gevolg: elke `INSERT`/`UPDATE` op `pos_connections` met `status: "active"` faalt met een Postgres enum-error, de function valt in de outer catch en geeft HTTP 500 terug → toast "Edge Function returned a non-2xx status code". `pos_connections` is daarom nu leeg en er staat geen `pos.loyverse.connected` event in `integration_events`.
+Migratie:
 
-Daarnaast leest het frontend overal `status === "active"` — zelfs als de insert wel zou werken, zou de UI "Niet gekoppeld" blijven tonen.
+```sql
+ALTER TABLE public.pre_order_items
+  ADD COLUMN show_in_widget boolean NOT NULL DEFAULT false;
 
-## Oplossing — alignen op de bestaande DB-enum
+-- backfill: bestaande, handmatig aangemaakte items (geen POS-provider) blijven
+-- zichtbaar voor de gast zodat de huidige widget-ervaring niet verandert
+UPDATE public.pre_order_items
+   SET show_in_widget = true
+ WHERE pos_provider IS NULL
+   AND is_active = true
+   AND deleted_at IS NULL;
 
-We laten de DB-enum ongemoeid en passen code aan op `connected` / `disconnected`. Geen migratie nodig.
+CREATE INDEX IF NOT EXISTS pre_order_items_widget_idx
+  ON public.pre_order_items (restaurant_id, show_in_widget)
+  WHERE deleted_at IS NULL;
+```
 
-### 1. `supabase/functions/loyverse_connect/index.ts`
+Loyverse-sync raakt `show_in_widget` nooit aan → nieuwe Loyverse-items komen default **niet** in het widget.
 
-- In de `connect` payload: `status: "connected"` (i.p.v. `"active"`).
-- In `disconnect`: `status: "disconnected"` (i.p.v. `"revoked"`).
-- In `sync_now` / `sync_items` de filter `.eq("status","active")` → `.eq("status","connected")`.
+## 2. Widget-query
 
-### 2. `src/services/pos.ts` + `src/pages/app/POSIntegrationPage.tsx`
+`src/services/publicBooking.ts` → `getActivePreOrderItems()` krijgt extra filter `.eq("show_in_widget", true)`. Niets anders aan de gast-flow verandert.
 
-Vervang alle `loyverse?.status === "active"` checks door `loyverse?.status === "connected"`. Dit betreft:
-- KPI-kaartje "Verbonden POS"
-- "Gekoppeld" badge
-- Toon/verberg van "Ontkoppel"-knop en sync-button
-- "Live" vs "Demo-ready" badge
+## 3. Operator UI — `PreOrderDrinksPage`
 
-### 3. Verifiëren
+- Per item een tweede schakelaar **"Tonen in gast-widget"** naast "Actief", inclusief in het edit-dialog.
+- Een extra filter-tab bovenaan: **Gast-selectie** (default, `show_in_widget = true`) / **Uit Loyverse** (`pos_provider = 'loyverse'`) / **Alles**.
+- Op een Loyverse-rij een snelactie **"Toon in widget"** die in één klik `show_in_widget = true` zet.
+- Subtiele teller bovenaan: "X items zichtbaar voor gasten · Y uit Loyverse".
 
-Na deploy:
-1. Koppelknop met geldig Loyverse access token → 200, toast met "X producten en Y bonnen geïmporteerd".
-2. `SELECT status, display_name FROM pos_connections WHERE provider='loyverse'` → `status='connected'`, naam gevuld.
-3. UI toont "Gekoppeld" + bedrijfsnaam, knoppen "Sync nu" en "Ontkoppel" verschijnen.
-4. `integration_events` bevat `pos.loyverse.connected` event.
+## 4. POS-pagina
+
+Op `/app/integraties/pos` in de "Pre-order mapping"-tab een infoblok + link **"Beheer gast-selectie →"** naar `/app/instellingen/pre-orders` met de teller "X van Y Loyverse-items zichtbaar in widget". Maakt de relatie tussen sync en gast-selectie duidelijk.
+
+## 5. Service / types
+
+- `src/services/preOrders.ts`: `show_in_widget: boolean` toevoegen aan `PreOrderItem` type, default `true` in `createItem` (handmatige items blijven zichtbaar), meenemen in `updateItem`. Helper `setShowInWidget(id, value)`.
+- `src/services/pos.ts`: in de Loyverse-card-teller `countLoyverseItems` uitbreiden met `visibleInWidget` count.
+
+## 6. Demo-items bij go-live — beleidskeuze
+
+Aanvulling op de bestaande "Demo-data wissen"-flow. De huidige `purge_restaurant_operational_data` RPC raakt `pre_order_items` bewust niet aan; jouw 8 starter-drankjes blijven dus staan. Voorstel:
+
+- Géén automatische verwijdering bij go-live (de starter-set is bruikbaar als basis).
+- Wél een **aparte, expliciete knop** op de demo-reset card: **"Demo-drankjes ook archiveren"** (checkbox), die de 8 originele standaard-items (te herkennen aan `metadata.demo_seed = true`) op `is_active = false` zet. Dat is omkeerbaar en niet destructief.
+- Daarvoor markeren we in een tweede migratie alle nu-bestaande seed-items met `metadata = metadata || jsonb_build_object('demo_seed', true)` zodat we ze later veilig kunnen onderscheiden van items die jij zelf hebt aangemaakt.
+
+Als je dit te ver vindt gaan voor nu, kunnen we punt 6 ook overslaan en uitsluitend punt 1–5 doen.
+
+## Verificatie
+
+1. Migratie draait, bestaande 8 items hebben `show_in_widget = true`, Loyverse-items uit eerdere sync krijgen `show_in_widget = false` (alleen handmatige rijen zonder `pos_provider` worden ge-backfilled).
+2. Loyverse opnieuw syncen → nieuwe items komen binnen met `show_in_widget = false`.
+3. Public widget `/r/<slug>` toont nog steeds dezelfde 8 items.
+4. In `/app/instellingen/pre-orders` → tab "Uit Loyverse" laat alle gesynchroniseerde items zien; toggle "Tonen in widget" werkt; widget toont het item na refresh.
+5. POS-pagina toont teller "X van Y Loyverse-items zichtbaar".
 
 ## Niet in scope
 
-- DB-enum uitbreiden met `active` — onnodig en zou andere code kunnen verwarren.
-- Het eerder besproken `show_in_widget`-werk voor de gast-selectie. Dat doen we als losse vervolgstap zodra koppelen weer werkt.
+- Drank/gerechten splitsen in twee aparte widget-secties.
+- Loyverse-categorieën als bulk-selectie ("alle items uit categorie X zichtbaar").

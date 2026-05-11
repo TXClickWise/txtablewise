@@ -1,7 +1,7 @@
 // Drankjes vooraf — beheer pagina (CRUD voor pre_order_items + overzicht reserveringen met pre-orders).
 import { useEffect, useMemo, useState } from "react";
 import { format } from "date-fns";
-import { Plus, Wine, Sparkles, Pencil, Archive, RefreshCw } from "lucide-react";
+import { Plus, Wine, Sparkles, Pencil, Archive, RefreshCw, Eye, EyeOff } from "lucide-react";
 import { useRestaurant } from "@/hooks/useRestaurant";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -18,7 +18,7 @@ import {
 import { toast } from "sonner";
 import {
   archiveItem, createItem, formatPrice, listItems, getReadyListForToday,
-  PRE_ORDER_CATEGORIES, seedStandardItems, updateItem,
+  PRE_ORDER_CATEGORIES, seedStandardItems, updateItem, setShowInWidget,
   type PreOrderItem, type ReadyListEntry,
 } from "@/services/preOrders";
 import { PreOrderStatusBadge } from "@/components/pre-orders/PreOrderStatusBadge";
@@ -32,12 +32,15 @@ type FormState = {
   is_active: boolean;
   requires_payment: boolean;
   sort_order: number;
+  show_in_widget: boolean;
 };
 
 const EMPTY: FormState = {
   name: "", description: "", category: "Aperitief", price_cents: "",
-  is_active: true, requires_payment: false, sort_order: 100,
+  is_active: true, requires_payment: false, sort_order: 100, show_in_widget: true,
 };
+
+type SourceFilter = "guest" | "loyverse" | "all";
 
 const PreOrderDrinksPage = () => {
   const { current } = useRestaurant();
@@ -52,6 +55,7 @@ const PreOrderDrinksPage = () => {
   const [busy, setBusy] = useState(false);
   const [filterActive, setFilterActive] = useState<"all" | "active" | "inactive">("active");
   const [filterCategory, setFilterCategory] = useState<string>("all");
+  const [filterSource, setFilterSource] = useState<SourceFilter>("guest");
 
   const refresh = async () => {
     if (!restaurantId) return;
@@ -68,12 +72,19 @@ const PreOrderDrinksPage = () => {
 
   useEffect(() => { refresh(); /* eslint-disable-next-line */ }, [restaurantId]);
 
+  const counts = useMemo(() => ({
+    widget: items.filter((i) => i.show_in_widget && i.is_active && !i.deleted_at).length,
+    loyverse: items.filter((i) => i.pos_provider === "loyverse").length,
+  }), [items]);
+
   const filtered = useMemo(() => items.filter((i) => {
     if (filterActive === "active" && !i.is_active) return false;
     if (filterActive === "inactive" && i.is_active) return false;
     if (filterCategory !== "all" && i.category !== filterCategory) return false;
+    if (filterSource === "guest" && !i.show_in_widget) return false;
+    if (filterSource === "loyverse" && i.pos_provider !== "loyverse") return false;
     return true;
-  }), [items, filterActive, filterCategory]);
+  }), [items, filterActive, filterCategory, filterSource]);
 
   const openNew = () => {
     setEditing(null); setForm(EMPTY); setOpenForm(true);
@@ -88,8 +99,20 @@ const PreOrderDrinksPage = () => {
       is_active: it.is_active,
       requires_payment: it.requires_payment,
       sort_order: it.sort_order,
+      show_in_widget: it.show_in_widget,
     });
     setOpenForm(true);
+  };
+
+  const toggleWidget = async (it: PreOrderItem) => {
+    if (!restaurantId) return;
+    try {
+      await setShowInWidget(restaurantId, it.id, !it.show_in_widget);
+      setItems((prev) => prev.map((p) => p.id === it.id ? { ...p, show_in_widget: !it.show_in_widget } : p));
+      toast.success(it.show_in_widget ? "Item verborgen voor gasten." : "Item zichtbaar in gast-widget.");
+    } catch {
+      toast.error("Kon zichtbaarheid niet aanpassen.");
+    }
   };
 
   const save = async () => {
@@ -105,6 +128,7 @@ const PreOrderDrinksPage = () => {
         is_active: form.is_active,
         requires_payment: form.requires_payment,
         sort_order: form.sort_order,
+        show_in_widget: form.show_in_widget,
       };
       if (editing) await updateItem(restaurantId, editing.id, payload);
       else await createItem(restaurantId, payload);
@@ -166,10 +190,24 @@ const PreOrderDrinksPage = () => {
           <Card>
             <CardHeader className="pb-2">
               <div className="flex items-center justify-between gap-2 flex-wrap">
-                <CardTitle className="text-base font-display">Items</CardTitle>
-                <div className="flex items-center gap-2">
+                <div>
+                  <CardTitle className="text-base font-display">Items</CardTitle>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    {counts.widget} zichtbaar voor gasten
+                    {counts.loyverse > 0 && <> · {counts.loyverse} uit Loyverse</>}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <Select value={filterSource} onValueChange={(v) => setFilterSource(v as SourceFilter)}>
+                    <SelectTrigger className="h-8 w-[150px] text-xs"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="guest">Gast-selectie</SelectItem>
+                      <SelectItem value="loyverse">Uit Loyverse</SelectItem>
+                      <SelectItem value="all">Alles</SelectItem>
+                    </SelectContent>
+                  </Select>
                   <Select value={filterActive} onValueChange={(v) => setFilterActive(v as typeof filterActive)}>
-                    <SelectTrigger className="h-8 w-[140px] text-xs"><SelectValue /></SelectTrigger>
+                    <SelectTrigger className="h-8 w-[130px] text-xs"><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="active">Alleen actief</SelectItem>
                       <SelectItem value="inactive">Inactief</SelectItem>
@@ -211,6 +249,14 @@ const PreOrderDrinksPage = () => {
                         <div className="flex items-center gap-2 flex-wrap">
                           <span className="font-medium truncate">{it.name}</span>
                           {!it.is_active && <span className="text-[11px] text-muted-foreground border rounded px-1">Inactief</span>}
+                          {it.pos_provider === "loyverse" && (
+                            <span className="text-[11px] text-primary border border-primary/30 rounded px-1">Loyverse</span>
+                          )}
+                          {it.show_in_widget ? (
+                            <span className="text-[11px] text-success border border-success/30 rounded px-1">In widget</span>
+                          ) : (
+                            <span className="text-[11px] text-muted-foreground border rounded px-1">Verborgen</span>
+                          )}
                           {it.requires_payment && (
                             <span className="text-[11px] text-warning border border-warning/30 rounded px-1">
                               Betaling voorbereid
@@ -226,6 +272,15 @@ const PreOrderDrinksPage = () => {
                         {formatPrice(it.price_cents) && (
                           <span className="text-sm tabular-nums">{formatPrice(it.price_cents)}</span>
                         )}
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="h-8 w-8"
+                          onClick={() => toggleWidget(it)}
+                          title={it.show_in_widget ? "Verbergen voor gasten" : "Tonen in gast-widget"}
+                        >
+                          {it.show_in_widget ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5 text-muted-foreground" />}
+                        </Button>
                         <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => openEdit(it)}>
                           <Pencil className="h-3.5 w-3.5" />
                         </Button>
@@ -339,6 +394,13 @@ const PreOrderDrinksPage = () => {
                 <p className="text-xs text-muted-foreground">Inactieve items verschijnen niet in keuzelijsten.</p>
               </div>
               <Switch checked={form.is_active} onCheckedChange={(v) => setForm({ ...form, is_active: v })} />
+            </div>
+            <div className="flex items-center justify-between">
+              <div>
+                <Label>Tonen in gast-widget</Label>
+                <p className="text-xs text-muted-foreground">Bepaalt of gasten dit item zien tijdens reserveren. Items uit Loyverse staan standaard uit.</p>
+              </div>
+              <Switch checked={form.show_in_widget} onCheckedChange={(v) => setForm({ ...form, show_in_widget: v })} />
             </div>
             <div className="flex items-center justify-between">
               <div>

@@ -174,6 +174,7 @@ export async function getActivePreOrderItems(restaurantId: string): Promise<PreO
     .select("id, name, description, price_cents, category, sort_order")
     .eq("restaurant_id", restaurantId)
     .eq("is_active", true)
+    .eq("show_in_widget", true)
     .is("deleted_at", null)
     .order("sort_order", { ascending: true })
     .limit(20);

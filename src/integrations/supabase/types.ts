@@ -1094,6 +1094,7 @@ export type Database = {
           price_cents: number | null
           requires_payment: boolean
           restaurant_id: string
+          show_in_widget: boolean
           sort_order: number
           updated_at: string
         }
@@ -1111,6 +1112,7 @@ export type Database = {
           price_cents?: number | null
           requires_payment?: boolean
           restaurant_id: string
+          show_in_widget?: boolean
           sort_order?: number
           updated_at?: string
         }
@@ -1128,6 +1130,7 @@ export type Database = {
           price_cents?: number | null
           requires_payment?: boolean
           restaurant_id?: string
+          show_in_widget?: boolean
           sort_order?: number
           updated_at?: string
         }
