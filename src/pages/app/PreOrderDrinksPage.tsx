@@ -397,6 +397,13 @@ const PreOrderDrinksPage = () => {
             </div>
             <div className="flex items-center justify-between">
               <div>
+                <Label>Tonen in gast-widget</Label>
+                <p className="text-xs text-muted-foreground">Bepaalt of gasten dit item zien tijdens reserveren. Items uit Loyverse staan standaard uit.</p>
+              </div>
+              <Switch checked={form.show_in_widget} onCheckedChange={(v) => setForm({ ...form, show_in_widget: v })} />
+            </div>
+            <div className="flex items-center justify-between">
+              <div>
                 <Label>Aanbetaling vereist</Label>
                 <p className="text-xs text-muted-foreground">Markeert dit item als betaal-vereist in het datamodel. Aanbetalingen worden later geactiveerd via de Aanbetalingen-module.</p>
               </div>
