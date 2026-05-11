@@ -28,6 +28,7 @@ import { AIQuickSeatSheet } from "@/components/floor-plan/AIQuickSeatSheet";
 import { LastMinuteFillPanel } from "@/components/waitlist/LastMinuteFillPanel";
 import { PreOrderReadyList } from "@/components/pre-orders/PreOrderReadyList";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import { useIsCompact } from "@/hooks/use-breakpoint";
 
 type Zone = { id: string; name: string };
 type Table = {
