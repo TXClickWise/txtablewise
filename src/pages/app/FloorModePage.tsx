@@ -572,7 +572,7 @@ const FloorModePage = () => {
       </div>
 
       {/* Bottom sheet detail (tablet portrait + mobile) */}
-      <Sheet open={!!selectedTableId} onOpenChange={(o) => !o && setSelectedTableId(null)}>
+      <Sheet open={isCompact && !!selectedTableId} onOpenChange={(o) => !o && setSelectedTableId(null)}>
         <SheetContent side="bottom" className="rounded-t-2xl max-h-[85vh] xl:hidden">
           <SheetHeader className="text-left">
             <SheetTitle className="font-display text-2xl">
