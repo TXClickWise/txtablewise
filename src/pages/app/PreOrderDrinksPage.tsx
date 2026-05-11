@@ -249,6 +249,14 @@ const PreOrderDrinksPage = () => {
                         <div className="flex items-center gap-2 flex-wrap">
                           <span className="font-medium truncate">{it.name}</span>
                           {!it.is_active && <span className="text-[11px] text-muted-foreground border rounded px-1">Inactief</span>}
+                          {it.pos_provider === "loyverse" && (
+                            <span className="text-[11px] text-primary border border-primary/30 rounded px-1">Loyverse</span>
+                          )}
+                          {it.show_in_widget ? (
+                            <span className="text-[11px] text-success border border-success/30 rounded px-1">In widget</span>
+                          ) : (
+                            <span className="text-[11px] text-muted-foreground border rounded px-1">Verborgen</span>
+                          )}
                           {it.requires_payment && (
                             <span className="text-[11px] text-warning border border-warning/30 rounded px-1">
                               Betaling voorbereid
@@ -264,6 +272,15 @@ const PreOrderDrinksPage = () => {
                         {formatPrice(it.price_cents) && (
                           <span className="text-sm tabular-nums">{formatPrice(it.price_cents)}</span>
                         )}
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="h-8 w-8"
+                          onClick={() => toggleWidget(it)}
+                          title={it.show_in_widget ? "Verbergen voor gasten" : "Tonen in gast-widget"}
+                        >
+                          {it.show_in_widget ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5 text-muted-foreground" />}
+                        </Button>
                         <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => openEdit(it)}>
                           <Pencil className="h-3.5 w-3.5" />
                         </Button>
