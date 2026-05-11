@@ -1,12 +1,15 @@
 // Sectie binnen reserveringsdetail: alle drankjes & extra's voor deze reservering.
 import { useEffect, useState } from "react";
-import { Plus, Beer, Trash2 } from "lucide-react";
+import { Plus, Beer, Trash2, Send, CheckCircle2, AlertCircle, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 import {
   changeStatus, listForReservation, cancelPreOrder, formatPrice,
   getHospitalitySuggestions, type ReservationPreOrder,
 } from "@/services/preOrders";
+import { pushPreorderToLoyverse } from "@/services/pos";
 import { PreOrderStatusBadge } from "./PreOrderStatusBadge";
 import { AddPreOrderSheet } from "./AddPreOrderSheet";
 
