@@ -126,6 +126,7 @@ export async function createItem(restaurantId: string, input: Partial<PreOrderIt
     is_active: input.is_active ?? true,
     requires_payment: input.requires_payment ?? false,
     sort_order: input.sort_order ?? 100,
+    show_in_widget: input.show_in_widget ?? true,
   }).select("*").single();
   if (error) throw error;
   await logAudit(restaurantId, "pre_order.item_created", "pre_order_item", data.id, { after: data });
@@ -135,19 +136,24 @@ export async function createItem(restaurantId: string, input: Partial<PreOrderIt
 
 export async function updateItem(restaurantId: string, id: string, patch: Partial<PreOrderItem>) {
   const { data: before } = await supabase.from("pre_order_items").select("*").eq("id", id).maybeSingle();
-  const { data, error } = await supabase.from("pre_order_items").update({
-    name: patch.name,
-    description: patch.description,
-    category: patch.category,
-    price_cents: patch.price_cents,
-    is_active: patch.is_active,
-    requires_payment: patch.requires_payment,
-    sort_order: patch.sort_order,
-  }).eq("id", id).select("*").single();
+  const updates: Record<string, unknown> = {};
+  if (patch.name !== undefined) updates.name = patch.name;
+  if (patch.description !== undefined) updates.description = patch.description;
+  if (patch.category !== undefined) updates.category = patch.category;
+  if (patch.price_cents !== undefined) updates.price_cents = patch.price_cents;
+  if (patch.is_active !== undefined) updates.is_active = patch.is_active;
+  if (patch.requires_payment !== undefined) updates.requires_payment = patch.requires_payment;
+  if (patch.sort_order !== undefined) updates.sort_order = patch.sort_order;
+  if (patch.show_in_widget !== undefined) updates.show_in_widget = patch.show_in_widget;
+  const { data, error } = await supabase.from("pre_order_items").update(updates).eq("id", id).select("*").single();
   if (error) throw error;
   await logAudit(restaurantId, "pre_order.item_updated", "pre_order_item", id, { before, after: data });
   await logEvent(restaurantId, "pre_order.item_updated", { item_id: id });
   return data as PreOrderItem;
+}
+
+export async function setShowInWidget(restaurantId: string, id: string, value: boolean) {
+  return updateItem(restaurantId, id, { show_in_widget: value });
 }
 
 export async function archiveItem(restaurantId: string, id: string) {
@@ -164,7 +170,12 @@ export async function seedStandardItems(restaurantId: string) {
   const toCreate = STANDARD_ITEMS.filter((i) => !existingNames.has(i.name.toLowerCase()));
   if (toCreate.length === 0) return 0;
   const { error } = await supabase.from("pre_order_items").insert(
-    toCreate.map((i) => ({ ...i, restaurant_id: restaurantId })),
+    toCreate.map((i) => ({
+      ...i,
+      restaurant_id: restaurantId,
+      show_in_widget: true,
+      metadata: { demo_seed: true } as never,
+    })),
   );
   if (error) throw error;
   await logEvent(restaurantId, "pre_order.item_created", { seeded: toCreate.length });
