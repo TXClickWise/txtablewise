@@ -43,7 +43,7 @@ export const PRE_ORDER_CATEGORIES = [
   "Borrel", "Verjaardag", "Kinderen", "Overig",
 ] as const;
 
-export const STANDARD_ITEMS: Array<Omit<PreOrderItem, "id" | "restaurant_id" | "metadata" | "deleted_at">> = [
+export const STANDARD_ITEMS: Array<Omit<PreOrderItem, "id" | "restaurant_id" | "metadata" | "deleted_at" | "show_in_widget" | "pos_provider" | "external_product_id">> = [
   { name: "Prosecco per glas",       description: "Welkomstdrankje",        category: "Aperitief",   price_cents: 750,  is_active: true, requires_payment: false, sort_order: 10 },
   { name: "Alcoholvrije cocktail",   description: "Mocktail van het huis",  category: "Alcoholvrij", price_cents: 650,  is_active: true, requires_payment: false, sort_order: 20 },
   { name: "Fles huiswijn wit",       description: "Sauvignon",              category: "Wijn",        price_cents: 2600, is_active: true, requires_payment: false, sort_order: 30 },
