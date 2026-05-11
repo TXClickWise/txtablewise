@@ -286,7 +286,7 @@ Deno.serve(async (req) => {
       const payload = {
         restaurant_id: restaurantId,
         provider: "loyverse",
-        status: "active",
+        status: "connected",
         display_name: displayName,
         external_account_id: externalAccountId || null,
         access_token_encrypted: token,
@@ -355,7 +355,7 @@ Deno.serve(async (req) => {
 
     if (action === "disconnect") {
       await admin().from("pos_connections").update({
-        status: "revoked",
+        status: "disconnected",
         access_token_encrypted: null,
         refresh_token_encrypted: null,
         token_expires_at: null,
@@ -369,7 +369,7 @@ Deno.serve(async (req) => {
     if (action === "sync_now" || action === "sync_items") {
       const { data: conn } = await admin().from("pos_connections").select("*")
         .eq("restaurant_id", restaurantId).eq("provider", "loyverse")
-        .eq("status", "active").maybeSingle();
+        .eq("status", "connected").maybeSingle();
       if (!conn) {
         return new Response(JSON.stringify({ error: "not_connected" }), {
           status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },

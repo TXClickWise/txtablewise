@@ -1,51 +1,43 @@
-## Wat er nu misgaat
+## Diagnose
 
-Symptoom 1: status blijft "In afwachting"
-- In `pos_connections` staat 1 rij voor jouw restaurant met `status='pending'`, geen `display_name`, geen `external_account_id`.
-- Het laatste connect-moment (00:02 UTC) heeft die rij niet bijgewerkt — `updated_at` blijft op 23:04. Er is ook geen `pos.loyverse.connected` event in `integration_events`.
-- Conclusie: de toast "Loyverse gekoppeld" verschijnt voorbarig. De edge function `loyverse_connect` lijkt een 200 terug te geven zonder dat de upsert effectief op de bestaande rij landt, óf hij faalt stil verderop. We gaan de function harden (foutdetectie + logging) zodat:
-  - de upsert echte fouten signaleert (nu wordt het result van `.update()` / `.insert()` niet gecheckt);
-  - `pos.loyverse.connected` daadwerkelijk schrijft (huidige `logEvent` gebruikt `status: "processed"` wat geen geldige enum-waarde is — alleen `pending|sent|failed|processing|skipped`);
-  - na succes nogmaals via service-role wordt gelezen om te bevestigen dat status echt `active` is voor we OK terugsturen.
+De edge function `loyverse_connect` gebruikt status-waardes die niet in de DB-enum staan.
 
-Symptoom 2: "Ik zie de artikelen die ik in Loyverse heb aangemaakt niet"
-- De huidige function synct alléén `receipts` (bonnen) naar `pos_orders`. Producten/items uit Loyverse worden nergens opgehaald of opgeslagen. De tabel `pre_order_items` heeft al een `external_product_id` veld voor dit doel maar wordt niet gevuld.
-- We voegen item-sync toe (`GET /items` van Loyverse) die per restaurant items upsert in `pre_order_items` met `pos_provider='loyverse'` + `external_product_id`. Bestaande handmatige items blijven onaangeroerd.
+| Wat de code schrijft | Wat de enum toestaat |
+|----------------------|----------------------|
+| `"active"` | `pending`, `connected`, `error`, `disconnected` |
+| `"revoked"` | idem |
 
-## Wijzigingen
+Gevolg: elke `INSERT`/`UPDATE` op `pos_connections` met `status: "active"` faalt met een Postgres enum-error, de function valt in de outer catch en geeft HTTP 500 terug → toast "Edge Function returned a non-2xx status code". `pos_connections` is daarom nu leeg en er staat geen `pos.loyverse.connected` event in `integration_events`.
 
-1) `supabase/functions/loyverse_connect/index.ts`
-   - `logEvent`: gebruik enum-waarde `sent` i.p.v. `processed`, en controleer de insert-error (alleen loggen, niet hard falen).
-   - `connect`-actie: check error van update/insert en gooi een nette fout met details als upsert mislukt.
-   - Na succesvolle connect: roep nieuwe `syncItems()` aan (best-effort, foutmelding via `last_error` maar koppeling blijft `active`). Daarna `syncReceipts()` met 30-dagen-venster (i.p.v. 24u) zodat eerste sync zichtbaar materiaal toont.
-   - Nieuwe actie `sync_items` (voor de "Synchroniseer nu"-knop kunnen we items én bonnen meenemen).
-   - `syncItems(restaurantId, conn)`: pagineert `/items` (limit 250) en upsert naar `pre_order_items` op `(restaurant_id, external_product_id)`:
-     - naam: `item.item_name`
-     - prijs: eerste `variants[].default_price` × 100 → `price_cents`
-     - categorie: `item.category_id` opgelost via `/categories`
-     - `pos_provider='loyverse'`, `is_active=true`, `metadata={ loyverse_item_id, variant_id }`
-     - bestaande rijen worden geüpdatet (naam/prijs); rijen die in Loyverse verdwenen → `is_active=false` (niet hard-deleten).
-   - `sync_now`: voert nu items + receipts uit, geeft `{ imported_items, imported_receipts, skipped }` terug.
+Daarnaast leest het frontend overal `status === "active"` — zelfs als de insert wel zou werken, zou de UI "Niet gekoppeld" blijven tonen.
 
-2) Database — kleine migratie
-   - Unieke index `pos_connections_restaurant_provider_uniq` op `(restaurant_id, provider)` zodat upsert-logica betrouwbaar is en je nooit per ongeluk dubbele connecties krijgt.
-   - Unieke index `pre_order_items_restaurant_external_uniq` op `(restaurant_id, pos_provider, external_product_id) WHERE external_product_id IS NOT NULL` voor idempotente item-sync.
+## Oplossing — alignen op de bestaande DB-enum
 
-3) `src/services/pos.ts` + `src/pages/app/POSIntegrationPage.tsx`
-   - `syncLoyverseNow` retour bijwerken: `{ imported_receipts, imported_items, skipped }` + toast tekst aanpassen: "X items, Y bonnen geïmporteerd".
-   - Na succesvolle `connectLoyverseWithToken`: meteen `getLoyverseStatus` ophalen en de UI in `active`-state tonen voordat we de toast tonen (voorkomt verwarrende "In afwachting" na succes).
-   - Op de Loyverse-kaart een nieuwe regel "Producten gesynchroniseerd: N" tonen, gebaseerd op count uit `pre_order_items` waar `pos_provider='loyverse'`.
+We laten de DB-enum ongemoeid en passen code aan op `connected` / `disconnected`. Geen migratie nodig.
 
-4) Tab "Pre-order mapping" op POS-pagina
-   - Een sectie toevoegen met de gesynchroniseerde Loyverse-items (read-only lijst van eerste 50, met badge "Loyverse"). Bewerken blijft via bestaande Pre-order pagina.
+### 1. `supabase/functions/loyverse_connect/index.ts`
 
-## Niet in scope (apart laten)
+- In de `connect` payload: `status: "connected"` (i.p.v. `"active"`).
+- In `disconnect`: `status: "disconnected"` (i.p.v. `"revoked"`).
+- In `sync_now` / `sync_items` de filter `.eq("status","active")` → `.eq("status","connected")`.
 
-- Webhook-flow van Loyverse (Loyverse biedt geen klant-webhooks op gratis tier; we blijven pollen via cron).
-- Aanbetalingen aan Loyverse-betalingen koppelen.
+### 2. `src/services/pos.ts` + `src/pages/app/POSIntegrationPage.tsx`
 
-## Verificatie
+Vervang alle `loyverse?.status === "active"` checks door `loyverse?.status === "connected"`. Dit betreft:
+- KPI-kaartje "Verbonden POS"
+- "Gekoppeld" badge
+- Toon/verberg van "Ontkoppel"-knop en sync-button
+- "Live" vs "Demo-ready" badge
 
-- Functie deployen, opnieuw koppelen vanuit UI met je access token.
-- Verwacht: toast bevat "X items, Y bonnen geïmporteerd"; kaart toont "Gekoppeld" + accountnaam; "Laatste sync" gevuld.
-- DB-checks: `pos_connections` rij status=`active`, `display_name` gevuld; `pre_order_items` bevat rijen met `pos_provider='loyverse'`; `integration_events` heeft een `pos.loyverse.connected` event met `status='sent'`.
+### 3. Verifiëren
+
+Na deploy:
+1. Koppelknop met geldig Loyverse access token → 200, toast met "X producten en Y bonnen geïmporteerd".
+2. `SELECT status, display_name FROM pos_connections WHERE provider='loyverse'` → `status='connected'`, naam gevuld.
+3. UI toont "Gekoppeld" + bedrijfsnaam, knoppen "Sync nu" en "Ontkoppel" verschijnen.
+4. `integration_events` bevat `pos.loyverse.connected` event.
+
+## Niet in scope
+
+- DB-enum uitbreiden met `active` — onnodig en zou andere code kunnen verwarren.
+- Het eerder besproken `show_in_widget`-werk voor de gast-selectie. Dat doen we als losse vervolgstap zodra koppelen weer werkt.
