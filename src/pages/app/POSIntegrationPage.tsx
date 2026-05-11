@@ -158,7 +158,7 @@ const POSIntegrationPage = () => {
                     {loyverse?.status === "pending" && <Badge variant="outline" className="text-xs">In afwachting</Badge>}
                   </CardTitle>
                   <CardDescription className="mt-1 max-w-2xl">
-                    Loyverse heeft een gratis POS-basis die nuttig kan zijn voor kleine horeca. Koppel je Loyverse-account
+                    Loyverse heeft een gratis POS-basis die nuttig kan zijn voor kleine en middelgrote horeca. Koppel je Loyverse-account
                     om bonnen automatisch te importeren en te matchen aan reserveringen.
                   </CardDescription>
                   {loyverse?.status === "connected" && (
