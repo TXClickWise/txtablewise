@@ -190,10 +190,24 @@ const PreOrderDrinksPage = () => {
           <Card>
             <CardHeader className="pb-2">
               <div className="flex items-center justify-between gap-2 flex-wrap">
-                <CardTitle className="text-base font-display">Items</CardTitle>
-                <div className="flex items-center gap-2">
+                <div>
+                  <CardTitle className="text-base font-display">Items</CardTitle>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    {counts.widget} zichtbaar voor gasten
+                    {counts.loyverse > 0 && <> · {counts.loyverse} uit Loyverse</>}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <Select value={filterSource} onValueChange={(v) => setFilterSource(v as SourceFilter)}>
+                    <SelectTrigger className="h-8 w-[150px] text-xs"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="guest">Gast-selectie</SelectItem>
+                      <SelectItem value="loyverse">Uit Loyverse</SelectItem>
+                      <SelectItem value="all">Alles</SelectItem>
+                    </SelectContent>
+                  </Select>
                   <Select value={filterActive} onValueChange={(v) => setFilterActive(v as typeof filterActive)}>
-                    <SelectTrigger className="h-8 w-[140px] text-xs"><SelectValue /></SelectTrigger>
+                    <SelectTrigger className="h-8 w-[130px] text-xs"><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="active">Alleen actief</SelectItem>
                       <SelectItem value="inactive">Inactief</SelectItem>
