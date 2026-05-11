@@ -418,3 +418,54 @@ export async function countLoyverseItems(restaurantId: string): Promise<number> 
 export async function disconnectLoyverse(restaurantId: string): Promise<void> {
   await invokeLoyverse("disconnect", { restaurant_id: restaurantId });
 }
+
+// ---- Loyverse pre-order push config ----
+export type PreorderPushConfig = {
+  enabled: boolean;
+  minutes_before: number;
+  dining_option_id: string | null;
+  store_id: string | null;
+};
+
+const DEFAULT_PUSH_CONFIG: PreorderPushConfig = {
+  enabled: false,
+  minutes_before: 30,
+  dining_option_id: null,
+  store_id: null,
+};
+
+export async function getPreorderPushConfig(restaurantId: string): Promise<PreorderPushConfig> {
+  const { data } = await (supabase as unknown as {
+    from: (t: string) => { select: (s: string) => { eq: (c: string, v: unknown) => { eq: (c: string, v: unknown) => { maybeSingle: () => Promise<{ data: { config: Record<string, unknown> } | null }> } } } };
+  }).from("pos_connections").select("config").eq("restaurant_id", restaurantId).eq("provider", "loyverse").maybeSingle();
+  const cfg = ((data?.config as Record<string, unknown>)?.push_preorders ?? {}) as Partial<PreorderPushConfig>;
+  return { ...DEFAULT_PUSH_CONFIG, ...cfg };
+}
+
+export async function updatePreorderPushConfig(restaurantId: string, patch: Partial<PreorderPushConfig>): Promise<PreorderPushConfig> {
+  const sb = supabase as unknown as {
+    from: (t: string) => {
+      select: (s: string) => { eq: (c: string, v: unknown) => { eq: (c: string, v: unknown) => { maybeSingle: () => Promise<{ data: { id: string; config: Record<string, unknown> } | null }> } } };
+      update: (v: unknown) => { eq: (c: string, v: unknown) => Promise<{ error: unknown }> };
+    };
+  };
+  const { data } = await sb.from("pos_connections")
+    .select("id,config").eq("restaurant_id", restaurantId).eq("provider", "loyverse").maybeSingle();
+  if (!data) throw new Error("Loyverse niet gekoppeld");
+  const current = ((data.config as Record<string, unknown>)?.push_preorders ?? {}) as Partial<PreorderPushConfig>;
+  const next: PreorderPushConfig = { ...DEFAULT_PUSH_CONFIG, ...current, ...patch };
+  const newConfig = { ...(data.config ?? {}), push_preorders: next };
+  const { error } = await sb.from("pos_connections").update({ config: newConfig }).eq("id", data.id);
+  if (error) throw error as Error;
+  return next;
+}
+
+export async function pushPreorderToLoyverse(reservationId: string): Promise<{ ok: boolean; receipt_id?: string; error?: string; skipped?: string }> {
+  const { data, error } = await supabase.functions.invoke("loyverse_push_preorder", {
+    method: "POST",
+    body: { mode: "manual", reservation_id: reservationId },
+  });
+  if (error) throw error;
+  return data as { ok: boolean; receipt_id?: string; error?: string; skipped?: string };
+}
+
