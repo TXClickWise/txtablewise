@@ -119,10 +119,11 @@ export default function GuestChangesSettings() {
               <Label className="text-xs text-muted-foreground">Altijd handmatig vanaf (aantal personen)</Label>
               <Input
                 type="number" min={1}
+                placeholder="Geen drempel"
                 value={form.guest_changes_auto_reject_party_size}
-                onChange={(e) => set("guest_changes_auto_reject_party_size", parseInt(e.target.value) || 1)}
+                onChange={(e) => set("guest_changes_auto_reject_party_size", e.target.value === "" ? "" : parseInt(e.target.value) || 1)}
               />
-              <p className="text-xs text-muted-foreground">Grote groepen vragen altijd een persoonlijke bevestiging.</p>
+              <p className="text-xs text-muted-foreground">Optioneel. Leeg laten betekent: geen extra groepsdrempel voor gastwijzigingen.</p>
             </div>
           </div>
         </CardContent>
