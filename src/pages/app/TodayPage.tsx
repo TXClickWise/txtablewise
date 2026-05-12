@@ -5,7 +5,7 @@ import { CalendarDays, UserPlus, Users, Clock, AlertTriangle, Sparkles, Calendar
 import { supabase } from "@/integrations/supabase/client";
 import { useRestaurant } from "@/hooks/useRestaurant";
 import { KpiCard } from "@/components/KpiCard";
-import { PageHeader } from "@/components/PageHeader";
+
 import { SectionCard } from "@/components/SectionCard";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";

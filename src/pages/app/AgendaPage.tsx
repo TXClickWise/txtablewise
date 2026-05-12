@@ -24,7 +24,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { ReservationDetailDialog } from "@/components/ReservationDetailDialog";
 import { ReservationFormSheet, type ReservationFormPrefill } from "@/components/reservations/ReservationFormSheet";
 import { WalkInDialog } from "@/components/WalkInDialog";
-import { PageHeader } from "@/components/PageHeader";
+
 import { EmptyState } from "@/components/touch/StateViews";
 import { cn } from "@/lib/utils";
 
