@@ -127,10 +127,45 @@ export function AppSidebar() {
       <SidebarContent>
         {(() => {
           const role = (current?.role as Role | undefined) ?? null;
+          const settingsActive = location.pathname.startsWith("/app/instellingen");
+          const canBeheer = role === "owner" || role === "manager";
           return (
             <>
+              <Group label="Snel naar" items={quickAccess} collapsed={collapsed} pathname={location.pathname} onNavigate={handleNavigate} canSeeAdvanced={canSeeAdvanced} role={role} />
               <Group label="Hospitality" items={hospitality} collapsed={collapsed} pathname={location.pathname} onNavigate={handleNavigate} canSeeAdvanced={canSeeAdvanced} role={role} />
               <Group label="Beheer" items={beheer} collapsed={collapsed} pathname={location.pathname} onNavigate={handleNavigate} canSeeAdvanced={canSeeAdvanced} role={role} />
+              {canBeheer && (
+                <SidebarGroup>
+                  <SidebarGroupContent>
+                    <SidebarMenu>
+                      <SidebarMenuItem>
+                        <SidebarMenuButton asChild isActive={settingsActive}>
+                          <NavLink to="/app/instellingen" end onClick={handleNavigate}>
+                            <Settings className="h-4 w-4 shrink-0" />
+                            {!collapsed && <span>Instellingen</span>}
+                          </NavLink>
+                        </SidebarMenuButton>
+                        {!collapsed && (
+                          <SidebarMenuSub>
+                            {settingsSubItems.map((s) => {
+                              const active = location.pathname === s.url;
+                              return (
+                                <SidebarMenuSubItem key={s.url}>
+                                  <SidebarMenuSubButton asChild isActive={active}>
+                                    <NavLink to={s.url} onClick={handleNavigate}>
+                                      <span>{s.title}</span>
+                                    </NavLink>
+                                  </SidebarMenuSubButton>
+                                </SidebarMenuSubItem>
+                              );
+                            })}
+                          </SidebarMenuSub>
+                        )}
+                      </SidebarMenuItem>
+                    </SidebarMenu>
+                  </SidebarGroupContent>
+                </SidebarGroup>
+              )}
               {isSystemAdmin && (
                 <Group label="Admin" items={admin} collapsed={collapsed} pathname={location.pathname} accent onNavigate={handleNavigate} canSeeAdvanced={canSeeAdvanced} role={role} />
               )}
