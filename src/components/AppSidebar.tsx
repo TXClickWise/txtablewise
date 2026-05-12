@@ -25,7 +25,7 @@ type Item = { title: string; url: string; icon: typeof LayoutDashboard; end?: bo
 // Snelkoppelingen voor de meest gebruikte schermen blijven hier wel staan.
 
 const quickAccess: Item[] = [
-  { title: "Dashboard", url: "/app/vandaag", icon: LayoutDashboard, roles: ["owner","manager","host","staff"] },
+  { title: "Dashboard", url: "/app", icon: LayoutDashboard, end: true, roles: ["owner","manager","host","staff"] },
   { title: "Grote groepen", url: "/app/gasten?tab=grote-groepen", icon: Users, roles: ["owner","manager","host"] },
 ];
 
