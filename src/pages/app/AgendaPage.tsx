@@ -457,10 +457,20 @@ const AgendaPage = () => {
                   {/* Rows */}
                   {(tables as any[]).map((t) => {
                     const items = byTable[t.id] ?? [];
+                    const cap = t.capacity_min === t.capacity_max
+                      ? `${t.capacity_max}p`
+                      : `${t.capacity_min}–${t.capacity_max}p`;
                     return (
-                      <div key={t.id} className="flex border-b border-border hover:bg-muted/10">
+                      <div
+                        key={t.id}
+                        ref={(el) => { rowRefs.current[t.id] = el; }}
+                        className="flex border-b border-border hover:bg-muted/10 scroll-mt-16"
+                      >
                         <div className="sticky left-0 z-[5] bg-card w-[120px] shrink-0 p-3 border-r border-border flex flex-col justify-center">
-                          <div className="font-medium text-sm">{t.label}</div>
+                          <div className="flex items-baseline justify-between gap-1">
+                            <div className="font-medium text-sm">{t.label}</div>
+                            <div className="text-[11px] text-muted-foreground tabular-nums">{cap}</div>
+                          </div>
                           {t.zones?.name && <div className="text-xs text-muted-foreground">{t.zones.name}</div>}
                         </div>
                         <div className="relative" style={{ width: totalWidth, height: rowHeight }}>
