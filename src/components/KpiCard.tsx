@@ -9,22 +9,36 @@ interface KpiDelta {
   invert?: boolean;
 }
 
+type AccentColor = "default" | "primary" | "success" | "warning" | "destructive" | "info";
+
 interface KpiCardProps extends React.HTMLAttributes<HTMLDivElement> {
   label: string;
   value: React.ReactNode;
   hint?: React.ReactNode;
   icon?: React.ReactNode;
-  accent?: "default" | "primary" | "success" | "warning" | "destructive";
+  accent?: AccentColor;
   delta?: KpiDelta;
   tone?: "neutral" | "premium";
+  /** Toont een 3px gekleurde top-border per metric (DEEL 8 — Vandaag) */
+  statusAccent?: AccentColor;
 }
 
-const ACCENT: Record<NonNullable<KpiCardProps["accent"]>, string> = {
+const ACCENT: Record<AccentColor, string> = {
   default: "text-foreground",
   primary: "text-primary",
   success: "text-success",
   warning: "text-warning",
   destructive: "text-destructive",
+  info: "text-info",
+};
+
+const STATUS_ACCENT_BORDER: Record<AccentColor, string> = {
+  default: "border-t-border",
+  primary: "border-t-primary",
+  success: "border-t-success",
+  warning: "border-t-warning",
+  destructive: "border-t-destructive",
+  info: "border-t-info",
 };
 
 function deltaTone(delta: KpiDelta) {
