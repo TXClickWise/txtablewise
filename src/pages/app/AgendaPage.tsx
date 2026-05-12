@@ -131,11 +131,26 @@ const AgendaPage = () => {
     enabled: !!rid,
     queryFn: async () => {
       const { data } = await supabase.from("tables")
-        .select("id, label, zone_id, zones(name)")
+        .select("id, label, capacity_min, capacity_max, zone_id, zones(name)")
         .eq("restaurant_id", rid!).eq("is_active", true).order("label");
       return data ?? [];
     },
   });
+  const rowRefs = useRef<Record<string, HTMLDivElement | null>>({});
+
+  const zoneGroups = useMemo(() => {
+    const map = new Map<string, { name: string; firstTableId: string }>();
+    for (const t of tables as any[]) {
+      const key = t.zone_id ?? "_none";
+      if (!map.has(key)) map.set(key, { name: t.zones?.name ?? "Overig", firstTableId: t.id });
+    }
+    return Array.from(map.entries()).map(([key, v]) => ({ key, ...v }));
+  }, [tables]);
+
+  const jumpToZone = (tableId: string) => {
+    const el = rowRefs.current[tableId];
+    if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
 
   const { data: reservations = [] } = useQuery({
     queryKey: ["agenda-day", rid, dateStr],
@@ -390,6 +405,22 @@ const AgendaPage = () => {
             </div>
           ) : (
             <>
+              {zoneGroups.length > 1 && (
+                <div className="flex items-center gap-2 px-3 py-2 border-b border-border overflow-x-auto">
+                  <span className="text-xs text-muted-foreground shrink-0">Spring naar:</span>
+                  {zoneGroups.map((z) => (
+                    <Button
+                      key={z.key}
+                      size="sm"
+                      variant="outline"
+                      className="h-9 shrink-0"
+                      onClick={() => jumpToZone(z.firstTableId)}
+                    >
+                      {z.name}
+                    </Button>
+                  ))}
+                </div>
+              )}
               <div className="flex items-center gap-2 px-3 py-2 border-b border-border text-xs text-muted-foreground">
                 <span>Tip: tik op een leeg tijdvak om snel een reservering toe te voegen op die tafel.</span>
               </div>
@@ -426,10 +457,20 @@ const AgendaPage = () => {
                   {/* Rows */}
                   {(tables as any[]).map((t) => {
                     const items = byTable[t.id] ?? [];
+                    const cap = t.capacity_min === t.capacity_max
+                      ? `${t.capacity_max}p`
+                      : `${t.capacity_min}–${t.capacity_max}p`;
                     return (
-                      <div key={t.id} className="flex border-b border-border hover:bg-muted/10">
+                      <div
+                        key={t.id}
+                        ref={(el) => { rowRefs.current[t.id] = el; }}
+                        className="flex border-b border-border hover:bg-muted/10 scroll-mt-16"
+                      >
                         <div className="sticky left-0 z-[5] bg-card w-[120px] shrink-0 p-3 border-r border-border flex flex-col justify-center">
-                          <div className="font-medium text-sm">{t.label}</div>
+                          <div className="flex items-baseline justify-between gap-1">
+                            <div className="font-medium text-sm">{t.label}</div>
+                            <div className="text-[11px] text-muted-foreground tabular-nums">{cap}</div>
+                          </div>
                           {t.zones?.name && <div className="text-xs text-muted-foreground">{t.zones.name}</div>}
                         </div>
                         <div className="relative" style={{ width: totalWidth, height: rowHeight }}>

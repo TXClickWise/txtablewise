@@ -22,6 +22,8 @@ export interface CopyFields {
   cta?: string
   ctaConfirm?: string
   ctaCancel?: string
+  // Allow per-template extra labels (e.g. labelMessage, labelReason).
+  [key: string]: string | undefined
 }
 
 export type LocaleCopy = Record<Locale, CopyFields>

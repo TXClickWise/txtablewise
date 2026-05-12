@@ -1680,6 +1680,9 @@ export type Database = {
           email: string | null
           email_notification_settings: Json
           google_review_url: string | null
+          guest_changes_auto_apply: boolean
+          guest_changes_auto_reject_party_size: number | null
+          guest_changes_min_notice_minutes: number
           guest_email_enabled: boolean
           guest_reply_to_email: string | null
           hold_minutes: number
@@ -1775,6 +1778,9 @@ export type Database = {
           email?: string | null
           email_notification_settings?: Json
           google_review_url?: string | null
+          guest_changes_auto_apply?: boolean
+          guest_changes_auto_reject_party_size?: number | null
+          guest_changes_min_notice_minutes?: number
           guest_email_enabled?: boolean
           guest_reply_to_email?: string | null
           hold_minutes?: number
@@ -1870,6 +1876,9 @@ export type Database = {
           email?: string | null
           email_notification_settings?: Json
           google_review_url?: string | null
+          guest_changes_auto_apply?: boolean
+          guest_changes_auto_reject_party_size?: number | null
+          guest_changes_min_notice_minutes?: number
           guest_email_enabled?: boolean
           guest_reply_to_email?: string | null
           hold_minutes?: number
