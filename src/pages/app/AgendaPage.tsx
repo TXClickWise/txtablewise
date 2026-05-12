@@ -77,7 +77,8 @@ const AgendaPage = () => {
   };
 
   const tabParam = searchParams.get("tab");
-  const view: ViewMode = tabParam === "lijst" ? "lijst" : "tijdlijn";
+  const view: ViewMode =
+    tabParam === "lijst" ? "lijst" : tabParam === "plattegrond" ? "plattegrond" : "tijdlijn";
   const setView = (v: ViewMode) => {
     const next = new URLSearchParams(searchParams);
     if (v === "tijdlijn") next.delete("tab");
