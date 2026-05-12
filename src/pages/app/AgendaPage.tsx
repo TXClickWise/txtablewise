@@ -405,6 +405,22 @@ const AgendaPage = () => {
             </div>
           ) : (
             <>
+              {zoneGroups.length > 1 && (
+                <div className="flex items-center gap-2 px-3 py-2 border-b border-border overflow-x-auto">
+                  <span className="text-xs text-muted-foreground shrink-0">Spring naar:</span>
+                  {zoneGroups.map((z) => (
+                    <Button
+                      key={z.key}
+                      size="sm"
+                      variant="outline"
+                      className="h-9 shrink-0"
+                      onClick={() => jumpToZone(z.firstTableId)}
+                    >
+                      {z.name}
+                    </Button>
+                  ))}
+                </div>
+              )}
               <div className="flex items-center gap-2 px-3 py-2 border-b border-border text-xs text-muted-foreground">
                 <span>Tip: tik op een leeg tijdvak om snel een reservering toe te voegen op die tafel.</span>
               </div>
