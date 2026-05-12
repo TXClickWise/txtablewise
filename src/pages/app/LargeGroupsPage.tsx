@@ -190,11 +190,6 @@ const LargeGroupsPage = () => {
           <Button variant="outline" className="h-10" onClick={() => refetch()}>
             <RefreshCw className="h-4 w-4 mr-1.5" /> Vernieuwen
           </Button>
-          <Button variant="outline" className="h-10" asChild>
-            <Link to="/app/instellingen/grote-groepen">
-              <Settings className="h-4 w-4 mr-1.5" /> Instellingen
-            </Link>
-          </Button>
         </div>
       </div>
 
