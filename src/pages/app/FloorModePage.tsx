@@ -64,14 +64,30 @@ type CellStatus =
   | "blocked";    // toekomstige uitbreiding
 
 const CELL_TONE: Record<CellStatus, string> = {
-  free:        "bg-card border-border hover:border-primary/40",
-  expected:    "bg-secondary border-border",
-  soon:        "bg-status-pending/10 border-status-pending/40",
-  arrived:     "bg-status-pending/15 border-status-pending",
-  seated:      "bg-status-seated/10 border-status-seated/40",
-  almostFree:  "bg-warning/10 border-warning/40",
-  overdue:     "bg-status-noshow/10 border-status-noshow/50",
-  blocked:     "bg-muted border-border opacity-70",
+  free:        "bg-table-free border-l-[4px] border-table-free-border hover:brightness-95",
+  expected:    "bg-table-expected border-l-[4px] border-table-expected-border/70",
+  soon:        "bg-table-arriving border-l-[4px] border-table-arriving-border",
+  arrived:     "bg-table-arriving border-l-[4px] border-table-arriving-border",
+  seated:      "bg-table-seated border-l-[4px] border-table-seated-border",
+  almostFree:  "bg-table-almost-done border-l-[4px] border-table-almost-done-border",
+  overdue:     "bg-table-overtime border-l-[4px] border-table-overtime-border",
+  blocked:     "blocked-stripe border-l-[4px] border-table-blocked-border",
+};
+
+const CELL_PULSE: Partial<Record<CellStatus, true>> = {
+  seated: true,
+  overdue: true,
+};
+
+const CELL_DOT: Record<CellStatus, string> = {
+  free:        "bg-table-free-border",
+  expected:    "bg-table-expected-border",
+  soon:        "bg-table-arriving-border",
+  arrived:     "bg-table-arriving-border",
+  seated:      "bg-table-seated-border",
+  almostFree:  "bg-table-almost-done-border",
+  overdue:     "bg-table-overtime-border",
+  blocked:     "bg-table-blocked-border",
 };
 
 const CELL_LABEL: Record<CellStatus, string> = {
