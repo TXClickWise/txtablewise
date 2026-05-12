@@ -33,7 +33,6 @@ import ApiWebhooksSettings from "./pages/app/settings/ApiWebhooksSettings.tsx";
 import UsersRolesSettings from "./pages/app/settings/UsersRolesSettings.tsx";
 import SubscriptionSettings from "./pages/app/settings/SubscriptionSettings.tsx";
 import WidgetSettings from "./pages/app/settings/WidgetSettings.tsx";
-import WalkInsPage from "./pages/app/WalkInsPage.tsx";
 import WaitlistPage from "./pages/app/WaitlistPage.tsx";
 import VoiceAgentHelp from "./pages/app/help/VoiceAgentHelp.tsx";
 import IntegrationHubPage from "./pages/app/IntegrationHubPage.tsx";
