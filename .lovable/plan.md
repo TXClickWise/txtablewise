@@ -1,68 +1,46 @@
-## Doel
+## PWA branding op nieuwe huisstijl brengen
 
-Een live status-indicator (rood/oranje badge met aantal) voor openstaande grote-groepen-aanvragen, op twee plekken:
+De huidige PWA-iconen en manifest gebruiken een verouderde oranje/saddle-brown branding (`#8B4513`, oranje "TX" met serif op wit). Brengen naar de actuele tokens: **navy `#11192B`** + **warm goud `#D89A2C`**, sans-serif (Plus Jakarta).
 
-1. **Sidebar** — naast "Grote groepen" in groep "Snel naar".
-2. **Operationele tabbar** (bovenin) — naast "Gasten".
+### 1. Nieuwe iconen genereren
 
-Klikken navigeert naar `/app/gasten?tab=grote-groepen` (bestaande route) zodat de operator direct in de juiste sectie landt.
+Drie PNG's via `imagegen--generate_image` (premium, voor scherpe typografie):
 
-## Telmethode
+- `public/icons/icon-192.png` — 512×512 gerenderd, opgeslagen op 192. Navy `#11192B` achtergrond met afgeronde hoeken (~20% radius), gecentreerde goud `TX` letterlijk in **Plus Jakarta Sans Bold**, subtiele goud-glow.
+- `public/icons/icon-512.png` — zelfde ontwerp, 512×512.
+- `public/icons/icon-maskable-512.png` — full-bleed navy (geen rounded corners — Android maskeert zelf), `TX` in centrale **80% safe-zone**, iets kleiner zodat hij niet wordt afgeknipt door circle/squircle masks.
 
-Een aanvraag telt als "wacht op handmatige beoordeling" wanneer minstens één van:
+### 2. `public/manifest.json` updaten
 
-- `reservations` met `requires_manual_approval = true` OF `large_group_status = 'awaiting_approval'`, en `status` niet in `cancelled / no_show / completed`.
-- `large_group_requests` met `status = 'new'`.
+```json
+{
+  "theme_color": "#11192B",
+  "background_color": "#11192B"
+}
+```
 
-Som = totaal openstaande aanvragen.
+Rest blijft ongewijzigd (`name`, `start_url: /app`, `display: standalone`, icon-paden).
+Effect: splash-screen op iOS/Android start in navy in plaats van wit-flash → naadloze overgang naar app.
 
-## Implementatie
+### 3. `index.html` updaten
 
-### 1. Nieuwe hook `src/hooks/usePendingLargeGroups.ts`
+```html
+<meta name="theme-color" content="#11192B" />
+```
 
-- React Query hook, key `["pending-large-groups", restaurantId]`.
-- Twee parallelle `count`-queries (head=true, count=exact) op `reservations` en `large_group_requests`.
-- `staleTime: 30s`, `refetchInterval: 60s` zodat de badge vanzelf actueel blijft.
-- Returnt `{ count, isLoading }`.
-- Realtime (optioneel, lichte versie): subscriben op `postgres_changes` voor beide tabellen → `invalidateQueries`. Houden achter een feature-flag-vrije eenvoudige useEffect in de hook zelf.
+Sync met manifest. `apple-touch-icon` blijft naar `/icons/icon-192.png` wijzen (gebruikt nieuwe asset automatisch).
 
-### 2. Herbruikbare `PendingBadge`-component `src/components/PendingBadge.tsx`
+### Technische notes
 
-- Kleine pill met afwijkende kleur (`bg-destructive text-destructive-foreground`) en lichte pulse (`animate-pulse` of bestaande `status-dot-active`).
-- Props: `count: number`, `variant?: "sidebar" | "tab"` (sidebar = compact rond, tab = ronde pill rechts van label).
-- Niets renderen als `count === 0`.
-- Toon `9+` bij count > 9 om layout stabiel te houden.
+- Geen `vite-plugin-pwa`, geen service worker — manifest-only blijft zoals afgesproken in PWA-richtlijn.
+- HSL → hex mapping uit `index.css`:
+  - `--primary: 222 44% 12%` → `#11192B` (navy)
+  - `--accent: 40 72% 52%` → `#D89A2C` (goud)
+- Bestaande `InstallPrompt.tsx` werkt automatisch met de nieuwe assets — geen code-wijziging nodig.
+- Geen wijziging aan `OG/Twitter` images (aparte concern, niet in scope).
 
-### 3. Sidebar (`src/components/AppSidebar.tsx`)
+### Out of scope
 
-- `Group` uitbreiden met optionele `badgeFor?: (item) => number` of simpeler: speciale render-logica voor item met url die eindigt op `tab=grote-groepen`.
-- Hook aanroepen in `AppSidebar` en count meegeven aan het juiste item.
-- Badge rechts uitgelijnd binnen `SidebarMenuButton` (gebruikt `flex` met `ml-auto`).
-- Bij `collapsed` sidebar: kleine rode dot rechtsboven het icoon (geen getal).
-
-### 4. Operationele tabbar (`src/components/touch/OperationTabBar.tsx`)
-
-- Hook aanroepen.
-- Naast "Gasten"-tab een afwijkend gevormde indicator: rond pillvormig (vs. rechthoekige tabs), `bg-destructive text-destructive-foreground`, met getal of `9+`.
-- Optioneel: subtiele glow `shadow-[0_0_0_3px_hsl(var(--destructive)/0.25)]` voor extra signaal.
-- Verbergen wanneer count 0.
-
-### 5. Navigatie
-
-Beide indicatoren gebruiken bestaande URL `/app/gasten?tab=grote-groepen`. `GastenTabsPage` selecteert al die tab via query param — geen wijziging nodig.
-
-## Niet in scope
-
-- Geen nieuwe DB-velden of migraties.
-- Geen wijziging aan de telling-logica op `LargeGroupsPage` zelf.
-- Geen wijziging aan login/permissies — hook respecteert RLS automatisch.
-
-## Bestanden
-
-Nieuw:
-- `src/hooks/usePendingLargeGroups.ts`
-- `src/components/PendingBadge.tsx`
-
-Aangepast:
-- `src/components/AppSidebar.tsx`
-- `src/components/touch/OperationTabBar.tsx`
+- Splash-screens voor iOS (aparte set assets — als gewenst, apart oppakken).
+- Favicon (`/favicon.ico`) — niet genoemd in deze vraag.
+- Logo-component in app-UI.
