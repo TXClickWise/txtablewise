@@ -41,15 +41,16 @@ const ROW_STEP = 8;
 const ROW_DEFAULT = 64;
 const TAFEL_COL_W = 120;
 
+// Reserveringsblokken in tijdlijn — semi-transparante statuskleur + 3px linkerborder
 const STATUS_BG: Record<string, string> = {
-  pending: "bg-status-pending/30 border-status-pending/60",
-  confirmed: "bg-status-confirmed/30 border-status-confirmed/60",
-  seated: "bg-status-seated/30 border-status-seated/60",
-  finished: "bg-status-completed/30 border-status-completed/60",
-  completed: "bg-status-completed/30 border-status-completed/60",
-  cancelled: "bg-status-cancelled/20 border-status-cancelled/40 line-through opacity-60",
-  no_show: "bg-status-noshow/20 border-status-noshow/40",
-  hold: "bg-muted border-border",
+  pending:   "bg-status-pending/35  border-l-[3px] border-status-pending  hover:bg-status-pending/60",
+  confirmed: "bg-status-confirmed/35 border-l-[3px] border-status-confirmed hover:bg-status-confirmed/60",
+  seated:    "bg-status-seated/35   border-l-[3px] border-status-seated   hover:bg-status-seated/60",
+  finished:  "bg-status-completed/35 border-l-[3px] border-status-completed hover:bg-status-completed/55",
+  completed: "bg-status-completed/35 border-l-[3px] border-status-completed hover:bg-status-completed/55",
+  cancelled: "bg-status-cancelled/25 border-l-[3px] border-status-cancelled line-through opacity-60",
+  no_show:   "bg-status-noshow/35   border-l-[3px] border-status-noshow   hover:bg-status-noshow/60",
+  hold:      "bg-muted              border-l-[3px] border-muted-foreground/40",
 };
 
 type ViewMode = "tijdlijn" | "lijst" | "plattegrond";
