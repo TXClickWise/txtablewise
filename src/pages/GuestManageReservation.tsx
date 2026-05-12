@@ -73,8 +73,15 @@ export default function GuestManageReservation() {
   const [cancelReason, setCancelReason] = useState("");
 
   const [showChange, setShowChange] = useState(false);
-  const [changeForm, setChangeForm] = useState({ desired_date: "", desired_time: "", desired_party_size: "", message: "" });
-  const [changeRequested, setChangeRequested] = useState(false);
+  const [changeForm, setChangeForm] = useState({
+    desired_date: "", desired_time: "", desired_party_size: "",
+    desired_first_name: "", desired_last_name: "", desired_email: "", desired_phone: "",
+    desired_dietary_notes: "", message: "",
+  });
+  const [changeOutcome, setChangeOutcome] = useState<null | {
+    outcome: "applied" | "rejected" | "pending_review";
+    reason_code?: string | null;
+  }>(null);
 
   const call = async (action: string, extra: Record<string, unknown> = {}) => {
     const res = await fetch(FUNCTION_URL, {
