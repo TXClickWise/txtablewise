@@ -654,8 +654,8 @@ const AgendaPage = () => {
                           key={r.id}
                           onClick={(e) => { e.stopPropagation(); setSelectedId(r.id); }}
                           className={cn(
-                            "absolute rounded-md border px-2 text-left text-xs overflow-hidden hover:brightness-110 transition-all z-[2]",
-                            STATUS_BG[r.status] ?? "bg-muted border-border",
+                            "absolute rounded-md px-2 text-left text-xs overflow-hidden transition-all duration-150 z-[2] hover:shadow-elevated hover:z-[3]",
+                            STATUS_BG[r.status] ?? "bg-muted border-l-[3px] border-border",
                           )}
                           style={{ left, top: 6, height: rowHeight - 12, width }}
                         >
