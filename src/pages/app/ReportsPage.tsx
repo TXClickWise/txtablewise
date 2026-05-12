@@ -92,7 +92,7 @@ const ReportsPage = () => {
   if (!restaurantId) return <div className="p-6">Restaurant laden…</div>;
 
   return (
-    <div className="p-6 max-w-7xl mx-auto space-y-6">
+    <div className="px-3 sm:px-4 py-4 space-y-6">
       <header className="space-y-1">
         <h1 className="font-display text-3xl">Rapportages</h1>
         <p className="text-muted-foreground max-w-3xl">
