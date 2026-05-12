@@ -44,9 +44,6 @@ type ApiKeyRow = {
 
 const PROVIDERS = [
   { value: "highlevel", label: "ClickWise Voice AI" },
-  { value: "elevenlabs", label: "ElevenLabs Conversational AI" },
-  { value: "vapi", label: "Vapi" },
-  { value: "retell", label: "Retell" },
 ];
 
 export default function VoiceAgentPage() {

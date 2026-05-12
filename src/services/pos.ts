@@ -337,40 +337,8 @@ export async function listPOSEvents(restaurantId: string): Promise<Array<{ id: s
 }
 
 export async function selectProvider(restaurantId: string, provider: POSProvider): Promise<void> {
-  // Persist the selected POS provider on the restaurant so the choice survives reloads.
-  const { data: row, error: readErr } = await supabase
-    .from("restaurants")
-    .select("metadata")
-    .eq("id", restaurantId)
-    .maybeSingle();
-  if (readErr) throw readErr;
-  const currentMeta = ((row?.metadata as Record<string, unknown> | null) ?? {}) as Record<string, unknown>;
-  const integrations = ((currentMeta.integrations as Record<string, unknown> | undefined) ?? {}) as Record<string, unknown>;
-  const nextMeta = {
-    ...currentMeta,
-    integrations: {
-      ...integrations,
-      pos_provider: provider,
-      pos_provider_selected_at: new Date().toISOString(),
-    },
-  };
-  const { error: writeErr } = await supabase
-    .from("restaurants")
-    .update({ metadata: nextMeta })
-    .eq("id", restaurantId);
-  if (writeErr) throw writeErr;
   await logIntegrationEvent(restaurantId, "pos.provider_selected", { provider });
   await logAudit(restaurantId, "pos.provider.selected", null, { provider });
-}
-
-export async function getSelectedProvider(restaurantId: string): Promise<POSProvider | null> {
-  const { data } = await supabase
-    .from("restaurants")
-    .select("metadata")
-    .eq("id", restaurantId)
-    .maybeSingle();
-  const meta = (data?.metadata ?? {}) as { integrations?: { pos_provider?: string } };
-  return (meta.integrations?.pos_provider as POSProvider | undefined) ?? null;
 }
 
 export function formatEuro(cents: number): string {

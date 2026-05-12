@@ -16,9 +16,9 @@ import { Sparkles, Receipt, Link as LinkIcon, FileSpreadsheet, Webhook, AlertCir
 import {
   POS_PROVIDERS, POS_FIELD_MAPPING,
   listPOSReceipts, suggestReservationMatches, matchReceiptToReservation, ignoreReceipt, getRevenuePreview,
-  listPOSEvents, selectProvider, getSelectedProvider, formatEuro,
+  listPOSEvents, selectProvider, formatEuro,
   connectLoyverseWithToken, getLoyverseStatus, syncLoyverseNow, disconnectLoyverse, countLoyverseItems, type LoyverseConnectionStatus,
-  type POSReceipt, type RevenuePreview, type POSProvider,
+  type POSReceipt, type RevenuePreview,
 } from "@/services/pos";
 import { POSReceiptForm } from "@/components/pos/POSReceiptForm";
 import { PreorderPushConfigCard } from "@/components/pos/PreorderPushConfigCard";
@@ -49,8 +49,6 @@ const POSIntegrationPage = () => {
   const [tokenInput, setTokenInput] = useState("");
   const [showToken, setShowToken] = useState(false);
   const [tokenHelpOpen, setTokenHelpOpen] = useState(false);
-  const [selectedProvider, setSelectedProviderState] = useState<POSProvider | null>(null);
-  const [providerBusy, setProviderBusy] = useState<POSProvider | null>(null);
 
   useEffect(() => {
     if (!restaurantId) return;
@@ -59,22 +57,7 @@ const POSIntegrationPage = () => {
     listPOSEvents(restaurantId).then((e) => setEvents(e));
     getLoyverseStatus(restaurantId).then(setLoyverse).catch(() => setLoyverse(null));
     countLoyverseItems(restaurantId).then(setLoyverseItemCount).catch(() => setLoyverseItemCount(0));
-    getSelectedProvider(restaurantId).then(setSelectedProviderState).catch(() => setSelectedProviderState(null));
   }, [restaurantId, reload]);
-
-  async function handleSelectProvider(provider: POSProvider, label: string) {
-    if (!restaurantId) return;
-    setProviderBusy(provider);
-    try {
-      await selectProvider(restaurantId, provider);
-      setSelectedProviderState(provider);
-      toast.success(`${label} ingesteld als POS-provider`);
-    } catch (e) {
-      toast.error("Opslaan mislukt", { description: (e as Error).message });
-    } finally {
-      setProviderBusy(null);
-    }
-  }
 
   async function handleLoyverseConnect() {
     if (!restaurantId) return;
@@ -171,7 +154,6 @@ const POSIntegrationPage = () => {
                   <CardTitle className="text-base flex items-center gap-2">
                     Loyverse POS
                     <Badge variant="secondary" className="text-xs"><Sparkles className="mr-1 h-3 w-3" /> Aanbevolen starter-POS</Badge>
-                    {selectedProvider === "loyverse" && <Badge variant="default" className="text-xs">Geselecteerd</Badge>}
                     {loyverse?.status === "connected" && <Badge variant="default" className="text-xs">Gekoppeld</Badge>}
                     {loyverse?.status === "pending" && <Badge variant="outline" className="text-xs">In afwachting</Badge>}
                   </CardTitle>
@@ -208,36 +190,24 @@ const POSIntegrationPage = () => {
                   </Button>
                 </>
               )}
-              <Button size="sm" variant="ghost" onClick={() => handleSelectProvider("loyverse", "Loyverse")} disabled={providerBusy === "loyverse"}>
-                {providerBusy === "loyverse" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                {selectedProvider === "loyverse" ? "Geselecteerd" : "Mapping voorbereiden"}
-              </Button>
+              <Button size="sm" variant="ghost" onClick={() => { selectProvider(restaurantId, "loyverse"); toast.success("Loyverse gekozen als provider"); setReload((r) => r + 1); }}>Mapping voorbereiden</Button>
               <Button size="sm" variant="ghost" onClick={() => toast("Demo-flow", { description: "Maak een demo-bon aan op het tabblad ‘Demo bon’." })}>Demo bekijken</Button>
             </CardContent>
           </Card>
 
           <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
             {POS_PROVIDERS.filter((p) => p.key !== "loyverse").map((p) => (
-              <Card key={p.key} className={selectedProvider === p.key ? "border-primary/40" : undefined}>
+              <Card key={p.key}>
                 <CardHeader className="space-y-2">
                   <div className="flex items-start justify-between gap-2">
-                    <CardTitle className="text-sm flex items-center gap-2">
-                      {p.label}
-                      {selectedProvider === p.key && <Badge variant="default" className="text-[10px]">Geselecteerd</Badge>}
-                    </CardTitle>
+                    <CardTitle className="text-sm">{p.label}</CardTitle>
                     <StatusBadge status={p.status} />
                   </div>
                   <CardDescription className="text-xs line-clamp-3">{p.description}</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <Button
-                    size="sm"
-                    variant={selectedProvider === p.key ? "default" : "outline"}
-                    onClick={() => handleSelectProvider(p.key, p.label)}
-                    disabled={providerBusy === p.key}
-                  >
-                    {providerBusy === p.key ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                    {selectedProvider === p.key ? "Geselecteerd" : "Voorbereiden"}
+                  <Button size="sm" variant="outline" onClick={() => { selectProvider(restaurantId, p.key); toast.success(`${p.label} voorbereid`); }}>
+                    Voorbereiden
                   </Button>
                 </CardContent>
               </Card>
