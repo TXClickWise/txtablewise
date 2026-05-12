@@ -666,7 +666,7 @@ function ZoneBlock({
           {tables.length} tafels · {free} vrij · {seated} aan tafel
         </p>
       </div>
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-5 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7 gap-3">
         {tables.map(t => {
           const st = state.get(t.id) ?? { status: "free" as CellStatus };
           return (
