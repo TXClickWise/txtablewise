@@ -177,7 +177,7 @@ const LargeGroupsPage = () => {
   };
 
   return (
-    <div className="p-4 sm:p-6 max-w-[1400px] mx-auto space-y-5">
+    <div className="px-3 sm:px-4 py-3 space-y-5">
       {/* Header */}
       <div className="flex items-start justify-between flex-wrap gap-3">
         <div>

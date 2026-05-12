@@ -164,7 +164,7 @@ const PreOrderDrinksPage = () => {
   }
 
   return (
-    <div className="p-4 lg:p-6 space-y-6 max-w-6xl">
+    <div className="px-3 lg:px-4 py-4 space-y-6">
       <header className="flex items-start justify-between gap-4 flex-wrap">
         <div>
           <h1 className="font-display text-2xl flex items-center gap-2">
