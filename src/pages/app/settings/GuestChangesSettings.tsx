@@ -15,13 +15,13 @@ import { Info, UserCog } from "lucide-react";
 type Form = {
   guest_changes_auto_apply: boolean;
   guest_changes_min_notice_minutes: number;
-  guest_changes_auto_reject_party_size: number;
+  guest_changes_auto_reject_party_size: number | "";
 };
 
 const defaults: Form = {
   guest_changes_auto_apply: true,
   guest_changes_min_notice_minutes: 120,
-  guest_changes_auto_reject_party_size: 12,
+  guest_changes_auto_reject_party_size: "",
 };
 
 export default function GuestChangesSettings() {
@@ -39,7 +39,13 @@ export default function GuestChangesSettings() {
         .select("guest_changes_auto_apply,guest_changes_min_notice_minutes,guest_changes_auto_reject_party_size")
         .eq("id", restaurantId)
         .maybeSingle();
-      if (data) setForm({ ...defaults, ...(data as unknown as Partial<Form>) });
+      if (data) {
+        setForm({
+          guest_changes_auto_apply: data.guest_changes_auto_apply ?? defaults.guest_changes_auto_apply,
+          guest_changes_min_notice_minutes: data.guest_changes_min_notice_minutes ?? defaults.guest_changes_min_notice_minutes,
+          guest_changes_auto_reject_party_size: data.guest_changes_auto_reject_party_size ?? "",
+        });
+      }
       setLoading(false);
     })();
   }, [restaurantId]);
@@ -49,9 +55,13 @@ export default function GuestChangesSettings() {
   const save = async () => {
     if (!restaurantId) return;
     if (form.guest_changes_min_notice_minutes < 0) return toast.error("Wachttijd mag niet negatief zijn.");
-    if (form.guest_changes_auto_reject_party_size < 1) return toast.error("Drempel moet minimaal 1 zijn.");
+    if (form.guest_changes_auto_reject_party_size !== "" && form.guest_changes_auto_reject_party_size < 1) return toast.error("Drempel moet minimaal 1 zijn.");
     setSaving(true);
-    const { error } = await supabase.from("restaurants").update(form).eq("id", restaurantId);
+    const payload = {
+      ...form,
+      guest_changes_auto_reject_party_size: form.guest_changes_auto_reject_party_size === "" ? null : form.guest_changes_auto_reject_party_size,
+    };
+    const { error } = await supabase.from("restaurants").update(payload).eq("id", restaurantId);
     setSaving(false);
     if (error) return toast.error("Niet opgeslagen: " + error.message);
     await supabase.from("audit_log").insert({
@@ -60,7 +70,7 @@ export default function GuestChangesSettings() {
       action: "guest_changes_settings.updated",
       entity: "restaurant",
       entity_id: restaurantId,
-      after_data: form,
+      after_data: payload,
     });
     toast.success("Instellingen opgeslagen");
   };
