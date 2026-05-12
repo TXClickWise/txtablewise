@@ -33,5 +33,24 @@
   "toastCancelFail": "Stornierung fehlgeschlagen — bitte erneut versuchen",
   "toastCancelSuccess": "Danke für die Nachricht — Ihre Reservierung ist storniert.",
   "toastChangeFail": "Senden fehlgeschlagen — bitte erneut versuchen",
-  "toastChangeSuccess": "Änderungsanfrage gesendet — wir melden uns."
+  "toastChangeSuccess": "Änderungsanfrage gesendet — wir melden uns.",
+  "toastChangeApplied": "Ihre Änderung wurde übernommen.",
+  "toastChangeRejected": "Diese Änderung ist leider nicht möglich.",
+  "firstName": "Vorname",
+  "lastName": "Nachname",
+  "email": "E-Mail",
+  "phone": "Telefon",
+  "dietaryNotes": "Diätwünsche / Anmerkung",
+  "changeAppliedTitle": "Änderung bestätigt",
+  "changeAppliedBody": "Ihre Reservierung wurde aktualisiert. Sie erhalten eine Bestätigung per E-Mail.",
+  "changeRejectedTitle": "Änderung nicht möglich",
+  "changeRejectedBody": "Wir konnten diese Änderung nicht automatisch verarbeiten. Bitte wenden Sie sich an das Restaurant.",
+  "changeRejectedReason": {
+    "default": "Wir konnten diese Änderung nicht automatisch verarbeiten. Bitte wenden Sie sich an das Restaurant.",
+    "too_late_min_notice": "Ihre Änderung ist zu kurzfristig, um sie automatisch zu verarbeiten.",
+    "closed_on_date": "Am gewünschten Datum sind wir geschlossen.",
+    "outside_opening_hours": "Die gewünschte Zeit liegt außerhalb unserer Öffnungszeiten.",
+    "partial_closure": "Zur gewünschten Zeit sind wir teilweise geschlossen — bitte kontaktieren Sie uns.",
+    "no_table_available": "Für Ihren neuen Wunsch ist kein Tisch verfügbar. Wir helfen Ihnen gerne persönlich."
+  }
 }
