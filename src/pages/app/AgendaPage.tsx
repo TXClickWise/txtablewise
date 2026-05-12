@@ -165,6 +165,10 @@ const AgendaPage = () => {
     return Array.from(map.entries()).map(([key, v]) => ({ key, ...v }));
   }, [tables]);
 
+  useEffect(() => {
+    if (!floorZoneId && zoneGroups.length > 0) setFloorZoneId(zoneGroups[0].key);
+  }, [zoneGroups, floorZoneId]);
+
   const jumpToZone = (tableId: string) => {
     const el = rowRefs.current[tableId];
     if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
