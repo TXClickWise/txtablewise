@@ -106,11 +106,11 @@
 
     /* ── SIDEBAR ── */
     --sidebar-background: 222 44% 10%;
-    --sidebar-foreground: 220 20% 72%;
-    --sidebar-primary: 40 72% 52%;
+    --sidebar-foreground: 220 25% 92%;
+    --sidebar-primary: 40 80% 60%;
     --sidebar-primary-foreground: 222 44% 10%;
-    --sidebar-accent: 222 40% 15%;
-    --sidebar-accent-foreground: 220 20% 88%;
+    --sidebar-accent: 222 40% 18%;
+    --sidebar-accent-foreground: 0 0% 100%;
     --sidebar-border: 222 40% 15%;
     --sidebar-ring: 40 72% 52%;
   }
