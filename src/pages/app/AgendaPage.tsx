@@ -95,6 +95,7 @@ const AgendaPage = () => {
   const [walkInOpen, setWalkInOpen] = useState(false);
   const [walkInTable, setWalkInTable] = useState<{ id: string; label: string } | undefined>(undefined);
   const [fullscreen, setFullscreen] = useState(false);
+  const [floorZoneId, setFloorZoneId] = useState<string | null>(null);
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const headerAxisRef = useRef<HTMLDivElement>(null);
