@@ -195,6 +195,20 @@ export function AppSidebar() {
         >
           {collapsed ? "↩" : "Uitloggen"}
         </Button>
+        {!collapsed && (
+          <div className="px-2 pt-2 pb-1 text-[10px] leading-snug text-sidebar-foreground/60 text-center">
+            Created with <span className="text-destructive">❤</span> on Texel by{" "}
+            <a
+              href="https://clickwise.app"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-sidebar-primary hover:underline"
+            >
+              ClickWise
+            </a>{" "}
+            &amp; Jeroen
+          </div>
+        )}
       </SidebarFooter>
     </Sidebar>
   );
