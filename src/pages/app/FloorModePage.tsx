@@ -328,95 +328,67 @@ const FloorModePage = () => {
     );
   }
 
+  const alertCount = lateGuests.length;
+  const upcomingAlertCount = upcoming30.length;
+
   return (
-    <div className="h-[calc(100vh-4rem)] flex flex-col bg-muted/10">
-      {/* ============== HEADER ============== */}
-      <header className="border-b border-border bg-background/90 backdrop-blur px-4 sm:px-6 py-3">
-        <div className="flex items-start justify-between gap-3 flex-wrap">
-          <div className="min-w-0">
-            <div className="flex items-baseline gap-3 flex-wrap">
-              <h1 className="font-display text-2xl">Floor Mode</h1>
-              <span className="text-sm text-muted-foreground capitalize">
-                {format(selectedDate, "EEEE d MMMM", { locale: nl })}
-                {isToday && <span> · {format(clockNow, "HH:mm")}</span>}
+    <div className="min-h-[calc(100vh-3rem)] flex flex-col bg-muted/10">
+      {/* ============== COMPACTE HEADER ============== */}
+      <header className="border-b border-border bg-background/90 backdrop-blur px-3 sm:px-4 py-2">
+        <div className="flex items-center justify-between gap-2 flex-wrap">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground capitalize">
+            <span>{format(selectedDate, "EEEE d MMMM", { locale: nl })}</span>
+            {isToday && <span className="font-mono">· {format(clockNow, "HH:mm")}</span>}
+            {!isToday && (
+              <span className="text-xs px-2 py-0.5 rounded-full bg-muted text-muted-foreground border border-border">
+                Planning
               </span>
-              {!isToday && (
-                <span className="text-xs px-2 py-0.5 rounded-full bg-muted text-muted-foreground border border-border">
-                  Planning­weergave
-                </span>
-              )}
-            </div>
-            <div className="mt-1 flex items-center gap-3 flex-wrap text-sm text-muted-foreground">
-              <Kpi label="reserveringen" value={totalToday} />
-              <Kpi label="aan tafel" value={seatedNow} tone="seated" />
-              <Kpi label="walk-ins" value={walkInsToday} />
-              <Kpi label="tafels vrij" value={tablesFree} tone="success" />
-              <PacingIndicator level={pacingLevel} covers={coversNextHour} />
-            </div>
+            )}
           </div>
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="hidden md:inline text-xs text-muted-foreground" aria-live="polite">
-              Laatst bijgewerkt {format(lastUpdated, "HH:mm:ss")}
-            </span>
-            {/* Date navigator */}
-            <div className="flex items-center gap-1">
-              <Button
-                variant="outline" size="icon" className="h-11 w-11"
-                onClick={() => setSelectedDate(subDays(selectedDate, 1))}
-                aria-label="Vorige dag"
-              >
-                <ChevronLeft className="h-4 w-4" />
-              </Button>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button variant="outline" className="h-11">
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {format(selectedDate, "d MMM yyyy", { locale: nl })}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="end">
-                  <Calendar
-                    mode="single"
-                    selected={selectedDate}
-                    onSelect={(d) => d && setSelectedDate(d)}
-                    locale={nl}
-                    initialFocus
-                    className={cn("p-3 pointer-events-auto")}
-                  />
-                </PopoverContent>
-              </Popover>
-              <Button
-                variant="outline" size="icon" className="h-11 w-11"
-                onClick={() => setSelectedDate(addDays(selectedDate, 1))}
-                aria-label="Volgende dag"
-              >
-                <ChevronRight className="h-4 w-4" />
-              </Button>
-              {!isToday && (
-                <Button variant="outline" className="h-11" onClick={() => setSelectedDate(new Date())}>
-                  Vandaag
-                </Button>
-              )}
-            </div>
+          <div className="flex items-center gap-1">
             <Button
-              variant="ghost" size="icon" onClick={() => refetch()} title="Vernieuwen"
-              aria-label="Vernieuwen"
+              variant="outline" size="icon" className="h-9 w-9"
+              onClick={() => setSelectedDate(subDays(selectedDate, 1))}
+              aria-label="Vorige dag"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" className="h-9">
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  <span className="hidden sm:inline">{format(selectedDate, "d MMM yyyy", { locale: nl })}</span>
+                  <span className="sm:hidden">{format(selectedDate, "d MMM", { locale: nl })}</span>
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="end">
+                <Calendar
+                  mode="single"
+                  selected={selectedDate}
+                  onSelect={(d) => d && setSelectedDate(d)}
+                  locale={nl}
+                  initialFocus
+                  className={cn("p-3 pointer-events-auto")}
+                />
+              </PopoverContent>
+            </Popover>
+            <Button
+              variant="outline" size="icon" className="h-9 w-9"
+              onClick={() => setSelectedDate(addDays(selectedDate, 1))}
+              aria-label="Volgende dag"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+            {!isToday && (
+              <Button variant="outline" size="sm" className="h-9" onClick={() => setSelectedDate(new Date())}>
+                Vandaag
+              </Button>
+            )}
+            <Button
+              variant="ghost" size="icon" className="h-9 w-9"
+              onClick={() => refetch()} title="Vernieuwen" aria-label="Vernieuwen"
             >
               <RefreshCw className={cn("h-4 w-4", isFetching && "animate-spin")} />
-            </Button>
-            <Button
-              variant="outline" size="lg" className="h-12"
-              onClick={() => setQuickSeatOpen(true)}
-              title="AI Quick Seat"
-            >
-              <Sparkles className="mr-2 h-5 w-5 text-primary" />
-              <span className="hidden sm:inline">AI Quick Seat</span>
-            </Button>
-            <Button
-              size="lg" className="h-12 px-5"
-              onClick={() => { setPrefilledTable(undefined); setWalkInOpen(true); }}
-            >
-              <UserPlus className="mr-2 h-5 w-5" /> Walk-in
             </Button>
           </div>
         </div>
@@ -424,6 +396,31 @@ const FloorModePage = () => {
           <div className="mt-2 text-sm text-destructive flex items-center gap-2">
             Verbinding hapert.
             <Button size="sm" variant="outline" onClick={() => refetch()}>Opnieuw proberen</Button>
+          </div>
+        )}
+        {/* Compacte alerts (alleen relevant getoond) */}
+        {(alertCount > 0 || upcomingAlertCount > 0) && (
+          <div className="mt-2 flex flex-wrap gap-2">
+            {alertCount > 0 && (
+              <button
+                type="button"
+                onClick={() => focusReservation(lateGuests[0], setSelectedTableId)}
+                className="text-xs px-2.5 py-1 rounded-full bg-destructive/10 text-destructive border border-destructive/30 inline-flex items-center gap-1.5 hover:bg-destructive/15"
+              >
+                <AlertTriangle className="h-3 w-3" />
+                {alertCount} {alertCount === 1 ? "gast" : "gasten"} te laat
+              </button>
+            )}
+            {upcomingAlertCount > 0 && (
+              <button
+                type="button"
+                onClick={() => upcoming30[0] && focusReservation(upcoming30[0].r, setSelectedTableId)}
+                className="text-xs px-2.5 py-1 rounded-full bg-status-pending/10 text-status-pending border border-status-pending/30 inline-flex items-center gap-1.5 hover:bg-status-pending/15"
+              >
+                <Clock className="h-3 w-3" />
+                {upcomingAlertCount} binnen 30 min
+              </button>
+            )}
           </div>
         )}
       </header>
