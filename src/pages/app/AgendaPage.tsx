@@ -679,4 +679,80 @@ const AgendaPage = () => {
   );
 };
 
+// ---- Plattegrond view: tafels op hun pos_x/pos_y, horizontaal ingepast ----
+function FloorPlanBody({ tables }: { tables: any[] }) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [containerW, setContainerW] = useState(0);
+
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(() => setContainerW(el.clientWidth));
+    ro.observe(el);
+    setContainerW(el.clientWidth);
+    return () => ro.disconnect();
+  }, []);
+
+  // Bounding box van tafels (default canvas 900x560 fallback)
+  const bbox = useMemo(() => {
+    if (tables.length === 0) return { w: 900, h: 560 };
+    let maxX = 0, maxY = 0;
+    for (const t of tables) {
+      maxX = Math.max(maxX, (t.pos_x ?? 0) + (t.width ?? 80));
+      maxY = Math.max(maxY, (t.pos_y ?? 0) + (t.height ?? 80));
+    }
+    return { w: Math.max(maxX + 24, 600), h: Math.max(maxY + 24, 320) };
+  }, [tables]);
+
+  const padding = 16;
+  const scale = containerW > 0 ? Math.min(1.6, (containerW - padding * 2) / bbox.w) : 1;
+  const scaledH = bbox.h * scale;
+
+  if (tables.length === 0) {
+    return (
+      <div ref={containerRef} className="flex-1 min-h-0 overflow-auto p-6">
+        <div className="text-center text-sm text-muted-foreground py-12">
+          Geen tafels in deze zone.
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div ref={containerRef} className="flex-1 min-h-0 overflow-auto bg-muted/10">
+      <div className="p-4" style={{ minHeight: scaledH + padding * 2 }}>
+        <div
+          className="relative mx-auto rounded-xl border border-border bg-background shadow-sm"
+          style={{ width: bbox.w * scale, height: scaledH }}
+        >
+          {tables.map((t) => {
+            const isRound = t.shape === "round";
+            const cap = t.capacity_min === t.capacity_max
+              ? `${t.capacity_max}p`
+              : `${t.capacity_min}-${t.capacity_max}p`;
+            return (
+              <div
+                key={t.id}
+                className={cn(
+                  "absolute flex flex-col items-center justify-center border-2 border-border bg-card shadow-sm select-none",
+                  isRound ? "rounded-full" : "rounded-lg",
+                )}
+                style={{
+                  left: (t.pos_x ?? 0) * scale,
+                  top: (t.pos_y ?? 0) * scale,
+                  width: (t.width ?? 80) * scale,
+                  height: (t.height ?? 80) * scale,
+                }}
+              >
+                <div className="font-display text-base leading-none">{t.label}</div>
+                <div className="text-[10px] text-muted-foreground mt-0.5">{cap}</div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default AgendaPage;
