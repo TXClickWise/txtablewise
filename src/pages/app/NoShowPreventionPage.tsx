@@ -201,13 +201,7 @@ const NoShowPreventionPage = () => {
             <Sparkles className="h-3 w-3 text-primary" /> Hospitality-first
           </UIBadge>
         }
-        actions={
-          <Button variant="outline" className="h-11" asChild>
-            <Link to="/app/instellingen/no-show">
-              <Settings className="h-4 w-4 mr-2" /> Instellingen
-            </Link>
-          </Button>
-        }
+        actions={null}
       />
 
       {/* KPIs */}
