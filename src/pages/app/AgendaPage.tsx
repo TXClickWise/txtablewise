@@ -1,30 +1,29 @@
-// AgendaPage — tablet-first dag-agenda.
-// Highlights:
-// - Kwartier-grid (4 streepjes per uur) met 3-tier visuele hiërarchie
-// - Tik op leeg kwartier opent ReservationFormSheet met prefill (tafel + tijd)
-// - Walk-in shortcut in PageHeader (geen tafel verplicht)
-// - Horizontale én verticale zoom (rij-hoogte)
-// - "Nu"-lijn en auto-recenter na inactiviteit op vandaag
-// - Statussnelknoppen verschijnen automatisch in ReservationDetailDialog bij tap op blok
+// AgendaPage — tablet-first dag-agenda met sticky kop en scrollend grid.
+// Layout:
+//   ┌ rij 1: [Tijdlijn|Lijst] · Spring naar · toolbar (zoom/nav/datum)
+//   │ rij 2: tip
+//   │ rij 3: uren-as (Tafel | 11:00 12:00 …) — horizontaal gesynced met body
+//   ├──── (alles hierboven sticky bovenin <main>) ────
+//   └ body: tafelrijen, scrollt horizontaal en (samen met main) verticaal
 import { useEffect, useMemo, useRef, useState } from "react";
 import { format, addDays, subDays, isSameDay, parseISO, isValid } from "date-fns";
 import { nl } from "date-fns/locale";
 import { useSearchParams } from "react-router-dom";
 import {
   ChevronLeft, ChevronRight, Calendar as CalendarIcon,
-  ZoomIn, ZoomOut, MoveVertical, UserPlus, Plus,
+  ZoomIn, ZoomOut, MoveVertical, Maximize2, Minimize2,
+  CalendarDays, List,
 } from "lucide-react";
 import { useRestaurant } from "@/hooks/useRestaurant";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { ReservationDetailDialog } from "@/components/ReservationDetailDialog";
 import { ReservationFormSheet, type ReservationFormPrefill } from "@/components/reservations/ReservationFormSheet";
 import { WalkInDialog } from "@/components/WalkInDialog";
-
+import { DayView } from "@/components/reservations/views/DayView";
 import { EmptyState } from "@/components/touch/StateViews";
 import { cn } from "@/lib/utils";
 
@@ -40,6 +39,7 @@ const ROW_MIN = 48;
 const ROW_MAX = 120;
 const ROW_STEP = 8;
 const ROW_DEFAULT = 64;
+const TAFEL_COL_W = 120;
 
 const STATUS_BG: Record<string, string> = {
   pending: "bg-status-pending/30 border-status-pending/60",
@@ -52,10 +52,13 @@ const STATUS_BG: Record<string, string> = {
   hold: "bg-muted border-border",
 };
 
+type ViewMode = "tijdlijn" | "lijst";
+
 const AgendaPage = () => {
   const { current } = useRestaurant();
   const rid = current?.restaurant_id;
   const [searchParams, setSearchParams] = useSearchParams();
+
   const initialDate = (() => {
     const p = searchParams.get("date");
     if (p) {
@@ -72,6 +75,16 @@ const AgendaPage = () => {
     else next.set("date", format(d, "yyyy-MM-dd"));
     setSearchParams(next, { replace: true });
   };
+
+  const tabParam = searchParams.get("tab");
+  const view: ViewMode = tabParam === "lijst" ? "lijst" : "tijdlijn";
+  const setView = (v: ViewMode) => {
+    const next = new URLSearchParams(searchParams);
+    if (v === "tijdlijn") next.delete("tab");
+    else next.set("tab", v);
+    setSearchParams(next, { replace: true });
+  };
+
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [pxPerMin, setPxPerMin] = useState(PX_DEFAULT);
   const [rowHeight, setRowHeight] = useState(ROW_DEFAULT);
@@ -80,11 +93,14 @@ const AgendaPage = () => {
   const [createPrefill, setCreatePrefill] = useState<ReservationFormPrefill | undefined>(undefined);
   const [walkInOpen, setWalkInOpen] = useState(false);
   const [walkInTable, setWalkInTable] = useState<{ id: string; label: string } | undefined>(undefined);
+  const [fullscreen, setFullscreen] = useState(false);
+
   const scrollRef = useRef<HTMLDivElement>(null);
+  const headerAxisRef = useRef<HTMLDivElement>(null);
   const didInitialScroll = useRef(false);
   const dateStr = format(date, "yyyy-MM-dd");
 
-  // tick "nu" elke 15 min — synchroon met kwartier (00, 15, 30, 45)
+  // tick "nu" elke 15 min — synchroon met kwartier
   useEffect(() => {
     const tick = () => setNow(new Date());
     const n = new Date();
@@ -157,7 +173,7 @@ const AgendaPage = () => {
     enabled: !!rid,
     queryFn: async () => {
       const { data } = await supabase.from("reservations")
-        .select("id, start_time, end_time, status, party_size, guests(first_name, last_name), reservation_tables(table_id)")
+        .select("id, start_time, end_time, status, party_size, channel, guests(first_name, last_name, is_vip), reservation_tables(table_id)")
         .eq("restaurant_id", rid!).eq("reservation_date", dateStr);
       return data ?? [];
     },
@@ -168,14 +184,14 @@ const AgendaPage = () => {
     enabled: !!rid,
     queryFn: async () => {
       const { data } = await supabase.from("restaurants")
-        .select("default_reservation_minutes")
+        .select("default_reservation_minutes, large_group_threshold")
         .eq("id", rid!).maybeSingle();
       return data;
     },
   });
   const defaultDuration = restaurantConfig?.default_reservation_minutes ?? 90;
+  const largeGroupThreshold = restaurantConfig?.large_group_threshold ?? undefined;
 
-  // Halve-uur labels in de header (tijdsindicatie)
   const slotLabels = useMemo(() => {
     const out: string[] = [];
     for (let h = START_HOUR; h < END_HOUR; h++) {
@@ -203,7 +219,6 @@ const AgendaPage = () => {
     const d = new Date(iso);
     return (d.getHours() - START_HOUR) * 60 + d.getMinutes();
   };
-
   const minutesToTime = (mins: number) => {
     const total = START_HOUR * 60 + mins;
     const h = Math.floor(total / 60);
@@ -215,7 +230,9 @@ const AgendaPage = () => {
   const nowMin = (now.getHours() - START_HOUR) * 60 + now.getMinutes();
   const showNowLine = isToday && nowMin >= 0 && nowMin <= totalMinutes;
 
+  // Initieel scrollen naar nu (op vandaag)
   useEffect(() => {
+    if (view !== "tijdlijn") return;
     if (!scrollRef.current || tables.length === 0) return;
     const el = scrollRef.current;
     if (isToday) {
@@ -226,7 +243,7 @@ const AgendaPage = () => {
     }
     didInitialScroll.current = true;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dateStr, tables.length]);
+  }, [dateStr, tables.length, view]);
 
   const zoomBy = (delta: number) => {
     const el = scrollRef.current;
@@ -240,16 +257,15 @@ const AgendaPage = () => {
       const e2 = scrollRef.current;
       if (!e2) return;
       e2.scrollLeft = Math.max(0, centerMin * next - e2.clientWidth / 2);
+      if (headerAxisRef.current) headerAxisRef.current.scrollLeft = e2.scrollLeft;
     });
   };
-
   const rowZoom = (delta: number) =>
     setRowHeight((v) => Math.max(ROW_MIN, Math.min(ROW_MAX, v + delta)));
 
   // Pinch-zoom op touch
   const pointers = useRef<Map<number, { x: number; y: number }>>(new Map());
   const pinchStart = useRef<{ dist: number; px: number; centerMin: number } | null>(null);
-
   const onPointerDown = (e: React.PointerEvent) => {
     if (e.pointerType !== "touch") return;
     pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
@@ -275,6 +291,7 @@ const AgendaPage = () => {
           const el = scrollRef.current;
           if (!el || !pinchStart.current) return;
           el.scrollLeft = Math.max(0, pinchStart.current.centerMin * next - el.clientWidth / 2);
+          if (headerAxisRef.current) headerAxisRef.current.scrollLeft = el.scrollLeft;
         });
       }
     }
@@ -286,11 +303,9 @@ const AgendaPage = () => {
 
   const zoomPct = Math.round((pxPerMin / PX_DEFAULT) * 100);
 
-  // Tik op leeg kwartier → bepaal eerlijke starttijd en open reservatie-sheet
   const handleQuarterClick = (table: any, quarterIndex: number) => {
     const items = (byTable[table.id] ?? []) as any[];
     const clickMin = quarterIndex * QUARTER_MIN;
-
     const sorted = [...items].sort(
       (a, b) => minutesFromStart(a.start_time) - minutesFromStart(b.start_time),
     );
@@ -302,7 +317,6 @@ const AgendaPage = () => {
         return;
       }
     }
-
     let chosenMin = clickMin;
     const next = sorted.find((r) => minutesFromStart(r.start_time) > clickMin);
     if (next) {
@@ -319,7 +333,6 @@ const AgendaPage = () => {
     }
     if (chosenMin < 0) chosenMin = 0;
     if (chosenMin >= totalMinutes) return;
-
     setCreatePrefill({
       date: dateStr,
       time: minutesToTime(chosenMin),
@@ -329,222 +342,288 @@ const AgendaPage = () => {
     setCreateOpen(true);
   };
 
+  // Sync horizontal scroll: body → header axis
+  const handleBodyScroll = () => {
+    const el = scrollRef.current;
+    if (!el) return;
+    if (headerAxisRef.current && headerAxisRef.current.scrollLeft !== el.scrollLeft) {
+      headerAxisRef.current.scrollLeft = el.scrollLeft;
+    }
+    resetInactivity();
+  };
+
+  // ESC sluit fullscreen
+  useEffect(() => {
+    if (!fullscreen) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setFullscreen(false); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [fullscreen]);
+
+  // Header rendering ----------------------------------------------------------
+  const ViewSwitcher = (
+    <div className="inline-flex rounded-md border border-border bg-card p-0.5">
+      {([
+        { v: "tijdlijn" as const, icon: CalendarDays, label: "Tijdlijn" },
+        { v: "lijst" as const, icon: List, label: "Lijst" },
+      ]).map((it) => {
+        const active = view === it.v;
+        return (
+          <button
+            key={it.v}
+            type="button"
+            onClick={() => setView(it.v)}
+            className={cn(
+              "inline-flex items-center gap-1.5 px-2.5 h-8 rounded text-sm font-medium transition-colors",
+              active ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground",
+            )}
+            aria-pressed={active}
+          >
+            <it.icon className="h-4 w-4" />
+            <span>{it.label}</span>
+          </button>
+        );
+      })}
+    </div>
+  );
+
+  const Toolbar = (
+    <div className="flex items-center gap-1 flex-wrap">
+      {view === "tijdlijn" && (
+        <>
+          <Button variant="outline" size="icon" className="h-9 w-9" onClick={() => zoomBy(-PX_STEP)} disabled={pxPerMin <= PX_MIN} aria-label="Uitzoomen">
+            <ZoomOut className="h-4 w-4" />
+          </Button>
+          <span className="text-xs text-muted-foreground tabular-nums w-10 text-center">{zoomPct}%</span>
+          <Button variant="outline" size="icon" className="h-9 w-9" onClick={() => zoomBy(PX_STEP)} disabled={pxPerMin >= PX_MAX} aria-label="Inzoomen">
+            <ZoomIn className="h-4 w-4" />
+          </Button>
+          <Button variant="outline" size="icon" className="h-9 w-9" onClick={() => setFullscreen((v) => !v)} aria-label={fullscreen ? "Verlaat volledig scherm" : "Volledig scherm"}>
+            {fullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+          </Button>
+          <Button variant="outline" size="icon" className="h-9 w-9" onClick={() => rowZoom(rowHeight >= ROW_MAX ? -ROW_STEP : ROW_STEP)} aria-label="Rijhoogte wisselen">
+            <MoveVertical className="h-4 w-4" />
+          </Button>
+        </>
+      )}
+      <Button variant="outline" size="icon" className="h-9 w-9" onClick={() => setDate(subDays(date, 1))} aria-label="Vorige dag">
+        <ChevronLeft className="h-4 w-4" />
+      </Button>
+      <Popover>
+        <PopoverTrigger asChild>
+          <Button variant="outline" className="h-9">
+            <CalendarIcon className="mr-2 h-4 w-4" />
+            {format(date, "d MMM yyyy", { locale: nl })}
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-auto p-0" align="end">
+          <Calendar mode="single" selected={date} onSelect={(d) => d && setDate(d)} locale={nl} initialFocus className={cn("p-3 pointer-events-auto")} />
+        </PopoverContent>
+      </Popover>
+      <Button variant="outline" size="icon" className="h-9 w-9" onClick={() => setDate(addDays(date, 1))} aria-label="Volgende dag">
+        <ChevronRight className="h-4 w-4" />
+      </Button>
+      {!isToday && (
+        <Button variant="outline" className="h-9" onClick={() => setDate(new Date())}>
+          Vandaag
+        </Button>
+      )}
+    </div>
+  );
+
+  // Lijst-view rendering -----------------------------------------------------
+  const listReservations = useMemo(() => {
+    return (reservations as any[]).map((r) => ({
+      id: r.id,
+      start_time: r.start_time,
+      party_size: r.party_size,
+      status: r.status,
+      channel: r.channel,
+      guests: r.guests ?? null,
+    }));
+  }, [reservations]);
+
+  const containerClass = fullscreen
+    ? "fixed inset-0 z-50 bg-background flex flex-col"
+    : "flex flex-col h-full min-h-0";
+
   return (
-    <div className="px-2 sm:px-3 pt-2 pb-3 space-y-2">
-      <Card className="bg-gradient-card shadow-soft overflow-hidden">
-        <CardContent className="p-0">
-          {tables.length === 0 ? (
-            <div className="p-6">
-              <EmptyState
-                icon={<CalendarIcon />}
-                title="Nog geen tafels geconfigureerd"
-                description="Voeg tafels en zones toe in de instellingen om de agenda te gebruiken."
-              />
+    <div className={containerClass}>
+      {/* === STICKY KOP === */}
+      <div className="sticky top-0 z-30 bg-card border-b border-border">
+        {/* Rij 1: view-switcher · spring naar · toolbar */}
+        <div className="flex items-center gap-3 px-3 py-2 flex-wrap">
+          {ViewSwitcher}
+
+          {view === "tijdlijn" && zoneGroups.length > 1 && (
+            <div className="flex items-center gap-2 overflow-x-auto min-w-0">
+              <span className="text-xs text-muted-foreground shrink-0">Spring naar:</span>
+              {zoneGroups.map((z) => (
+                <Button
+                  key={z.key}
+                  size="sm"
+                  variant="outline"
+                  className="h-8 shrink-0"
+                  onClick={() => jumpToZone(z.firstTableId)}
+                >
+                  {z.name}
+                </Button>
+              ))}
             </div>
-          ) : (
-            <>
-              {/* Sticky header stack: datum + toolbar, zone-springers, tip */}
-              <div className="sticky top-0 z-30 bg-card border-b border-border">
-                <div className="flex items-center justify-between gap-2 flex-wrap px-3 py-2">
-                  <span className="text-sm font-medium capitalize">
-                    {format(date, "EEEE d MMMM yyyy", { locale: nl })}
-                  </span>
-                  <div className="flex items-center gap-1 flex-wrap">
-                    <div className="hidden sm:flex items-center gap-1 mr-1">
-                      <Button variant="outline" size="icon" className="h-9 w-9" onClick={() => zoomBy(-PX_STEP)} disabled={pxPerMin <= PX_MIN} aria-label="Uitzoomen">
-                        <ZoomOut className="h-4 w-4" />
-                      </Button>
-                      <span className="text-xs text-muted-foreground tabular-nums w-10 text-center">{zoomPct}%</span>
-                      <Button variant="outline" size="icon" className="h-9 w-9" onClick={() => zoomBy(PX_STEP)} disabled={pxPerMin >= PX_MAX} aria-label="Inzoomen">
-                        <ZoomIn className="h-4 w-4" />
-                      </Button>
-                      <Button variant="outline" size="icon" className="h-9 w-9" onClick={() => rowZoom(-ROW_STEP)} disabled={rowHeight <= ROW_MIN} aria-label="Rijen smaller">
-                        <MoveVertical className="h-4 w-4 rotate-45" />
-                      </Button>
-                      <Button variant="outline" size="icon" className="h-9 w-9" onClick={() => rowZoom(ROW_STEP)} disabled={rowHeight >= ROW_MAX} aria-label="Rijen hoger">
-                        <MoveVertical className="h-4 w-4" />
-                      </Button>
-                    </div>
-                    <Button variant="outline" size="icon" className="h-9 w-9" onClick={() => setDate(subDays(date, 1))} aria-label="Vorige dag">
-                      <ChevronLeft className="h-4 w-4" />
-                    </Button>
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <Button variant="outline" className="h-9">
-                          <CalendarIcon className="mr-2 h-4 w-4" />
-                          {format(date, "d MMM yyyy", { locale: nl })}
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0" align="end">
-                        <Calendar mode="single" selected={date} onSelect={(d) => d && setDate(d)} locale={nl} initialFocus className={cn("p-3 pointer-events-auto")} />
-                      </PopoverContent>
-                    </Popover>
-                    <Button variant="outline" size="icon" className="h-9 w-9" onClick={() => setDate(addDays(date, 1))} aria-label="Volgende dag">
-                      <ChevronRight className="h-4 w-4" />
-                    </Button>
-                    {!isToday && (
-                      <Button variant="outline" className="h-9" onClick={() => setDate(new Date())}>
-                        Vandaag
-                      </Button>
-                    )}
-                  </div>
-                </div>
-
-                {/* Mobile zoom-knoppen */}
-                <div className="flex sm:hidden items-center justify-end gap-1 px-3 pb-2">
-                  <Button variant="outline" size="icon" className="h-10 w-10" onClick={() => zoomBy(-PX_STEP)} disabled={pxPerMin <= PX_MIN} aria-label="Uitzoomen">
-                    <ZoomOut className="h-4 w-4" />
-                  </Button>
-                  <span className="text-xs text-muted-foreground tabular-nums w-12 text-center">{zoomPct}%</span>
-                  <Button variant="outline" size="icon" className="h-10 w-10" onClick={() => zoomBy(PX_STEP)} disabled={pxPerMin >= PX_MAX} aria-label="Inzoomen">
-                    <ZoomIn className="h-4 w-4" />
-                  </Button>
-                  <Button variant="outline" size="icon" className="h-10 w-10" onClick={() => rowZoom(-ROW_STEP)} disabled={rowHeight <= ROW_MIN} aria-label="Rijen smaller">
-                    <MoveVertical className="h-4 w-4 rotate-45" />
-                  </Button>
-                  <Button variant="outline" size="icon" className="h-10 w-10" onClick={() => rowZoom(ROW_STEP)} disabled={rowHeight >= ROW_MAX} aria-label="Rijen hoger">
-                    <MoveVertical className="h-4 w-4" />
-                  </Button>
-                </div>
-
-                {zoneGroups.length > 1 && (
-                  <div className="flex items-center gap-2 px-3 py-2 border-t border-border overflow-x-auto">
-                    <span className="text-xs text-muted-foreground shrink-0">Spring naar:</span>
-                    {zoneGroups.map((z) => (
-                      <Button
-                        key={z.key}
-                        size="sm"
-                        variant="outline"
-                        className="h-9 shrink-0"
-                        onClick={() => jumpToZone(z.firstTableId)}
-                      >
-                        {z.name}
-                      </Button>
-                    ))}
-                  </div>
-                )}
-                <div className="flex items-center gap-2 px-3 py-2 border-t border-border text-xs text-muted-foreground">
-                  <span>Tip: tik op een leeg tijdvak om snel een reservering toe te voegen op die tafel.</span>
-                </div>
-              </div>
-
-              <div
-                ref={scrollRef}
-                className="overflow-x-auto"
-                style={{ touchAction: "pan-x pan-y" }}
-                onPointerDown={(e) => { resetInactivity(); onPointerDown(e); }}
-                onPointerMove={onPointerMove}
-                onPointerUp={onPointerEnd}
-                onPointerCancel={onPointerEnd}
-                onPointerLeave={onPointerEnd}
-                onScroll={resetInactivity}
-                onWheel={resetInactivity}
-              >
-                <div className="relative" style={{ minWidth: totalWidth + 120 }}>
-                  {/* Uren-as header — sticky binnen de horizontale scroll */}
-                  <div className="sticky top-0 z-10 bg-card border-b border-border flex">
-                    <div className="sticky left-0 z-20 bg-card w-[120px] shrink-0 p-2 text-xs font-medium text-muted-foreground border-r border-border">Tafel</div>
-                    <div className="relative flex-1" style={{ width: totalWidth }}>
-                      {slotLabels.map((s, i) => (
-                        <div
-                          key={s}
-                          className="absolute top-0 h-full text-[10px] text-muted-foreground border-l border-border/50"
-                          style={{ left: i * SLOT_MIN * pxPerMin, width: SLOT_MIN * pxPerMin }}
-                        >
-                          {i % 2 === 0 && <span className="px-1">{s}</span>}
-                        </div>
-                      ))}
-                      <div className="h-6" />
-                    </div>
-                  </div>
-
-                  {/* Rows */}
-                  {(tables as any[]).map((t) => {
-                    const items = byTable[t.id] ?? [];
-                    const cap = t.capacity_min === t.capacity_max
-                      ? `${t.capacity_max}p`
-                      : `${t.capacity_min}–${t.capacity_max}p`;
-                    return (
-                      <div
-                        key={t.id}
-                        ref={(el) => { rowRefs.current[t.id] = el; }}
-                        className="flex border-b border-border hover:bg-muted/10 scroll-mt-16"
-                      >
-                        <div className="sticky left-0 z-[5] bg-card w-[120px] shrink-0 p-3 border-r border-border flex flex-col justify-center">
-                          <div className="flex items-baseline justify-between gap-1">
-                            <div className="font-medium text-sm">{t.label}</div>
-                            <div className="text-[11px] text-muted-foreground tabular-nums">{cap}</div>
-                          </div>
-                          {t.zones?.name && <div className="text-xs text-muted-foreground">{t.zones.name}</div>}
-                        </div>
-                        <div className="relative" style={{ width: totalWidth, height: rowHeight }}>
-                          {/* Kwartier-cellen (klikbaar, 3-tier hiërarchie) */}
-                          {Array.from({ length: quarterCount }).map((_, i) => (
-                            <button
-                              key={`q-${t.id}-${i}`}
-                              type="button"
-                              onClick={() => handleQuarterClick(t, i)}
-                              className={cn(
-                                "absolute top-0 h-full border-l transition-colors",
-                                i % 4 === 0
-                                  ? "border-border/60"
-                                  : i % 2 === 0
-                                  ? "border-border/30"
-                                  : "border-border/15",
-                                "hover:bg-primary/5 active:bg-primary/10 focus-visible:bg-primary/10 focus-visible:outline-none",
-                              )}
-                              style={{ left: i * QUARTER_MIN * pxPerMin, width: QUARTER_MIN * pxPerMin }}
-                              aria-label={`Reservering toevoegen op ${t.label} om ${minutesToTime(i * QUARTER_MIN)}`}
-                            />
-                          ))}
-                          {/* Reservering-blokken bovenop */}
-                          {items.map((r) => {
-                            const startMin = minutesFromStart(r.start_time);
-                            const endMin = minutesFromStart(r.end_time);
-                            const left = Math.max(0, startMin) * pxPerMin;
-                            const width = Math.max(20, (endMin - startMin) * pxPerMin - 2);
-                            return (
-                              <button
-                                key={r.id}
-                                onClick={(e) => { e.stopPropagation(); setSelectedId(r.id); }}
-                                className={cn(
-                                  "absolute rounded-md border px-2 text-left text-xs overflow-hidden hover:brightness-110 transition-all z-[2]",
-                                  STATUS_BG[r.status] ?? "bg-muted border-border",
-                                )}
-                                style={{ left, top: 6, height: rowHeight - 12, width }}
-                              >
-                                <div className="font-medium truncate">
-                                  {format(new Date(r.start_time), "HH:mm")} · {r.guests?.first_name ?? "Gast"} {r.guests?.last_name ?? ""}
-                                </div>
-                                <div className="text-[10px] opacity-80">{r.party_size}p</div>
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    );
-                  })}
-
-                  {/* Live "nu"-lijn */}
-                  {showNowLine && (
-                    <div
-                      className="pointer-events-none absolute top-0 bottom-0 z-[3]"
-                      style={{ left: 120 + nowMin * pxPerMin }}
-                      aria-hidden
-                    >
-                      <div className="absolute top-0 bottom-0 w-[2px] bg-primary" />
-                      <div className="absolute -top-1 -left-1 h-2 w-2 rounded-full bg-primary shadow" />
-                      <div className="absolute top-1 left-2 px-1.5 py-0.5 text-[10px] font-medium rounded bg-primary text-primary-foreground tabular-nums whitespace-nowrap">
-                        {format(now, "HH:mm")}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </>
           )}
-        </CardContent>
-      </Card>
+
+          <div className="ml-auto">{Toolbar}</div>
+        </div>
+
+        {view === "tijdlijn" && tables.length > 0 && (
+          <>
+            {/* Rij 2: tip */}
+            <div className="px-3 py-1.5 text-xs text-muted-foreground border-t border-border">
+              Tip: tik op een leeg tijdvak om snel een reservering toe te voegen op die tafel.
+            </div>
+
+            {/* Rij 3: uren-as (horizontaal gesynced met body) */}
+            <div
+              ref={headerAxisRef}
+              className="flex border-t border-border overflow-x-hidden"
+            >
+              <div
+                className="bg-card shrink-0 p-2 text-xs font-medium text-muted-foreground border-r border-border"
+                style={{ width: TAFEL_COL_W }}
+              >
+                Tafel
+              </div>
+              <div className="relative shrink-0" style={{ width: totalWidth, height: 24 }}>
+                {slotLabels.map((s, i) => (
+                  <div
+                    key={s}
+                    className="absolute top-0 h-full text-[10px] text-muted-foreground border-l border-border/50"
+                    style={{ left: i * SLOT_MIN * pxPerMin, width: SLOT_MIN * pxPerMin }}
+                  >
+                    {i % 2 === 0 && <span className="px-1">{s}</span>}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </>
+        )}
+      </div>
+
+      {/* === BODY === */}
+      {view === "lijst" ? (
+        <div className="flex-1 min-h-0 overflow-auto p-3">
+          <DayView
+            date={date}
+            reservations={listReservations as any}
+            onOpen={(id) => setSelectedId(id)}
+            largeGroupThreshold={largeGroupThreshold}
+          />
+        </div>
+      ) : tables.length === 0 ? (
+        <div className="p-6">
+          <EmptyState
+            icon={<CalendarIcon />}
+            title="Nog geen tafels geconfigureerd"
+            description="Voeg tafels en zones toe in de instellingen om de agenda te gebruiken."
+          />
+        </div>
+      ) : (
+        <div
+          ref={scrollRef}
+          className="flex-1 min-h-0 overflow-auto"
+          style={{ touchAction: "pan-x pan-y" }}
+          onPointerDown={(e) => { resetInactivity(); onPointerDown(e); }}
+          onPointerMove={onPointerMove}
+          onPointerUp={onPointerEnd}
+          onPointerCancel={onPointerEnd}
+          onPointerLeave={onPointerEnd}
+          onScroll={handleBodyScroll}
+          onWheel={resetInactivity}
+        >
+          <div className="relative" style={{ minWidth: totalWidth + TAFEL_COL_W }}>
+            {(tables as any[]).map((t) => {
+              const items = byTable[t.id] ?? [];
+              const cap = t.capacity_min === t.capacity_max
+                ? `${t.capacity_max}p`
+                : `${t.capacity_min}–${t.capacity_max}p`;
+              return (
+                <div
+                  key={t.id}
+                  ref={(el) => { rowRefs.current[t.id] = el; }}
+                  className="flex border-b border-border hover:bg-muted/10 scroll-mt-2"
+                >
+                  <div
+                    className="sticky left-0 z-[5] bg-card shrink-0 p-3 border-r border-border flex flex-col justify-center"
+                    style={{ width: TAFEL_COL_W }}
+                  >
+                    <div className="flex items-baseline justify-between gap-1">
+                      <div className="font-medium text-sm">{t.label}</div>
+                      <div className="text-[11px] text-muted-foreground tabular-nums">{cap}</div>
+                    </div>
+                    {t.zones?.name && <div className="text-xs text-muted-foreground">{t.zones.name}</div>}
+                  </div>
+                  <div className="relative" style={{ width: totalWidth, height: rowHeight }}>
+                    {Array.from({ length: quarterCount }).map((_, i) => (
+                      <button
+                        key={`q-${t.id}-${i}`}
+                        type="button"
+                        onClick={() => handleQuarterClick(t, i)}
+                        className={cn(
+                          "absolute top-0 h-full border-l transition-colors",
+                          i % 4 === 0
+                            ? "border-border/60"
+                            : i % 2 === 0
+                            ? "border-border/30"
+                            : "border-border/15",
+                          "hover:bg-primary/5 active:bg-primary/10 focus-visible:bg-primary/10 focus-visible:outline-none",
+                        )}
+                        style={{ left: i * QUARTER_MIN * pxPerMin, width: QUARTER_MIN * pxPerMin }}
+                        aria-label={`Reservering toevoegen op ${t.label} om ${minutesToTime(i * QUARTER_MIN)}`}
+                      />
+                    ))}
+                    {items.map((r) => {
+                      const startMin = minutesFromStart(r.start_time);
+                      const endMin = minutesFromStart(r.end_time);
+                      const left = Math.max(0, startMin) * pxPerMin;
+                      const width = Math.max(20, (endMin - startMin) * pxPerMin - 2);
+                      return (
+                        <button
+                          key={r.id}
+                          onClick={(e) => { e.stopPropagation(); setSelectedId(r.id); }}
+                          className={cn(
+                            "absolute rounded-md border px-2 text-left text-xs overflow-hidden hover:brightness-110 transition-all z-[2]",
+                            STATUS_BG[r.status] ?? "bg-muted border-border",
+                          )}
+                          style={{ left, top: 6, height: rowHeight - 12, width }}
+                        >
+                          <div className="font-medium truncate">
+                            {format(new Date(r.start_time), "HH:mm")} · {r.guests?.first_name ?? "Gast"} {r.guests?.last_name ?? ""}
+                          </div>
+                          <div className="text-[10px] opacity-80">{r.party_size}p</div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
+
+            {showNowLine && (
+              <div
+                className="pointer-events-none absolute top-0 bottom-0 z-[3]"
+                style={{ left: TAFEL_COL_W + nowMin * pxPerMin }}
+                aria-hidden
+              >
+                <div className="absolute top-0 bottom-0 w-[2px] bg-primary" />
+                <div className="absolute -top-1 -left-1 h-2 w-2 rounded-full bg-primary shadow" />
+                <div className="absolute top-1 left-2 px-1.5 py-0.5 text-[10px] font-medium rounded bg-primary text-primary-foreground tabular-nums whitespace-nowrap">
+                  {format(now, "HH:mm")}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       <ReservationDetailDialog
         reservationId={selectedId}

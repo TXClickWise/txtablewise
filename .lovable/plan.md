@@ -1,64 +1,71 @@
-## Wat ik in de screenshot lees
+## Doel
 
-De annotaties op de Agenda-view vragen vier concrete dingen:
+Agenda-layout exact zoals in de screenshot: alles boven de rode lijn sticky, alleen het tafel-grid scrollt. De datum-tekst tussen "Lijst" en "Spring naar:" vervalt — de datum staat al rechts in de toolbar (incl. datepicker).
 
-1. **Restaurantnaam rechts uitlijnen** in de bovenste app-balk (nu staat hij midden/links naast de Vandaag/Agenda/… tabs en wordt op smalle viewports verborgen of afgekapt).
-2. **Datum (Dinsdag 12 Mei 2026) duidelijk linksboven** — direct naast/onder de tabs *Tijdlijn / Lijst*.
-3. **Toolbar (zoom %, in/uitzoomen, rij-zoom, vorige/volgende dag, datumkiezer) rechtsboven** in dezelfde rij als de datum.
-4. **Sticky header**: de hele bovenkant (datum + toolbar + "Spring naar:" zone-knoppen + tip-balk + uren-as) moet bij verticaal scrollen en bij horizontaal zoomen vast bovenaan blijven. Het agenda-grid eronder is wat scrollt en schaalt.
+## Layout (boven de rode lijn = sticky)
 
-Daarnaast vraagt de gebruiker meer ruimte: het scherm wordt nu gekneld door `max-w-[1600px] mx-auto p-4 sm:p-6`, dat wil hij ruimer.
+```text
+┌──────────────────────────────────────────────────────────────────────────┐
+│ [Tijdlijn][Lijst]   Spring naar:[Serre][Restaurant][Podium]              │  ← rij 1
+│                                       [zoom −][100%][zoom +][⤢][↕][‹][📅 12 mei 2026][›] │
+│ Tip: tik op een leeg tijdvak om snel een reservering toe te voegen.      │  ← rij 2
+│ Tafel │ 11:00  12:00  13:00  14:00  15:00 …                              │  ← rij 3 (uren-as)
+├══════════════════════════════════════════════════════════════════════════┤  rode lijn
+│  10  │                                                                   │
+│ Serre│                  ⟶ scrolt verticaal én horizontaal                │
+│  11  │                                                                   │
+│ …    │                                                                   │
+└──────────────────────────────────────────────────────────────────────────┘
+```
 
-## Plan
+## Waarom de huidige sticky niet werkt
 
-### A. AgendaPage (`src/pages/app/AgendaPage.tsx`)
+1. De agenda zit in `<Card class="overflow-hidden">` — `overflow-hidden` op een voorouder breekt `position: sticky`.
+2. De uren-as is sticky binnen de horizontale-scroll-container; die container scrollt vertikaal mee met `<main>`.
+3. De pagina heeft geen eigen scroll-viewport.
 
-**Volle breedte**
-- Vervang container `p-4 sm:p-6 max-w-[1600px] mx-auto space-y-4` door iets als `px-2 sm:px-3 pt-2 pb-3 space-y-2` zonder max-width, zodat de tijdlijn de hele beschikbare breedte krijgt.
-- Card-wrapper rond de agenda krijgt `rounded-md` (i.p.v. lg) en eventueel geen schaduw, om kostbare horizontale ruimte aan rand te besparen.
+## Oplossing: pagina-eigen scroll-viewport
 
-**Sticky toolbar + zonebar (één samengestelde sticky-stack)**
+De agenda-pagina vult `<main>` volledig; alleen de body-zone scrollt. Daardoor staat de hele kop gewoon vast bovenin — geen sticky-trucs meer nodig.
 
-Herorden in deze volgorde, allemaal `sticky top-0` (binnen de pagina-scroll, dus onder de app-header):
+### Wijzigingen in `src/pages/app/AgendaPage.tsx`
 
-1. Rij 1 — links datum (`format(date, "EEEE d MMMM yyyy")` capitalized), rechts de bestaande toolbar (zoom-, rij-zoom-, prev/next-, datumkiezer-knoppen). Mobile blijft de huidige aparte mobiel-zoomrij bestaan, maar onder rij 1 in dezelfde sticky stack.
-2. Rij 2 — "Spring naar:" zone-knoppenbalk (alleen tonen als `zoneGroups.length > 1`).
-3. Rij 3 — Tip-balk ("Tip: tik op een leeg tijdvak…").
-4. Rij 4 — Uren-as header (Tafel-kolomheader + halve-uur labels).
+- Outer wrapper: `flex flex-col h-full min-h-0` (vult `<main>`).
+- `<Card class="overflow-hidden">` vervangen door een platte `div` zonder overflow-hidden.
+- **Header-stack** (vast, niet-scrollend):
+  - **Rij 1** (`flex items-center gap-3`):
+    - Links: view-switcher `Tijdlijn | Lijst` (nieuw, klein).
+    - Direct daarna: `Spring naar:` + zone-knoppen (horizontaal scrollbaar binnen die rij op smal).
+    - Rechts (`ml-auto`): toolbar — zoom-out / `100%` / zoom-in, fullscreen-toggle, row-zoom, vorige-dag, datepicker (`📅 12 mei 2026`), volgende-dag, "Vandaag" als niet-vandaag.
+    - **Geen aparte datum-tekst** tussen "Lijst" en "Spring naar:" — datum is al zichtbaar in de datepicker rechts.
+  - **Rij 2**: tip-tekst (klein, muted).
+  - **Rij 3**: uren-as (`Tafel | 11:00 12:00 …`), horizontaal gesynced met de body.
+  - Mobile-only zoom-rij vervalt; op smal collapsen we minder belangrijke knoppen achter een "…"-popover (zoom% blijft zichtbaar).
+- **Body**: `flex-1 min-h-0 overflow-auto` — enige scrollende zone (vert. + horiz.). Bevat alleen de tafelrijen + nu-lijn.
+- **Sync horizontale scroll** tussen rij 3 (uren-as) en de body via `onScroll` op de body die `scrollLeft` op de uren-as bijwerkt (uren-as krijgt `overflow-x: hidden`).
+- `scrollRef` blijft de body voor zoom-recenter en "nu"-recenter. Logica voor zoom, pinch, jumpToZone, nu-lijn ongewijzigd.
+- Lokale view-state `view: "timeline" | "list"`. "Lijst" rendert de bestaande `DayView`. Default = timeline.
+- Fullscreen-knop toggelt een class op outer wrapper (`fixed inset-0 z-50 bg-background`).
 
-Implementatie: de `Card` rond de agenda wordt `flex flex-col` met de header-blokken in een `sticky top-0 z-20 bg-card` wrapper, en daaronder een aparte scroll-container die alleen de rijen bevat (huidige `scrollRef`). Belangrijk: de uren-as-header moet horizontaal mee-scrollen met het grid (zelfde scroll-container), maar verticaal blijft de hele header-stack staan. Praktisch: behoud de huidige sticky-strook-met-uren binnen de horizontale scroll-container, en zet datum/toolbar/zonebar/tip in een outer sticky div daarboven.
+### Wijziging in `src/components/AppShell.tsx`
 
-**Restaurantnaam-locatie:** blijft in `AppShell.tsx`, niet in AgendaPage.
+`<main class="flex-1 overflow-auto">` → `<main class="flex-1 overflow-hidden min-h-0">` zodat agenda-pagina (en andere pagina's met `h-full`) volledige hoogte krijgen. Pagina's die niet expliciet hun eigen scroll regelen, krijgen een lichte `h-full overflow-auto` wrapper rond hun bestaande root-`<div>`. Geen functionele veranderingen.
 
-### B. App-header restaurantnaam rechts uitlijnen (`src/components/AppShell.tsx`)
+## Toepassen op andere pagina's (zelfde patroon)
 
-- Verwijder de `hidden md:block` op het naam-blok zodat hij vanaf sm: zichtbaar is.
-- Geef het naam-blok `ml-auto` zodat hij altijd helemaal rechts in de header staat, los van wat de OperationTabBar doet.
-- Verruim `max-w-[180px]` naar bv. `max-w-[260px] lg:max-w-[360px]` zodat "Pannenkoekenhuys & Restaurant Eigenwijs" niet zo snel wordt afgekapt; behoud `truncate` voor lange namen.
+Pagina's met grote dataset + filterkop krijgen ook "kop vast, body scrollt":
 
-### C. Zelfde "meer ruimte"-behandeling voor andere operationele schermen
+- `src/pages/app/FloorModePage.tsx` — kop met zone-tabs/filters vast, alleen vloer-grid scrollt.
+- `src/pages/app/ReservationsPage.tsx` — filters/tabs vast, lijst scrollt.
+- `src/pages/app/LargeGroupsPage.tsx` — kop vast, lijst scrollt.
+- `src/pages/app/GuestsPage.tsx` — zoek/filterbalk vast, gastenlijst scrollt.
+- `src/pages/app/PreOrderDrinksPage.tsx` — kopfilters vast, lijst scrollt.
+- `src/pages/app/WaitlistPage.tsx` — KPI-rij + filters vast, wachtlijst scrollt.
 
-Voor schermen die net als Agenda tablet-first zijn en veel data tonen, max-width-clamps weghalen / verlagen en padding krimpen. Concreet:
+Per pagina: outer `flex flex-col h-full min-h-0`, kop in normale flow, body `flex-1 min-h-0 overflow-auto`. Geen `overflow-hidden` op tussen-cards. Settings- en informatiepagina's blijven ongewijzigd.
 
-- `src/pages/app/ReservationsPage.tsx` — verwijder `max-w-[1600px] mx-auto`, verlaag padding (was `p-4 sm:p-6`).
-- `src/pages/app/LargeGroupsPage.tsx` — verwijder `max-w-[1400px] mx-auto`.
-- `src/pages/app/GuestsPage.tsx` — verwijder `max-w-7xl`, behoud lichte padding.
-- `src/pages/app/FloorModePage.tsx` (loading state heeft `max-w-3xl mx-auto`) — laat staan; de actieve modus is al volle breedte.
-- `src/pages/app/ReportsPage.tsx` — verlaag `max-w-7xl` clamp naar volle breedte (rapportages tonen brede tabellen / grafieken).
-- `src/pages/app/PreOrderDrinksPage.tsx` — `max-w-6xl` weg of naar volle breedte.
+## Out of scope
 
-Schermen die **wel een leesbreedte-clamp houden** (geen brede grids, vooral formulieren/inhoud): Instellingen-subpagina's, KoppelingenPage / IntegrationHubPage / IntegrationsPage / POSIntegrationPage / PilotReadinessPage / OnboardingWizardPage / NoShowPreventionPage / AIHostPage. Daar werkt een clamp juist beter voor leesbaarheid.
-
-## Acceptatiecriteria
-
-- In Agenda-view blijft de datum + toolbar + "Spring naar:"-balk + uren-as zichtbaar tijdens horizontaal én verticaal scrollen / zoomen van het grid.
-- Datum staat linksboven, toolbar staat rechtsboven, in één rij.
-- Restaurantnaam staat in de app-header rechts uitgelijnd, ook op tablet-breedtes (≥sm), zonder afgekapt te worden tot een paar tekens.
-- Agenda en de andere genoemde operationele pagina's gebruiken de volledige breedte van de viewport (geen `max-w-*` clamp), met minimale buitenpadding zodat het grid maximale ruimte krijgt.
-- Geen functionele regressie: zoom, prev/next dag, datumkiezer, "Spring naar zone", klikbare kwartiercellen en reservering-blokken werken zoals nu.
-
-## Open punten waar ik aannames maak (laat het weten als je iets anders wil)
-
-- Ik laat de mobile/tablet-zoom-knoppenrij staan (nu een aparte rij onder de hoofd-toolbar). Op desktop staan alle knoppen in één rij; op smal blijven ze onder elkaar maar binnen dezelfde sticky stack.
-- Ik voeg **geen** fullscreen-knop toe (in screenshot leek een expand-icoon te staan, maar dat is mogelijk de bestaande "rijen hoger/lager" iconen). Als je echte fullscreen wilt, geef het aan, dan voeg ik er een toe.
-- Voor "andere schermen" pak ik de bovengenoemde lijst. Als je nog een specifiek scherm hebt waar het ook moet, zeg het erbij.
+- Geen functionele wijzigingen aan reserveringen, zoom-gedrag, zone-springen of de "nu"-lijn.
+- Geen styling-revisie van knoppen/blokken behalve waar nodig om de nieuwe layout te laten kloppen.
+- Browser-fullscreen API: alleen CSS-fullscreen nu; native API kan later.
