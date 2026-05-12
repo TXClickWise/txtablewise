@@ -1,46 +1,36 @@
-## PWA branding op nieuwe huisstijl brengen
+## Probleem
 
-De huidige PWA-iconen en manifest gebruiken een verouderde oranje/saddle-brown branding (`#8B4513`, oranje "TX" met serif op wit). Brengen naar de actuele tokens: **navy `#11192B`** + **warm goud `#D89A2C`**, sans-serif (Plus Jakarta).
+In portrait (mobiel + tablet) en in mobile-landscape opent de sidebar als bottom/side **Sheet**, en die toont een **lichte kaartachtergrond** in plaats van de navy `--sidebar-background`. In landscape op desktop/tablet (≥1280px) klopt de styling wél (donker navy met goud accenten), want daar wordt de eigen `<aside>` met `glass-sidebar` gerenderd.
 
-### 1. Nieuwe iconen genereren
+### Oorzaak
 
-Drie PNG's via `imagegen--generate_image` (premium, voor scherpe typografie):
+In `src/components/ui/sidebar.tsx` (mobiele branch, regel 154-171) wordt `SheetContent` van shadcn gebruikt. `sheetVariants` in `src/components/ui/sheet.tsx` zet standaard de class **`glass-sheet`** op de container, die in `index.css` `background-color: hsl(var(--card) / 0.85)` toepast — een licht/cremekleurige achtergrond. De toegevoegde `bg-sidebar` utility verliest van `glass-sheet` doordat beide `background-color` schrijven en `glass-sheet` later in de stylesheet komt (specificiteitsgelijk, volgorde wint).
 
-- `public/icons/icon-192.png` — 512×512 gerenderd, opgeslagen op 192. Navy `#11192B` achtergrond met afgeronde hoeken (~20% radius), gecentreerde goud `TX` letterlijk in **Plus Jakarta Sans Bold**, subtiele goud-glow.
-- `public/icons/icon-512.png` — zelfde ontwerp, 512×512.
-- `public/icons/icon-maskable-512.png` — full-bleed navy (geen rounded corners — Android maskeert zelf), `TX` in centrale **80% safe-zone**, iets kleiner zodat hij niet wordt afgeknipt door circle/squircle masks.
+Daardoor:
+- achtergrond = licht beige in plaats van navy
+- tekstkleur is `--sidebar-foreground` (licht) → menu-items lijken bijna onzichtbaar (zie screenshot 1)
+- `--sidebar-primary` (goud) op "TX TableWise" en actieve item klopt nog wel, maar contrast is verbroken
 
-### 2. `public/manifest.json` updaten
+## Fix (frontend, alleen presentatie)
 
-```json
-{
-  "theme_color": "#11192B",
-  "background_color": "#11192B"
-}
+Eén bestand wijzigen: `src/components/ui/sidebar.tsx`, mobiele branch (regel 156-170).
+
+1. Voeg `glass-sidebar` toe aan de `SheetContent` className zodat de navy achtergrond met blur uit `index.css` wint.
+2. Voorkom dat de erfelijke `glass-sheet` lichte achtergrond doorlekt door de background expliciet te overrulen met `!bg-sidebar` (Tailwind important) — sluit het probleem definitief af, los van CSS-volgorde.
+3. Border kleur uit shadcn-sheet (`border-r/border-l/border-t/border-b`) → laat `border-sidebar-border` toepassen voor consistente navy rand.
+
+Concrete className wordt:
+```
+"glass-sidebar w-[--sidebar-width] !bg-sidebar p-0 text-sidebar-foreground border-sidebar-border [&>button]:hidden"
 ```
 
-Rest blijft ongewijzigd (`name`, `start_url: /app`, `display: standalone`, icon-paden).
-Effect: splash-screen op iOS/Android start in navy in plaats van wit-flash → naadloze overgang naar app.
+Geen andere bestanden (geen wijziging in `AppSidebar.tsx`, `index.css`, of tokens) — de tokens zijn al correct, alleen de Sheet-wrapper hield ze tegen.
 
-### 3. `index.html` updaten
+## QA
 
-```html
-<meta name="theme-color" content="#11192B" />
-```
+Na fix verifiëren in 3 viewports:
+- 360×800 portrait → mobiele sheet
+- 820×1180 tablet portrait → mobiele sheet (zelfde branch want `<1280`)
+- 1366×768 desktop landscape → ongewijzigd, moet hetzelfde blijven
 
-Sync met manifest. `apple-touch-icon` blijft naar `/icons/icon-192.png` wijzen (gebruikt nieuwe asset automatisch).
-
-### Technische notes
-
-- Geen `vite-plugin-pwa`, geen service worker — manifest-only blijft zoals afgesproken in PWA-richtlijn.
-- HSL → hex mapping uit `index.css`:
-  - `--primary: 222 44% 12%` → `#11192B` (navy)
-  - `--accent: 40 72% 52%` → `#D89A2C` (goud)
-- Bestaande `InstallPrompt.tsx` werkt automatisch met de nieuwe assets — geen code-wijziging nodig.
-- Geen wijziging aan `OG/Twitter` images (aparte concern, niet in scope).
-
-### Out of scope
-
-- Splash-screens voor iOS (aparte set assets — als gewenst, apart oppakken).
-- Favicon (`/favicon.ico`) — niet genoemd in deze vraag.
-- Logo-component in app-UI.
+Verwachte uitkomst: achtergrond = navy `hsl(222 44% 10%)`, menu-items goed leesbaar in licht grijs, "TX TableWise" + actieve "Dashboard" in goud — identiek aan tweede screenshot (tablet landscape).
