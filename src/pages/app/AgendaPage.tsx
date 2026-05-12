@@ -550,6 +550,10 @@ const AgendaPage = () => {
             largeGroupThreshold={largeGroupThreshold}
           />
         </div>
+      ) : view === "plattegrond" ? (
+        <FloorPlanBody
+          tables={(tables as any[]).filter((t) => (t.zone_id ?? "_none") === floorZoneId)}
+        />
       ) : tables.length === 0 ? (
         <div className="p-6">
           <EmptyState
