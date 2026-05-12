@@ -1,103 +1,51 @@
-## Doel
+# Status van eerdere wijzigingen
 
-Pre-order drankjes van een gast automatisch als **open ticket** in Loyverse klaarzetten, **X minuten vóór aanvang** van de reservering. Personeel ziet de bon meteen op de POS staan zodra de gast arriveert en rekent af.
+Korte eerlijke check:
 
-## Belangrijke eerlijkheid vooraf (Loyverse API-realiteit)
+| Wijziging | Status |
+|---|---|
+| Sidebar: terug naar Vandaag/Agenda vanuit submenu | Klaar |
+| Verwijder "Instellingen" knoppen uit Grote Groepen + No-show pagina | Klaar |
+| Min–max personen + zone-snelkeuze in tafelgrid | **Alleen toegepast op `TableGridView` (gebruikt in /app/reserveringen). NIET op /app/agenda — die pagina gebruikt eigen code in `AgendaPage.tsx`.** |
+| Gast kan reservering zelf wijzigen (volautomatisch + 3 emails) | **Nog niets van gebouwd.** Plan was goedgekeurd, maar er is daarna doorgesprongen naar auth-email templates. Geen `evaluate_reservation_change` edge function, geen change email templates, geen UI-velden in `GuestManageReservation`. |
+| Auth email templates restylen (TableWise huisstijl) | Klaar |
 
-Loyverse's public Receipts API maakt **afgeronde** bonnen aan, niet expliciet "open tickets" zoals in de POS-app. Wat we wél betrouwbaar kunnen:
+Dus terecht dat je in de Agenda nog niets ziet — die wijziging is op de verkeerde view geland, en de gast-wijziging is nooit gestart.
 
-- Een receipt POST met `payments: []` en `note` → in veel Loyverse-setups verschijnt dit als een onafgeronde bon op de gekoppelde tafel (`dining_option_id`). Dit werkt mits dining options aanstaan in Loyverse.
-- Alternatief plan B (als A onbetrouwbaar blijkt bij test): we maken een gedetailleerde "tafelnotitie" met de pre-order items, gekoppeld aan tafel + gastnaam, en het personeel scant items zelf in op de POS.
+# Plan om dit recht te zetten
 
-Daarom bouwen we dit met een **feature flag** + grondige test in admin voordat we het bij echte gasten activeren.
+## Deel A — Agenda view (/app/agenda) afmaken
 
-## 1. Datamodel — nieuwe velden
+Bestand: `src/pages/app/AgendaPage.tsx`
 
-```sql
--- per-restaurant configuratie
-ALTER TABLE public.clickwise_settings -- of beter: een aparte pos_push_settings
--- gebruik bestaande pos_connections.config jsonb:
--- config = { ..., push_preorders: { enabled: false, minutes_before: 30, dining_option_id: null } }
+1. Tafels-query uitbreiden met `capacity_min, capacity_max` (nu alleen `id, label, zone_id, zones(name)`).
+2. In de sticky linker tafelkolom (rond regel 411 + de map die de rijen rendert): naast het tafel-label een klein `tabular-nums` getal `min–max p` (of `Np` als min=max) tonen, identiek aan TableGridView.
+3. Boven de scroll-container een rij "Spring naar:" buttons toevoegen, één per zone, die `scrollIntoView` doet op de eerste tafel-row van die zone. `rowRefs` map met `useRef`. Alleen tonen als er >1 zone is. Buttons zijn touch-vriendelijk (h-10).
+4. Geen wijziging aan de bestaande zoom/pinch/now-line/walk-in logica.
 
--- per-reservering tracking
-ALTER TABLE public.reservations
-  ADD COLUMN pos_preorder_pushed_at timestamptz,
-  ADD COLUMN pos_preorder_receipt_id text,
-  ADD COLUMN pos_preorder_status text;  -- pending | pushed | failed | skipped
-```
+## Deel B — Gast-wijziging volautomatisch
 
-Geen nieuwe tabel; alles via bestaande `pos_connections.config` (jsonb) en `reservations.*` velden. Past bij POS-agnostisch datamodel.
+Onveranderd t.o.v. eerder goedgekeurd plan. Korte herhaling:
 
-## 2. Edge function `loyverse_push_preorder`
+1. Nieuwe edge function `supabase/functions/evaluate_reservation_change/index.ts` — server-side check op openingstijden, min-notice, large-group threshold, tafel-capaciteit (`findAvailableCombination`) en pacing (`evaluatePacing`). Returnt `auto_apply` | `auto_reject` | `needs_staff` met `reason_code`.
+2. `guest_reservation/index.ts`: action `request_change` roept evaluator aan en handelt 3 uitkomsten af (DB-update + events + email).
+3. 3 nieuwe templates in `supabase/functions/_shared/transactional-email-templates/`:
+   - `reservation-change-received.tsx`
+   - `reservation-change-approved.tsx`
+   - `reservation-change-rejected.tsx`
+   Registreren in `registry.ts` + i18n keys in `i18n.ts`.
+4. `send_reservation_email/index.ts`: 3 nieuwe event-mappings.
+5. `src/pages/GuestManageReservation.tsx`: contactgegevens toevoegen aan formulier; UI-states `applied` / `pending_review` / `rejected` met juiste copy uit `manage.json` (NL/EN/DE/FR).
+6. DB migratie — 3 kolommen op `restaurants`:
+   - `guest_changes_auto_apply boolean default true`
+   - `guest_changes_min_notice_minutes int default 240`
+   - `guest_changes_auto_reject_party_size int null` (fallback `large_group_threshold`)
+7. Settings-paneel: toggle + 2 inputs in `ReservationRulesSettings.tsx`.
+8. Audit-log + `reservation.change_*` events in `integration_events` voor ClickWise.
 
-Eén function met twee modi:
+## Volgorde
 
-- **`mode = "scheduled"`** (cron-aanroep, zonder auth): vindt alle reserveringen waarvan
-  - `start_time` ligt tussen `now()` en `now() + minutes_before`
-  - `pos_preorder_pushed_at IS NULL`
-  - status ∈ {confirmed, pending} (niet cancelled/no_show)
-  - heeft minimaal 1 `pre_orders` rij
-  - restaurant heeft Loyverse connected én `push_preorders.enabled = true`
-- **`mode = "manual"`** (vanuit UI, met auth + manager-check): één specifieke `reservation_id` direct pushen of opnieuw proberen.
+1. Eerst Deel A (5 min, puur frontend, direct zichtbaar voor jou).
+2. Daarna Deel B (groter, edge function + DB + emails + UI).
 
-Per reservering:
-1. Items ophalen uit `pre_orders` joined met `pre_order_items` (voor `external_product_id`).
-2. Loyverse-tafel bepalen: eerst proberen via tafel-mapping (later), anders default `dining_option_id` uit config.
-3. POST naar Loyverse `/receipts`:
-   ```json
-   {
-     "store_id": "<from connection>",
-     "dining_option_id": "<from config>",
-     "note": "Pre-order — <gastnaam> · <party_size>p · <tijd>",
-     "line_items": [
-       { "variant_id": "<external_product_id>", "quantity": 2, "price": 950 }
-     ],
-     "payments": []
-   }
-   ```
-4. Bij success: `pos_preorder_pushed_at = now()`, `pos_preorder_receipt_id = receipt.id`, `pos_preorder_status = 'pushed'`, audit-log + `integration_logs` regel.
-5. Bij failure: `pos_preorder_status = 'failed'`, foutboodschap in `integration_logs`, geen retry in dezelfde run (volgende cron-tick pakt het op tot een limiet).
-
-Annulering: als een reservering die al gepusht is wordt geannuleerd, wordt de bon **niet** automatisch verwijderd uit Loyverse — wel een waarschuwing in Floor Mode "Open bon in Loyverse — annuleer handmatig" (Loyverse DELETE /receipts/:id bestaat niet voor open receipts).
-
-## 3. Cron-job
-
-Identiek patroon als `reminder_scheduler`: elke 5 minuten via `pg_cron` + `pg_net`, aangemaakt via `supabase--insert` (niet migratie, want bevat anon-key per project).
-
-## 4. UI — POS-pagina (`/app/integraties/pos`)
-
-Nieuwe sectie **"Pre-orders naar Loyverse pushen"**:
-- Toggle **Automatisch open ticket aanmaken** (off by default).
-- Slider/select **Minuten voor aanvang** (15 / 30 / 45 / 60), default 30.
-- Select **Dining option / tafelgroep in Loyverse** (handmatig in te vullen, met "Test verbinding" knop die dining_options ophaalt indien de API dat geeft).
-- Status-card: "Vandaag X bons gepusht, Y mislukt", link naar `integration_logs`.
-
-## 5. UI — Reservering / Floor Mode
-
-In `ReservationDetailDialog` en op tafel-tile bij een reservering met pre-orders:
-- Status-pill: **"Bon klaargezet in Loyverse"** ✓ / **"Bon staat gepland"** ⏱ / **"Pushen mislukt — opnieuw proberen"** ✕.
-- Manager-knop **"Nu naar Loyverse sturen"** (handmatige modus van de function).
-- Bij annulering van een al-gepushte reservering: rustige hospitality-copy "Vergeet niet de bon in Loyverse te annuleren" (geen valse claim dat we het automatisch doen).
-
-## 6. Verificatie
-
-1. Reservering aanmaken met 2 pre-order items, `start_time = now() + 25 min`, push-config 30 min, toggle aan.
-2. Cron-run → reservering gevonden → POST naar Loyverse → `pos_preorder_pushed_at` gevuld → bon zichtbaar op Loyverse POS.
-3. Reservering annuleren ná push → Floor Mode toont waarschuwing.
-4. Toggle uit → cron slaat over, `pos_preorder_status` blijft leeg.
-5. Loyverse-token kapot → `failed` met duidelijke melding in logs.
-6. Handmatige knop in dialog: één klik → status binnen 3 sec naar "Bon klaargezet".
-
-## 7. Beveiliging / kwaliteit
-
-- Function valideert per restaurant: alleen pushen als connection `status = 'connected'` én `push_preorders.enabled = true`.
-- Manager-only in handmatige modus (JWT check).
-- `integration_logs` regel per poging, met `request_payload` (zonder token) en `response_payload`.
-- Rate-limit: max 1 push per reservering per 60 sec (idempotency via `pos_preorder_pushed_at` check vlak voor POST).
-
-## Niet in scope (later)
-
-- Automatisch annuleren / corrigeren van bon in Loyverse bij wijziging pre-order.
-- Tafel-mapping per zone (nu één default `dining_option_id`).
-- Andere POS-systemen — model is wel provider-agnostisch (`pos_preorder_*` velden), pusher-implementatie is Loyverse-specifiek.
-- Splits per gast / aparte bonnen per persoon.
+Akkoord om beide te bouwen in één doorloop, of liever eerst alleen Deel A live zien en dan Deel B?
