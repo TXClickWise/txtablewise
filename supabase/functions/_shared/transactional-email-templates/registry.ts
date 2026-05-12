@@ -17,6 +17,9 @@ import { template as reservationReminder } from './reservation-reminder.tsx'
 import { template as reservationCancellation } from './reservation-cancellation.tsx'
 import { template as reservationThankyou } from './reservation-thankyou.tsx'
 import { template as reservationReconfirm } from './reservation-reconfirm.tsx'
+import { template as reservationChangeReceived } from './reservation-change-received.tsx'
+import { template as reservationChangeApproved } from './reservation-change-approved.tsx'
+import { template as reservationChangeRejected } from './reservation-change-rejected.tsx'
 import { template as largeGroupMessage } from './large-group-message.tsx'
 import { template as largeGroupApproved } from './large-group-approved.tsx'
 import { template as largeGroupRejected } from './large-group-rejected.tsx'
@@ -27,6 +30,9 @@ export const TEMPLATES: Record<string, TemplateEntry> = {
   'reservation-cancellation': reservationCancellation,
   'reservation-thankyou': reservationThankyou,
   'reservation-reconfirm': reservationReconfirm,
+  'reservation-change-received': reservationChangeReceived,
+  'reservation-change-approved': reservationChangeApproved,
+  'reservation-change-rejected': reservationChangeRejected,
   'large-group-message': largeGroupMessage,
   'large-group-approved': largeGroupApproved,
   'large-group-rejected': largeGroupRejected,
