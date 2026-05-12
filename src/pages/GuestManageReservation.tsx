@@ -251,11 +251,23 @@ export default function GuestManageReservation() {
           </CardContent>
         </Card>
 
-        {changeRequested && (
+        {changeOutcome && (
           <Card>
             <CardHeader>
-              <CardTitle className="font-display text-base">{t("changeReceivedTitle")}</CardTitle>
-              <CardDescription>{t("changeReceivedBody")}</CardDescription>
+              <CardTitle className="font-display text-base">
+                {changeOutcome.outcome === "applied"
+                  ? t("changeAppliedTitle")
+                  : changeOutcome.outcome === "rejected"
+                  ? t("changeRejectedTitle")
+                  : t("changeReceivedTitle")}
+              </CardTitle>
+              <CardDescription>
+                {changeOutcome.outcome === "applied"
+                  ? t("changeAppliedBody")
+                  : changeOutcome.outcome === "rejected"
+                  ? t(`changeRejectedReason.${changeOutcome.reason_code ?? "default"}`, { defaultValue: t("changeRejectedBody") })
+                  : t("changeReceivedBody")}
+              </CardDescription>
             </CardHeader>
           </Card>
         )}
