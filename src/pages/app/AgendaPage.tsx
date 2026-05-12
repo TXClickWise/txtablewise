@@ -676,9 +676,9 @@ const AgendaPage = () => {
                 style={{ left: TAFEL_COL_W + nowMin * pxPerMin }}
                 aria-hidden
               >
-                <div className="absolute top-0 bottom-0 w-[2px] bg-primary" />
-                <div className="absolute -top-1 -left-1 h-2 w-2 rounded-full bg-primary shadow" />
-                <div className="absolute top-1 left-2 px-1.5 py-0.5 text-[10px] font-medium rounded bg-primary text-primary-foreground tabular-nums whitespace-nowrap">
+                <div className="current-time-line absolute top-0 bottom-0" />
+                <div className="absolute -top-1 -left-[3px] h-2 w-2 rounded-full bg-accent shadow-[0_0_8px_hsl(var(--accent)/0.6)]" />
+                <div className="current-time-label absolute top-1 left-2 tabular-nums whitespace-nowrap">
                   {format(now, "HH:mm")}
                 </div>
               </div>
