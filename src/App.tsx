@@ -49,7 +49,7 @@ import AdminClickWiseVoiceSetupPage from "./pages/app/admin/AdminClickWiseVoiceS
 import AdminRestaurantsPage from "./pages/app/admin/AdminRestaurantsPage.tsx";
 import AdminRestaurantDetailPage from "./pages/app/admin/AdminRestaurantDetailPage.tsx";
 import { RequireSystemAdmin } from "./components/RequireSystemAdmin";
-import AgendaTabsPage from "./pages/app/AgendaTabsPage.tsx";
+import AgendaPage from "./pages/app/AgendaPage.tsx";
 import VloerTabsPage from "./pages/app/VloerTabsPage.tsx";
 import GastenTabsPage from "./pages/app/GastenTabsPage.tsx";
 import GastcommunicatiePage from "./pages/app/GastcommunicatiePage.tsx";
