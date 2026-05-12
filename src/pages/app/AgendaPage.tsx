@@ -479,6 +479,30 @@ const AgendaPage = () => {
             </div>
           )}
 
+          {view === "plattegrond" && zoneGroups.length > 0 && (
+            <div className="flex items-center gap-1 overflow-x-auto min-w-0">
+              {zoneGroups.map((z) => {
+                const active = floorZoneId === z.key;
+                return (
+                  <button
+                    key={z.key}
+                    type="button"
+                    onClick={() => setFloorZoneId(z.key)}
+                    className={cn(
+                      "h-8 px-3 rounded-md text-sm font-medium shrink-0 transition-colors border",
+                      active
+                        ? "bg-primary text-primary-foreground border-primary"
+                        : "bg-card text-muted-foreground border-border hover:text-foreground",
+                    )}
+                    aria-pressed={active}
+                  >
+                    {z.name}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+
           <div className="ml-auto">{Toolbar}</div>
         </div>
 
