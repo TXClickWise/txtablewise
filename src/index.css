@@ -253,9 +253,144 @@
   .status-dot-active {
     animation: pulse-dot 2s ease-in-out infinite;
   }
+
+  /* Hero — cinematic donker navy met dubbele radial gloed */
+  .hero-cinematic {
+    background:
+      radial-gradient(ellipse at 20% 50%, hsl(40 72% 52% / 0.10) 0%, transparent 55%),
+      radial-gradient(ellipse at 80% 20%, hsl(210 72% 30% / 0.10) 0%, transparent 55%),
+      linear-gradient(180deg, hsl(222 44% 8%) 0%, hsl(222 40% 14%) 100%);
+  }
+
+  /* Trust-pills — frosted glass op donker */
+  .trust-pill {
+    background-color: hsl(0 0% 100% / 0.06);
+    background-color: hsl(0 0% 100% / 0.10);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border: 1px solid hsl(0 0% 100% / 0.15);
+    border-radius: 999px;
+    padding: 6px 16px;
+    color: hsl(0 0% 100% / 0.85);
+    font-size: 13px;
+    font-weight: 500;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  /* USP-kaart met gradient-border on hover */
+  .usp-card {
+    position: relative;
+    background: hsl(var(--card));
+    border-radius: 16px;
+    padding: 32px;
+    transition: transform 0.3s var(--transition-smooth), box-shadow 0.3s var(--transition-smooth);
+    box-shadow: var(--shadow-soft);
+    border: 1px solid hsl(var(--border));
+  }
+  .usp-card::before {
+    content: '';
+    position: absolute;
+    inset: -1px;
+    border-radius: 17px;
+    background: linear-gradient(135deg, hsl(222 44% 12%), hsl(40 72% 52%));
+    opacity: 0;
+    transition: opacity 0.3s var(--transition-smooth);
+    z-index: -1;
+  }
+  .usp-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 20px 40px hsl(222 30% 11% / 0.10);
+  }
+  .usp-card:hover::before { opacity: 1; }
+
+  /* Product screenshot in 3D device-frame */
+  .product-screenshot {
+    transform: perspective(2000px) rotateY(-5deg) rotateX(2deg);
+    box-shadow: 0 40px 80px -20px hsl(222 30% 11% / 0.45);
+    border-radius: 12px;
+    border: 1px solid hsl(0 0% 100% / 0.08);
+    overflow: hidden;
+  }
+
+  /* Scroll reveal */
+  .reveal {
+    opacity: 0;
+    transform: translateY(30px);
+    transition: opacity 0.8s var(--transition-smooth), transform 0.8s var(--transition-smooth);
+  }
+  .reveal.visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  /* Skeleton shimmer */
+  .skeleton-shimmer {
+    background: linear-gradient(
+      90deg,
+      hsl(var(--muted)) 0%,
+      hsl(var(--muted-foreground) / 0.10) 50%,
+      hsl(var(--muted)) 100%
+    );
+    background-size: 200% 100%;
+    animation: skeleton-shimmer 1.6s ease-in-out infinite;
+  }
+
+  /* Scroll shadow utilities (mask) */
+  .scroll-shadow-y {
+    mask-image: linear-gradient(to bottom, transparent 0, black 24px, black calc(100% - 24px), transparent 100%);
+    -webkit-mask-image: linear-gradient(to bottom, transparent 0, black 24px, black calc(100% - 24px), transparent 100%);
+  }
+  .scroll-shadow-x {
+    mask-image: linear-gradient(to right, transparent 0, black 24px, black calc(100% - 24px), transparent 100%);
+    -webkit-mask-image: linear-gradient(to right, transparent 0, black 24px, black calc(100% - 24px), transparent 100%);
+  }
+
+  /* Page-fade transition wrapper */
+  .page-fade {
+    animation: page-fade 0.35s var(--transition-smooth);
+  }
+
+  /* Geblokkeerd-tafel diagonale streep */
+  .blocked-stripe {
+    background-image: repeating-linear-gradient(
+      45deg,
+      hsl(var(--table-blocked)) 0,
+      hsl(var(--table-blocked)) 8px,
+      hsl(var(--table-blocked-border) / 0.25) 8px,
+      hsl(var(--table-blocked-border) / 0.25) 16px
+    );
+  }
+
+  /* Huidige-tijd indicator (Agenda) */
+  .current-time-line {
+    width: 2px;
+    background: hsl(var(--accent));
+    box-shadow: 0 0 8px hsl(var(--accent) / 0.45);
+  }
+  .current-time-label {
+    background: hsl(var(--accent));
+    color: hsl(var(--accent-foreground));
+    font-size: 10px;
+    font-weight: 700;
+    padding: 2px 6px;
+    border-radius: 4px;
+    line-height: 1;
+  }
 }
 
 @keyframes pulse-dot {
   0%, 100% { opacity: 1; transform: scale(1); }
-  50% { opacity: 0.6; transform: scale(1.5); }
+  50% { opacity: 0.55; transform: scale(1.6); }
+}
+
+@keyframes skeleton-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+@keyframes page-fade {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
 }
