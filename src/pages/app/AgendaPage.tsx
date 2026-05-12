@@ -3,8 +3,8 @@
 //   ┌ rij 1: [Tijdlijn|Lijst] · Spring naar · toolbar (zoom/nav/datum)
 //   │ rij 2: tip
 //   │ rij 3: uren-as (Tafel | 11:00 12:00 …) — horizontaal gesynced met body
-//   ├──── (alles hierboven sticky bovenin <main>) ────
-//   └ body: tafelrijen, scrollt horizontaal en (samen met main) verticaal
+//   ├──── (alles hierboven blijft vast bovenin <main>) ────
+//   └ body: tafelrijen, scrollt horizontaal en verticaal binnen de agenda
 import { useEffect, useMemo, useRef, useState } from "react";
 import { format, addDays, subDays, isSameDay, parseISO, isValid } from "date-fns";
 import { nl } from "date-fns/locale";
@@ -358,6 +358,12 @@ const AgendaPage = () => {
     resetInactivity();
   };
 
+  const syncHeaderAxisScroll = () => {
+    if (!headerAxisRef.current || !scrollRef.current) return;
+    scrollRef.current.scrollLeft = headerAxisRef.current.scrollLeft;
+    resetInactivity();
+  };
+
   // ESC sluit fullscreen
   useEffect(() => {
     if (!fullscreen) return;
@@ -457,7 +463,7 @@ const AgendaPage = () => {
   return (
     <div className={containerClass}>
       {/* === STICKY KOP === */}
-      <div className="sticky top-0 z-30 bg-card border-b border-border">
+      <div className="relative z-30 shrink-0 bg-card border-b border-border">
         {/* Rij 1: view-switcher · spring naar · toolbar */}
         <div className="flex items-center gap-3 px-3 py-2 flex-wrap">
           {ViewSwitcher}
@@ -516,7 +522,8 @@ const AgendaPage = () => {
             {/* Rij 3: uren-as (horizontaal gesynced met body) */}
             <div
               ref={headerAxisRef}
-              className="flex border-t border-border overflow-x-hidden"
+              className="flex border-t border-border overflow-x-auto"
+              onScroll={syncHeaderAxisScroll}
             >
               <div
                 className="bg-card shrink-0 p-2 text-xs font-medium text-muted-foreground border-r border-border"
