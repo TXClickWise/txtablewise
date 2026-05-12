@@ -96,8 +96,8 @@ const App = () => (
 
               {/* Legacy redirects naar nieuwe tab-locaties */}
               <Route path="reserveringen" element={<Navigate to="/app/agenda?tab=lijst" replace />} />
-              <Route path="tafelplan" element={<Navigate to="/app/vloer?tab=bewerken" replace />} />
-              <Route path="floor" element={<Navigate to="/app/vloer?tab=live" replace />} />
+              <Route path="tafelplan" element={<Navigate to="/app/instellingen/zones" replace />} />
+              <Route path="floor" element={<Navigate to="/app/vloer" replace />} />
               <Route path="grote-groepen" element={<Navigate to="/app/gasten?tab=grote-groepen" replace />} />
               <Route path="no-show" element={<Navigate to="/app/gastcommunicatie?tab=no-show" replace />} />
               <Route path="drankjes" element={<Navigate to="/app/gastcommunicatie?tab=drankjes" replace />} />
