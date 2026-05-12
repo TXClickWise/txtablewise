@@ -13,6 +13,7 @@ import { PilotWarningBanner } from "./pilot/PilotWarningBanner";
 import { AdminOverrideBanner } from "./admin/AdminOverrideBanner";
 import { InstallPrompt } from "./pwa/InstallPrompt";
 import { useIsCompact } from "@/hooks/use-breakpoint";
+import { cn } from "@/lib/utils";
 
 const AppShellInner = ({ children }: { children?: ReactNode }) => {
   const { current, loading } = useRestaurant();
