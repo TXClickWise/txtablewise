@@ -59,18 +59,21 @@ export function KpiCard({
   accent = "default",
   delta,
   tone = "neutral",
+  statusAccent,
   className,
   ...props
 }: KpiCardProps) {
   return (
     <div
       className={cn(
-        "group relative overflow-hidden rounded-xl border bg-gradient-card p-5 shadow-soft transition-smooth hover:shadow-elegant",
+        "group relative overflow-hidden rounded-xl border bg-gradient-card p-5 shadow-soft transition-all duration-200 hover:-translate-y-px hover:shadow-elevated",
+        statusAccent && "border-t-[3px]",
+        statusAccent && STATUS_ACCENT_BORDER[statusAccent],
         className
       )}
       {...props}
     >
-      {tone === "premium" && (
+      {tone === "premium" && !statusAccent && (
         <span
           aria-hidden
           className="absolute inset-x-0 top-0 h-[2px] bg-gradient-to-r from-transparent via-accent to-transparent"
