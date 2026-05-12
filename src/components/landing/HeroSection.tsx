@@ -4,17 +4,19 @@ import heroImage from "@/assets/hero-restaurant.jpg";
 
 export function HeroSection() {
   return (
-    <section className="relative isolate overflow-hidden hero-cinematic">
-      {/* Subtiele beeldlaag onder de cinematic gradient */}
-      <div className="absolute inset-0 -z-10">
+    <section className="relative isolate overflow-hidden bg-[hsl(222,44%,8%)]">
+      {/* Sfeervolle horecafotografie als hero-achtergrond, met warme donkere overlay */}
+      <div className="absolute inset-0 z-0">
         <img
           src={heroImage}
           alt="Sfeervolle restaurantzaal bij gouden uur met kaarslicht en gedekte tafels"
-          className="h-full w-full object-cover opacity-90"
+          className="h-full w-full object-cover"
           decoding="async"
           fetchPriority="high"
         />
-        <div className="absolute inset-0 bg-gradient-to-br from-[hsl(222,44%,8%)]/75 via-[hsl(222,40%,12%)]/55 to-[hsl(222,44%,10%)]/80" />
+        {/* Warme donkere overlay: leesbaarheid voor tekst, sfeer behouden */}
+        <div className="absolute inset-0 bg-gradient-to-br from-[hsl(222,44%,8%)]/85 via-[hsl(222,40%,12%)]/55 to-[hsl(28,40%,10%)]/75" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_20%_50%,hsl(40_72%_52%/0.18),transparent_55%),radial-gradient(ellipse_at_80%_20%,hsl(210_72%_30%/0.18),transparent_55%)]" />
       </div>
 
       <div className="container relative flex min-h-[88vh] flex-col justify-center pb-20 pt-32 md:min-h-[80vh] md:pb-28 md:pt-40">
