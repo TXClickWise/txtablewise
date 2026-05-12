@@ -320,6 +320,28 @@ export default function GuestManageReservation() {
               <Label className="text-xs">{t("newPartySize")}</Label>
               <Input type="number" min={1} max={50} value={changeForm.desired_party_size} onChange={(e) => setChangeForm({ ...changeForm, desired_party_size: e.target.value })} />
             </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div className="space-y-1">
+                <Label className="text-xs">{t("firstName")}</Label>
+                <Input value={changeForm.desired_first_name} onChange={(e) => setChangeForm({ ...changeForm, desired_first_name: e.target.value.slice(0, 100) })} />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">{t("lastName")}</Label>
+                <Input value={changeForm.desired_last_name} onChange={(e) => setChangeForm({ ...changeForm, desired_last_name: e.target.value.slice(0, 100) })} />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">{t("email")}</Label>
+                <Input type="email" value={changeForm.desired_email} onChange={(e) => setChangeForm({ ...changeForm, desired_email: e.target.value.slice(0, 200) })} />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">{t("phone")}</Label>
+                <Input type="tel" value={changeForm.desired_phone} onChange={(e) => setChangeForm({ ...changeForm, desired_phone: e.target.value.slice(0, 50) })} />
+              </div>
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">{t("dietaryNotes")}</Label>
+              <Textarea rows={2} value={changeForm.desired_dietary_notes} onChange={(e) => setChangeForm({ ...changeForm, desired_dietary_notes: e.target.value.slice(0, 1000) })} />
+            </div>
             <div className="space-y-1">
               <Label className="text-xs">{t("note")}</Label>
               <Textarea value={changeForm.message} onChange={(e) => setChangeForm({ ...changeForm, message: e.target.value.slice(0, 500) })} />
