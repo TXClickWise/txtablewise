@@ -33,5 +33,24 @@
   "toastCancelFail": "Annuleren lukt niet — probeer opnieuw",
   "toastCancelSuccess": "Bedankt voor het laten weten — uw reservering is geannuleerd.",
   "toastChangeFail": "Verzenden lukt niet — probeer opnieuw",
-  "toastChangeSuccess": "Wijzigingsverzoek verstuurd — we nemen contact op."
+  "toastChangeSuccess": "Wijzigingsverzoek verstuurd — we nemen contact op.",
+  "toastChangeApplied": "Uw wijziging is direct doorgevoerd.",
+  "toastChangeRejected": "Helaas is deze wijziging niet mogelijk.",
+  "firstName": "Voornaam",
+  "lastName": "Achternaam",
+  "email": "E-mail",
+  "phone": "Telefoon",
+  "dietaryNotes": "Dieetwensen / opmerking",
+  "changeAppliedTitle": "Wijziging bevestigd",
+  "changeAppliedBody": "Uw reservering is bijgewerkt. U ontvangt een bevestigingsmail.",
+  "changeRejectedTitle": "Wijziging niet mogelijk",
+  "changeRejectedBody": "Helaas kunnen we deze wijziging niet automatisch verwerken. Neem gerust contact op met het restaurant.",
+  "changeRejectedReason": {
+    "default": "Helaas kunnen we deze wijziging niet automatisch verwerken. Neem gerust contact op met het restaurant.",
+    "too_late_min_notice": "De wijziging valt te kort op uw reservering om automatisch te verwerken.",
+    "closed_on_date": "We zijn gesloten op de gevraagde datum.",
+    "outside_opening_hours": "De gevraagde tijd valt buiten onze openingstijden.",
+    "partial_closure": "Op de gevraagde tijd zijn we deels gesloten — neem contact met ons op.",
+    "no_table_available": "We hebben geen tafel beschikbaar voor uw nieuwe wens. We helpen u graag persoonlijk."
+  }
 }
