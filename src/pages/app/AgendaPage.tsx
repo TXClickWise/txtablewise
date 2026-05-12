@@ -12,7 +12,7 @@ import { useSearchParams } from "react-router-dom";
 import {
   ChevronLeft, ChevronRight, Calendar as CalendarIcon,
   ZoomIn, ZoomOut, MoveVertical, Maximize2, Minimize2,
-  CalendarDays, List,
+  CalendarDays, List, LayoutGrid,
 } from "lucide-react";
 import { useRestaurant } from "@/hooks/useRestaurant";
 import { useQuery } from "@tanstack/react-query";
@@ -52,7 +52,7 @@ const STATUS_BG: Record<string, string> = {
   hold: "bg-muted border-border",
 };
 
-type ViewMode = "tijdlijn" | "lijst";
+type ViewMode = "tijdlijn" | "lijst" | "plattegrond";
 
 const AgendaPage = () => {
   const { current } = useRestaurant();
@@ -77,7 +77,8 @@ const AgendaPage = () => {
   };
 
   const tabParam = searchParams.get("tab");
-  const view: ViewMode = tabParam === "lijst" ? "lijst" : "tijdlijn";
+  const view: ViewMode =
+    tabParam === "lijst" ? "lijst" : tabParam === "plattegrond" ? "plattegrond" : "tijdlijn";
   const setView = (v: ViewMode) => {
     const next = new URLSearchParams(searchParams);
     if (v === "tijdlijn") next.delete("tab");
@@ -94,6 +95,7 @@ const AgendaPage = () => {
   const [walkInOpen, setWalkInOpen] = useState(false);
   const [walkInTable, setWalkInTable] = useState<{ id: string; label: string } | undefined>(undefined);
   const [fullscreen, setFullscreen] = useState(false);
+  const [floorZoneId, setFloorZoneId] = useState<string | null>(null);
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const headerAxisRef = useRef<HTMLDivElement>(null);
@@ -147,7 +149,7 @@ const AgendaPage = () => {
     enabled: !!rid,
     queryFn: async () => {
       const { data } = await supabase.from("tables")
-        .select("id, label, capacity_min, capacity_max, zone_id, zones(name)")
+        .select("id, label, capacity_min, capacity_max, zone_id, pos_x, pos_y, width, height, shape, zones(name)")
         .eq("restaurant_id", rid!).eq("is_active", true).order("label");
       return data ?? [];
     },
@@ -162,6 +164,10 @@ const AgendaPage = () => {
     }
     return Array.from(map.entries()).map(([key, v]) => ({ key, ...v }));
   }, [tables]);
+
+  useEffect(() => {
+    if (!floorZoneId && zoneGroups.length > 0) setFloorZoneId(zoneGroups[0].key);
+  }, [zoneGroups, floorZoneId]);
 
   const jumpToZone = (tableId: string) => {
     const el = rowRefs.current[tableId];
@@ -366,6 +372,7 @@ const AgendaPage = () => {
       {([
         { v: "tijdlijn" as const, icon: CalendarDays, label: "Tijdlijn" },
         { v: "lijst" as const, icon: List, label: "Lijst" },
+        { v: "plattegrond" as const, icon: LayoutGrid, label: "Plattegrond" },
       ]).map((it) => {
         const active = view === it.v;
         return (
@@ -472,6 +479,30 @@ const AgendaPage = () => {
             </div>
           )}
 
+          {view === "plattegrond" && zoneGroups.length > 0 && (
+            <div className="flex items-center gap-1 overflow-x-auto min-w-0">
+              {zoneGroups.map((z) => {
+                const active = floorZoneId === z.key;
+                return (
+                  <button
+                    key={z.key}
+                    type="button"
+                    onClick={() => setFloorZoneId(z.key)}
+                    className={cn(
+                      "h-8 px-3 rounded-md text-sm font-medium shrink-0 transition-colors border",
+                      active
+                        ? "bg-primary text-primary-foreground border-primary"
+                        : "bg-card text-muted-foreground border-border hover:text-foreground",
+                    )}
+                    aria-pressed={active}
+                  >
+                    {z.name}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+
           <div className="ml-auto">{Toolbar}</div>
         </div>
 
@@ -519,6 +550,10 @@ const AgendaPage = () => {
             largeGroupThreshold={largeGroupThreshold}
           />
         </div>
+      ) : view === "plattegrond" ? (
+        <FloorPlanBody
+          tables={(tables as any[]).filter((t) => (t.zone_id ?? "_none") === floorZoneId)}
+        />
       ) : tables.length === 0 ? (
         <div className="p-6">
           <EmptyState
@@ -643,5 +678,81 @@ const AgendaPage = () => {
     </div>
   );
 };
+
+// ---- Plattegrond view: tafels op hun pos_x/pos_y, horizontaal ingepast ----
+function FloorPlanBody({ tables }: { tables: any[] }) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [containerW, setContainerW] = useState(0);
+
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(() => setContainerW(el.clientWidth));
+    ro.observe(el);
+    setContainerW(el.clientWidth);
+    return () => ro.disconnect();
+  }, []);
+
+  // Bounding box van tafels (default canvas 900x560 fallback)
+  const bbox = useMemo(() => {
+    if (tables.length === 0) return { w: 900, h: 560 };
+    let maxX = 0, maxY = 0;
+    for (const t of tables) {
+      maxX = Math.max(maxX, (t.pos_x ?? 0) + (t.width ?? 80));
+      maxY = Math.max(maxY, (t.pos_y ?? 0) + (t.height ?? 80));
+    }
+    return { w: Math.max(maxX + 24, 600), h: Math.max(maxY + 24, 320) };
+  }, [tables]);
+
+  const padding = 16;
+  const scale = containerW > 0 ? Math.min(1.6, (containerW - padding * 2) / bbox.w) : 1;
+  const scaledH = bbox.h * scale;
+
+  if (tables.length === 0) {
+    return (
+      <div ref={containerRef} className="flex-1 min-h-0 overflow-auto p-6">
+        <div className="text-center text-sm text-muted-foreground py-12">
+          Geen tafels in deze zone.
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div ref={containerRef} className="flex-1 min-h-0 overflow-auto bg-muted/10">
+      <div className="p-4" style={{ minHeight: scaledH + padding * 2 }}>
+        <div
+          className="relative mx-auto rounded-xl border border-border bg-background shadow-sm"
+          style={{ width: bbox.w * scale, height: scaledH }}
+        >
+          {tables.map((t) => {
+            const isRound = t.shape === "round";
+            const cap = t.capacity_min === t.capacity_max
+              ? `${t.capacity_max}p`
+              : `${t.capacity_min}-${t.capacity_max}p`;
+            return (
+              <div
+                key={t.id}
+                className={cn(
+                  "absolute flex flex-col items-center justify-center border-2 border-border bg-card shadow-sm select-none",
+                  isRound ? "rounded-full" : "rounded-lg",
+                )}
+                style={{
+                  left: (t.pos_x ?? 0) * scale,
+                  top: (t.pos_y ?? 0) * scale,
+                  width: (t.width ?? 80) * scale,
+                  height: (t.height ?? 80) * scale,
+                }}
+              >
+                <div className="font-display text-base leading-none">{t.label}</div>
+                <div className="text-[10px] text-muted-foreground mt-0.5">{cap}</div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export default AgendaPage;
