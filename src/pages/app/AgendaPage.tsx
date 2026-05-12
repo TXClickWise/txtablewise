@@ -330,70 +330,8 @@ const AgendaPage = () => {
   };
 
   return (
-    <div className="p-4 sm:p-6 max-w-[1600px] mx-auto space-y-4">
-      <div className="flex items-center justify-between gap-2 flex-wrap">
-        <span className="text-sm text-muted-foreground capitalize">
-          {format(date, "EEEE d MMMM yyyy", { locale: nl })}
-        </span>
-        <div className="flex items-center gap-1 flex-wrap">
-          <div className="hidden sm:flex items-center gap-1 mr-1">
-            <Button variant="outline" size="icon" className="h-10 w-10" onClick={() => zoomBy(-PX_STEP)} disabled={pxPerMin <= PX_MIN} aria-label="Uitzoomen">
-              <ZoomOut className="h-4 w-4" />
-            </Button>
-            <span className="text-xs text-muted-foreground tabular-nums w-10 text-center">{zoomPct}%</span>
-            <Button variant="outline" size="icon" className="h-10 w-10" onClick={() => zoomBy(PX_STEP)} disabled={pxPerMin >= PX_MAX} aria-label="Inzoomen">
-              <ZoomIn className="h-4 w-4" />
-            </Button>
-            <Button variant="outline" size="icon" className="h-10 w-10" onClick={() => rowZoom(-ROW_STEP)} disabled={rowHeight <= ROW_MIN} aria-label="Rijen smaller">
-              <MoveVertical className="h-4 w-4 rotate-45" />
-            </Button>
-            <Button variant="outline" size="icon" className="h-10 w-10" onClick={() => rowZoom(ROW_STEP)} disabled={rowHeight >= ROW_MAX} aria-label="Rijen hoger">
-              <MoveVertical className="h-4 w-4" />
-            </Button>
-          </div>
-          <Button variant="outline" size="icon" className="h-10 w-10" onClick={() => setDate(subDays(date, 1))} aria-label="Vorige dag">
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button variant="outline" className="h-10">
-                <CalendarIcon className="mr-2 h-4 w-4" />
-                {format(date, "d MMM yyyy", { locale: nl })}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="end">
-              <Calendar mode="single" selected={date} onSelect={(d) => d && setDate(d)} locale={nl} initialFocus className={cn("p-3 pointer-events-auto")} />
-            </PopoverContent>
-          </Popover>
-          <Button variant="outline" size="icon" className="h-10 w-10" onClick={() => setDate(addDays(date, 1))} aria-label="Volgende dag">
-            <ChevronRight className="h-4 w-4" />
-          </Button>
-          {!isToday && (
-            <Button variant="outline" className="h-10" onClick={() => setDate(new Date())}>
-              Vandaag
-            </Button>
-          )}
-        </div>
-      </div>
-
-      {/* Mobile zoom-knoppen */}
-      <div className="flex sm:hidden items-center justify-end gap-1">
-        <Button variant="outline" size="icon" className="h-11 w-11" onClick={() => zoomBy(-PX_STEP)} disabled={pxPerMin <= PX_MIN} aria-label="Uitzoomen">
-          <ZoomOut className="h-4 w-4" />
-        </Button>
-        <span className="text-xs text-muted-foreground tabular-nums w-12 text-center">{zoomPct}%</span>
-        <Button variant="outline" size="icon" className="h-11 w-11" onClick={() => zoomBy(PX_STEP)} disabled={pxPerMin >= PX_MAX} aria-label="Inzoomen">
-          <ZoomIn className="h-4 w-4" />
-        </Button>
-        <Button variant="outline" size="icon" className="h-11 w-11" onClick={() => rowZoom(-ROW_STEP)} disabled={rowHeight <= ROW_MIN} aria-label="Rijen smaller">
-          <MoveVertical className="h-4 w-4 rotate-45" />
-        </Button>
-        <Button variant="outline" size="icon" className="h-11 w-11" onClick={() => rowZoom(ROW_STEP)} disabled={rowHeight >= ROW_MAX} aria-label="Rijen hoger">
-          <MoveVertical className="h-4 w-4" />
-        </Button>
-      </div>
-
-      <Card className="bg-gradient-card shadow-soft">
+    <div className="px-2 sm:px-3 pt-2 pb-3 space-y-2">
+      <Card className="bg-gradient-card shadow-soft overflow-hidden">
         <CardContent className="p-0">
           {tables.length === 0 ? (
             <div className="p-6">
@@ -405,25 +343,91 @@ const AgendaPage = () => {
             </div>
           ) : (
             <>
-              {zoneGroups.length > 1 && (
-                <div className="flex items-center gap-2 px-3 py-2 border-b border-border overflow-x-auto">
-                  <span className="text-xs text-muted-foreground shrink-0">Spring naar:</span>
-                  {zoneGroups.map((z) => (
-                    <Button
-                      key={z.key}
-                      size="sm"
-                      variant="outline"
-                      className="h-9 shrink-0"
-                      onClick={() => jumpToZone(z.firstTableId)}
-                    >
-                      {z.name}
+              {/* Sticky header stack: datum + toolbar, zone-springers, tip */}
+              <div className="sticky top-0 z-30 bg-card border-b border-border">
+                <div className="flex items-center justify-between gap-2 flex-wrap px-3 py-2">
+                  <span className="text-sm font-medium capitalize">
+                    {format(date, "EEEE d MMMM yyyy", { locale: nl })}
+                  </span>
+                  <div className="flex items-center gap-1 flex-wrap">
+                    <div className="hidden sm:flex items-center gap-1 mr-1">
+                      <Button variant="outline" size="icon" className="h-9 w-9" onClick={() => zoomBy(-PX_STEP)} disabled={pxPerMin <= PX_MIN} aria-label="Uitzoomen">
+                        <ZoomOut className="h-4 w-4" />
+                      </Button>
+                      <span className="text-xs text-muted-foreground tabular-nums w-10 text-center">{zoomPct}%</span>
+                      <Button variant="outline" size="icon" className="h-9 w-9" onClick={() => zoomBy(PX_STEP)} disabled={pxPerMin >= PX_MAX} aria-label="Inzoomen">
+                        <ZoomIn className="h-4 w-4" />
+                      </Button>
+                      <Button variant="outline" size="icon" className="h-9 w-9" onClick={() => rowZoom(-ROW_STEP)} disabled={rowHeight <= ROW_MIN} aria-label="Rijen smaller">
+                        <MoveVertical className="h-4 w-4 rotate-45" />
+                      </Button>
+                      <Button variant="outline" size="icon" className="h-9 w-9" onClick={() => rowZoom(ROW_STEP)} disabled={rowHeight >= ROW_MAX} aria-label="Rijen hoger">
+                        <MoveVertical className="h-4 w-4" />
+                      </Button>
+                    </div>
+                    <Button variant="outline" size="icon" className="h-9 w-9" onClick={() => setDate(subDays(date, 1))} aria-label="Vorige dag">
+                      <ChevronLeft className="h-4 w-4" />
                     </Button>
-                  ))}
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button variant="outline" className="h-9">
+                          <CalendarIcon className="mr-2 h-4 w-4" />
+                          {format(date, "d MMM yyyy", { locale: nl })}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="end">
+                        <Calendar mode="single" selected={date} onSelect={(d) => d && setDate(d)} locale={nl} initialFocus className={cn("p-3 pointer-events-auto")} />
+                      </PopoverContent>
+                    </Popover>
+                    <Button variant="outline" size="icon" className="h-9 w-9" onClick={() => setDate(addDays(date, 1))} aria-label="Volgende dag">
+                      <ChevronRight className="h-4 w-4" />
+                    </Button>
+                    {!isToday && (
+                      <Button variant="outline" className="h-9" onClick={() => setDate(new Date())}>
+                        Vandaag
+                      </Button>
+                    )}
+                  </div>
                 </div>
-              )}
-              <div className="flex items-center gap-2 px-3 py-2 border-b border-border text-xs text-muted-foreground">
-                <span>Tip: tik op een leeg tijdvak om snel een reservering toe te voegen op die tafel.</span>
+
+                {/* Mobile zoom-knoppen */}
+                <div className="flex sm:hidden items-center justify-end gap-1 px-3 pb-2">
+                  <Button variant="outline" size="icon" className="h-10 w-10" onClick={() => zoomBy(-PX_STEP)} disabled={pxPerMin <= PX_MIN} aria-label="Uitzoomen">
+                    <ZoomOut className="h-4 w-4" />
+                  </Button>
+                  <span className="text-xs text-muted-foreground tabular-nums w-12 text-center">{zoomPct}%</span>
+                  <Button variant="outline" size="icon" className="h-10 w-10" onClick={() => zoomBy(PX_STEP)} disabled={pxPerMin >= PX_MAX} aria-label="Inzoomen">
+                    <ZoomIn className="h-4 w-4" />
+                  </Button>
+                  <Button variant="outline" size="icon" className="h-10 w-10" onClick={() => rowZoom(-ROW_STEP)} disabled={rowHeight <= ROW_MIN} aria-label="Rijen smaller">
+                    <MoveVertical className="h-4 w-4 rotate-45" />
+                  </Button>
+                  <Button variant="outline" size="icon" className="h-10 w-10" onClick={() => rowZoom(ROW_STEP)} disabled={rowHeight >= ROW_MAX} aria-label="Rijen hoger">
+                    <MoveVertical className="h-4 w-4" />
+                  </Button>
+                </div>
+
+                {zoneGroups.length > 1 && (
+                  <div className="flex items-center gap-2 px-3 py-2 border-t border-border overflow-x-auto">
+                    <span className="text-xs text-muted-foreground shrink-0">Spring naar:</span>
+                    {zoneGroups.map((z) => (
+                      <Button
+                        key={z.key}
+                        size="sm"
+                        variant="outline"
+                        className="h-9 shrink-0"
+                        onClick={() => jumpToZone(z.firstTableId)}
+                      >
+                        {z.name}
+                      </Button>
+                    ))}
+                  </div>
+                )}
+                <div className="flex items-center gap-2 px-3 py-2 border-t border-border text-xs text-muted-foreground">
+                  <span>Tip: tik op een leeg tijdvak om snel een reservering toe te voegen op die tafel.</span>
+                </div>
               </div>
+
               <div
                 ref={scrollRef}
                 className="overflow-x-auto"
@@ -437,7 +441,7 @@ const AgendaPage = () => {
                 onWheel={resetInactivity}
               >
                 <div className="relative" style={{ minWidth: totalWidth + 120 }}>
-                  {/* Header row */}
+                  {/* Uren-as header — sticky binnen de horizontale scroll */}
                   <div className="sticky top-0 z-10 bg-card border-b border-border flex">
                     <div className="sticky left-0 z-20 bg-card w-[120px] shrink-0 p-2 text-xs font-medium text-muted-foreground border-r border-border">Tafel</div>
                     <div className="relative flex-1" style={{ width: totalWidth }}>
