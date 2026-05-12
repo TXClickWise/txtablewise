@@ -33,7 +33,6 @@ import ApiWebhooksSettings from "./pages/app/settings/ApiWebhooksSettings.tsx";
 import UsersRolesSettings from "./pages/app/settings/UsersRolesSettings.tsx";
 import SubscriptionSettings from "./pages/app/settings/SubscriptionSettings.tsx";
 import WidgetSettings from "./pages/app/settings/WidgetSettings.tsx";
-import WalkInsPage from "./pages/app/WalkInsPage.tsx";
 import WaitlistPage from "./pages/app/WaitlistPage.tsx";
 import VoiceAgentHelp from "./pages/app/help/VoiceAgentHelp.tsx";
 import IntegrationHubPage from "./pages/app/IntegrationHubPage.tsx";
@@ -90,7 +89,7 @@ const App = () => (
               <Route path="koppelingen" element={<RequireRole allow={["owner","manager"]}><KoppelingenTabsPage /></RequireRole>} />
 
               {/* Operatie — losse schermen */}
-              <Route path="walk-ins" element={<ErrorBoundary label="WalkInsPage"><WalkInsPage /></ErrorBoundary>} />
+              <Route path="walk-ins" element={<Navigate to="/app" replace />} />
               <Route path="wachtlijst" element={<ErrorBoundary label="WaitlistPage"><WaitlistPage /></ErrorBoundary>} />
               <Route path="rapportages" element={<RequireRole allow={["owner","manager"]}><ReportsPage /></RequireRole>} />
               <Route path="help/voice-agent" element={<VoiceAgentHelp />} />

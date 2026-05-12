@@ -1,19 +1,23 @@
 import { ReactNode } from "react";
-import { Outlet } from "react-router-dom";
+import { Outlet, useLocation } from "react-router-dom";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
 import { RestaurantProvider, useRestaurant } from "@/hooks/useRestaurant";
 import { useMyRestaurants } from "@/hooks/useCurrentRestaurant";
-import { Navigate, useLocation } from "react-router-dom";
+import { Navigate } from "react-router-dom";
 import { OnboardingBanner } from "./onboarding/OnboardingBanner";
-import { ConnectionStatusNotice } from "./touch";
+import { ConnectionStatusNotice, OperationTabBar, FloatingActions } from "./touch";
+import { isOperationalRoute } from "./touch/OperationTabBar";
 import { TrialBanner } from "./plan/TrialBanner";
 import { PilotWarningBanner } from "./pilot/PilotWarningBanner";
 import { AdminOverrideBanner } from "./admin/AdminOverrideBanner";
+import { InstallPrompt } from "./pwa/InstallPrompt";
+import { useIsCompact } from "@/hooks/use-breakpoint";
 
 const AppShellInner = ({ children }: { children?: ReactNode }) => {
   const { current, loading } = useRestaurant();
   const location = useLocation();
+  const isCompact = useIsCompact();
 
   if (loading) {
     return <div className="min-h-screen flex items-center justify-center text-muted-foreground">Laden…</div>;
@@ -24,15 +28,28 @@ const AppShellInner = ({ children }: { children?: ReactNode }) => {
   }
 
   const isWizard = location.pathname.startsWith("/app/onboarding");
+  const showTabBar = isOperationalRoute(location.pathname);
+  const showFab = showTabBar;
 
   return (
     <SidebarProvider>
       <div className="min-h-screen flex w-full bg-background">
         <AppSidebar />
         <div className="flex-1 flex flex-col min-w-0">
-          <header className="h-14 border-b border-border bg-card flex items-center px-4 gap-3 sticky top-0 z-10">
+          <header className="h-12 border-b border-border bg-card flex items-center px-3 gap-2 sticky top-0 z-20">
             <SidebarTrigger />
-            <div className="flex-1" />
+            {showTabBar ? (
+              <OperationTabBar />
+            ) : (
+              <div className="flex-1 text-sm font-medium text-muted-foreground truncate">
+                {current?.restaurants?.name ?? ""}
+              </div>
+            )}
+            {showTabBar && current?.restaurants?.name && (
+              <div className="hidden md:block text-xs text-muted-foreground truncate max-w-[180px]">
+                {current.restaurants.name}
+              </div>
+            )}
           </header>
           <AdminOverrideBanner />
           <ConnectionStatusNotice />
@@ -43,6 +60,8 @@ const AppShellInner = ({ children }: { children?: ReactNode }) => {
             {children ?? <Outlet />}
           </main>
         </div>
+        {showFab && <FloatingActions />}
+        {isCompact && <InstallPrompt />}
       </div>
     </SidebarProvider>
   );

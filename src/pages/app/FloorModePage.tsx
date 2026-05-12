@@ -328,95 +328,67 @@ const FloorModePage = () => {
     );
   }
 
+  const alertCount = lateGuests.length;
+  const upcomingAlertCount = upcoming30.length;
+
   return (
-    <div className="h-[calc(100vh-4rem)] flex flex-col bg-muted/10">
-      {/* ============== HEADER ============== */}
-      <header className="border-b border-border bg-background/90 backdrop-blur px-4 sm:px-6 py-3">
-        <div className="flex items-start justify-between gap-3 flex-wrap">
-          <div className="min-w-0">
-            <div className="flex items-baseline gap-3 flex-wrap">
-              <h1 className="font-display text-2xl">Floor Mode</h1>
-              <span className="text-sm text-muted-foreground capitalize">
-                {format(selectedDate, "EEEE d MMMM", { locale: nl })}
-                {isToday && <span> · {format(clockNow, "HH:mm")}</span>}
+    <div className="min-h-[calc(100vh-3rem)] flex flex-col bg-muted/10">
+      {/* ============== COMPACTE HEADER ============== */}
+      <header className="border-b border-border bg-background/90 backdrop-blur px-3 sm:px-4 py-2">
+        <div className="flex items-center justify-between gap-2 flex-wrap">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground capitalize">
+            <span>{format(selectedDate, "EEEE d MMMM", { locale: nl })}</span>
+            {isToday && <span className="font-mono">· {format(clockNow, "HH:mm")}</span>}
+            {!isToday && (
+              <span className="text-xs px-2 py-0.5 rounded-full bg-muted text-muted-foreground border border-border">
+                Planning
               </span>
-              {!isToday && (
-                <span className="text-xs px-2 py-0.5 rounded-full bg-muted text-muted-foreground border border-border">
-                  Planning­weergave
-                </span>
-              )}
-            </div>
-            <div className="mt-1 flex items-center gap-3 flex-wrap text-sm text-muted-foreground">
-              <Kpi label="reserveringen" value={totalToday} />
-              <Kpi label="aan tafel" value={seatedNow} tone="seated" />
-              <Kpi label="walk-ins" value={walkInsToday} />
-              <Kpi label="tafels vrij" value={tablesFree} tone="success" />
-              <PacingIndicator level={pacingLevel} covers={coversNextHour} />
-            </div>
+            )}
           </div>
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="hidden md:inline text-xs text-muted-foreground" aria-live="polite">
-              Laatst bijgewerkt {format(lastUpdated, "HH:mm:ss")}
-            </span>
-            {/* Date navigator */}
-            <div className="flex items-center gap-1">
-              <Button
-                variant="outline" size="icon" className="h-11 w-11"
-                onClick={() => setSelectedDate(subDays(selectedDate, 1))}
-                aria-label="Vorige dag"
-              >
-                <ChevronLeft className="h-4 w-4" />
-              </Button>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button variant="outline" className="h-11">
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {format(selectedDate, "d MMM yyyy", { locale: nl })}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="end">
-                  <Calendar
-                    mode="single"
-                    selected={selectedDate}
-                    onSelect={(d) => d && setSelectedDate(d)}
-                    locale={nl}
-                    initialFocus
-                    className={cn("p-3 pointer-events-auto")}
-                  />
-                </PopoverContent>
-              </Popover>
-              <Button
-                variant="outline" size="icon" className="h-11 w-11"
-                onClick={() => setSelectedDate(addDays(selectedDate, 1))}
-                aria-label="Volgende dag"
-              >
-                <ChevronRight className="h-4 w-4" />
-              </Button>
-              {!isToday && (
-                <Button variant="outline" className="h-11" onClick={() => setSelectedDate(new Date())}>
-                  Vandaag
-                </Button>
-              )}
-            </div>
+          <div className="flex items-center gap-1">
             <Button
-              variant="ghost" size="icon" onClick={() => refetch()} title="Vernieuwen"
-              aria-label="Vernieuwen"
+              variant="outline" size="icon" className="h-9 w-9"
+              onClick={() => setSelectedDate(subDays(selectedDate, 1))}
+              aria-label="Vorige dag"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" className="h-9">
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  <span className="hidden sm:inline">{format(selectedDate, "d MMM yyyy", { locale: nl })}</span>
+                  <span className="sm:hidden">{format(selectedDate, "d MMM", { locale: nl })}</span>
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="end">
+                <Calendar
+                  mode="single"
+                  selected={selectedDate}
+                  onSelect={(d) => d && setSelectedDate(d)}
+                  locale={nl}
+                  initialFocus
+                  className={cn("p-3 pointer-events-auto")}
+                />
+              </PopoverContent>
+            </Popover>
+            <Button
+              variant="outline" size="icon" className="h-9 w-9"
+              onClick={() => setSelectedDate(addDays(selectedDate, 1))}
+              aria-label="Volgende dag"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+            {!isToday && (
+              <Button variant="outline" size="sm" className="h-9" onClick={() => setSelectedDate(new Date())}>
+                Vandaag
+              </Button>
+            )}
+            <Button
+              variant="ghost" size="icon" className="h-9 w-9"
+              onClick={() => refetch()} title="Vernieuwen" aria-label="Vernieuwen"
             >
               <RefreshCw className={cn("h-4 w-4", isFetching && "animate-spin")} />
-            </Button>
-            <Button
-              variant="outline" size="lg" className="h-12"
-              onClick={() => setQuickSeatOpen(true)}
-              title="AI Quick Seat"
-            >
-              <Sparkles className="mr-2 h-5 w-5 text-primary" />
-              <span className="hidden sm:inline">AI Quick Seat</span>
-            </Button>
-            <Button
-              size="lg" className="h-12 px-5"
-              onClick={() => { setPrefilledTable(undefined); setWalkInOpen(true); }}
-            >
-              <UserPlus className="mr-2 h-5 w-5" /> Walk-in
             </Button>
           </div>
         </div>
@@ -426,155 +398,95 @@ const FloorModePage = () => {
             <Button size="sm" variant="outline" onClick={() => refetch()}>Opnieuw proberen</Button>
           </div>
         )}
+        {/* Compacte alerts (alleen relevant getoond) */}
+        {(alertCount > 0 || upcomingAlertCount > 0) && (
+          <div className="mt-2 flex flex-wrap gap-2">
+            {alertCount > 0 && (
+              <button
+                type="button"
+                onClick={() => focusReservation(lateGuests[0], setSelectedTableId)}
+                className="text-xs px-2.5 py-1 rounded-full bg-destructive/10 text-destructive border border-destructive/30 inline-flex items-center gap-1.5 hover:bg-destructive/15"
+              >
+                <AlertTriangle className="h-3 w-3" />
+                {alertCount} {alertCount === 1 ? "gast" : "gasten"} te laat
+              </button>
+            )}
+            {upcomingAlertCount > 0 && (
+              <button
+                type="button"
+                onClick={() => upcoming30[0] && focusReservation(upcoming30[0].r, setSelectedTableId)}
+                className="text-xs px-2.5 py-1 rounded-full bg-status-pending/10 text-status-pending border border-status-pending/30 inline-flex items-center gap-1.5 hover:bg-status-pending/15"
+              >
+                <Clock className="h-3 w-3" />
+                {upcomingAlertCount} binnen 30 min
+              </button>
+            )}
+          </div>
+        )}
       </header>
 
-      {/* ============== BODY ============== */}
-      <div className="flex-1 flex overflow-hidden">
-        {/* LEFT: Now & soon */}
-        <aside className="hidden lg:flex w-80 xl:w-96 border-r border-border bg-background flex-col">
-          <div className="px-4 py-3 border-b border-border flex items-center gap-2">
-            <Clock className="h-4 w-4 text-muted-foreground" />
-            <h2 className="font-display text-lg">Nu &amp; straks</h2>
-          </div>
-          <ScrollArea className="flex-1">
-            <div className="p-3 space-y-5">
-              <Section title="Te laat" count={lateGuests.length} tone="danger" empty="Geen te late gasten.">
-                {lateGuests.map(r => (
-                  <UpcomingRow key={r.id} r={r} now={now} late
-                    onSelect={() => focusReservation(r, setSelectedTableId)} />
-                ))}
-              </Section>
+      {/* ============== BODY: full-width tafelgrid ============== */}
+      <main className="flex-1 overflow-auto">
+        <div className="p-3 sm:p-4 space-y-4">
+          {restaurantId && <LastMinuteFillPanel restaurantId={restaurantId} />}
+          {restaurantId && (
+            <PreOrderReadyList
+              restaurantId={restaurantId}
+              windowMinutes={60}
+              compact
+            />
+          )}
+          {zones.length === 0 ? (
+            <ZoneBlock
+              zoneName="Zonder zone"
+              tables={tables}
+              state={tableState}
+              now={now}
+              largeGroupThreshold={largeGroupThreshold}
+              selectedId={selectedTableId}
+              onSelect={setSelectedTableId}
+            />
+          ) : (
+            <>
+              {zones.map(z => {
+                const zTables = tables.filter(t => t.zone_id === z.id);
+                if (zTables.length === 0) return null;
+                return (
+                  <ZoneBlock
+                    key={z.id}
+                    zoneName={z.name}
+                    tables={zTables}
+                    state={tableState}
+                    now={now}
+                    largeGroupThreshold={largeGroupThreshold}
+                    selectedId={selectedTableId}
+                    onSelect={setSelectedTableId}
+                  />
+                );
+              })}
+              {(() => {
+                const ungrouped = tables.filter(t => !t.zone_id);
+                if (ungrouped.length === 0) return null;
+                return (
+                  <ZoneBlock
+                    zoneName="Overig"
+                    tables={ungrouped}
+                    state={tableState}
+                    now={now}
+                    largeGroupThreshold={largeGroupThreshold}
+                    selectedId={selectedTableId}
+                    onSelect={setSelectedTableId}
+                  />
+                );
+              })()}
+            </>
+          )}
+        </div>
+      </main>
 
-              <Section title="Binnen 30 minuten" count={upcoming30.length} empty="Geen aankomsten in dit halfuur.">
-                {upcoming30.map(({ r }) => (
-                  <UpcomingRow key={r.id} r={r} now={now}
-                    onSelect={() => focusReservation(r, setSelectedTableId)} />
-                ))}
-              </Section>
-
-              {largeGroupsToday.length > 0 && (
-                <Section title="Grote groepen" count={largeGroupsToday.length} tone="warn">
-                  {largeGroupsToday.map(r => (
-                    <UpcomingRow key={r.id} r={r} now={now}
-                      onSelect={() => focusReservation(r, setSelectedTableId)} />
-                  ))}
-                </Section>
-              )}
-
-              {preorderToday.length > 0 && (
-                <Section title="Drankje klaarzetten" count={preorderToday.length} tone="info">
-                  {preorderToday.map(r => (
-                    <UpcomingRow key={r.id} r={r} now={now}
-                      onSelect={() => focusReservation(r, setSelectedTableId)} />
-                  ))}
-                </Section>
-              )}
-            </div>
-          </ScrollArea>
-        </aside>
-
-        {/* CENTER: Tables grouped by zone */}
-        <main className="flex-1 overflow-auto">
-          <div className="p-4 sm:p-6 space-y-6">
-            {restaurantId && <LastMinuteFillPanel restaurantId={restaurantId} />}
-            {restaurantId && (
-              <PreOrderReadyList
-                restaurantId={restaurantId}
-                windowMinutes={60}
-                compact
-              />
-            )}
-            {zones.length === 0 ? (
-              <ZoneBlock
-                zoneName="Zonder zone"
-                tables={tables}
-                state={tableState}
-                now={now}
-                largeGroupThreshold={largeGroupThreshold}
-                selectedId={selectedTableId}
-                onSelect={setSelectedTableId}
-              />
-            ) : (
-              <>
-                {zones.map(z => {
-                  const zTables = tables.filter(t => t.zone_id === z.id);
-                  if (zTables.length === 0) return null;
-                  return (
-                    <ZoneBlock
-                      key={z.id}
-                      zoneName={z.name}
-                      tables={zTables}
-                      state={tableState}
-                      now={now}
-                      largeGroupThreshold={largeGroupThreshold}
-                      selectedId={selectedTableId}
-                      onSelect={setSelectedTableId}
-                    />
-                  );
-                })}
-                {(() => {
-                  const ungrouped = tables.filter(t => !t.zone_id);
-                  if (ungrouped.length === 0) return null;
-                  return (
-                    <ZoneBlock
-                      zoneName="Overig"
-                      tables={ungrouped}
-                      state={tableState}
-                      now={now}
-                      largeGroupThreshold={largeGroupThreshold}
-                      selectedId={selectedTableId}
-                      onSelect={setSelectedTableId}
-                    />
-                  );
-                })()}
-              </>
-            )}
-          </div>
-        </main>
-
-        {/* RIGHT: Detail panel (desktop/landscape only) */}
-        <aside className="hidden xl:flex w-96 border-l border-border bg-background flex-col">
-          <DetailPanel
-            table={selectedTable}
-            state={selectedState}
-            now={now}
-            largeGroupThreshold={largeGroupThreshold}
-            onClose={() => setSelectedTableId(null)}
-            onWalkIn={() => {
-              if (!selectedTable) return;
-              setPrefilledTable({ id: selectedTable.id, label: selectedTable.label });
-              setWalkInOpen(true);
-            }}
-            onMarkSeated={onMarkSeated}
-            onMarkArrived={onMarkArrived}
-            onMarkComplete={onMarkComplete}
-            onMarkNoShow={onMarkNoShow}
-          />
-        </aside>
-      </div>
-
-      {/* ============== Sticky bottom action bar (tablet & mobile) ============== */}
-      <div className="xl:hidden border-t border-border bg-background/95 backdrop-blur px-3 py-2 flex items-center gap-2 overflow-x-auto">
-        <Button size="lg" className="h-12 shrink-0" onClick={() => { setPrefilledTable(undefined); setWalkInOpen(true); }}>
-          <UserPlus className="mr-2 h-5 w-5" /> Walk-in
-        </Button>
-        <Button size="lg" variant="outline" className="h-12 shrink-0" onClick={() => navigate("/app/reserveringen")}>
-          <Search className="mr-2 h-5 w-5" /> Zoek reservering
-        </Button>
-        <Button size="lg" variant="outline" className="h-12 shrink-0" onClick={() => navigate("/app/wachtlijst")}>
-          <ListChecks className="mr-2 h-5 w-5" /> Wachtlijst
-        </Button>
-        <Button size="lg" variant="outline" className="h-12 shrink-0" onClick={() => setQuickSeatOpen(true)}>
-          <Sparkles className="mr-2 h-5 w-5 text-primary" /> AI Quick Seat
-        </Button>
-        <Button size="lg" variant="ghost" className="h-12 shrink-0" onClick={() => refetch()}>
-          <RefreshCw className={cn("h-5 w-5", isFetching && "animate-spin")} />
-        </Button>
-      </div>
-
-      {/* Bottom sheet detail (tablet portrait + mobile) */}
-      <Sheet open={isCompact && !!selectedTableId} onOpenChange={(o) => !o && setSelectedTableId(null)}>
-        <SheetContent side="bottom" className="rounded-t-2xl max-h-[85vh] xl:hidden">
+      {/* Bottom sheet detail (alle viewports) */}
+      <Sheet open={!!selectedTableId} onOpenChange={(o) => !o && setSelectedTableId(null)}>
+        <SheetContent side="bottom" className="rounded-t-2xl max-h-[85vh] overflow-y-auto">
           <SheetHeader className="text-left">
             <SheetTitle className="font-display text-2xl">
               {selectedTable ? `Tafel ${selectedTable.label}` : "Tafel"}
@@ -754,7 +666,7 @@ function ZoneBlock({
           {tables.length} tafels · {free} vrij · {seated} aan tafel
         </p>
       </div>
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-5 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7 gap-3">
         {tables.map(t => {
           const st = state.get(t.id) ?? { status: "free" as CellStatus };
           return (

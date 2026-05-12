@@ -19,17 +19,8 @@ import { cn } from "@/lib/utils";
 type Role = "owner" | "manager" | "host" | "staff";
 type Item = { title: string; url: string; icon: typeof LayoutDashboard; end?: boolean; advanced?: boolean; roles?: Role[] };
 
-const operatie: Item[] = [
-  { title: "Vandaag", url: "/app", icon: LayoutDashboard, end: true },
-  { title: "Agenda", url: "/app/agenda", icon: CalendarDays },
-  { title: "Vloer", url: "/app/vloer", icon: Tablet },
-  { title: "Walk-ins", url: "/app/walk-ins", icon: Hand },
-  { title: "Wachtlijst", url: "/app/wachtlijst", icon: ListChecks },
-];
-
-const gasten: Item[] = [
-  { title: "Gasten", url: "/app/gasten", icon: Users },
-];
+// Operationele schermen (Vandaag, Agenda, Vloer, Wachtlijst, Gasten) zitten
+// nu in de OperationTabBar bovenaan — niet meer in de sidebar.
 
 const hospitality: Item[] = [
   { title: "Gastcommunicatie", url: "/app/gastcommunicatie", icon: MessageSquare, roles: ["owner","manager"] },
@@ -126,8 +117,6 @@ export function AppSidebar() {
           const role = (current?.role as Role | undefined) ?? null;
           return (
             <>
-              <Group label="Operatie" items={operatie} collapsed={collapsed} pathname={location.pathname} onNavigate={handleNavigate} canSeeAdvanced={canSeeAdvanced} role={role} />
-              <Group label="Gasten" items={gasten} collapsed={collapsed} pathname={location.pathname} onNavigate={handleNavigate} canSeeAdvanced={canSeeAdvanced} role={role} />
               <Group label="Hospitality" items={hospitality} collapsed={collapsed} pathname={location.pathname} onNavigate={handleNavigate} canSeeAdvanced={canSeeAdvanced} role={role} />
               <Group label="Beheer" items={beheer} collapsed={collapsed} pathname={location.pathname} onNavigate={handleNavigate} canSeeAdvanced={canSeeAdvanced} role={role} />
               {isSystemAdmin && (

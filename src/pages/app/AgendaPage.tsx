@@ -24,7 +24,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { ReservationDetailDialog } from "@/components/ReservationDetailDialog";
 import { ReservationFormSheet, type ReservationFormPrefill } from "@/components/reservations/ReservationFormSheet";
 import { WalkInDialog } from "@/components/WalkInDialog";
-import { PageHeader } from "@/components/PageHeader";
+
 import { EmptyState } from "@/components/touch/StateViews";
 import { cn } from "@/lib/utils";
 
@@ -315,66 +315,51 @@ const AgendaPage = () => {
   };
 
   return (
-    <div className="p-4 sm:p-6 max-w-[1600px] mx-auto space-y-6">
-      <PageHeader
-        title="Agenda"
-        description={<span className="capitalize">{format(date, "EEEE d MMMM yyyy", { locale: nl })}</span>}
-        actions={
-          <>
-            <Button
-              variant="default"
-              className="h-11"
-              onClick={() => { setWalkInTable(undefined); setWalkInOpen(true); }}
-            >
-              <UserPlus className="h-4 w-4 mr-2" /> Walk-in
+    <div className="p-4 sm:p-6 max-w-[1600px] mx-auto space-y-4">
+      <div className="flex items-center justify-between gap-2 flex-wrap">
+        <span className="text-sm text-muted-foreground capitalize">
+          {format(date, "EEEE d MMMM yyyy", { locale: nl })}
+        </span>
+        <div className="flex items-center gap-1 flex-wrap">
+          <div className="hidden sm:flex items-center gap-1 mr-1">
+            <Button variant="outline" size="icon" className="h-10 w-10" onClick={() => zoomBy(-PX_STEP)} disabled={pxPerMin <= PX_MIN} aria-label="Uitzoomen">
+              <ZoomOut className="h-4 w-4" />
             </Button>
-            <Button
-              variant="outline"
-              className="h-11"
-              onClick={() => { setCreatePrefill({ date: dateStr }); setCreateOpen(true); }}
-            >
-              <Plus className="h-4 w-4 mr-2" /> Reservering
+            <span className="text-xs text-muted-foreground tabular-nums w-10 text-center">{zoomPct}%</span>
+            <Button variant="outline" size="icon" className="h-10 w-10" onClick={() => zoomBy(PX_STEP)} disabled={pxPerMin >= PX_MAX} aria-label="Inzoomen">
+              <ZoomIn className="h-4 w-4" />
             </Button>
-            <div className="hidden sm:flex items-center gap-1 mr-1">
-              <Button variant="outline" size="icon" className="h-11 w-11" onClick={() => zoomBy(-PX_STEP)} disabled={pxPerMin <= PX_MIN} aria-label="Uitzoomen">
-                <ZoomOut className="h-4 w-4" />
-              </Button>
-              <span className="text-xs text-muted-foreground tabular-nums w-12 text-center">{zoomPct}%</span>
-              <Button variant="outline" size="icon" className="h-11 w-11" onClick={() => zoomBy(PX_STEP)} disabled={pxPerMin >= PX_MAX} aria-label="Inzoomen">
-                <ZoomIn className="h-4 w-4" />
-              </Button>
-              <Button variant="outline" size="icon" className="h-11 w-11" onClick={() => rowZoom(-ROW_STEP)} disabled={rowHeight <= ROW_MIN} aria-label="Rijen smaller">
-                <MoveVertical className="h-4 w-4 rotate-45" />
-              </Button>
-              <Button variant="outline" size="icon" className="h-11 w-11" onClick={() => rowZoom(ROW_STEP)} disabled={rowHeight >= ROW_MAX} aria-label="Rijen hoger">
-                <MoveVertical className="h-4 w-4" />
-              </Button>
-            </div>
-            <Button variant="outline" size="icon" className="h-11 w-11" onClick={() => setDate(subDays(date, 1))} aria-label="Vorige dag">
-              <ChevronLeft className="h-4 w-4" />
+            <Button variant="outline" size="icon" className="h-10 w-10" onClick={() => rowZoom(-ROW_STEP)} disabled={rowHeight <= ROW_MIN} aria-label="Rijen smaller">
+              <MoveVertical className="h-4 w-4 rotate-45" />
             </Button>
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button variant="outline" className="h-11">
-                  <CalendarIcon className="mr-2 h-4 w-4" />
-                  {format(date, "d MMM yyyy", { locale: nl })}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="end">
-                <Calendar mode="single" selected={date} onSelect={(d) => d && setDate(d)} locale={nl} initialFocus className={cn("p-3 pointer-events-auto")} />
-              </PopoverContent>
-            </Popover>
-            <Button variant="outline" size="icon" className="h-11 w-11" onClick={() => setDate(addDays(date, 1))} aria-label="Volgende dag">
-              <ChevronRight className="h-4 w-4" />
+            <Button variant="outline" size="icon" className="h-10 w-10" onClick={() => rowZoom(ROW_STEP)} disabled={rowHeight >= ROW_MAX} aria-label="Rijen hoger">
+              <MoveVertical className="h-4 w-4" />
             </Button>
-            {!isToday && (
-              <Button variant="outline" className="h-11" onClick={() => setDate(new Date())}>
-                Vandaag
+          </div>
+          <Button variant="outline" size="icon" className="h-10 w-10" onClick={() => setDate(subDays(date, 1))} aria-label="Vorige dag">
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" className="h-10">
+                <CalendarIcon className="mr-2 h-4 w-4" />
+                {format(date, "d MMM yyyy", { locale: nl })}
               </Button>
-            )}
-          </>
-        }
-      />
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="end">
+              <Calendar mode="single" selected={date} onSelect={(d) => d && setDate(d)} locale={nl} initialFocus className={cn("p-3 pointer-events-auto")} />
+            </PopoverContent>
+          </Popover>
+          <Button variant="outline" size="icon" className="h-10 w-10" onClick={() => setDate(addDays(date, 1))} aria-label="Volgende dag">
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+          {!isToday && (
+            <Button variant="outline" className="h-10" onClick={() => setDate(new Date())}>
+              Vandaag
+            </Button>
+          )}
+        </div>
+      </div>
 
       {/* Mobile zoom-knoppen */}
       <div className="flex sm:hidden items-center justify-end gap-1">
