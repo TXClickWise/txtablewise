@@ -1,6 +1,7 @@
 import CapacitySettings from "./CapacitySettings";
 import LargeGroupSettings from "./LargeGroupSettings";
 import NoShowSettings from "./NoShowSettings";
+import GuestChangesSettings from "./GuestChangesSettings";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export default function ReservationRulesSettings() {
@@ -9,7 +10,7 @@ export default function ReservationRulesSettings() {
       <div>
         <h1 className="font-display text-2xl mb-1">Reserveringen</h1>
         <p className="text-sm text-muted-foreground">
-          Capaciteit, grote groepen en no-show preventieregels.
+          Capaciteit, grote groepen, no-show preventie en gastwijzigingen.
         </p>
       </div>
       <Tabs defaultValue="capacity">
@@ -17,6 +18,7 @@ export default function ReservationRulesSettings() {
           <TabsTrigger value="capacity">Capaciteit</TabsTrigger>
           <TabsTrigger value="large">Grote groepen</TabsTrigger>
           <TabsTrigger value="noshow">No-show regels</TabsTrigger>
+          <TabsTrigger value="guest_changes">Gastwijzigingen</TabsTrigger>
         </TabsList>
         <TabsContent value="capacity" className="mt-4">
           <CapacitySettings />
@@ -27,7 +29,11 @@ export default function ReservationRulesSettings() {
         <TabsContent value="noshow" className="mt-4">
           <NoShowSettings />
         </TabsContent>
+        <TabsContent value="guest_changes" className="mt-4">
+          <GuestChangesSettings />
+        </TabsContent>
       </Tabs>
     </div>
   );
 }
+

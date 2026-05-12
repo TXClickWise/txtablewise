@@ -73,8 +73,15 @@ export default function GuestManageReservation() {
   const [cancelReason, setCancelReason] = useState("");
 
   const [showChange, setShowChange] = useState(false);
-  const [changeForm, setChangeForm] = useState({ desired_date: "", desired_time: "", desired_party_size: "", message: "" });
-  const [changeRequested, setChangeRequested] = useState(false);
+  const [changeForm, setChangeForm] = useState({
+    desired_date: "", desired_time: "", desired_party_size: "",
+    desired_first_name: "", desired_last_name: "", desired_email: "", desired_phone: "",
+    desired_dietary_notes: "", message: "",
+  });
+  const [changeOutcome, setChangeOutcome] = useState<null | {
+    outcome: "applied" | "rejected" | "pending_review";
+    reason_code?: string | null;
+  }>(null);
 
   const call = async (action: string, extra: Record<string, unknown> = {}) => {
     const res = await fetch(FUNCTION_URL, {
@@ -162,17 +169,26 @@ export default function GuestManageReservation() {
 
   const onSubmitChange = async () => {
     setActing(true);
-    const { ok } = await call("request_change", {
+    const { ok, data } = await call("request_change", {
       desired_date: changeForm.desired_date || undefined,
       desired_time: changeForm.desired_time || undefined,
       desired_party_size: changeForm.desired_party_size ? Number(changeForm.desired_party_size) : undefined,
+      desired_first_name: changeForm.desired_first_name || undefined,
+      desired_last_name: changeForm.desired_last_name || undefined,
+      desired_email: changeForm.desired_email || undefined,
+      desired_phone: changeForm.desired_phone || undefined,
+      desired_dietary_notes: changeForm.desired_dietary_notes || undefined,
       message: changeForm.message || undefined,
     });
     setActing(false);
     setShowChange(false);
     if (!ok) return toast.error(t("toastChangeFail"));
-    setChangeRequested(true);
-    toast.success(t("toastChangeSuccess"));
+    const outcome = (data?.outcome ?? "pending_review") as "applied" | "rejected" | "pending_review";
+    setChangeOutcome({ outcome, reason_code: data?.reason_code ?? null });
+    if (data?.reservation) setReservation(data.reservation);
+    if (outcome === "applied") toast.success(t("toastChangeApplied"));
+    else if (outcome === "rejected") toast.error(t("toastChangeRejected"));
+    else toast.success(t("toastChangeSuccess"));
   };
 
   return (
@@ -235,11 +251,23 @@ export default function GuestManageReservation() {
           </CardContent>
         </Card>
 
-        {changeRequested && (
+        {changeOutcome && (
           <Card>
             <CardHeader>
-              <CardTitle className="font-display text-base">{t("changeReceivedTitle")}</CardTitle>
-              <CardDescription>{t("changeReceivedBody")}</CardDescription>
+              <CardTitle className="font-display text-base">
+                {changeOutcome.outcome === "applied"
+                  ? t("changeAppliedTitle")
+                  : changeOutcome.outcome === "rejected"
+                  ? t("changeRejectedTitle")
+                  : t("changeReceivedTitle")}
+              </CardTitle>
+              <CardDescription>
+                {changeOutcome.outcome === "applied"
+                  ? t("changeAppliedBody")
+                  : changeOutcome.outcome === "rejected"
+                  ? t(`changeRejectedReason.${changeOutcome.reason_code ?? "default"}`, { defaultValue: t("changeRejectedBody") })
+                  : t("changeReceivedBody")}
+              </CardDescription>
             </CardHeader>
           </Card>
         )}
@@ -291,6 +319,28 @@ export default function GuestManageReservation() {
             <div className="space-y-1">
               <Label className="text-xs">{t("newPartySize")}</Label>
               <Input type="number" min={1} max={50} value={changeForm.desired_party_size} onChange={(e) => setChangeForm({ ...changeForm, desired_party_size: e.target.value })} />
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div className="space-y-1">
+                <Label className="text-xs">{t("firstName")}</Label>
+                <Input value={changeForm.desired_first_name} onChange={(e) => setChangeForm({ ...changeForm, desired_first_name: e.target.value.slice(0, 100) })} />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">{t("lastName")}</Label>
+                <Input value={changeForm.desired_last_name} onChange={(e) => setChangeForm({ ...changeForm, desired_last_name: e.target.value.slice(0, 100) })} />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">{t("email")}</Label>
+                <Input type="email" value={changeForm.desired_email} onChange={(e) => setChangeForm({ ...changeForm, desired_email: e.target.value.slice(0, 200) })} />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">{t("phone")}</Label>
+                <Input type="tel" value={changeForm.desired_phone} onChange={(e) => setChangeForm({ ...changeForm, desired_phone: e.target.value.slice(0, 50) })} />
+              </div>
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">{t("dietaryNotes")}</Label>
+              <Textarea rows={2} value={changeForm.desired_dietary_notes} onChange={(e) => setChangeForm({ ...changeForm, desired_dietary_notes: e.target.value.slice(0, 1000) })} />
             </div>
             <div className="space-y-1">
               <Label className="text-xs">{t("note")}</Label>
