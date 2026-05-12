@@ -51,11 +51,12 @@ export function TableGridView({
     enabled: !!restaurantId,
     queryFn: async () => {
       const { data } = await supabase.from("tables")
-        .select("id, label, zone_id, zones(name)")
+        .select("id, label, capacity_min, capacity_max, zone_id, zones(name)")
         .eq("restaurant_id", restaurantId).eq("is_active", true).order("label");
       return data ?? [];
     },
   });
+  const rowRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
   const { data: reservations = [] } = useQuery({
     queryKey: ["agenda-day", restaurantId, dateStr],
