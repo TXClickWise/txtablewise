@@ -51,6 +51,8 @@
     "closed_on_date": "Am gewünschten Datum sind wir geschlossen.",
     "outside_opening_hours": "Die gewünschte Zeit liegt außerhalb unserer Öffnungszeiten.",
     "partial_closure": "Zur gewünschten Zeit sind wir teilweise geschlossen — bitte kontaktieren Sie uns.",
-    "no_table_available": "Für Ihren neuen Wunsch ist kein Tisch verfügbar. Wir helfen Ihnen gerne persönlich."
+    "no_table_available": "Für Ihren neuen Wunsch ist kein Tisch verfügbar. Wir helfen Ihnen gerne persönlich.",
+    "large_party_needs_staff": "Bei dieser Gruppengröße bestätigen wir Ihre Änderung gerne persönlich.",
+    "auto_apply_disabled": "Das Restaurant bestätigt Änderungen derzeit persönlich."
   }
 }
