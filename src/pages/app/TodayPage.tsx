@@ -111,39 +111,26 @@ const TodayPage = () => {
   };
 
   return (
-    <div className="p-4 sm:p-6 max-w-7xl mx-auto space-y-6">
-      <PageHeader
-        title="Vandaag"
-        description={
-          <span className="capitalize">
-            {format(new Date(), "EEEE d MMMM yyyy", { locale: nl })}
-          </span>
-        }
-        badge={
+    <div className="p-4 sm:p-6 max-w-7xl mx-auto space-y-5">
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <p className="text-sm text-muted-foreground capitalize">
+          {format(new Date(), "EEEE d MMMM yyyy", { locale: nl })}
+        </p>
+        <div className="flex items-center gap-2">
           <Badge variant="outline" className="gap-1.5">
             <span className="h-1.5 w-1.5 rounded-full bg-success animate-pulse" />
             Live
           </Badge>
-        }
-        actions={
-          <>
-            {tableCount === 0 && (
-              <Button onClick={handleSeed} disabled={seeding} variant="outline" className="h-11">
-                <Sparkles className="mr-2 h-4 w-4" />
-                {seeding ? "Bezig…" : "Demo-data inladen"}
-              </Button>
-            )}
-            <Button variant="outline" className="h-11" onClick={() => setWalkInOpen(true)}>
-              <UserPlus className="mr-2 h-4 w-4" /> Walk-in
+          {tableCount === 0 && (
+            <Button onClick={handleSeed} disabled={seeding} variant="outline" size="sm">
+              <Sparkles className="mr-2 h-4 w-4" />
+              {seeding ? "Bezig…" : "Demo-data inladen"}
             </Button>
-            <Button className="h-11" onClick={() => setCreateOpen(true)}>
-              <CalendarPlus className="mr-2 h-4 w-4" /> Reservering
-            </Button>
-          </>
-        }
-      />
+          )}
+        </div>
+      </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <KpiCard
           label="Gasten verwacht"
           value={kpis.guestsTotal}
