@@ -560,8 +560,27 @@ const AgendaPage = () => {
       ) : view === "plattegrond" ? (
         <FloorPlanBody
           tables={(tables as any[]).filter((t) => (t.zone_id ?? "_none") === floorZoneId)}
+          byTable={byTable}
+          now={now}
+          largeGroupThreshold={largeGroupThreshold}
+          onOpenReservation={(id) => setSelectedId(id)}
+          onCreateOnTable={(t) => {
+            const today = new Date();
+            const isSame = format(today, "yyyy-MM-dd") === dateStr;
+            let mins = isSame
+              ? Math.ceil(((today.getHours() - START_HOUR) * 60 + today.getMinutes()) / QUARTER_MIN) * QUARTER_MIN
+              : 19 * 60 - START_HOUR * 60; // 19:00 default voor andere dagen
+            if (mins < 0) mins = 0;
+            if (mins >= totalMinutes) mins = totalMinutes - QUARTER_MIN;
+            setCreatePrefill({
+              date: dateStr,
+              time: minutesToTime(mins),
+              tableId: t.id,
+              tableLabel: t.label,
+            });
+            setCreateOpen(true);
+          }}
         />
-      ) : tables.length === 0 ? (
         <div className="p-6">
           <EmptyState
             icon={<CalendarIcon />}
