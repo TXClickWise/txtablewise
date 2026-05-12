@@ -12,7 +12,7 @@ import { useSearchParams } from "react-router-dom";
 import {
   ChevronLeft, ChevronRight, Calendar as CalendarIcon,
   ZoomIn, ZoomOut, MoveVertical, Maximize2, Minimize2,
-  CalendarDays, List,
+  CalendarDays, List, LayoutGrid,
 } from "lucide-react";
 import { useRestaurant } from "@/hooks/useRestaurant";
 import { useQuery } from "@tanstack/react-query";
