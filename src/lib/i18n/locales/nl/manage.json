@@ -51,6 +51,8 @@
     "closed_on_date": "We zijn gesloten op de gevraagde datum.",
     "outside_opening_hours": "De gevraagde tijd valt buiten onze openingstijden.",
     "partial_closure": "Op de gevraagde tijd zijn we deels gesloten — neem contact met ons op.",
-    "no_table_available": "We hebben geen tafel beschikbaar voor uw nieuwe wens. We helpen u graag persoonlijk."
+    "no_table_available": "We hebben geen tafel beschikbaar voor uw nieuwe wens. We helpen u graag persoonlijk.",
+    "large_party_needs_staff": "Voor deze groepsgrootte bevestigen we uw wijziging graag persoonlijk.",
+    "auto_apply_disabled": "Het restaurant bevestigt wijzigingen momenteel persoonlijk."
   }
 }
