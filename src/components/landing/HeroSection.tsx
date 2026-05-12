@@ -10,11 +10,11 @@ export function HeroSection() {
         <img
           src={heroImage}
           alt="Sfeervolle restaurantzaal bij gouden uur met kaarslicht en gedekte tafels"
-          className="h-full w-full object-cover opacity-30"
+          className="h-full w-full object-cover opacity-90"
           decoding="async"
           fetchPriority="high"
         />
-        <div className="absolute inset-0 bg-gradient-to-br from-[hsl(222,44%,8%)]/95 via-[hsl(222,40%,12%)]/85 to-[hsl(222,44%,10%)]/95" />
+        <div className="absolute inset-0 bg-gradient-to-br from-[hsl(222,44%,8%)]/75 via-[hsl(222,40%,12%)]/55 to-[hsl(222,44%,10%)]/80" />
       </div>
 
       <div className="container relative flex min-h-[88vh] flex-col justify-center pb-20 pt-32 md:min-h-[80vh] md:pb-28 md:pt-40">
