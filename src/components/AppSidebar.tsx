@@ -137,9 +137,9 @@ export function AppSidebar() {
           const canBeheer = role === "owner" || role === "manager";
           return (
             <>
-              <Group label="Snel naar" items={quickAccess} collapsed={collapsed} pathname={location.pathname} onNavigate={handleNavigate} canSeeAdvanced={canSeeAdvanced} role={role} />
-              <Group label="Hospitality" items={hospitality} collapsed={collapsed} pathname={location.pathname} onNavigate={handleNavigate} canSeeAdvanced={canSeeAdvanced} role={role} />
-              <Group label="Beheer" items={beheer} collapsed={collapsed} pathname={location.pathname} onNavigate={handleNavigate} canSeeAdvanced={canSeeAdvanced} role={role} />
+              <Group label="Snel naar" items={quickAccess} collapsed={collapsed} pathname={location.pathname} search={location.search} onNavigate={handleNavigate} canSeeAdvanced={canSeeAdvanced} role={role} />
+              <Group label="Hospitality" items={hospitality} collapsed={collapsed} pathname={location.pathname} search={location.search} onNavigate={handleNavigate} canSeeAdvanced={canSeeAdvanced} role={role} />
+              <Group label="Beheer" items={beheer} collapsed={collapsed} pathname={location.pathname} search={location.search} onNavigate={handleNavigate} canSeeAdvanced={canSeeAdvanced} role={role} />
               {canBeheer && (
                 <SidebarGroup>
                   <SidebarGroupContent>
@@ -173,7 +173,7 @@ export function AppSidebar() {
                 </SidebarGroup>
               )}
               {isSystemAdmin && (
-                <Group label="Admin" items={admin} collapsed={collapsed} pathname={location.pathname} accent onNavigate={handleNavigate} canSeeAdvanced={canSeeAdvanced} role={role} />
+                <Group label="Admin" items={admin} collapsed={collapsed} pathname={location.pathname} search={location.search} accent onNavigate={handleNavigate} canSeeAdvanced={canSeeAdvanced} role={role} />
               )}
             </>
           );
