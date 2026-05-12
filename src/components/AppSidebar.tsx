@@ -22,16 +22,27 @@ type Item = { title: string; url: string; icon: typeof LayoutDashboard; end?: bo
 
 // Operationele schermen (Vandaag, Agenda, Vloer, Wachtlijst, Gasten) zitten
 // nu in de OperationTabBar bovenaan — niet meer in de sidebar.
+// Snelkoppelingen voor de meest gebruikte schermen blijven hier wel staan.
+
+const quickAccess: Item[] = [
+  { title: "Dashboard", url: "/app/vandaag", icon: LayoutDashboard, roles: ["owner","manager","host","staff"] },
+  { title: "Grote groepen", url: "/app/gasten?tab=grote-groepen", icon: Users, roles: ["owner","manager","host"] },
+];
 
 const hospitality: Item[] = [
   { title: "Gastcommunicatie", url: "/app/gastcommunicatie", icon: MessageSquare, roles: ["owner","manager"] },
-  { title: "AI Host & Voice", url: "/app/ai-voice", icon: Bot, roles: ["owner","manager"] },
 ];
 
 const beheer: Item[] = [
   { title: "Rapportages", url: "/app/rapportages", icon: BarChart3, roles: ["owner","manager"] },
-  { title: "Koppelingen", url: "/app/koppelingen", icon: Plug, roles: ["owner","manager"] },
-  { title: "Instellingen", url: "/app/instellingen", icon: Settings, roles: ["owner","manager"] },
+];
+
+// Sub-items onder "Instellingen". Snelle toegang tot de meest bezochte secties.
+const settingsSubItems: { title: string; url: string }[] = [
+  { title: "AI Host & Voice", url: "/app/instellingen/ai-voice" },
+  { title: "Koppelingen", url: "/app/instellingen/integraties" },
+  { title: "Reserveringen", url: "/app/instellingen/reserveringen" },
+  { title: "Tafels & zones", url: "/app/instellingen/zones" },
 ];
 
 // System admin only
