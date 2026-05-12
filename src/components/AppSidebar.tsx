@@ -16,6 +16,8 @@ import { useAdvancedMode } from "@/hooks/useAdvancedMode";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { PendingBadge } from "@/components/PendingBadge";
+import { usePendingLargeGroups } from "@/hooks/usePendingLargeGroups";
 
 type Role = "owner" | "manager" | "host" | "staff";
 type Item = { title: string; url: string; icon: typeof LayoutDashboard; end?: boolean; advanced?: boolean; roles?: Role[] };
@@ -58,7 +60,7 @@ const admin: Item[] = [
   { title: "Pilot readiness", url: "/app/admin/pilot-readiness", icon: ShieldCheck },
 ];
 
-function Group({ label, items, collapsed, pathname, search, accent, onNavigate, canSeeAdvanced, role }: { label: string; items: Item[]; collapsed: boolean; pathname: string; search: string; accent?: boolean; onNavigate?: () => void; canSeeAdvanced: boolean; role: Role | null }) {
+function Group({ label, items, collapsed, pathname, search, accent, onNavigate, canSeeAdvanced, role, badges }: { label: string; items: Item[]; collapsed: boolean; pathname: string; search: string; accent?: boolean; onNavigate?: () => void; canSeeAdvanced: boolean; role: Role | null; badges?: Record<string, number> }) {
   const visible = items.filter((i) => (!i.advanced || canSeeAdvanced) && (!i.roles || (role && i.roles.includes(role))));
   if (visible.length === 0) return null;
   const currentFull = pathname + search;
@@ -76,17 +78,22 @@ function Group({ label, items, collapsed, pathname, search, accent, onNavigate, 
               : item.end
                 ? pathname === item.url
                 : pathname.startsWith(item.url);
+            const badgeCount = badges?.[item.url] ?? 0;
             return (
               <SidebarMenuItem key={item.url}>
                 <SidebarMenuButton asChild isActive={active}>
-                  <NavLink to={item.url} end={item.end} onClick={onNavigate}>
-                    <item.icon className="h-4 w-4 shrink-0" />
+                  <NavLink to={item.url} end={item.end} onClick={onNavigate} className="relative">
+                    <span className="relative inline-flex shrink-0">
+                      <item.icon className="h-4 w-4" />
+                      {collapsed && badgeCount > 0 && <PendingBadge count={badgeCount} variant="dot" />}
+                    </span>
                     {!collapsed && (
                       <span className="flex items-center gap-1.5">
                         {item.title}
                         {item.advanced && <span className="text-[9px] uppercase tracking-wide text-sidebar-foreground/60">adv</span>}
                       </span>
                     )}
+                    {!collapsed && badgeCount > 0 && <PendingBadge count={badgeCount} variant="sidebar" />}
                   </NavLink>
                 </SidebarMenuButton>
               </SidebarMenuItem>
@@ -111,6 +118,8 @@ export function AppSidebar() {
   const location = useLocation();
 
   const handleNavigate = isMobile ? () => setOpenMobile(false) : undefined;
+  const { count: pendingLargeGroups } = usePendingLargeGroups();
+  const quickAccessBadges = { "/app/gasten?tab=grote-groepen": pendingLargeGroups };
 
   return (
     <Sidebar collapsible="icon" className="glass-sidebar">
@@ -137,7 +146,7 @@ export function AppSidebar() {
           const canBeheer = role === "owner" || role === "manager";
           return (
             <>
-              <Group label="Snel naar" items={quickAccess} collapsed={collapsed} pathname={location.pathname} search={location.search} onNavigate={handleNavigate} canSeeAdvanced={canSeeAdvanced} role={role} />
+              <Group label="Snel naar" items={quickAccess} collapsed={collapsed} pathname={location.pathname} search={location.search} onNavigate={handleNavigate} canSeeAdvanced={canSeeAdvanced} role={role} badges={quickAccessBadges} />
               <Group label="Hospitality" items={hospitality} collapsed={collapsed} pathname={location.pathname} search={location.search} onNavigate={handleNavigate} canSeeAdvanced={canSeeAdvanced} role={role} />
               <Group label="Beheer" items={beheer} collapsed={collapsed} pathname={location.pathname} search={location.search} onNavigate={handleNavigate} canSeeAdvanced={canSeeAdvanced} role={role} />
               {canBeheer && (
