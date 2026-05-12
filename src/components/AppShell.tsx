@@ -38,7 +38,7 @@ const AppShellInner = ({ children }: { children?: ReactNode }) => {
       <div className="h-screen overflow-hidden flex w-full bg-background">
         <AppSidebar />
         <div className="flex-1 flex flex-col min-w-0 min-h-screen">
-          <header className="h-12 border-b border-border bg-card flex items-center px-3 gap-2 sticky top-0 z-20">
+          <header className="h-12 border-b border-border/60 glass-header flex items-center px-3 gap-2 sticky top-0 z-20">
             <SidebarTrigger />
             {showTabBar ? (
               <OperationTabBar />

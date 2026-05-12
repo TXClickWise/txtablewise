@@ -28,11 +28,10 @@ export function OperationTabBar() {
             end={t.end}
             className={({ isActive }) =>
               cn(
-                "inline-flex items-center gap-1.5 px-3 h-9 rounded-md text-sm font-medium transition-colors whitespace-nowrap",
-                "hover:bg-muted",
+                "inline-flex items-center gap-1.5 px-3 h-9 rounded-lg text-sm font-display font-semibold transition-all whitespace-nowrap",
                 isActive
-                  ? "bg-primary/10 text-primary"
-                  : "text-muted-foreground",
+                  ? "bg-accent text-accent-foreground shadow-soft"
+                  : "text-muted-foreground hover:bg-muted hover:text-foreground",
               )
             }
           >
