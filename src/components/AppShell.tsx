@@ -47,7 +47,7 @@ const AppShellInner = ({ children }: { children?: ReactNode }) => {
               </div>
             )}
             {showTabBar && current?.restaurants?.name && (
-              <div className="hidden md:block text-xs text-muted-foreground truncate max-w-[180px]">
+              <div className="ml-auto text-xs font-medium text-muted-foreground truncate max-w-[180px] sm:max-w-[260px] lg:max-w-[360px]">
                 {current.restaurants.name}
               </div>
             )}
