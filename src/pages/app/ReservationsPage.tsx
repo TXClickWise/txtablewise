@@ -251,7 +251,7 @@ const ReservationsPage = () => {
   );
 
   return (
-    <div className="p-4 sm:p-6 max-w-[1600px] mx-auto space-y-4 sm:space-y-6">
+    <div className="px-3 sm:px-4 py-3 space-y-4 sm:space-y-6">
       {/* Header */}
       <PageHeader
         title="Reserveringen"
