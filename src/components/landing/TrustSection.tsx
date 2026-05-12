@@ -40,20 +40,20 @@ export function TrustSection() {
     <section className="bg-gradient-warm py-20 md:py-28">
       <div className="container grid items-center gap-14 lg:grid-cols-2">
         <div>
-          <span className="text-xs font-semibold uppercase tracking-[0.22em] text-primary">
+          <span className="text-xs font-semibold uppercase tracking-[0.22em] text-accent">
             Gebouwd voor Nederlandse horeca
           </span>
-          <h2 className="mt-3 font-display text-3xl font-semibold leading-tight md:text-5xl">
+          <h2 className="mt-3 font-display text-3xl font-bold leading-tight md:text-5xl">
             Premium tools, zonder de enterprise-rompslomp.
           </h2>
           <ul className="mt-8 space-y-5">
             {points.map((p) => (
               <li key={p.title} className="flex gap-4">
-                <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+                <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-accent/15 text-accent">
                   <Check className="h-4 w-4" />
                 </span>
                 <div>
-                  <div className="font-medium text-foreground">{p.title}</div>
+                  <div className="font-semibold text-foreground">{p.title}</div>
                   <div className="mt-1 text-sm text-muted-foreground">{p.body}</div>
                 </div>
               </li>
@@ -63,8 +63,8 @@ export function TrustSection() {
 
         {/* Dashboard mockup */}
         <div className="relative">
-          <div className="absolute -inset-6 rounded-[2rem] bg-gradient-hero opacity-20 blur-2xl" />
-          <div className="relative overflow-hidden rounded-2xl border bg-card shadow-lifted">
+          <div className="absolute -inset-6 rounded-[2rem] bg-gradient-hero opacity-30 blur-3xl" />
+          <div className="relative product-screenshot bg-card">
             <div className="flex items-center justify-between border-b bg-muted/40 px-5 py-3">
               <div className="flex items-center gap-2">
                 <span className="h-2.5 w-2.5 rounded-full bg-destructive/70" />
