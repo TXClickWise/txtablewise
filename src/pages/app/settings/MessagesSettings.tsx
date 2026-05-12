@@ -12,6 +12,25 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { Sparkles, Loader2 } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+
+const NOTIFICATION_KEYS: { key: string; label: string; description: string }[] = [
+  { key: "reservation_confirmed", label: "Bevestiging bij reservering", description: "Direct na een nieuwe reservering." },
+  { key: "reminder_24h", label: "Reminder 24 uur van tevoren", description: "Een dag voor het bezoek." },
+  { key: "reminder_2h", label: "Reminder 2 uur van tevoren", description: "Korte herinnering vlak voor aanvang." },
+  { key: "reservation_cancelled", label: "Annuleringsbevestiging", description: "Wanneer een reservering wordt geannuleerd." },
+  { key: "reservation_completed", label: "Bedankbericht na bezoek", description: "Met optionele review-link." },
+  { key: "reconfirmation_requested", label: "Herbevestiging verzoek", description: "Vraagt de gast actief te bevestigen." },
+];
+
+const DEFAULT_NOTIFICATION_SETTINGS: Record<string, boolean> = {
+  reservation_confirmed: true,
+  reminder_24h: true,
+  reminder_2h: true,
+  reservation_cancelled: true,
+  reservation_completed: true,
+  reconfirmation_requested: true,
+};
 
 const LOCALES = [
   { code: "nl", label: "Nederlands" },
@@ -254,6 +273,20 @@ export default function MessagesSettings() {
     },
   });
 
+  const { data: cwSettings } = useQuery({
+    queryKey: ["clickwise-settings-mode", restaurantId],
+    enabled: !!restaurantId,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("clickwise_settings")
+        .select("connection_mode")
+        .eq("restaurant_id", restaurantId!)
+        .maybeSingle();
+      return data;
+    },
+  });
+  const clickwiseLive = cwSettings?.connection_mode === "live";
+
   const patch = async (values: Record<string, any>) => {
     if (!restaurantId) return;
     const { error } = await supabase
@@ -316,6 +349,40 @@ export default function MessagesSettings() {
             }}
           />
         </div>
+      </Card>
+
+      <Card className="p-6">
+        <h2 className="font-display text-xl mb-2">E-mailnotificaties</h2>
+        <p className="text-sm text-muted-foreground mb-4">
+          Bepaal welke e-mails automatisch naar gasten worden gestuurd.
+        </p>
+        <div className="divide-y">
+          {NOTIFICATION_KEYS.map((n) => {
+            const settings = { ...DEFAULT_NOTIFICATION_SETTINGS, ...((r as any).email_notification_settings || {}) };
+            const enabled = settings[n.key] !== false;
+            return (
+              <div key={n.key} className="flex items-start justify-between gap-4 py-3">
+                <div>
+                  <Label className="text-sm">{n.label}</Label>
+                  <p className="text-xs text-muted-foreground mt-0.5">{n.description}</p>
+                </div>
+                <Switch
+                  checked={enabled && !clickwiseLive}
+                  disabled={clickwiseLive}
+                  onCheckedChange={(v) => {
+                    const next = { ...settings, [n.key]: v };
+                    patch({ email_notification_settings: next });
+                  }}
+                />
+              </div>
+            );
+          })}
+        </div>
+        <p className="text-xs text-muted-foreground mt-4">
+          {clickwiseLive
+            ? "Je hebt ClickWise actief. Berichten worden verstuurd via ClickWise workflows (SMS, WhatsApp). E-mails hierboven zijn uitgeschakeld om dubbele berichten te voorkomen."
+            : "E-mails worden verstuurd vanaf noreply@notify.reservations.txtablewise.nl. Op het Pro-plan kun je je eigen e-maildomein instellen."}
+        </p>
       </Card>
 
       <div>

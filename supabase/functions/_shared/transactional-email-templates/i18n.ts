@@ -18,6 +18,10 @@ export interface CopyFields {
   labelDate?: string
   labelTime?: string
   labelParty?: string
+  // Optional CTA labels for templates with action buttons.
+  cta?: string
+  ctaConfirm?: string
+  ctaCancel?: string
 }
 
 export type LocaleCopy = Record<Locale, CopyFields>
