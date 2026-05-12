@@ -51,8 +51,9 @@ export function usePendingLargeGroups() {
   // Lichte realtime: invalidate bij wijzigingen op beide tabellen.
   useEffect(() => {
     if (!restaurantId) return;
+    const channelName = `pending-large-groups:${restaurantId}:${Math.random().toString(36).slice(2)}`;
     const channel = supabase
-      .channel(`pending-large-groups:${restaurantId}`)
+      .channel(channelName)
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "reservations", filter: `restaurant_id=eq.${restaurantId}` },
