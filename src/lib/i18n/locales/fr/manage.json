@@ -33,5 +33,24 @@
   "toastCancelFail": "Impossible d'annuler — réessayez",
   "toastCancelSuccess": "Merci de nous avoir prévenus — votre réservation est annulée.",
   "toastChangeFail": "Envoi impossible — réessayez",
-  "toastChangeSuccess": "Demande envoyée — nous vous recontactons."
+  "toastChangeSuccess": "Demande envoyée — nous vous recontactons.",
+  "toastChangeApplied": "Votre modification a été appliquée.",
+  "toastChangeRejected": "Désolé, cette modification n'est pas possible.",
+  "firstName": "Prénom",
+  "lastName": "Nom",
+  "email": "E-mail",
+  "phone": "Téléphone",
+  "dietaryNotes": "Régime / remarque",
+  "changeAppliedTitle": "Modification confirmée",
+  "changeAppliedBody": "Votre réservation a été mise à jour. Vous recevrez un e-mail de confirmation.",
+  "changeRejectedTitle": "Modification impossible",
+  "changeRejectedBody": "Nous n'avons pas pu traiter cette modification automatiquement. Merci de contacter le restaurant.",
+  "changeRejectedReason": {
+    "default": "Nous n'avons pas pu traiter cette modification automatiquement. Merci de contacter le restaurant.",
+    "too_late_min_notice": "Votre modification est trop proche de la réservation pour être traitée automatiquement.",
+    "closed_on_date": "Nous sommes fermés à la date demandée.",
+    "outside_opening_hours": "L'heure demandée est en dehors de nos horaires d'ouverture.",
+    "partial_closure": "Nous sommes partiellement fermés à l'heure demandée — merci de nous contacter.",
+    "no_table_available": "Aucune table disponible pour votre nouvelle demande. Nous serons ravis de vous aider personnellement."
+  }
 }
