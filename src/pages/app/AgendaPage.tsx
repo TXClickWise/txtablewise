@@ -179,7 +179,7 @@ const AgendaPage = () => {
     enabled: !!rid,
     queryFn: async () => {
       const { data } = await supabase.from("reservations")
-        .select("id, start_time, end_time, status, party_size, channel, guests(first_name, last_name, is_vip), reservation_tables(table_id)")
+        .select("id, start_time, end_time, status, party_size, channel, occasion, dietary_notes, large_group_status, requires_manual_approval, reminder_confirmed_at, guests(first_name, last_name, is_vip, allergies), reservation_tables(table_id), pre_orders(id)")
         .eq("restaurant_id", rid!).eq("reservation_date", dateStr);
       return data ?? [];
     },
