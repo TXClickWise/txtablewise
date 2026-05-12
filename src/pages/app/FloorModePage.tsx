@@ -64,14 +64,30 @@ type CellStatus =
   | "blocked";    // toekomstige uitbreiding
 
 const CELL_TONE: Record<CellStatus, string> = {
-  free:        "bg-card border-border hover:border-primary/40",
-  expected:    "bg-secondary border-border",
-  soon:        "bg-status-pending/10 border-status-pending/40",
-  arrived:     "bg-status-pending/15 border-status-pending",
-  seated:      "bg-status-seated/10 border-status-seated/40",
-  almostFree:  "bg-warning/10 border-warning/40",
-  overdue:     "bg-status-noshow/10 border-status-noshow/50",
-  blocked:     "bg-muted border-border opacity-70",
+  free:        "bg-table-free border-l-[4px] border-table-free-border hover:brightness-95",
+  expected:    "bg-table-expected border-l-[4px] border-table-expected-border/70",
+  soon:        "bg-table-arriving border-l-[4px] border-table-arriving-border",
+  arrived:     "bg-table-arriving border-l-[4px] border-table-arriving-border",
+  seated:      "bg-table-seated border-l-[4px] border-table-seated-border",
+  almostFree:  "bg-table-almost-done border-l-[4px] border-table-almost-done-border",
+  overdue:     "bg-table-overtime border-l-[4px] border-table-overtime-border",
+  blocked:     "blocked-stripe border-l-[4px] border-table-blocked-border",
+};
+
+const CELL_PULSE: Partial<Record<CellStatus, true>> = {
+  seated: true,
+  overdue: true,
+};
+
+const CELL_DOT: Record<CellStatus, string> = {
+  free:        "bg-table-free-border",
+  expected:    "bg-table-expected-border",
+  soon:        "bg-table-arriving-border",
+  arrived:     "bg-table-arriving-border",
+  seated:      "bg-table-seated-border",
+  almostFree:  "bg-table-almost-done-border",
+  overdue:     "bg-table-overtime-border",
+  blocked:     "bg-table-blocked-border",
 };
 
 const CELL_LABEL: Record<CellStatus, string> = {
@@ -716,23 +732,38 @@ function TableCard({
       )}
     >
       <div className="flex items-start justify-between gap-2">
-        <div>
-          <div className="font-display text-lg leading-none">Tafel {table.label}</div>
-          <div className="text-[11px] text-muted-foreground mt-0.5">
-            {table.capacity_min}-{table.capacity_max}p
+        <div className="flex items-center gap-2 min-w-0">
+          <span
+            className={cn(
+              "h-2 w-2 rounded-full shrink-0",
+              CELL_DOT[status],
+              CELL_PULSE[status] && "status-dot-active",
+            )}
+            aria-hidden
+          />
+          <div className="min-w-0">
+            <div className="font-display text-xl font-bold leading-none truncate">Tafel {table.label}</div>
+            <div className="text-[11px] text-muted-foreground mt-0.5">
+              {table.capacity_min}-{table.capacity_max}p
+            </div>
           </div>
         </div>
-        <span className={cn(
-          "text-[10px] font-medium uppercase tracking-wide px-1.5 py-0.5 rounded",
-          status === "free" && "bg-muted text-muted-foreground",
-          status === "expected" && "bg-secondary text-secondary-foreground",
-          status === "soon" && "bg-status-pending/20 text-status-pending",
-          status === "arrived" && "bg-status-pending/30 text-status-pending",
-          status === "seated" && "bg-status-seated/20 text-status-seated",
-          status === "almostFree" && "bg-warning/25 text-warning",
-          status === "overdue" && "bg-status-noshow/25 text-status-noshow",
-          status === "blocked" && "bg-muted text-muted-foreground",
-        )}>{CELL_LABEL[status]}</span>
+        {status === "free" ? (
+          <span className="rounded-full bg-table-free-border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white shadow-soft">
+            VRIJ
+          </span>
+        ) : (
+          <span className={cn(
+            "text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded text-white",
+            status === "expected" && "bg-table-expected-border text-foreground",
+            status === "soon" && "bg-table-arriving-border",
+            status === "arrived" && "bg-table-arriving-border",
+            status === "seated" && "bg-table-seated-border",
+            status === "almostFree" && "bg-table-almost-done-border",
+            status === "overdue" && "bg-table-overtime-border",
+            status === "blocked" && "bg-table-blocked-border text-foreground",
+          )}>{CELL_LABEL[status]}</span>
+        )}
       </div>
 
       {active ? (

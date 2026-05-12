@@ -27,7 +27,7 @@ export function LandingHeader() {
       className={cn(
         "fixed inset-x-0 top-0 z-50 transition-all",
         scrolled
-          ? "border-b border-border/60 bg-background/85 backdrop-blur-md shadow-soft"
+          ? "glass-header border-b border-border/60 shadow-soft"
           : "bg-transparent",
       )}
     >

@@ -67,21 +67,24 @@ export function FloatingActions() {
       <div className={cn(positionClasses, "z-40 flex flex-col items-end gap-3")}>
         {/* Fan-out opties */}
         {open && (
-          <div className="flex flex-col items-end gap-2 animate-in fade-in slide-in-from-bottom-2 duration-150">
+          <div className="flex flex-col items-end gap-2">
             <FabOption
               label="AI Quick Seat"
               icon={<Sparkles className="h-5 w-5 text-primary" />}
               onClick={() => { setAiSheetOpen(true); setOpen(false); }}
+              delay={150}
             />
             <FabOption
               label="Reservering"
               icon={<CalendarPlus className="h-5 w-5" />}
               onClick={() => { setReservationOpen(true); setOpen(false); }}
+              delay={75}
             />
             <FabOption
               label="Walk-in"
               icon={<Hand className="h-5 w-5" />}
               onClick={() => { setWalkInPrefill(undefined); setWalkInOpen(true); setOpen(false); }}
+              delay={0}
             />
           </div>
         )}
@@ -92,7 +95,7 @@ export function FloatingActions() {
           aria-expanded={open}
           onClick={() => setOpen(v => !v)}
           className={cn(
-            "h-14 w-14 rounded-full shadow-lg shadow-primary/30 transition-transform",
+            "fab-button h-14 w-14 rounded-full",
             open && "rotate-45",
           )}
         >
@@ -138,17 +141,20 @@ export function FloatingActions() {
   );
 }
 
-function FabOption({ label, icon, onClick }: { label: string; icon: React.ReactNode; onClick: () => void }) {
+function FabOption({ label, icon, onClick, delay = 0 }: { label: string; icon: React.ReactNode; onClick: () => void; delay?: number }) {
   return (
-    <div className="flex items-center gap-2">
-      <span className="rounded-md bg-card px-3 py-1.5 text-sm font-medium shadow-md border border-border">
+    <div
+      className="flex items-center gap-2 animate-in fade-in zoom-in-95 slide-in-from-bottom-2 fill-mode-both"
+      style={{ animationDelay: `${delay}ms`, animationDuration: "200ms" }}
+    >
+      <span className="rounded-md bg-card px-3 py-1.5 text-sm font-medium shadow-elevated border border-border">
         {label}
       </span>
       <Button
         size="icon"
         variant="secondary"
         onClick={onClick}
-        className="h-12 w-12 rounded-full shadow-md"
+        className="h-12 w-12 rounded-full shadow-elevated hover:-translate-y-0.5"
         aria-label={label}
       >
         {icon}

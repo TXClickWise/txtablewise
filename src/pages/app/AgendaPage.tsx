@@ -41,15 +41,16 @@ const ROW_STEP = 8;
 const ROW_DEFAULT = 64;
 const TAFEL_COL_W = 120;
 
+// Reserveringsblokken in tijdlijn — semi-transparante statuskleur + 3px linkerborder
 const STATUS_BG: Record<string, string> = {
-  pending: "bg-status-pending/30 border-status-pending/60",
-  confirmed: "bg-status-confirmed/30 border-status-confirmed/60",
-  seated: "bg-status-seated/30 border-status-seated/60",
-  finished: "bg-status-completed/30 border-status-completed/60",
-  completed: "bg-status-completed/30 border-status-completed/60",
-  cancelled: "bg-status-cancelled/20 border-status-cancelled/40 line-through opacity-60",
-  no_show: "bg-status-noshow/20 border-status-noshow/40",
-  hold: "bg-muted border-border",
+  pending:   "bg-status-pending/35  border-l-[3px] border-status-pending  hover:bg-status-pending/60",
+  confirmed: "bg-status-confirmed/35 border-l-[3px] border-status-confirmed hover:bg-status-confirmed/60",
+  seated:    "bg-status-seated/35   border-l-[3px] border-status-seated   hover:bg-status-seated/60",
+  finished:  "bg-status-completed/35 border-l-[3px] border-status-completed hover:bg-status-completed/55",
+  completed: "bg-status-completed/35 border-l-[3px] border-status-completed hover:bg-status-completed/55",
+  cancelled: "bg-status-cancelled/25 border-l-[3px] border-status-cancelled line-through opacity-60",
+  no_show:   "bg-status-noshow/35   border-l-[3px] border-status-noshow   hover:bg-status-noshow/60",
+  hold:      "bg-muted              border-l-[3px] border-muted-foreground/40",
 };
 
 type ViewMode = "tijdlijn" | "lijst" | "plattegrond";
@@ -653,8 +654,8 @@ const AgendaPage = () => {
                           key={r.id}
                           onClick={(e) => { e.stopPropagation(); setSelectedId(r.id); }}
                           className={cn(
-                            "absolute rounded-md border px-2 text-left text-xs overflow-hidden hover:brightness-110 transition-all z-[2]",
-                            STATUS_BG[r.status] ?? "bg-muted border-border",
+                            "absolute rounded-md px-2 text-left text-xs overflow-hidden transition-all duration-150 z-[2] hover:shadow-elevated hover:z-[3]",
+                            STATUS_BG[r.status] ?? "bg-muted border-l-[3px] border-border",
                           )}
                           style={{ left, top: 6, height: rowHeight - 12, width }}
                         >
@@ -676,9 +677,9 @@ const AgendaPage = () => {
                 style={{ left: TAFEL_COL_W + nowMin * pxPerMin }}
                 aria-hidden
               >
-                <div className="absolute top-0 bottom-0 w-[2px] bg-primary" />
-                <div className="absolute -top-1 -left-1 h-2 w-2 rounded-full bg-primary shadow" />
-                <div className="absolute top-1 left-2 px-1.5 py-0.5 text-[10px] font-medium rounded bg-primary text-primary-foreground tabular-nums whitespace-nowrap">
+                <div className="current-time-line absolute top-0 bottom-0" />
+                <div className="absolute -top-1 -left-[3px] h-2 w-2 rounded-full bg-accent shadow-[0_0_8px_hsl(var(--accent)/0.6)]" />
+                <div className="current-time-label absolute top-1 left-2 tabular-nums whitespace-nowrap">
                   {format(now, "HH:mm")}
                 </div>
               </div>
@@ -707,19 +708,34 @@ const AgendaPage = () => {
 };
 
 // ---- Plattegrond view: tafels op hun pos_x/pos_y, horizontaal ingepast ----
-type FloorTone = "free" | "expected" | "soon" | "arrived" | "seated" | "almostFree" | "overdue";
+type FloorTone = "free" | "expected" | "soon" | "arrived" | "seated" | "almostFree" | "overdue" | "blocked";
 const FLOOR_TONE: Record<FloorTone, string> = {
-  free:       "border-border bg-card",
-  expected:   "border-border bg-secondary/40",
-  soon:       "border-status-pending/60 bg-status-pending/10",
-  arrived:    "border-status-pending bg-status-pending/20",
-  seated:     "border-status-seated/70 bg-status-seated/15",
-  almostFree: "border-warning bg-warning/15",
-  overdue:    "border-status-noshow bg-status-noshow/15",
+  free:       "border-table-free-border bg-table-free border-l-[4px]",
+  expected:   "border-table-expected-border/60 bg-table-expected border-l-[4px]",
+  soon:       "border-table-arriving-border bg-table-arriving border-l-[4px]",
+  arrived:    "border-table-arriving-border bg-table-arriving border-l-[4px]",
+  seated:     "border-table-seated-border bg-table-seated border-l-[4px]",
+  almostFree: "border-table-almost-done-border bg-table-almost-done border-l-[4px]",
+  overdue:    "border-table-overtime-border bg-table-overtime border-l-[4px]",
+  blocked:    "border-table-blocked-border blocked-stripe border-l-[4px]",
 };
 const FLOOR_LABEL: Record<FloorTone, string> = {
-  free: "Vrij", expected: "Verwacht", soon: "Komt zo", arrived: "Aangekomen",
-  seated: "Bezet", almostFree: "Bijna vrij", overdue: "Loopt uit",
+  free: "VRIJ", expected: "Verwacht", soon: "Komt zo", arrived: "Aangekomen",
+  seated: "Bezet", almostFree: "Bijna vrij", overdue: "Loopt uit", blocked: "Geblokkeerd",
+};
+const FLOOR_PULSE: Partial<Record<FloorTone, true>> = {
+  seated: true,
+  overdue: true,
+};
+const FLOOR_DOT: Record<FloorTone, string> = {
+  free: "bg-table-free-border",
+  expected: "bg-table-expected-border",
+  soon: "bg-table-arriving-border",
+  arrived: "bg-table-arriving-border",
+  seated: "bg-table-seated-border",
+  almostFree: "bg-table-almost-done-border",
+  overdue: "bg-table-overtime-border",
+  blocked: "bg-table-blocked-border",
 };
 
 function FloorPlanBody({
@@ -853,13 +869,22 @@ function FloorPlanBody({
                   : `Tafel ${t.label} vrij — nieuwe reservering`}
               >
                 <div className="w-full flex items-center justify-between gap-1">
-                  <div className="font-display text-sm leading-none truncate">{t.label}</div>
-                  <div className="text-[10px] text-muted-foreground tabular-nums shrink-0">{cap}</div>
+                  <div className="font-display text-base font-bold leading-none truncate">{t.label}</div>
+                  <div className="flex items-center gap-1 shrink-0">
+                    <span
+                      className={cn(
+                        "h-1.5 w-1.5 rounded-full",
+                        FLOOR_DOT[tone],
+                        FLOOR_PULSE[tone] && "status-dot-active",
+                      )}
+                    />
+                    <div className="text-[10px] text-muted-foreground tabular-nums">{cap}</div>
+                  </div>
                 </div>
                 {active ? (
                   <div className="w-full mt-1 text-center">
-                    <div className="text-[11px] font-medium truncate">
-                      {active.guests?.is_vip ? "★ " : ""}
+                    <div className="text-[11px] font-semibold truncate">
+                      {active.guests?.is_vip ? <span className="text-accent">★ </span> : ""}
                       {active.guests?.first_name ?? "Gast"} {active.guests?.last_name ?? ""}
                     </div>
                     <div className="text-[10px] text-muted-foreground tabular-nums">
@@ -869,10 +894,10 @@ function FloorPlanBody({
                     {!compact && (active.guests?.allergies || active.dietary_notes
                       || (largeGroupThreshold && active.party_size >= largeGroupThreshold)
                       || (active.pre_orders?.length ?? 0) > 0) && (
-                      <div className="text-[9px] text-muted-foreground mt-0.5 truncate">
-                        {(active.guests?.allergies || active.dietary_notes) && "⚠ allergie "}
-                        {(active.pre_orders?.length ?? 0) > 0 && "🍺 pre-order "}
-                        {largeGroupThreshold && active.party_size >= largeGroupThreshold && "👥 groep"}
+                      <div className="text-[9px] mt-0.5 truncate flex items-center justify-center gap-1">
+                        {(active.guests?.allergies || active.dietary_notes) && <span className="text-destructive">▲</span>}
+                        {(active.pre_orders?.length ?? 0) > 0 && <span>🥂</span>}
+                        {largeGroupThreshold && active.party_size >= largeGroupThreshold && <span>👥</span>}
                       </div>
                     )}
                   </div>
@@ -881,7 +906,9 @@ function FloorPlanBody({
                     {format(new Date(next.start_time), "HH:mm")} · {next.guests?.first_name ?? "Gast"} ({next.party_size}p)
                   </div>
                 ) : (
-                  <div className="text-[10px] text-muted-foreground mt-0.5">{FLOOR_LABEL[tone]}</div>
+                  <div className="mt-1 inline-flex items-center gap-1 rounded-full bg-table-free-border/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-table-free-border">
+                    {FLOOR_LABEL[tone]}
+                  </div>
                 )}
               </button>
             );

@@ -9,22 +9,36 @@ interface KpiDelta {
   invert?: boolean;
 }
 
+type AccentColor = "default" | "primary" | "success" | "warning" | "destructive" | "info";
+
 interface KpiCardProps extends React.HTMLAttributes<HTMLDivElement> {
   label: string;
   value: React.ReactNode;
   hint?: React.ReactNode;
   icon?: React.ReactNode;
-  accent?: "default" | "primary" | "success" | "warning" | "destructive";
+  accent?: AccentColor;
   delta?: KpiDelta;
   tone?: "neutral" | "premium";
+  /** Toont een 3px gekleurde top-border per metric (DEEL 8 — Vandaag) */
+  statusAccent?: AccentColor;
 }
 
-const ACCENT: Record<NonNullable<KpiCardProps["accent"]>, string> = {
+const ACCENT: Record<AccentColor, string> = {
   default: "text-foreground",
   primary: "text-primary",
   success: "text-success",
   warning: "text-warning",
   destructive: "text-destructive",
+  info: "text-info",
+};
+
+const STATUS_ACCENT_BORDER: Record<AccentColor, string> = {
+  default: "border-t-border",
+  primary: "border-t-primary",
+  success: "border-t-success",
+  warning: "border-t-warning",
+  destructive: "border-t-destructive",
+  info: "border-t-info",
 };
 
 function deltaTone(delta: KpiDelta) {
@@ -45,18 +59,21 @@ export function KpiCard({
   accent = "default",
   delta,
   tone = "neutral",
+  statusAccent,
   className,
   ...props
 }: KpiCardProps) {
   return (
     <div
       className={cn(
-        "group relative overflow-hidden rounded-xl border bg-gradient-card p-5 shadow-soft transition-smooth hover:shadow-elegant",
+        "group relative overflow-hidden rounded-xl border bg-gradient-card p-5 shadow-soft transition-all duration-200 hover:-translate-y-px hover:shadow-elevated",
+        statusAccent && "border-t-[3px]",
+        statusAccent && STATUS_ACCENT_BORDER[statusAccent],
         className
       )}
       {...props}
     >
-      {tone === "premium" && (
+      {tone === "premium" && !statusAccent && (
         <span
           aria-hidden
           className="absolute inset-x-0 top-0 h-[2px] bg-gradient-to-r from-transparent via-accent to-transparent"

@@ -23,10 +23,10 @@ const Index = () => {
         <section id="contact" className="bg-gradient-warm py-20 md:py-28">
           <div className="container">
             <div className="mx-auto max-w-2xl text-center">
-              <span className="text-xs font-semibold uppercase tracking-[0.22em] text-primary">
+              <span className="text-xs font-semibold uppercase tracking-[0.22em] text-accent">
                 Plan een demo
               </span>
-              <h2 className="mt-3 font-display text-3xl font-semibold leading-tight md:text-5xl">
+              <h2 className="mt-3 font-display text-3xl font-bold leading-tight md:text-5xl">
                 Zien hoe het op jouw vloer werkt?
               </h2>
               <p className="mt-4 text-base text-muted-foreground md:text-lg">

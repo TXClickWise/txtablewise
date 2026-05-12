@@ -18,10 +18,10 @@ export function PainPointsSection() {
     <section className="bg-gradient-warm py-20 md:py-28">
       <div className="container">
         <div className="mx-auto max-w-2xl text-center">
-          <span className="text-xs font-semibold uppercase tracking-[0.22em] text-primary">
+          <span className="text-xs font-semibold uppercase tracking-[0.22em] text-accent">
             Herkenbaar?
           </span>
-          <h2 className="mt-3 font-display text-3xl font-semibold leading-tight md:text-5xl">
+          <h2 className="mt-3 font-display text-3xl font-bold leading-tight md:text-5xl">
             Drie dingen waar elke ondernemer moe van wordt.
           </h2>
         </div>
