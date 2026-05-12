@@ -169,17 +169,26 @@ export default function GuestManageReservation() {
 
   const onSubmitChange = async () => {
     setActing(true);
-    const { ok } = await call("request_change", {
+    const { ok, data } = await call("request_change", {
       desired_date: changeForm.desired_date || undefined,
       desired_time: changeForm.desired_time || undefined,
       desired_party_size: changeForm.desired_party_size ? Number(changeForm.desired_party_size) : undefined,
+      desired_first_name: changeForm.desired_first_name || undefined,
+      desired_last_name: changeForm.desired_last_name || undefined,
+      desired_email: changeForm.desired_email || undefined,
+      desired_phone: changeForm.desired_phone || undefined,
+      desired_dietary_notes: changeForm.desired_dietary_notes || undefined,
       message: changeForm.message || undefined,
     });
     setActing(false);
     setShowChange(false);
     if (!ok) return toast.error(t("toastChangeFail"));
-    setChangeRequested(true);
-    toast.success(t("toastChangeSuccess"));
+    const outcome = (data?.outcome ?? "pending_review") as "applied" | "rejected" | "pending_review";
+    setChangeOutcome({ outcome, reason_code: data?.reason_code ?? null });
+    if (data?.reservation) setReservation(data.reservation);
+    if (outcome === "applied") toast.success(t("toastChangeApplied"));
+    else if (outcome === "rejected") toast.error(t("toastChangeRejected"));
+    else toast.success(t("toastChangeSuccess"));
   };
 
   return (
