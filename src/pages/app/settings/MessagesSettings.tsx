@@ -351,6 +351,40 @@ export default function MessagesSettings() {
         </div>
       </Card>
 
+      <Card className="p-6">
+        <h2 className="font-display text-xl mb-2">E-mailnotificaties</h2>
+        <p className="text-sm text-muted-foreground mb-4">
+          Bepaal welke e-mails automatisch naar gasten worden gestuurd.
+        </p>
+        <div className="divide-y">
+          {NOTIFICATION_KEYS.map((n) => {
+            const settings = { ...DEFAULT_NOTIFICATION_SETTINGS, ...((r as any).email_notification_settings || {}) };
+            const enabled = settings[n.key] !== false;
+            return (
+              <div key={n.key} className="flex items-start justify-between gap-4 py-3">
+                <div>
+                  <Label className="text-sm">{n.label}</Label>
+                  <p className="text-xs text-muted-foreground mt-0.5">{n.description}</p>
+                </div>
+                <Switch
+                  checked={enabled && !clickwiseLive}
+                  disabled={clickwiseLive}
+                  onCheckedChange={(v) => {
+                    const next = { ...settings, [n.key]: v };
+                    patch({ email_notification_settings: next });
+                  }}
+                />
+              </div>
+            );
+          })}
+        </div>
+        <p className="text-xs text-muted-foreground mt-4">
+          {clickwiseLive
+            ? "Je hebt ClickWise actief. Berichten worden verstuurd via ClickWise workflows (SMS, WhatsApp). E-mails hierboven zijn uitgeschakeld om dubbele berichten te voorkomen."
+            : "E-mails worden verstuurd vanaf noreply@notify.reservations.txtablewise.nl. Op het Pro-plan kun je je eigen e-maildomein instellen."}
+        </p>
+      </Card>
+
       <div>
         <h2 className="font-display text-xl mb-2">E-mailteksten per taal</h2>
         <p className="text-sm text-muted-foreground mb-4">
