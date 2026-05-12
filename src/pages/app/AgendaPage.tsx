@@ -131,11 +131,26 @@ const AgendaPage = () => {
     enabled: !!rid,
     queryFn: async () => {
       const { data } = await supabase.from("tables")
-        .select("id, label, zone_id, zones(name)")
+        .select("id, label, capacity_min, capacity_max, zone_id, zones(name)")
         .eq("restaurant_id", rid!).eq("is_active", true).order("label");
       return data ?? [];
     },
   });
+  const rowRefs = useRef<Record<string, HTMLDivElement | null>>({});
+
+  const zoneGroups = useMemo(() => {
+    const map = new Map<string, { name: string; firstTableId: string }>();
+    for (const t of tables as any[]) {
+      const key = t.zone_id ?? "_none";
+      if (!map.has(key)) map.set(key, { name: t.zones?.name ?? "Overig", firstTableId: t.id });
+    }
+    return Array.from(map.entries()).map(([key, v]) => ({ key, ...v }));
+  }, [tables]);
+
+  const jumpToZone = (tableId: string) => {
+    const el = rowRefs.current[tableId];
+    if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
 
   const { data: reservations = [] } = useQuery({
     queryKey: ["agenda-day", rid, dateStr],
