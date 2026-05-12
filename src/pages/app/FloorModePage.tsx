@@ -425,153 +425,68 @@ const FloorModePage = () => {
         )}
       </header>
 
-      {/* ============== BODY ============== */}
-      <div className="flex-1 flex overflow-hidden">
-        {/* LEFT: Now & soon */}
-        <aside className="hidden lg:flex w-80 xl:w-96 border-r border-border bg-background flex-col">
-          <div className="px-4 py-3 border-b border-border flex items-center gap-2">
-            <Clock className="h-4 w-4 text-muted-foreground" />
-            <h2 className="font-display text-lg">Nu &amp; straks</h2>
-          </div>
-          <ScrollArea className="flex-1">
-            <div className="p-3 space-y-5">
-              <Section title="Te laat" count={lateGuests.length} tone="danger" empty="Geen te late gasten.">
-                {lateGuests.map(r => (
-                  <UpcomingRow key={r.id} r={r} now={now} late
-                    onSelect={() => focusReservation(r, setSelectedTableId)} />
-                ))}
-              </Section>
+      {/* ============== BODY: full-width tafelgrid ============== */}
+      <main className="flex-1 overflow-auto">
+        <div className="p-3 sm:p-4 space-y-4">
+          {restaurantId && <LastMinuteFillPanel restaurantId={restaurantId} />}
+          {restaurantId && (
+            <PreOrderReadyList
+              restaurantId={restaurantId}
+              windowMinutes={60}
+              compact
+            />
+          )}
+          {zones.length === 0 ? (
+            <ZoneBlock
+              zoneName="Zonder zone"
+              tables={tables}
+              state={tableState}
+              now={now}
+              largeGroupThreshold={largeGroupThreshold}
+              selectedId={selectedTableId}
+              onSelect={setSelectedTableId}
+            />
+          ) : (
+            <>
+              {zones.map(z => {
+                const zTables = tables.filter(t => t.zone_id === z.id);
+                if (zTables.length === 0) return null;
+                return (
+                  <ZoneBlock
+                    key={z.id}
+                    zoneName={z.name}
+                    tables={zTables}
+                    state={tableState}
+                    now={now}
+                    largeGroupThreshold={largeGroupThreshold}
+                    selectedId={selectedTableId}
+                    onSelect={setSelectedTableId}
+                  />
+                );
+              })}
+              {(() => {
+                const ungrouped = tables.filter(t => !t.zone_id);
+                if (ungrouped.length === 0) return null;
+                return (
+                  <ZoneBlock
+                    zoneName="Overig"
+                    tables={ungrouped}
+                    state={tableState}
+                    now={now}
+                    largeGroupThreshold={largeGroupThreshold}
+                    selectedId={selectedTableId}
+                    onSelect={setSelectedTableId}
+                  />
+                );
+              })()}
+            </>
+          )}
+        </div>
+      </main>
 
-              <Section title="Binnen 30 minuten" count={upcoming30.length} empty="Geen aankomsten in dit halfuur.">
-                {upcoming30.map(({ r }) => (
-                  <UpcomingRow key={r.id} r={r} now={now}
-                    onSelect={() => focusReservation(r, setSelectedTableId)} />
-                ))}
-              </Section>
-
-              {largeGroupsToday.length > 0 && (
-                <Section title="Grote groepen" count={largeGroupsToday.length} tone="warn">
-                  {largeGroupsToday.map(r => (
-                    <UpcomingRow key={r.id} r={r} now={now}
-                      onSelect={() => focusReservation(r, setSelectedTableId)} />
-                  ))}
-                </Section>
-              )}
-
-              {preorderToday.length > 0 && (
-                <Section title="Drankje klaarzetten" count={preorderToday.length} tone="info">
-                  {preorderToday.map(r => (
-                    <UpcomingRow key={r.id} r={r} now={now}
-                      onSelect={() => focusReservation(r, setSelectedTableId)} />
-                  ))}
-                </Section>
-              )}
-            </div>
-          </ScrollArea>
-        </aside>
-
-        {/* CENTER: Tables grouped by zone */}
-        <main className="flex-1 overflow-auto">
-          <div className="p-4 sm:p-6 space-y-6">
-            {restaurantId && <LastMinuteFillPanel restaurantId={restaurantId} />}
-            {restaurantId && (
-              <PreOrderReadyList
-                restaurantId={restaurantId}
-                windowMinutes={60}
-                compact
-              />
-            )}
-            {zones.length === 0 ? (
-              <ZoneBlock
-                zoneName="Zonder zone"
-                tables={tables}
-                state={tableState}
-                now={now}
-                largeGroupThreshold={largeGroupThreshold}
-                selectedId={selectedTableId}
-                onSelect={setSelectedTableId}
-              />
-            ) : (
-              <>
-                {zones.map(z => {
-                  const zTables = tables.filter(t => t.zone_id === z.id);
-                  if (zTables.length === 0) return null;
-                  return (
-                    <ZoneBlock
-                      key={z.id}
-                      zoneName={z.name}
-                      tables={zTables}
-                      state={tableState}
-                      now={now}
-                      largeGroupThreshold={largeGroupThreshold}
-                      selectedId={selectedTableId}
-                      onSelect={setSelectedTableId}
-                    />
-                  );
-                })}
-                {(() => {
-                  const ungrouped = tables.filter(t => !t.zone_id);
-                  if (ungrouped.length === 0) return null;
-                  return (
-                    <ZoneBlock
-                      zoneName="Overig"
-                      tables={ungrouped}
-                      state={tableState}
-                      now={now}
-                      largeGroupThreshold={largeGroupThreshold}
-                      selectedId={selectedTableId}
-                      onSelect={setSelectedTableId}
-                    />
-                  );
-                })()}
-              </>
-            )}
-          </div>
-        </main>
-
-        {/* RIGHT: Detail panel (desktop/landscape only) */}
-        <aside className="hidden xl:flex w-96 border-l border-border bg-background flex-col">
-          <DetailPanel
-            table={selectedTable}
-            state={selectedState}
-            now={now}
-            largeGroupThreshold={largeGroupThreshold}
-            onClose={() => setSelectedTableId(null)}
-            onWalkIn={() => {
-              if (!selectedTable) return;
-              setPrefilledTable({ id: selectedTable.id, label: selectedTable.label });
-              setWalkInOpen(true);
-            }}
-            onMarkSeated={onMarkSeated}
-            onMarkArrived={onMarkArrived}
-            onMarkComplete={onMarkComplete}
-            onMarkNoShow={onMarkNoShow}
-          />
-        </aside>
-      </div>
-
-      {/* ============== Sticky bottom action bar (tablet & mobile) ============== */}
-      <div className="xl:hidden border-t border-border bg-background/95 backdrop-blur px-3 py-2 flex items-center gap-2 overflow-x-auto">
-        <Button size="lg" className="h-12 shrink-0" onClick={() => { setPrefilledTable(undefined); setWalkInOpen(true); }}>
-          <UserPlus className="mr-2 h-5 w-5" /> Walk-in
-        </Button>
-        <Button size="lg" variant="outline" className="h-12 shrink-0" onClick={() => navigate("/app/reserveringen")}>
-          <Search className="mr-2 h-5 w-5" /> Zoek reservering
-        </Button>
-        <Button size="lg" variant="outline" className="h-12 shrink-0" onClick={() => navigate("/app/wachtlijst")}>
-          <ListChecks className="mr-2 h-5 w-5" /> Wachtlijst
-        </Button>
-        <Button size="lg" variant="outline" className="h-12 shrink-0" onClick={() => setQuickSeatOpen(true)}>
-          <Sparkles className="mr-2 h-5 w-5 text-primary" /> AI Quick Seat
-        </Button>
-        <Button size="lg" variant="ghost" className="h-12 shrink-0" onClick={() => refetch()}>
-          <RefreshCw className={cn("h-5 w-5", isFetching && "animate-spin")} />
-        </Button>
-      </div>
-
-      {/* Bottom sheet detail (tablet portrait + mobile) */}
-      <Sheet open={isCompact && !!selectedTableId} onOpenChange={(o) => !o && setSelectedTableId(null)}>
-        <SheetContent side="bottom" className="rounded-t-2xl max-h-[85vh] xl:hidden">
+      {/* Bottom sheet detail (alle viewports) */}
+      <Sheet open={!!selectedTableId} onOpenChange={(o) => !o && setSelectedTableId(null)}>
+        <SheetContent side="bottom" className="rounded-t-2xl max-h-[85vh] overflow-y-auto">
           <SheetHeader className="text-left">
             <SheetTitle className="font-display text-2xl">
               {selectedTable ? `Tafel ${selectedTable.label}` : "Tafel"}
