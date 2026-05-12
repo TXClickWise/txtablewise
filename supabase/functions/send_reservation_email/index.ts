@@ -32,18 +32,20 @@ function isSyntheticEmail(email: string | null | undefined): boolean {
 
 async function logResult(
   sb: any,
-  restaurantId: string | null,
+  restaurantId: string,
   eventId: string | null,
   status: string,
   detail: Record<string, any>,
+  reservationId?: string | null,
 ) {
   try {
     await sb.from('integration_logs').insert({
       restaurant_id: restaurantId,
-      direction: 'outbound',
-      target: 'email',
+      source: 'email',
+      action: detail.event_type || 'send_reservation_email',
       status,
-      payload: { event_id: eventId, ...detail },
+      reservation_id: reservationId || null,
+      request_payload: { event_id: eventId, ...detail },
     })
   } catch (e) {
     console.error('Failed to write integration_logs', e)
