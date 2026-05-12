@@ -581,6 +581,7 @@ const AgendaPage = () => {
             setCreateOpen(true);
           }}
         />
+      ) : tables.length === 0 ? (
         <div className="p-6">
           <EmptyState
             icon={<CalendarIcon />}
