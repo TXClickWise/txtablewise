@@ -179,7 +179,7 @@ const AgendaPage = () => {
     enabled: !!rid,
     queryFn: async () => {
       const { data } = await supabase.from("reservations")
-        .select("id, start_time, end_time, status, party_size, channel, guests(first_name, last_name, is_vip), reservation_tables(table_id)")
+        .select("id, start_time, end_time, status, party_size, channel, occasion, dietary_notes, large_group_status, requires_manual_approval, reminder_confirmed_at, guests(first_name, last_name, is_vip, allergies), reservation_tables(table_id), pre_orders(id)")
         .eq("restaurant_id", rid!).eq("reservation_date", dateStr);
       return data ?? [];
     },
@@ -560,6 +560,26 @@ const AgendaPage = () => {
       ) : view === "plattegrond" ? (
         <FloorPlanBody
           tables={(tables as any[]).filter((t) => (t.zone_id ?? "_none") === floorZoneId)}
+          byTable={byTable}
+          now={now}
+          largeGroupThreshold={largeGroupThreshold}
+          onOpenReservation={(id) => setSelectedId(id)}
+          onCreateOnTable={(t) => {
+            const today = new Date();
+            const isSame = format(today, "yyyy-MM-dd") === dateStr;
+            let mins = isSame
+              ? Math.ceil(((today.getHours() - START_HOUR) * 60 + today.getMinutes()) / QUARTER_MIN) * QUARTER_MIN
+              : 19 * 60 - START_HOUR * 60; // 19:00 default voor andere dagen
+            if (mins < 0) mins = 0;
+            if (mins >= totalMinutes) mins = totalMinutes - QUARTER_MIN;
+            setCreatePrefill({
+              date: dateStr,
+              time: minutesToTime(mins),
+              tableId: t.id,
+              tableLabel: t.label,
+            });
+            setCreateOpen(true);
+          }}
         />
       ) : tables.length === 0 ? (
         <div className="p-6">
@@ -687,7 +707,31 @@ const AgendaPage = () => {
 };
 
 // ---- Plattegrond view: tafels op hun pos_x/pos_y, horizontaal ingepast ----
-function FloorPlanBody({ tables }: { tables: any[] }) {
+type FloorTone = "free" | "expected" | "soon" | "arrived" | "seated" | "almostFree" | "overdue";
+const FLOOR_TONE: Record<FloorTone, string> = {
+  free:       "border-border bg-card",
+  expected:   "border-border bg-secondary/40",
+  soon:       "border-status-pending/60 bg-status-pending/10",
+  arrived:    "border-status-pending bg-status-pending/20",
+  seated:     "border-status-seated/70 bg-status-seated/15",
+  almostFree: "border-warning bg-warning/15",
+  overdue:    "border-status-noshow bg-status-noshow/15",
+};
+const FLOOR_LABEL: Record<FloorTone, string> = {
+  free: "Vrij", expected: "Verwacht", soon: "Komt zo", arrived: "Aangekomen",
+  seated: "Bezet", almostFree: "Bijna vrij", overdue: "Loopt uit",
+};
+
+function FloorPlanBody({
+  tables, byTable, now, largeGroupThreshold, onOpenReservation, onCreateOnTable,
+}: {
+  tables: any[];
+  byTable: Record<string, any[]>;
+  now: Date;
+  largeGroupThreshold?: number;
+  onOpenReservation: (id: string) => void;
+  onCreateOnTable: (t: any) => void;
+}) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerW, setContainerW] = useState(0);
 
@@ -700,7 +744,6 @@ function FloorPlanBody({ tables }: { tables: any[] }) {
     return () => ro.disconnect();
   }, []);
 
-  // Bounding box van tafels (default canvas 900x560 fallback)
   const bbox = useMemo(() => {
     if (tables.length === 0) return { w: 900, h: 560 };
     let maxX = 0, maxY = 0;
@@ -714,6 +757,45 @@ function FloorPlanBody({ tables }: { tables: any[] }) {
   const padding = 16;
   const scale = containerW > 0 ? Math.min(1.6, (containerW - padding * 2) / bbox.w) : 1;
   const scaledH = bbox.h * scale;
+
+  // Per-tafel state berekenen
+  const tableState = useMemo(() => {
+    const map = new Map<string, { tone: FloorTone; active?: any; next?: any }>();
+    const nowMs = now.getTime();
+    for (const t of tables) {
+      const list = (byTable[t.id] ?? [])
+        .filter((r: any) => !["cancelled", "no_show"].includes(r.status))
+        .sort((a: any, b: any) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime());
+      let active: any | undefined;
+      let next: any | undefined;
+      for (const r of list) {
+        const s = new Date(r.start_time).getTime();
+        const e = new Date(r.end_time).getTime();
+        if (r.status === "seated") { active = r; continue; }
+        if (s <= nowMs && e > nowMs) { active = active ?? r; continue; }
+        if (s > nowMs && !next) next = r;
+      }
+      let tone: FloorTone = "free";
+      if (active) {
+        const minToEnd = (new Date(active.end_time).getTime() - nowMs) / 60000;
+        const minToStart = (new Date(active.start_time).getTime() - nowMs) / 60000;
+        if (active.status === "seated") {
+          if (minToEnd < 0) tone = "overdue";
+          else if (minToEnd <= 15) tone = "almostFree";
+          else tone = "seated";
+        } else if (active.status === "confirmed" && minToStart <= 0) {
+          tone = "arrived";
+        } else {
+          tone = "soon";
+        }
+      } else if (next) {
+        const minTo = (new Date(next.start_time).getTime() - nowMs) / 60000;
+        tone = minTo <= 15 ? "soon" : "expected";
+      }
+      map.set(t.id, { tone, active, next });
+    }
+    return map;
+  }, [tables, byTable, now]);
 
   if (tables.length === 0) {
     return (
@@ -737,23 +819,71 @@ function FloorPlanBody({ tables }: { tables: any[] }) {
             const cap = t.capacity_min === t.capacity_max
               ? `${t.capacity_max}p`
               : `${t.capacity_min}-${t.capacity_max}p`;
+            const st = tableState.get(t.id) ?? { tone: "free" as FloorTone };
+            const { tone, active, next } = st;
+            const w = (t.width ?? 80) * scale;
+            const h = (t.height ?? 80) * scale;
+            const compact = Math.min(w, h) < 110;
+            const handleClick = () => {
+              if (active) onOpenReservation(active.id);
+              else onCreateOnTable(t);
+            };
+            const minSeated = active && active.status === "seated"
+              ? Math.max(0, Math.round((now.getTime() - new Date(active.start_time).getTime()) / 60000))
+              : null;
             return (
-              <div
+              <button
                 key={t.id}
+                type="button"
+                onClick={handleClick}
                 className={cn(
-                  "absolute flex flex-col items-center justify-center border-2 border-border bg-card shadow-sm select-none",
+                  "absolute flex flex-col items-center justify-center border-2 shadow-sm select-none text-left transition-all hover:brightness-105 active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none overflow-hidden",
                   isRound ? "rounded-full" : "rounded-lg",
+                  FLOOR_TONE[tone],
                 )}
                 style={{
                   left: (t.pos_x ?? 0) * scale,
                   top: (t.pos_y ?? 0) * scale,
-                  width: (t.width ?? 80) * scale,
-                  height: (t.height ?? 80) * scale,
+                  width: w,
+                  height: h,
+                  padding: compact ? 4 : 8,
                 }}
+                aria-label={active
+                  ? `Tafel ${t.label}: ${active.guests?.first_name ?? "Gast"} ${active.party_size}p`
+                  : `Tafel ${t.label} vrij — nieuwe reservering`}
               >
-                <div className="font-display text-base leading-none">{t.label}</div>
-                <div className="text-[10px] text-muted-foreground mt-0.5">{cap}</div>
-              </div>
+                <div className="w-full flex items-center justify-between gap-1">
+                  <div className="font-display text-sm leading-none truncate">{t.label}</div>
+                  <div className="text-[10px] text-muted-foreground tabular-nums shrink-0">{cap}</div>
+                </div>
+                {active ? (
+                  <div className="w-full mt-1 text-center">
+                    <div className="text-[11px] font-medium truncate">
+                      {active.guests?.is_vip ? "★ " : ""}
+                      {active.guests?.first_name ?? "Gast"} {active.guests?.last_name ?? ""}
+                    </div>
+                    <div className="text-[10px] text-muted-foreground tabular-nums">
+                      {format(new Date(active.start_time), "HH:mm")} · {active.party_size}p
+                      {minSeated !== null && <> · {minSeated}m</>}
+                    </div>
+                    {!compact && (active.guests?.allergies || active.dietary_notes
+                      || (largeGroupThreshold && active.party_size >= largeGroupThreshold)
+                      || (active.pre_orders?.length ?? 0) > 0) && (
+                      <div className="text-[9px] text-muted-foreground mt-0.5 truncate">
+                        {(active.guests?.allergies || active.dietary_notes) && "⚠ allergie "}
+                        {(active.pre_orders?.length ?? 0) > 0 && "🍺 pre-order "}
+                        {largeGroupThreshold && active.party_size >= largeGroupThreshold && "👥 groep"}
+                      </div>
+                    )}
+                  </div>
+                ) : next && !compact ? (
+                  <div className="w-full mt-1 text-center text-[10px] text-muted-foreground truncate">
+                    {format(new Date(next.start_time), "HH:mm")} · {next.guests?.first_name ?? "Gast"} ({next.party_size}p)
+                  </div>
+                ) : (
+                  <div className="text-[10px] text-muted-foreground mt-0.5">{FLOOR_LABEL[tone]}</div>
+                )}
+              </button>
             );
           })}
         </div>
