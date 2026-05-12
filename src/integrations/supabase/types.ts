@@ -1678,6 +1678,7 @@ export type Database = {
           deposit_guest_message: string | null
           deposit_voucher_credit_possible: boolean
           email: string | null
+          email_notification_settings: Json
           google_review_url: string | null
           guest_email_enabled: boolean
           guest_reply_to_email: string | null
@@ -1772,6 +1773,7 @@ export type Database = {
           deposit_guest_message?: string | null
           deposit_voucher_credit_possible?: boolean
           email?: string | null
+          email_notification_settings?: Json
           google_review_url?: string | null
           guest_email_enabled?: boolean
           guest_reply_to_email?: string | null
@@ -1866,6 +1868,7 @@ export type Database = {
           deposit_guest_message?: string | null
           deposit_voucher_credit_possible?: boolean
           email?: string | null
+          email_notification_settings?: Json
           google_review_url?: string | null
           guest_email_enabled?: boolean
           guest_reply_to_email?: string | null
