@@ -89,7 +89,7 @@ const App = () => (
               <Route path="koppelingen" element={<RequireRole allow={["owner","manager"]}><KoppelingenTabsPage /></RequireRole>} />
 
               {/* Operatie — losse schermen */}
-              <Route path="walk-ins" element={<ErrorBoundary label="WalkInsPage"><WalkInsPage /></ErrorBoundary>} />
+              <Route path="walk-ins" element={<Navigate to="/app" replace />} />
               <Route path="wachtlijst" element={<ErrorBoundary label="WaitlistPage"><WaitlistPage /></ErrorBoundary>} />
               <Route path="rapportages" element={<RequireRole allow={["owner","manager"]}><ReportsPage /></RequireRole>} />
               <Route path="help/voice-agent" element={<VoiceAgentHelp />} />
