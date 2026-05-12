@@ -33,5 +33,24 @@
   "toastCancelFail": "Couldn't cancel — please try again",
   "toastCancelSuccess": "Thanks for letting us know — your reservation is cancelled.",
   "toastChangeFail": "Couldn't send — please try again",
-  "toastChangeSuccess": "Change request sent — we'll be in touch."
+  "toastChangeSuccess": "Change request sent — we'll be in touch.",
+  "toastChangeApplied": "Your change has been applied.",
+  "toastChangeRejected": "Sorry, this change isn't possible.",
+  "firstName": "First name",
+  "lastName": "Last name",
+  "email": "Email",
+  "phone": "Phone",
+  "dietaryNotes": "Dietary notes / remark",
+  "changeAppliedTitle": "Change confirmed",
+  "changeAppliedBody": "Your reservation has been updated. You'll receive a confirmation email.",
+  "changeRejectedTitle": "Change not possible",
+  "changeRejectedBody": "We couldn't process this change automatically. Please contact the restaurant.",
+  "changeRejectedReason": {
+    "default": "We couldn't process this change automatically. Please contact the restaurant.",
+    "too_late_min_notice": "Your change is too close to the reservation to process automatically.",
+    "closed_on_date": "We're closed on the requested date.",
+    "outside_opening_hours": "The requested time is outside our opening hours.",
+    "partial_closure": "We're partly closed at the requested time — please get in touch.",
+    "no_table_available": "We don't have a table available for your new request. We'll be happy to help personally."
+  }
 }
