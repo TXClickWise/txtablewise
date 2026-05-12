@@ -81,7 +81,7 @@ const App = () => (
               <Route path="onboarding" element={<RequireRole allow={["owner"]}><OnboardingWizardPage /></RequireRole>} />
 
               {/* Geconsolideerde schermen */}
-              <Route path="agenda" element={<ErrorBoundary label="AgendaTabsPage"><AgendaTabsPage /></ErrorBoundary>} />
+              <Route path="agenda" element={<ErrorBoundary label="AgendaPage"><AgendaPage /></ErrorBoundary>} />
               <Route path="vloer" element={<ErrorBoundary label="VloerTabsPage"><VloerTabsPage /></ErrorBoundary>} />
               <Route path="gasten" element={<ErrorBoundary label="GastenTabsPage"><GastenTabsPage /></ErrorBoundary>} />
               <Route path="gastcommunicatie" element={<RequireRole allow={["owner","manager"]}><GastcommunicatiePage /></RequireRole>} />
