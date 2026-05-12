@@ -368,6 +368,7 @@ const AgendaPage = () => {
       {([
         { v: "tijdlijn" as const, icon: CalendarDays, label: "Tijdlijn" },
         { v: "lijst" as const, icon: List, label: "Lijst" },
+        { v: "plattegrond" as const, icon: LayoutGrid, label: "Plattegrond" },
       ]).map((it) => {
         const active = view === it.v;
         return (
