@@ -7,6 +7,7 @@ import { NavLink, useLocation } from "react-router-dom";
 import {
   Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel,
   SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarHeader, SidebarFooter, useSidebar,
+  SidebarMenuSub, SidebarMenuSubItem, SidebarMenuSubButton,
 } from "@/components/ui/sidebar";
 import { useAuth } from "@/hooks/useAuth";
 import { useRestaurant } from "@/hooks/useRestaurant";
@@ -21,16 +22,27 @@ type Item = { title: string; url: string; icon: typeof LayoutDashboard; end?: bo
 
 // Operationele schermen (Vandaag, Agenda, Vloer, Wachtlijst, Gasten) zitten
 // nu in de OperationTabBar bovenaan — niet meer in de sidebar.
+// Snelkoppelingen voor de meest gebruikte schermen blijven hier wel staan.
+
+const quickAccess: Item[] = [
+  { title: "Dashboard", url: "/app/vandaag", icon: LayoutDashboard, roles: ["owner","manager","host","staff"] },
+  { title: "Grote groepen", url: "/app/gasten?tab=grote-groepen", icon: Users, roles: ["owner","manager","host"] },
+];
 
 const hospitality: Item[] = [
   { title: "Gastcommunicatie", url: "/app/gastcommunicatie", icon: MessageSquare, roles: ["owner","manager"] },
-  { title: "AI Host & Voice", url: "/app/ai-voice", icon: Bot, roles: ["owner","manager"] },
 ];
 
 const beheer: Item[] = [
   { title: "Rapportages", url: "/app/rapportages", icon: BarChart3, roles: ["owner","manager"] },
-  { title: "Koppelingen", url: "/app/koppelingen", icon: Plug, roles: ["owner","manager"] },
-  { title: "Instellingen", url: "/app/instellingen", icon: Settings, roles: ["owner","manager"] },
+];
+
+// Sub-items onder "Instellingen". Snelle toegang tot de meest bezochte secties.
+const settingsSubItems: { title: string; url: string }[] = [
+  { title: "AI Host & Voice", url: "/app/instellingen/ai-voice" },
+  { title: "Koppelingen", url: "/app/instellingen/integraties" },
+  { title: "Reserveringen", url: "/app/instellingen/reserveringen" },
+  { title: "Tafels & zones", url: "/app/instellingen/zones" },
 ];
 
 // System admin only
@@ -115,10 +127,45 @@ export function AppSidebar() {
       <SidebarContent>
         {(() => {
           const role = (current?.role as Role | undefined) ?? null;
+          const settingsActive = location.pathname.startsWith("/app/instellingen");
+          const canBeheer = role === "owner" || role === "manager";
           return (
             <>
+              <Group label="Snel naar" items={quickAccess} collapsed={collapsed} pathname={location.pathname} onNavigate={handleNavigate} canSeeAdvanced={canSeeAdvanced} role={role} />
               <Group label="Hospitality" items={hospitality} collapsed={collapsed} pathname={location.pathname} onNavigate={handleNavigate} canSeeAdvanced={canSeeAdvanced} role={role} />
               <Group label="Beheer" items={beheer} collapsed={collapsed} pathname={location.pathname} onNavigate={handleNavigate} canSeeAdvanced={canSeeAdvanced} role={role} />
+              {canBeheer && (
+                <SidebarGroup>
+                  <SidebarGroupContent>
+                    <SidebarMenu>
+                      <SidebarMenuItem>
+                        <SidebarMenuButton asChild isActive={settingsActive}>
+                          <NavLink to="/app/instellingen" end onClick={handleNavigate}>
+                            <Settings className="h-4 w-4 shrink-0" />
+                            {!collapsed && <span>Instellingen</span>}
+                          </NavLink>
+                        </SidebarMenuButton>
+                        {!collapsed && (
+                          <SidebarMenuSub>
+                            {settingsSubItems.map((s) => {
+                              const active = location.pathname === s.url;
+                              return (
+                                <SidebarMenuSubItem key={s.url}>
+                                  <SidebarMenuSubButton asChild isActive={active}>
+                                    <NavLink to={s.url} onClick={handleNavigate}>
+                                      <span>{s.title}</span>
+                                    </NavLink>
+                                  </SidebarMenuSubButton>
+                                </SidebarMenuSubItem>
+                              );
+                            })}
+                          </SidebarMenuSub>
+                        )}
+                      </SidebarMenuItem>
+                    </SidebarMenu>
+                  </SidebarGroupContent>
+                </SidebarGroup>
+              )}
               {isSystemAdmin && (
                 <Group label="Admin" items={admin} collapsed={collapsed} pathname={location.pathname} accent onNavigate={handleNavigate} canSeeAdvanced={canSeeAdvanced} role={role} />
               )}
