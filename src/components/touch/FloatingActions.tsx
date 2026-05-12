@@ -147,14 +147,13 @@ function FabOption({ label, icon, onClick, delay = 0 }: { label: string; icon: R
       className="flex items-center gap-2 animate-in fade-in zoom-in-95 slide-in-from-bottom-2 fill-mode-both"
       style={{ animationDelay: `${delay}ms`, animationDuration: "200ms" }}
     >
-      <span className="rounded-md bg-card px-3 py-1.5 text-sm font-medium shadow-elevated border border-border">
+      <span className="rounded-md bg-primary px-3 py-1.5 text-sm font-display font-semibold text-primary-foreground shadow-elevated">
         {label}
       </span>
       <Button
         size="icon"
-        variant="secondary"
         onClick={onClick}
-        className="h-12 w-12 rounded-full shadow-elevated hover:-translate-y-0.5"
+        className="h-12 w-12 rounded-full bg-accent text-accent-foreground shadow-elevated hover:bg-accent/90 hover:-translate-y-0.5 hover:shadow-glow-gold border-2 border-accent-foreground/10"
         aria-label={label}
       >
         {icon}

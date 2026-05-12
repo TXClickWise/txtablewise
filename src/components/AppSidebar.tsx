@@ -58,18 +58,24 @@ const admin: Item[] = [
   { title: "Pilot readiness", url: "/app/admin/pilot-readiness", icon: ShieldCheck },
 ];
 
-function Group({ label, items, collapsed, pathname, accent, onNavigate, canSeeAdvanced, role }: { label: string; items: Item[]; collapsed: boolean; pathname: string; accent?: boolean; onNavigate?: () => void; canSeeAdvanced: boolean; role: Role | null }) {
+function Group({ label, items, collapsed, pathname, search, accent, onNavigate, canSeeAdvanced, role }: { label: string; items: Item[]; collapsed: boolean; pathname: string; search: string; accent?: boolean; onNavigate?: () => void; canSeeAdvanced: boolean; role: Role | null }) {
   const visible = items.filter((i) => (!i.advanced || canSeeAdvanced) && (!i.roles || (role && i.roles.includes(role))));
   if (visible.length === 0) return null;
+  const currentFull = pathname + search;
   return (
     <SidebarGroup>
-      <SidebarGroupLabel className={cn(accent && "text-primary flex items-center gap-1.5")}>
+      <SidebarGroupLabel className={cn("text-sidebar-foreground/70", accent && "text-sidebar-primary flex items-center gap-1.5")}>
         {accent && <Shield className="h-3 w-3" />} {label}
       </SidebarGroupLabel>
       <SidebarGroupContent>
         <SidebarMenu>
           {visible.map((item) => {
-            const active = item.end ? pathname === item.url : pathname.startsWith(item.url);
+            const hasQuery = item.url.includes("?");
+            const active = hasQuery
+              ? currentFull === item.url || currentFull.startsWith(item.url + "&")
+              : item.end
+                ? pathname === item.url
+                : pathname.startsWith(item.url);
             return (
               <SidebarMenuItem key={item.url}>
                 <SidebarMenuButton asChild isActive={active}>
@@ -78,7 +84,7 @@ function Group({ label, items, collapsed, pathname, accent, onNavigate, canSeeAd
                     {!collapsed && (
                       <span className="flex items-center gap-1.5">
                         {item.title}
-                        {item.advanced && <span className="text-[9px] uppercase tracking-wide text-muted-foreground">adv</span>}
+                        {item.advanced && <span className="text-[9px] uppercase tracking-wide text-sidebar-foreground/60">adv</span>}
                       </span>
                     )}
                   </NavLink>
@@ -131,9 +137,9 @@ export function AppSidebar() {
           const canBeheer = role === "owner" || role === "manager";
           return (
             <>
-              <Group label="Snel naar" items={quickAccess} collapsed={collapsed} pathname={location.pathname} onNavigate={handleNavigate} canSeeAdvanced={canSeeAdvanced} role={role} />
-              <Group label="Hospitality" items={hospitality} collapsed={collapsed} pathname={location.pathname} onNavigate={handleNavigate} canSeeAdvanced={canSeeAdvanced} role={role} />
-              <Group label="Beheer" items={beheer} collapsed={collapsed} pathname={location.pathname} onNavigate={handleNavigate} canSeeAdvanced={canSeeAdvanced} role={role} />
+              <Group label="Snel naar" items={quickAccess} collapsed={collapsed} pathname={location.pathname} search={location.search} onNavigate={handleNavigate} canSeeAdvanced={canSeeAdvanced} role={role} />
+              <Group label="Hospitality" items={hospitality} collapsed={collapsed} pathname={location.pathname} search={location.search} onNavigate={handleNavigate} canSeeAdvanced={canSeeAdvanced} role={role} />
+              <Group label="Beheer" items={beheer} collapsed={collapsed} pathname={location.pathname} search={location.search} onNavigate={handleNavigate} canSeeAdvanced={canSeeAdvanced} role={role} />
               {canBeheer && (
                 <SidebarGroup>
                   <SidebarGroupContent>
@@ -167,18 +173,26 @@ export function AppSidebar() {
                 </SidebarGroup>
               )}
               {isSystemAdmin && (
-                <Group label="Admin" items={admin} collapsed={collapsed} pathname={location.pathname} accent onNavigate={handleNavigate} canSeeAdvanced={canSeeAdvanced} role={role} />
+                <Group label="Admin" items={admin} collapsed={collapsed} pathname={location.pathname} search={location.search} accent onNavigate={handleNavigate} canSeeAdvanced={canSeeAdvanced} role={role} />
               )}
             </>
           );
         })()}
       </SidebarContent>
 
-      <SidebarFooter className="border-t border-sidebar-border">
+      <SidebarFooter className="border-t border-sidebar-border gap-1">
         {!collapsed && (
-          <div className="px-2 py-2 text-xs text-sidebar-foreground/60 truncate">{user?.email}</div>
+          <div className="px-2 pt-2 text-xs text-sidebar-foreground/80 truncate">{user?.email}</div>
         )}
-        <Button variant="ghost" size="sm" onClick={signOut} className={cn("w-full justify-start", collapsed && "justify-center")}>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={signOut}
+          className={cn(
+            "w-full justify-start border-sidebar-border bg-sidebar-accent text-sidebar-accent-foreground hover:bg-sidebar-primary hover:text-sidebar-primary-foreground hover:border-sidebar-primary",
+            collapsed && "justify-center",
+          )}
+        >
           {collapsed ? "↩" : "Uitloggen"}
         </Button>
       </SidebarFooter>
