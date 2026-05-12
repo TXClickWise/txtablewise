@@ -12,6 +12,25 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { Sparkles, Loader2 } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+
+const NOTIFICATION_KEYS: { key: string; label: string; description: string }[] = [
+  { key: "reservation_confirmed", label: "Bevestiging bij reservering", description: "Direct na een nieuwe reservering." },
+  { key: "reminder_24h", label: "Reminder 24 uur van tevoren", description: "Een dag voor het bezoek." },
+  { key: "reminder_2h", label: "Reminder 2 uur van tevoren", description: "Korte herinnering vlak voor aanvang." },
+  { key: "reservation_cancelled", label: "Annuleringsbevestiging", description: "Wanneer een reservering wordt geannuleerd." },
+  { key: "reservation_completed", label: "Bedankbericht na bezoek", description: "Met optionele review-link." },
+  { key: "reconfirmation_requested", label: "Herbevestiging verzoek", description: "Vraagt de gast actief te bevestigen." },
+];
+
+const DEFAULT_NOTIFICATION_SETTINGS: Record<string, boolean> = {
+  reservation_confirmed: true,
+  reminder_24h: true,
+  reminder_2h: true,
+  reservation_cancelled: true,
+  reservation_completed: true,
+  reconfirmation_requested: true,
+};
 
 const LOCALES = [
   { code: "nl", label: "Nederlands" },
