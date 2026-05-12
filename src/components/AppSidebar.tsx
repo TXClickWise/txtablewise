@@ -7,6 +7,7 @@ import { NavLink, useLocation } from "react-router-dom";
 import {
   Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel,
   SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarHeader, SidebarFooter, useSidebar,
+  SidebarMenuSub, SidebarMenuSubItem, SidebarMenuSubButton,
 } from "@/components/ui/sidebar";
 import { useAuth } from "@/hooks/useAuth";
 import { useRestaurant } from "@/hooks/useRestaurant";
