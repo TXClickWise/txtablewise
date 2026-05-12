@@ -273,6 +273,20 @@ export default function MessagesSettings() {
     },
   });
 
+  const { data: cwSettings } = useQuery({
+    queryKey: ["clickwise-settings-mode", restaurantId],
+    enabled: !!restaurantId,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("clickwise_settings")
+        .select("connection_mode")
+        .eq("restaurant_id", restaurantId!)
+        .maybeSingle();
+      return data;
+    },
+  });
+  const clickwiseLive = cwSettings?.connection_mode === "live";
+
   const patch = async (values: Record<string, any>) => {
     if (!restaurantId) return;
     const { error } = await supabase
