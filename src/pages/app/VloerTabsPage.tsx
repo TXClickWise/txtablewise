@@ -1,14 +1,7 @@
-import { TabbedPage } from "@/components/TabbedPage";
+// Vloer = puur operationeel (Live). Configureren van tafels/zones gebeurt
+// onder Instellingen → Tafels & zones, niet als tab op de operationele vloer.
 import FloorModePage from "./FloorModePage";
-import FloorPlanPage from "./FloorPlanPage";
 
 export default function VloerTabsPage() {
-  return (
-    <TabbedPage
-      tabs={[
-        { value: "live", label: "Live", content: <FloorModePage /> },
-        { value: "bewerken", label: "Bewerken", content: <FloorPlanPage /> },
-      ]}
-    />
-  );
+  return <FloorModePage />;
 }
