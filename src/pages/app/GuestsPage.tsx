@@ -78,7 +78,7 @@ const GuestsPage = () => {
   }
 
   return (
-    <div className="p-4 lg:p-6 max-w-7xl space-y-5">
+    <div className="px-3 lg:px-4 py-3 space-y-5">
       <PageHeader
         title="Gasten"
         description="Bewaar alleen informatie die helpt om gasten beter te ontvangen."
