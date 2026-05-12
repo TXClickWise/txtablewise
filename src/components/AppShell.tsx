@@ -28,8 +28,9 @@ const AppShellInner = ({ children }: { children?: ReactNode }) => {
   }
 
   const isWizard = location.pathname.startsWith("/app/onboarding");
-  const showTabBar = isOperationalRoute(location.pathname);
-  const showFab = showTabBar;
+  const isAdminSection = location.pathname.startsWith("/app/admin");
+  const showTabBar = !isWizard && !isAdminSection;
+  const showFab = isOperationalRoute(location.pathname);
 
   return (
     <SidebarProvider>
