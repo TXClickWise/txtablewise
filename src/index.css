@@ -159,11 +159,11 @@
     --gradient-card: linear-gradient(180deg, hsl(222 40% 11%) 0%, hsl(222 40% 9%) 100%);
 
     --sidebar-background: 222 48% 6%;
-    --sidebar-foreground: 220 20% 68%;
-    --sidebar-primary: 40 72% 55%;
+    --sidebar-foreground: 220 25% 92%;
+    --sidebar-primary: 40 80% 62%;
     --sidebar-primary-foreground: 222 44% 10%;
-    --sidebar-accent: 222 44% 10%;
-    --sidebar-accent-foreground: 220 20% 88%;
+    --sidebar-accent: 222 44% 14%;
+    --sidebar-accent-foreground: 0 0% 100%;
     --sidebar-border: 222 44% 12%;
     --sidebar-ring: 40 72% 55%;
   }
