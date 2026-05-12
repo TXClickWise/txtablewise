@@ -107,7 +107,7 @@ export function AppSidebar() {
   const handleNavigate = isMobile ? () => setOpenMobile(false) : undefined;
 
   return (
-    <Sidebar collapsible="icon">
+    <Sidebar collapsible="icon" className="glass-sidebar">
       <SidebarHeader className="border-b border-sidebar-border">
         <div className={cn("px-2 py-2", collapsed && "px-0 text-center")}>
           <div className="font-display text-lg text-sidebar-primary leading-tight flex items-center gap-1.5">
