@@ -146,7 +146,7 @@ export function AppSidebar() {
           const canBeheer = role === "owner" || role === "manager";
           return (
             <>
-              <Group label="Snel naar" items={quickAccess} collapsed={collapsed} pathname={location.pathname} search={location.search} onNavigate={handleNavigate} canSeeAdvanced={canSeeAdvanced} role={role} />
+              <Group label="Snel naar" items={quickAccess} collapsed={collapsed} pathname={location.pathname} search={location.search} onNavigate={handleNavigate} canSeeAdvanced={canSeeAdvanced} role={role} badges={quickAccessBadges} />
               <Group label="Hospitality" items={hospitality} collapsed={collapsed} pathname={location.pathname} search={location.search} onNavigate={handleNavigate} canSeeAdvanced={canSeeAdvanced} role={role} />
               <Group label="Beheer" items={beheer} collapsed={collapsed} pathname={location.pathname} search={location.search} onNavigate={handleNavigate} canSeeAdvanced={canSeeAdvanced} role={role} />
               {canBeheer && (
