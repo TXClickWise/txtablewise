@@ -1,6 +1,6 @@
 // Tafelgrid: tafels × tijdslots, hergebruikt als embedded view binnen
 // /app/reserveringen. Houdt /app/agenda volledig intact.
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { format } from "date-fns";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
