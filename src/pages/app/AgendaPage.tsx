@@ -52,7 +52,7 @@ const STATUS_BG: Record<string, string> = {
   hold: "bg-muted border-border",
 };
 
-type ViewMode = "tijdlijn" | "lijst";
+type ViewMode = "tijdlijn" | "lijst" | "plattegrond";
 
 const AgendaPage = () => {
   const { current } = useRestaurant();
