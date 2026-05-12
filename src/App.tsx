@@ -60,11 +60,19 @@ import NotFound from "./pages/NotFound.tsx";
 
 const queryClient = new QueryClient();
 
+import { useNewBuildNotifier } from "@/hooks/useNewBuildNotifier";
+
+const NewBuildWatcher = () => {
+  useNewBuildNotifier();
+  return null;
+};
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <Toaster />
       <Sonner />
+      <NewBuildWatcher />
       <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         <AuthProvider>
           <Routes>
