@@ -27,3 +27,5 @@ project_id = "lbhtztbpxmqlzhyephew"
     verify_jwt = true
   [functions.translate-email-templates]
     verify_jwt = true
+  [functions.process-email-queue]
+    verify_jwt = true
