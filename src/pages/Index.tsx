@@ -38,6 +38,7 @@ const Index = () => {
           content="TX TableWise: het premium, AI-first tafelreserveringssysteem voor Nederlandse horeca. Minder no-shows, snellere walk-ins, betere gastbeleving."
         />
         <link rel="canonical" href={`${SITE_URL}/`} />
+        <link rel="preload" as="image" href={heroImage} fetchpriority="high" />
         <meta property="og:title" content="TX TableWise — Premium tafelreserveringen voor horeca" />
         <meta
           property="og:description"
