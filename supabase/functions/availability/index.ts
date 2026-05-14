@@ -64,11 +64,13 @@ Deno.serve(async (req) => {
 
     const tz: string = restaurant.timezone || "Europe/Amsterdam";
     const slotMinutes: number = restaurant.slot_duration_minutes || 15;
-    const defaultMinutes: number = restaurant.default_reservation_minutes || 105;
-    const largeGroupMinutes: number = restaurant.large_group_minutes || 150;
-    const largeGroupThreshold: number = restaurant.large_group_threshold || 9;
-    const durationMinutes: number =
-      body.party_size >= largeGroupThreshold ? largeGroupMinutes : defaultMinutes;
+    const durationMinutes: number = durationFor(body.party_size, {
+      default_minutes: restaurant.default_reservation_minutes ?? 105,
+      large_group_minutes: restaurant.large_group_minutes ?? 150,
+      large_group_threshold: restaurant.large_group_threshold ?? 9,
+      extra_large_group_threshold: restaurant.extra_large_group_threshold ?? null,
+      large_group_extra_minutes: restaurant.large_group_extra_minutes ?? 0,
+    });
 
     const pacingConfig = {
       max_covers_per_slot: restaurant.max_covers_per_slot ?? null,
