@@ -60,13 +60,14 @@ const LargeGroupSettings = () => {
           large_group_threshold, large_group_extra_minutes, large_group_manual_approval_from,
           large_group_deposit_recommended_from, large_group_auto_book_max, large_group_default_status,
           large_group_confirmation_text, large_group_cancellation_terms, noshow_deposit_rules_prepared,
-          large_group_extra_info_from, large_group_max_online_request
+          large_group_extra_info_from, large_group_max_online_request, extra_large_group_threshold
         `)
         .eq("id", restaurantId).maybeSingle();
       if (data) {
         setForm({
           large_group_threshold: data.large_group_threshold ?? defaults.large_group_threshold,
           large_group_extra_minutes: data.large_group_extra_minutes ?? defaults.large_group_extra_minutes,
+          extra_large_group_threshold: (data as any).extra_large_group_threshold ?? "",
           large_group_manual_approval_from: data.large_group_manual_approval_from ?? defaults.large_group_manual_approval_from,
           large_group_deposit_recommended_from: data.large_group_deposit_recommended_from ?? defaults.large_group_deposit_recommended_from,
           large_group_auto_book_max: data.large_group_auto_book_max ?? defaults.large_group_auto_book_max,
