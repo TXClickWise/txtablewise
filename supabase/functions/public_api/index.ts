@@ -720,10 +720,7 @@ async function handleUpdateReservation(req: Request, keyRow: KeyRow, reservation
     const finalTime = newTime || new Date(current.start_time).toLocaleTimeString("nl-NL", { hour: "2-digit", minute: "2-digit", hour12: false, timeZone: tz });
     const finalParty = newParty ?? current.party_size;
 
-    const defaultMinutes: number = restaurant.default_reservation_minutes || 105;
-    const largeGroupMinutes: number = restaurant.large_group_minutes || 150;
-    const largeGroupThreshold: number = restaurant.large_group_threshold || 9;
-    const durationMinutes = finalParty >= largeGroupThreshold ? largeGroupMinutes : defaultMinutes;
+    const durationMinutes = durationMinutesFor(finalParty, restaurant);
 
     const start_iso = zonedDateTimeToUtcIso(finalDate, finalTime, tz);
     const end_iso = addMinutesIso(start_iso, durationMinutes);
