@@ -17,6 +17,7 @@ import { Users, Info } from "lucide-react";
 type Form = {
   large_group_threshold: number;
   large_group_extra_minutes: number;
+  extra_large_group_threshold: number | "";
   large_group_manual_approval_from: number;
   large_group_deposit_recommended_from: number;
   large_group_auto_book_max: number;
@@ -31,6 +32,7 @@ type Form = {
 const defaults: Form = {
   large_group_threshold: 8,
   large_group_extra_minutes: 30,
+  extra_large_group_threshold: "",
   large_group_manual_approval_from: 10,
   large_group_deposit_recommended_from: 8,
   large_group_auto_book_max: 12,
