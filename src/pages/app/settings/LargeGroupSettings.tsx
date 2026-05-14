@@ -17,6 +17,7 @@ import { Users, Info } from "lucide-react";
 type Form = {
   large_group_threshold: number;
   large_group_extra_minutes: number;
+  extra_large_group_threshold: number | "";
   large_group_manual_approval_from: number;
   large_group_deposit_recommended_from: number;
   large_group_auto_book_max: number;
@@ -31,6 +32,7 @@ type Form = {
 const defaults: Form = {
   large_group_threshold: 8,
   large_group_extra_minutes: 30,
+  extra_large_group_threshold: "",
   large_group_manual_approval_from: 10,
   large_group_deposit_recommended_from: 8,
   large_group_auto_book_max: 12,
@@ -58,13 +60,14 @@ const LargeGroupSettings = () => {
           large_group_threshold, large_group_extra_minutes, large_group_manual_approval_from,
           large_group_deposit_recommended_from, large_group_auto_book_max, large_group_default_status,
           large_group_confirmation_text, large_group_cancellation_terms, noshow_deposit_rules_prepared,
-          large_group_extra_info_from, large_group_max_online_request
+          large_group_extra_info_from, large_group_max_online_request, extra_large_group_threshold
         `)
         .eq("id", restaurantId).maybeSingle();
       if (data) {
         setForm({
           large_group_threshold: data.large_group_threshold ?? defaults.large_group_threshold,
           large_group_extra_minutes: data.large_group_extra_minutes ?? defaults.large_group_extra_minutes,
+          extra_large_group_threshold: (data as any).extra_large_group_threshold ?? "",
           large_group_manual_approval_from: data.large_group_manual_approval_from ?? defaults.large_group_manual_approval_from,
           large_group_deposit_recommended_from: data.large_group_deposit_recommended_from ?? defaults.large_group_deposit_recommended_from,
           large_group_auto_book_max: data.large_group_auto_book_max ?? defaults.large_group_auto_book_max,
@@ -82,11 +85,17 @@ const LargeGroupSettings = () => {
 
   const save = async () => {
     if (!restaurantId) return;
+    // Validatie: extra-grote-groep drempel moet groter zijn dan grote-groep drempel
+    if (form.extra_large_group_threshold !== "" && Number(form.extra_large_group_threshold) <= form.large_group_threshold) {
+      toast.error('"Extra-grote groep vanaf" moet groter zijn dan "Grote groep vanaf".');
+      return;
+    }
     setSaving(true);
     const payload = {
       ...form,
       large_group_extra_info_from: form.large_group_extra_info_from === "" ? null : Number(form.large_group_extra_info_from),
       large_group_max_online_request: form.large_group_max_online_request === "" ? null : Number(form.large_group_max_online_request),
+      extra_large_group_threshold: form.extra_large_group_threshold === "" ? null : Number(form.extra_large_group_threshold),
     };
     const { error } = await supabase.from("restaurants").update(payload as any).eq("id", restaurantId);
     setSaving(false);
@@ -117,9 +126,14 @@ const LargeGroupSettings = () => {
               <Input type="number" min={1} value={form.large_group_threshold}
                 onChange={(e) => setForm({ ...form, large_group_threshold: Number(e.target.value) || 1 })} />
             </Field>
-            <Field label="Extra verblijfsduur (minuten)" hint="Wordt boven op de standaardduur opgeteld voor grote groepen.">
+            <Field label="Extra verblijfsduur (minuten)" hint="Wordt alleen opgeteld voor groepen vanaf de extra-grote-groep drempel hieronder. Laat die leeg om dit uit te schakelen.">
               <Input type="number" min={0} step={5} value={form.large_group_extra_minutes}
                 onChange={(e) => setForm({ ...form, large_group_extra_minutes: Number(e.target.value) || 0 })} />
+            </Field>
+            <Field label="Extra-grote groep vanaf (personen)" hint='Optionele tweede drempel. Vanaf dit aantal wordt "Extra verblijfsduur" bovenop de grote-groep duur opgeteld. Laat leeg om uit te schakelen.'>
+              <Input type="number" min={1} placeholder="bv. 16"
+                value={form.extra_large_group_threshold}
+                onChange={(e) => setForm({ ...form, extra_large_group_threshold: e.target.value === "" ? "" : (Number(e.target.value) || 1) })} />
             </Field>
             <Field label="Handmatige goedkeuring vanaf" hint="Vanaf dit aantal vraagt de reservering om jouw goedkeuring vóór bevestiging.">
               <Input type="number" min={1} value={form.large_group_manual_approval_from}

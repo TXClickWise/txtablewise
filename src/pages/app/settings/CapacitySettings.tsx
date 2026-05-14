@@ -100,7 +100,7 @@ export default function CapacitySettings() {
               value={form.large_group_minutes}
               onChange={(e) => setForm({ ...form, large_group_minutes: parseInt(e.target.value) || 150 })}
             />
-            <p className="text-xs text-muted-foreground">Geldt vanaf "grote groep"-drempel uit Algemeen.</p>
+            <p className="text-xs text-muted-foreground">Vaste verblijfsduur vanaf "grote groep"-drempel uit Algemeen. Voor extra-grote groepen kun je in de tab Grote groepen nog tijd bovenop zetten.</p>
           </div>
         </CardContent>
       </Card>

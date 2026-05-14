@@ -14,6 +14,7 @@ import { useRestaurant } from "@/hooks/useRestaurant";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { durationMinutesFor } from "@/lib/duration";
 
 type Slot = { time: string; available: boolean; available_table_count: number; peak_warning?: boolean };
 type Preview = {
@@ -68,7 +69,7 @@ export function ReservationFormSheet({ open, onOpenChange, prefill }: Props) {
     enabled: !!current?.restaurant_id,
     queryFn: async () => {
       const { data } = await supabase.from("restaurants")
-        .select("large_group_threshold, large_group_manual_approval_from, large_group_extra_minutes, large_group_deposit_recommended_from")
+        .select("large_group_threshold, large_group_manual_approval_from, large_group_extra_minutes, large_group_deposit_recommended_from, default_reservation_minutes, large_group_minutes, extra_large_group_threshold")
         .eq("id", current!.restaurant_id).maybeSingle();
       return data;
     },
@@ -76,6 +77,9 @@ export function ReservationFormSheet({ open, onOpenChange, prefill }: Props) {
   const isLargeGroup = !!lgConfig && partySize >= (lgConfig.large_group_threshold ?? 8);
   const needsApproval = !!lgConfig && partySize >= (lgConfig.large_group_manual_approval_from ?? 10);
   const recommendDeposit = !!lgConfig && partySize >= (lgConfig.large_group_deposit_recommended_from ?? 8);
+  const computedDuration = lgConfig
+    ? durationMinutesFor(partySize, lgConfig as any)
+    : null;
 
   const reset = () => {
     setFirstName(""); setLastName(""); setEmail(""); setPhone("");
@@ -185,7 +189,7 @@ export function ReservationFormSheet({ open, onOpenChange, prefill }: Props) {
             <div className="rounded-md border border-warning/30 bg-warning/10 px-3 py-2 text-sm space-y-1">
               <div className="font-medium text-warning">Grote groep ({partySize} personen)</div>
               <ul className="text-xs text-muted-foreground list-disc pl-4 space-y-0.5">
-                <li>Verblijfsduur is automatisch +{lgConfig?.large_group_extra_minutes ?? 30} minuten.</li>
+                {computedDuration && <li>Verblijfsduur: {computedDuration} minuten.</li>}
                 {needsApproval && <li>Wordt aangemaakt als <strong>in afwachting</strong> — beoordeel daarna in 'Grote groepen'.</li>}
                 {recommendDeposit && <li>Aanbetaling aanbevolen voor deze groepsgrootte (manueel afspreken).</li>}
               </ul>

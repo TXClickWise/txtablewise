@@ -1679,6 +1679,7 @@ export type Database = {
           deposit_voucher_credit_possible: boolean
           email: string | null
           email_notification_settings: Json
+          extra_large_group_threshold: number | null
           google_review_url: string | null
           guest_changes_auto_apply: boolean
           guest_changes_auto_reject_party_size: number | null
@@ -1777,6 +1778,7 @@ export type Database = {
           deposit_voucher_credit_possible?: boolean
           email?: string | null
           email_notification_settings?: Json
+          extra_large_group_threshold?: number | null
           google_review_url?: string | null
           guest_changes_auto_apply?: boolean
           guest_changes_auto_reject_party_size?: number | null
@@ -1875,6 +1877,7 @@ export type Database = {
           deposit_voucher_credit_possible?: boolean
           email?: string | null
           email_notification_settings?: Json
+          extra_large_group_threshold?: number | null
           google_review_url?: string | null
           guest_changes_auto_apply?: boolean
           guest_changes_auto_reject_party_size?: number | null

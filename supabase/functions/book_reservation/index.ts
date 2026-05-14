@@ -7,6 +7,7 @@ import {
   findAvailableCombination,
 } from "../_shared/reservation-utils.ts";
 import { evaluatePacing, type PacingReservation } from "../_shared/pacing.ts";
+import { durationMinutesFor } from "../_shared/duration.ts";
 
 type BookRequest = {
   restaurant_id?: string;
@@ -72,19 +73,14 @@ Deno.serve(async (req) => {
     }
 
     const tz: string = restaurant.timezone;
-    const defaultMinutes: number = restaurant.default_reservation_minutes || 105;
-    const largeGroupMinutes: number = restaurant.large_group_minutes || 150;
     const largeGroupThreshold: number = restaurant.large_group_threshold || 9;
     const channel = body.channel ?? "online";
     // Walk-ins use the operator-configured walk-in duration
     const isWalkIn = channel === "walk_in";
-    const baseDuration = isWalkIn
-      ? (restaurant.walkin_default_minutes ?? 75)
-      : (body.party_size >= largeGroupThreshold ? largeGroupMinutes : defaultMinutes);
     const isLargeGroup = body.party_size >= largeGroupThreshold;
-    const durationMinutes: number = isLargeGroup && !isWalkIn
-      ? baseDuration + (restaurant.large_group_extra_minutes ?? 0)
-      : baseDuration;
+    const durationMinutes: number = isWalkIn
+      ? (restaurant.walkin_default_minutes ?? 75)
+      : durationMinutesFor(body.party_size, restaurant);
     const start_iso = zonedDateTimeToUtcIso(body.date, body.time, tz);
     const end_iso = addMinutesIso(start_iso, durationMinutes);
 

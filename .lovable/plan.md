@@ -1,43 +1,66 @@
 ## Doel
 
-- PWA-scope beperken tot staff-app, zodat landingspagina, reserveringswidget, gastenbeheer en helppagina's **in een gewone browsertab** openen.
-- Login blijft **binnen de PWA** zodat een geïnstalleerde tablet niet uit de app springt bij een sessie-expiry.
+Eén consistente regel voor verblijfsduur, met twee drempels:
 
-## Eindgedrag per route
+- **Vanaf "Grote groep"-drempel** (bv. 8 personen) → vaste verblijfsduur uit `large_group_minutes` (bv. 120 min).
+- **Vanaf "Extra-grote groep"-drempel** (nieuw, bv. 16 personen) → daar bovenop nog `large_group_extra_minutes` (bv. +30, dus 150 min).
 
-| Route | Waar opent het |
-|---|---|
-| `/app/*` (staff, admin, instellingen) | **PWA** |
-| `/app/login` (nieuw) | **PWA** |
-| `/` landing | Browser |
-| `/r/:slug`, `/reserveer/:slug`, `/book/:slug` reserveringswidget | **Browser** |
-| `/r/manage/:token` gastenbeheer | Browser |
-| `/auth` (legacy) | Browser — redirect naar `/app/login` |
-| `/unsubscribe` | Browser |
+Alle plekken (availability, book, manage, floor) gebruiken dezelfde formule.
 
 ## Wijzigingen
 
-### 1. `public/manifest.json`
-- `scope` terug naar `"/app"`.
-- `start_url` blijft `"/app"`.
+### 1. Database
+Migratie: nieuwe kolom op `restaurants`:
+- `extra_large_group_threshold integer` (nullable, default `NULL` = feature uit).
 
-Gevolg: alle URL's buiten `/app/*` (inclusief `/r/:slug`) openen automatisch in de standaard browser, ook als de gebruiker de PWA heeft geïnstalleerd. Dit is precies hoe iOS/Android PWA-scoping werkt — out-of-scope navigaties springen uit de standalone app.
+`large_group_minutes` en `large_group_extra_minutes` blijven bestaan met hun nieuwe, duidelijke betekenis.
 
-### 2. Login binnen PWA-scope
-Om login niet uit de PWA te laten springen:
-- Nieuwe route `/app/login` (publiek, geen `RequireAuth`) die dezelfde `Auth`-pagina rendert.
-- `RequireAuth` redirect naar `/app/login` i.p.v. `/auth` wanneer de gebruiker in PWA-context zit. Eenvoudigst: altijd naar `/app/login` redirecten, en `/auth` als legacy-redirect naar `/app/login` laten staan.
+### 2. Gedeelde helper
+Nieuwe util `supabase/functions/_shared/duration.ts` met één functie:
 
-### 3. Bestaande installs
-PWA-manifestvelden (`scope`, `start_url`) zijn **gepind op installatiemoment** — bestaande installaties op tablets blijven de oude scope `/` gebruiken tot ze opnieuw worden geïnstalleerd. Korte herinstallatie-instructie nodig voor pilot-tablets die de PWA al hadden.
+```text
+durationMinutesFor(party_size, restaurant) =
+  default_reservation_minutes
+  + (party_size >= large_group_threshold ? (large_group_minutes - default_reservation_minutes) : 0)
+  + (extra_large_group_threshold && party_size >= extra_large_group_threshold ? large_group_extra_minutes : 0)
+```
 
-## Niet wijzigen
-- Geen service worker, geen caching-gedrag.
-- Routerstructuur in `App.tsx` blijft verder gelijk; alleen `/app/login`-route en `RequireAuth`-redirect aanpassen.
-- Geen wijzigingen aan widget, landing of helppagina's nodig — die vallen automatisch buiten scope.
+Toegepast in:
+- `supabase/functions/availability/index.ts`
+- `supabase/functions/book_reservation/index.ts` (vervangt huidige `baseDuration + extra`)
+- `supabase/functions/manage_reservation/index.ts`
+- `supabase/functions/public_api/index.ts`
+- `supabase/functions/_shared/pacing.ts` (`durationFor`)
 
-## Bestanden
+Frontend equivalent in `src/lib/duration.ts` voor `ReservationFormSheet` en Floor pagina's.
 
-- `public/manifest.json` — `scope` → `/app`.
-- `src/App.tsx` — `<Route path="login" element={<Auth />} />` toevoegen onder `/app`, en `/auth` redirecten naar `/app/login`.
-- `src/components/RequireAuth.tsx` — redirect-target `/app/login`.
+### 3. UI
+
+**Capaciteit-tab** (`CapacitySettings.tsx`):
+- Veld "Verblijfsduur grote groep (min)" krijgt verduidelijkte hint: "Geldt vanaf de grote-groep drempel. Voor extra-grote groepen kun je in de tab Grote groepen nog extra tijd toevoegen."
+
+**Grote groepen-tab** (`LargeGroupSettings.tsx`):
+- Nieuw veld **"Extra-grote groep vanaf (personen)"** (optioneel) naast "Extra verblijfsduur (minuten)".
+- Hint bij "Extra verblijfsduur": "Wordt alleen opgeteld voor groepen vanaf de extra-grote-groep drempel. Laat het drempel-veld leeg om dit uit te schakelen."
+- Bij lege drempel: extra minuten wordt nooit toegepast — kleine info-regel toont dat.
+
+**ReservationFormSheet**: regel "Verblijfsduur is automatisch +X minuten" wordt vervangen door dynamische berekende totale duur ("Verblijfsduur: 150 min").
+
+### 4. Validatie
+Frontend save in beide tabs:
+- `large_group_minutes >= default_reservation_minutes` (anders waarschuwing).
+- `extra_large_group_threshold > large_group_threshold` indien gezet.
+
+## Resultaat voor eigeweis
+
+Met huidige defaults (drempel 8, large 150, extra 30):
+- 1–7 pers → 90 min
+- 8–15 pers → 150 min
+- 16+ pers (als extra-drempel op 16 staat) → 180 min
+
+Wil je liever 8–15 = 120 min en 16+ = 150 min, dan zet je `large_group_minutes` op 120 en de extra-drempel op 16. Geen conflict meer tussen widget-availability en daadwerkelijke boeking.
+
+## Niet in scope
+
+- Geen UI voor automatische aanbeveling van defaults.
+- Geen migratie van bestaande waarden — defaults blijven werken zoals voorheen, omdat de extra-drempel default `NULL` is (extra minuten niet toegepast).
