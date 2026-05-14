@@ -3,7 +3,7 @@
   "short_name": "TableWise",
   "description": "Premium reserveringssysteem voor de horeca",
   "start_url": "/app",
-  "scope": "/app",
+  "scope": "/",
   "display": "standalone",
   "orientation": "any",
   "background_color": "#11192B",
