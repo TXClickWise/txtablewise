@@ -1,5 +1,6 @@
 import { Helmet } from "react-helmet-async";
 import { LandingHeader } from "@/components/landing/LandingHeader";
+import heroImage from "@/assets/hero-restaurant.jpg";
 import { HeroSection } from "@/components/landing/HeroSection";
 import { PainPointsSection } from "@/components/landing/PainPointsSection";
 import { SolutionGrid } from "@/components/landing/SolutionGrid";
