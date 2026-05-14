@@ -10,6 +10,8 @@ export function HeroSection() {
         <img
           src={heroImage}
           alt="Sfeervolle restaurantzaal bij gouden uur met kaarslicht en gedekte tafels"
+          width={1920}
+          height={1280}
           className="h-full w-full object-cover"
           decoding="async"
           fetchPriority="high"

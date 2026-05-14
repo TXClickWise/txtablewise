@@ -101,7 +101,7 @@ export function PricingSection() {
                   <span className={cn("font-display text-4xl font-bold", isPro ? "text-primary-foreground" : "text-foreground")}>
                     {t.price}
                   </span>
-                  <span className={cn("text-sm", isPro ? "text-primary-foreground/60" : "text-muted-foreground")}>{t.period}</span>
+                  <span className={cn("text-sm", isPro ? "text-primary-foreground/85" : "text-muted-foreground")}>{t.period}</span>
                 </div>
                 <ul className="mt-6 flex-1 space-y-3">
                   {t.features.map((f) => (

@@ -1,5 +1,6 @@
 import { Helmet } from "react-helmet-async";
 import { LandingHeader } from "@/components/landing/LandingHeader";
+import heroImage from "@/assets/hero-restaurant.jpg";
 import { HeroSection } from "@/components/landing/HeroSection";
 import { PainPointsSection } from "@/components/landing/PainPointsSection";
 import { SolutionGrid } from "@/components/landing/SolutionGrid";
@@ -37,6 +38,7 @@ const Index = () => {
           content="TX TableWise: het premium, AI-first tafelreserveringssysteem voor Nederlandse horeca. Minder no-shows, snellere walk-ins, betere gastbeleving."
         />
         <link rel="canonical" href={`${SITE_URL}/`} />
+        <link rel="preload" as="image" href={heroImage} />
         <meta property="og:title" content="TX TableWise — Premium tafelreserveringen voor horeca" />
         <meta
           property="og:description"
