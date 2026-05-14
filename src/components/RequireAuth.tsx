@@ -14,7 +14,7 @@ export const RequireAuth = ({ children }: { children: ReactNode }) => {
     );
   }
   if (!user) {
-    return <Navigate to="/auth" state={{ from: location.pathname }} replace />;
+    return <Navigate to="/app/login" state={{ from: location.pathname }} replace />;
   }
   return <>{children}</>;
 };
