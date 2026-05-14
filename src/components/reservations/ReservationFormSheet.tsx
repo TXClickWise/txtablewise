@@ -189,7 +189,7 @@ export function ReservationFormSheet({ open, onOpenChange, prefill }: Props) {
             <div className="rounded-md border border-warning/30 bg-warning/10 px-3 py-2 text-sm space-y-1">
               <div className="font-medium text-warning">Grote groep ({partySize} personen)</div>
               <ul className="text-xs text-muted-foreground list-disc pl-4 space-y-0.5">
-                <li>Verblijfsduur is automatisch +{lgConfig?.large_group_extra_minutes ?? 30} minuten.</li>
+                {computedDuration && <li>Verblijfsduur: {computedDuration} minuten.</li>}
                 {needsApproval && <li>Wordt aangemaakt als <strong>in afwachting</strong> — beoordeel daarna in 'Grote groepen'.</li>}
                 {recommendDeposit && <li>Aanbetaling aanbevolen voor deze groepsgrootte (manueel afspreken).</li>}
               </ul>
