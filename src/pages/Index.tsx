@@ -1,3 +1,4 @@
+import { Helmet } from "react-helmet-async";
 import { LandingHeader } from "@/components/landing/LandingHeader";
 import { HeroSection } from "@/components/landing/HeroSection";
 import { PainPointsSection } from "@/components/landing/PainPointsSection";
@@ -8,9 +9,44 @@ import { PricingSection } from "@/components/landing/PricingSection";
 import { DemoRequestForm } from "@/components/landing/DemoRequestForm";
 import { LandingFooter } from "@/components/landing/LandingFooter";
 
+const SITE_URL = "https://txtablewise.nl";
+
 const Index = () => {
+  const orgLd = {
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    name: "TX TableWise",
+    url: SITE_URL,
+    logo: `${SITE_URL}/icons/icon-192.png`,
+    description:
+      "Premium, AI-first tafelreserveringssysteem voor Nederlandse horeca.",
+  };
+  const siteLd = {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    name: "TX TableWise",
+    url: SITE_URL,
+  };
+
   return (
     <div className="min-h-screen bg-background">
+      <Helmet>
+        <title>TX TableWise — Premium tafelreserveringen voor horeca</title>
+        <meta
+          name="description"
+          content="TX TableWise: het premium, AI-first tafelreserveringssysteem voor Nederlandse horeca. Minder no-shows, snellere walk-ins, betere gastbeleving."
+        />
+        <link rel="canonical" href={`${SITE_URL}/`} />
+        <meta property="og:title" content="TX TableWise — Premium tafelreserveringen voor horeca" />
+        <meta
+          property="og:description"
+          content="Premium, AI-first tafelreserveringen voor Nederlandse horeca. Minder no-shows, betere gastbeleving."
+        />
+        <meta property="og:url" content={`${SITE_URL}/`} />
+        <meta property="og:type" content="website" />
+        <script type="application/ld+json">{JSON.stringify(orgLd)}</script>
+        <script type="application/ld+json">{JSON.stringify(siteLd)}</script>
+      </Helmet>
       <LandingHeader />
       <main>
         <HeroSection />
