@@ -55,7 +55,7 @@ export function LandingHeader() {
             <span
               className={cn(
                 "mt-0.5 text-[10px] tracking-wide transition-colors",
-                scrolled ? "text-muted-foreground/60" : "text-primary-foreground/50",
+                scrolled ? "text-muted-foreground" : "text-primary-foreground/85",
               )}
             >
               by{" "}
