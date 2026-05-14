@@ -14,6 +14,7 @@ import { useRestaurant } from "@/hooks/useRestaurant";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { durationMinutesFor } from "@/lib/duration";
 
 type Slot = { time: string; available: boolean; available_table_count: number; peak_warning?: boolean };
 type Preview = {
