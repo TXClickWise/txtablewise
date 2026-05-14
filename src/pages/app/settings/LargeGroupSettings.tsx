@@ -126,9 +126,14 @@ const LargeGroupSettings = () => {
               <Input type="number" min={1} value={form.large_group_threshold}
                 onChange={(e) => setForm({ ...form, large_group_threshold: Number(e.target.value) || 1 })} />
             </Field>
-            <Field label="Extra verblijfsduur (minuten)" hint="Wordt boven op de standaardduur opgeteld voor grote groepen.">
+            <Field label="Extra verblijfsduur (minuten)" hint="Wordt alleen opgeteld voor groepen vanaf de extra-grote-groep drempel hieronder. Laat die leeg om dit uit te schakelen.">
               <Input type="number" min={0} step={5} value={form.large_group_extra_minutes}
                 onChange={(e) => setForm({ ...form, large_group_extra_minutes: Number(e.target.value) || 0 })} />
+            </Field>
+            <Field label="Extra-grote groep vanaf (personen)" hint='Optionele tweede drempel. Vanaf dit aantal wordt "Extra verblijfsduur" bovenop de grote-groep duur opgeteld. Laat leeg om uit te schakelen.'>
+              <Input type="number" min={1} placeholder="bv. 16"
+                value={form.extra_large_group_threshold}
+                onChange={(e) => setForm({ ...form, extra_large_group_threshold: e.target.value === "" ? "" : (Number(e.target.value) || 1) })} />
             </Field>
             <Field label="Handmatige goedkeuring vanaf" hint="Vanaf dit aantal vraagt de reservering om jouw goedkeuring vóór bevestiging.">
               <Input type="number" min={1} value={form.large_group_manual_approval_from}
