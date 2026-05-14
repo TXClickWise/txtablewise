@@ -85,11 +85,17 @@ const LargeGroupSettings = () => {
 
   const save = async () => {
     if (!restaurantId) return;
+    // Validatie: extra-grote-groep drempel moet groter zijn dan grote-groep drempel
+    if (form.extra_large_group_threshold !== "" && Number(form.extra_large_group_threshold) <= form.large_group_threshold) {
+      toast.error('"Extra-grote groep vanaf" moet groter zijn dan "Grote groep vanaf".');
+      return;
+    }
     setSaving(true);
     const payload = {
       ...form,
       large_group_extra_info_from: form.large_group_extra_info_from === "" ? null : Number(form.large_group_extra_info_from),
       large_group_max_online_request: form.large_group_max_online_request === "" ? null : Number(form.large_group_max_online_request),
+      extra_large_group_threshold: form.extra_large_group_threshold === "" ? null : Number(form.extra_large_group_threshold),
     };
     const { error } = await supabase.from("restaurants").update(payload as any).eq("id", restaurantId);
     setSaving(false);
