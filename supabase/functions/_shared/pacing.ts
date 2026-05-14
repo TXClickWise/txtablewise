@@ -5,6 +5,7 @@
 // Also computes peak-warning thresholds.
 
 import { intervalsOverlap, ACTIVE_STATUSES } from "./reservation-utils.ts";
+import { durationMinutesFor } from "./duration.ts";
 
 export type PacingReservation = {
   id: string;
