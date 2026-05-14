@@ -100,9 +100,19 @@ export function evaluatePacing(
 
 export function durationFor(
   party_size: number,
-  defaults: { default_minutes: number; large_group_minutes: number; large_group_threshold: number },
+  defaults: {
+    default_minutes: number;
+    large_group_minutes: number;
+    large_group_threshold: number;
+    extra_large_group_threshold?: number | null;
+    large_group_extra_minutes?: number | null;
+  },
 ): number {
-  return party_size >= defaults.large_group_threshold
-    ? defaults.large_group_minutes
-    : defaults.default_minutes;
+  return durationMinutesFor(party_size, {
+    default_reservation_minutes: defaults.default_minutes,
+    large_group_minutes: defaults.large_group_minutes,
+    large_group_threshold: defaults.large_group_threshold,
+    extra_large_group_threshold: defaults.extra_large_group_threshold ?? null,
+    large_group_extra_minutes: defaults.large_group_extra_minutes ?? 0,
+  });
 }
