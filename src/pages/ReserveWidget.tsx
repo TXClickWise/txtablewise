@@ -14,6 +14,7 @@
 // Source channel: ?source=instagram_link|google_link|qr_code|external_platform.
 // Unknown values fall back to "website_widget" and are kept in source_metadata.
 import { useEffect, useMemo, useState } from "react";
+import { Helmet } from "react-helmet-async";
 import { useParams, useSearchParams, Link } from "react-router-dom";
 import { format } from "date-fns";
 import { nl, enGB, de, fr } from "date-fns/locale";
@@ -404,6 +405,34 @@ const ReserveWidget = () => {
       className="min-h-screen bg-background"
       style={brandHsl ? ({ ["--primary" as any]: brandHsl, ["--ring" as any]: brandHsl } as React.CSSProperties) : undefined}
     >
+      <Helmet>
+        <title>{`Reserveer bij ${restaurant.name} — TX TableWise`}</title>
+        <meta
+          name="description"
+          content={`Reserveer online een tafel bij ${restaurant.name}. Snel, eenvoudig en bevestigd binnen enkele seconden.`}
+        />
+        <link rel="canonical" href={`https://txtablewise.nl/r/${restaurant.slug}`} />
+        <meta property="og:title" content={`Reserveer bij ${restaurant.name}`} />
+        <meta
+          property="og:description"
+          content={`Reserveer online een tafel bij ${restaurant.name} via TX TableWise.`}
+        />
+        <meta property="og:url" content={`https://txtablewise.nl/r/${restaurant.slug}`} />
+        <meta property="og:type" content="website" />
+        {restaurant.logo_url ? (
+          <meta property="og:image" content={restaurant.logo_url} />
+        ) : null}
+        <script type="application/ld+json">
+          {JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "Restaurant",
+            name: restaurant.name,
+            url: `https://txtablewise.nl/r/${restaurant.slug}`,
+            ...(restaurant.logo_url ? { image: restaurant.logo_url, logo: restaurant.logo_url } : {}),
+            acceptsReservations: true,
+          })}
+        </script>
+      </Helmet>
       <header className="border-b border-border bg-card sticky top-0 z-10">
         <div className="max-w-2xl mx-auto px-4 py-4 flex items-center justify-between gap-3">
           <div className="flex items-center gap-3 min-w-0">
