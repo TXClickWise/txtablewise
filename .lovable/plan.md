@@ -1,36 +1,43 @@
-## Goal
-Verify the email setup end-to-end by sending test emails to `jeroen@clickwise.app`.
+## Doel
 
-## Issue found during check
-The verified Lovable email domain is **`notify.txtablewise.nl`**, but `supabase/functions/send-transactional-email/index.ts` has:
-```
-SENDER_DOMAIN = "notify.reservations.txtablewise.nl"
-FROM_DOMAIN   = "notify.reservations.txtablewise.nl"
-```
-This mismatch makes every transactional send fail with "No email domain record found". This must be fixed first, otherwise the test will only confirm a broken state.
+- PWA-scope beperken tot staff-app, zodat landingspagina, reserveringswidget, gastenbeheer en helppagina's **in een gewone browsertab** openen.
+- Login blijft **binnen de PWA** zodat een geïnstalleerde tablet niet uit de app springt bij een sessie-expiry.
 
-## Steps
+## Eindgedrag per route
 
-1. **Fix sender domain**
-   - In `supabase/functions/send-transactional-email/index.ts` set:
-     - `SENDER_DOMAIN = "notify.txtablewise.nl"`
-     - `FROM_DOMAIN = "notify.txtablewise.nl"` (or `txtablewise.nl` if root From is preferred — I'll use the verified subdomain to stay safe)
-   - Redeploy `send-transactional-email`.
+| Route | Waar opent het |
+|---|---|
+| `/app/*` (staff, admin, instellingen) | **PWA** |
+| `/app/login` (nieuw) | **PWA** |
+| `/` landing | Browser |
+| `/r/:slug`, `/reserveer/:slug`, `/book/:slug` reserveringswidget | **Browser** |
+| `/r/manage/:token` gastenbeheer | Browser |
+| `/auth` (legacy) | Browser — redirect naar `/app/login` |
+| `/unsubscribe` | Browser |
 
-2. **Send test #1 — transactional template**
-   - Invoke `send-transactional-email` with template `reservation-confirmation`, recipient `jeroen@clickwise.app`, sample reservation data (guest name, date, time, party size, restaurant name, manage/cancel/confirm/review URLs pointed at the live site).
+## Wijzigingen
 
-3. **Send test #2 — second template** (optional, to validate another path)
-   - Same as above but with `reservation-reminder` so we exercise a different template.
+### 1. `public/manifest.json`
+- `scope` terug naar `"/app"`.
+- `start_url` blijft `"/app"`.
 
-4. **Verify delivery**
-   - Query `email_send_log` (deduplicated by `message_id`) for both `message_id`s and report status (`pending` → `sent`, or `failed`/`dlq` with the error).
-   - Check `process-email-queue` logs if anything stays `pending`.
+Gevolg: alle URL's buiten `/app/*` (inclusief `/r/:slug`) openen automatisch in de standaard browser, ook als de gebruiker de PWA heeft geïnstalleerd. Dit is precies hoe iOS/Android PWA-scoping werkt — out-of-scope navigaties springen uit de standalone app.
 
-5. **Report**
-   - Tell user: domain status, fix applied, send results, and whether the inbox should receive both emails.
+### 2. Login binnen PWA-scope
+Om login niet uit de PWA te laten springen:
+- Nieuwe route `/app/login` (publiek, geen `RequireAuth`) die dezelfde `Auth`-pagina rendert.
+- `RequireAuth` redirect naar `/app/login` i.p.v. `/auth` wanneer de gebruiker in PWA-context zit. Eenvoudigst: altijd naar `/app/login` redirecten, en `/auth` als legacy-redirect naar `/app/login` laten staan.
 
-## Notes
-- Auth is fine: `send-transactional-email` runs with `verify_jwt = true`; calling it from the server with the service role works.
-- No DB schema changes.
-- No UI changes.
+### 3. Bestaande installs
+PWA-manifestvelden (`scope`, `start_url`) zijn **gepind op installatiemoment** — bestaande installaties op tablets blijven de oude scope `/` gebruiken tot ze opnieuw worden geïnstalleerd. Korte herinstallatie-instructie nodig voor pilot-tablets die de PWA al hadden.
+
+## Niet wijzigen
+- Geen service worker, geen caching-gedrag.
+- Routerstructuur in `App.tsx` blijft verder gelijk; alleen `/app/login`-route en `RequireAuth`-redirect aanpassen.
+- Geen wijzigingen aan widget, landing of helppagina's nodig — die vallen automatisch buiten scope.
+
+## Bestanden
+
+- `public/manifest.json` — `scope` → `/app`.
+- `src/App.tsx` — `<Route path="login" element={<Auth />} />` toevoegen onder `/app`, en `/auth` redirecten naar `/app/login`.
+- `src/components/RequireAuth.tsx` — redirect-target `/app/login`.
