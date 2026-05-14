@@ -7,6 +7,7 @@ import {
   findAvailableCombination,
 } from "../_shared/reservation-utils.ts";
 import { evaluatePacing, type PacingReservation } from "../_shared/pacing.ts";
+import { durationMinutesFor } from "../_shared/duration.ts";
 
 type BookRequest = {
   restaurant_id?: string;
