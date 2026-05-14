@@ -1,0 +1,13 @@
+# TX TableWise
+
+> Premium, AI-first tafelreserveringssysteem voor Nederlandse horeca. Commissie-vrij, tablet-first, gericht op minder no-shows en betere gastbeleving.
+
+TX TableWise (TableWise) is een hospitality OS voor restaurants: reserveringen via meerdere kanalen (website-widget, WhatsApp, telefoon-AI, walk-in), floor-mode op tablet, wachtlijst, gast-CRM, no-show preventie en POS-integraties zoals Loyverse.
+
+## Pages
+
+- [Home](/): Productoverzicht, prijzen en demo-aanvraag voor TX TableWise.
+
+## Optional
+
+- [Reserveer (per restaurant)](/r/): Publieke reserveringswidget per restaurant via /r/{slug}.
