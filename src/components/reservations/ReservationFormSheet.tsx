@@ -68,7 +68,7 @@ export function ReservationFormSheet({ open, onOpenChange, prefill }: Props) {
     enabled: !!current?.restaurant_id,
     queryFn: async () => {
       const { data } = await supabase.from("restaurants")
-        .select("large_group_threshold, large_group_manual_approval_from, large_group_extra_minutes, large_group_deposit_recommended_from")
+        .select("large_group_threshold, large_group_manual_approval_from, large_group_extra_minutes, large_group_deposit_recommended_from, default_reservation_minutes, large_group_minutes, extra_large_group_threshold")
         .eq("id", current!.restaurant_id).maybeSingle();
       return data;
     },
@@ -76,6 +76,9 @@ export function ReservationFormSheet({ open, onOpenChange, prefill }: Props) {
   const isLargeGroup = !!lgConfig && partySize >= (lgConfig.large_group_threshold ?? 8);
   const needsApproval = !!lgConfig && partySize >= (lgConfig.large_group_manual_approval_from ?? 10);
   const recommendDeposit = !!lgConfig && partySize >= (lgConfig.large_group_deposit_recommended_from ?? 8);
+  const computedDuration = lgConfig
+    ? durationMinutesFor(partySize, lgConfig as any)
+    : null;
 
   const reset = () => {
     setFirstName(""); setLastName(""); setEmail(""); setPhone("");
