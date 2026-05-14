@@ -19,6 +19,7 @@ import {
   findAvailableCombination,
 } from "../_shared/reservation-utils.ts";
 import { evaluatePacing, type PacingReservation } from "../_shared/pacing.ts";
+import { durationMinutesFor } from "../_shared/duration.ts";
 import { mapInternalError, twError, twHttp, type TwCode } from "../_shared/tw-errors.ts";
 import { logIntegration, actionFromPath } from "../_shared/integration-log.ts";
 
