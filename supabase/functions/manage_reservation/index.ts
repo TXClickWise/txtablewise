@@ -305,6 +305,8 @@ async function doUpdate(
       default_minutes: restaurant.default_reservation_minutes ?? 105,
       large_group_minutes: restaurant.large_group_minutes ?? 150,
       large_group_threshold: restaurant.large_group_threshold ?? 9,
+      extra_large_group_threshold: restaurant.extra_large_group_threshold ?? null,
+      large_group_extra_minutes: restaurant.large_group_extra_minutes ?? 0,
     });
     end_iso = addMinutesIso(start_iso, duration);
   }
