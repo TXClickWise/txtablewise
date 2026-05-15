@@ -13,7 +13,9 @@ import {
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
-const PROJECT_REF = "lbhtztbpxmqlzhyephew";
+const PROJECT_REF =
+  ((import.meta as any).env?.VITE_SUPABASE_PROJECT_ID as string | undefined) ||
+  "lbhtztbpxmqlzhyephew";
 const AGENT_API_BASE = `https://${PROJECT_REF}.supabase.co/functions/v1/agent_api`;
 
 function copy(text: string) {
@@ -163,30 +165,90 @@ const SECTIONS: Section[] = [
     id: "tablewise-key",
     title: "2. Stappen in TableWise (eenmalig, ~2 min)",
     icon: KeyRound,
-    keywords: "api sleutel key genereer voice agent pagina",
+    keywords: "api sleutel key voice agent pagina kopieer status configuratie",
     render: () => (
-      <ol className="text-sm space-y-2 list-decimal list-inside">
-        <li>Log in als owner of manager.</li>
-        <li>Ga naar <strong>AI Voice Agent</strong> in de zijbalk (<code>/app/voice-agent</code>).</li>
-        <li>
-          Tab <strong>Configuratie</strong> → Provider = <strong>ClickWise Voice Agent</strong> →
-          Modus = <strong>Sandbox</strong> → klik <strong>Opslaan</strong>.
-        </li>
-        <li>
-          Tab <strong>API-sleutels</strong> → naam: <code>ClickWise Voice Test</code> → klik <strong>Genereer</strong>.
-        </li>
-        <li>
-          <strong>Kopieer de sleutel meteen</strong> (begint met <code>tw_voice_…</code>). Deze zie je maar één keer.
-          Bewaar hem in een kladblok — je plakt hem zo in ClickWise.
-        </li>
-        <li className="pt-2">
-          <Button asChild variant="outline" size="sm">
-            <Link to="/app/voice-agent">
-              <ArrowLeft className="h-3 w-3 mr-1" /> Open Voice Agent pagina
-            </Link>
-          </Button>
-        </li>
-      </ol>
+      <div className="space-y-3">
+        <ol className="text-sm space-y-2 list-decimal list-inside">
+          <li>Log in als <strong>owner</strong> of <strong>manager</strong>.</li>
+          <li>
+            Open in de zijbalk <strong>AI Voice Agent</strong>
+            <span className="text-muted-foreground"> (<code>/app/voice-agent</code>)</span>.
+          </li>
+          <li>
+            Tab <strong>Status &amp; test</strong> — controleer dat <em>API-sleutel</em> op
+            <Badge variant="outline" className="mx-1">✅ Actief</Badge> staat.
+            <div className="text-xs text-muted-foreground ml-5 mt-1">
+              Staat er ⚠️ Ontbreekt? Vraag TableWise support of een system admin om een sleutel
+              voor jouw restaurant aan te maken — die wordt 1× volledig getoond en daarna alleen
+              als prefix bewaard.
+            </div>
+          </li>
+          <li>
+            Tab <strong>API-koppeling</strong> — klik <em>Kopieer</em> bij de
+            <strong> Base URL</strong> en de <strong>API-sleutel</strong>. Plak ze tijdelijk in
+            een kladblok; je hebt ze zo nodig in ClickWise.
+          </li>
+          <li>
+            Tab <strong>Configuratie</strong> — Provider = <strong>ClickWise Voice AI</strong>,
+            Modus = <strong>Sandbox</strong>, vul het telefoonnummer in en klik <strong>Opslaan</strong>.
+          </li>
+          <li>
+            Klaar — de rest gebeurt in ClickWise (zie volgende secties).
+          </li>
+          <li className="pt-2">
+            <Button asChild variant="outline" size="sm">
+              <Link to="/app/voice-agent">
+                <ArrowLeft className="h-3 w-3 mr-1" /> Open Voice Agent pagina
+              </Link>
+            </Button>
+          </li>
+        </ol>
+        <Callout tone="info" title="Heb je al een master snapshot in ClickWise?">
+          Sla secties 3–9 over en gebruik de korte onboarding in sectie 2b — dan ben je in 6
+          stappen klaar.
+        </Callout>
+      </div>
+    ),
+  },
+  {
+    id: "snapshot-onboarding",
+    title: "2b. Snel onboarden vanuit master snapshot (6 stappen)",
+    icon: Sparkles,
+    keywords: "master snapshot sub-account custom values onboarding nieuwe klant",
+    render: () => (
+      <div className="space-y-3 text-sm">
+        <p className="text-muted-foreground">
+          Heeft jullie ClickWise-account een <strong>TableWise master snapshot</strong>? Dan
+          staat alles (Custom Fields, Custom Values, Voice Agent, Workflows) al klaar met
+          placeholders. Je hoeft per klant alleen de waarden in te vullen.
+        </p>
+        <ol className="list-decimal list-inside space-y-2">
+          <li>Maak in ClickWise een <strong>nieuwe sub-account vanuit de TableWise master snapshot</strong>.</li>
+          <li>
+            Ga naar <strong>Instellingen → Custom Values → Account</strong> en plak in
+            <code className="mx-1">tw_agent_api_key</code> de sleutel uit TableWise (sectie 2, stap 4).
+          </li>
+          <li>
+            Vul <code>tw_restaurant_name</code> in met de naam van het restaurant zoals die in
+            TableWise staat (gebruikt in de greeting en SMS).
+          </li>
+          <li>
+            Controleer dat <code>tw_agent_api_url</code> gelijk is aan de Base URL uit sectie 1.
+            Deze is voor alle klanten hetzelfde — alleen aanpassen als support dat zegt.
+          </li>
+          <li>
+            Koppel een telefoonnummer aan de Voice Agent (zie sectie 6).
+          </li>
+          <li>
+            Doe een test-call (zie sectie 10). Als die slaagt en in TableWise zichtbaar is, ben je
+            klaar voor de live-stap (sectie 11).
+          </li>
+        </ol>
+        <Callout tone="info" title="Géén snapshot? Lees eerst secties 3–9">
+          Dan moet je Custom Fields, Custom Values, Voice Agent en Workflow eenmalig handmatig
+          opzetten. Daarna kun je hier zelf een snapshot van maken voor volgende klanten.
+        </Callout>
+      </div>
     ),
   },
   {
@@ -380,6 +442,13 @@ const SECTIONS: Section[] = [
           Plak in de Voice Agent → Prompt-tab. Vervang <code>[RESTAURANTNAAM]</code> door je restaurantnaam,
           óf gebruik <code>{`{{custom_values.tw_restaurant_name}}`}</code> als ClickWise dat in de prompt rendert.
         </p>
+        <Callout tone="info" title="Waarom max. 8 personen via telefoon?">
+          De grens van 1–8 personen komt overeen met de Custom Value{" "}
+          <code>tw_max_party_online</code>. Voor grotere groepen moet de gast een
+          grote-groep-aanvraag doen via de website-widget — de telefoon-agent zegt dat een
+          collega persoonlijk terugbelt en boekt zelf <strong>niet</strong>. Pas
+          <code> tw_max_party_online</code> én de prompt aan als je deze grens wilt verhogen.
+        </Callout>
         <CodeBlock label="System prompt — Nederlands">{SYSTEM_PROMPT}</CodeBlock>
       </div>
     ),
@@ -506,6 +575,43 @@ const SECTIONS: Section[] = [
               <code>summary</code> — korte NL-samenvatting (max 2 zinnen).
             </div>
           </div>
+
+          {/* Optionele extra tools */}
+          <div className="space-y-2 pt-2 border-t">
+            <div className="font-medium">Optionele extra tools (geavanceerd)</div>
+            <p className="text-xs text-muted-foreground">
+              Niet nodig voor een basis-koppeling. Voeg ze pas toe als je deze flows wilt
+              ondersteunen via de telefoon. Methode = <code>POST</code>, headers gelijk aan
+              hierboven. Parameter-details staan in <code>docs/PUBLIC_API.md</code> en de
+              <code> agent_api</code> edge function.
+            </p>
+            <ul className="text-xs space-y-1.5 list-disc list-inside">
+              <li>
+                <strong>find_reservation</strong> — bestaande reservering opzoeken op telefoon of
+                bevestigingscode.{" "}
+                <code className="break-all">{`${AGENT_API_BASE}/find_reservation`}</code>
+              </li>
+              <li>
+                <strong>update_reservation</strong> — datum, tijd of aantal personen wijzigen.{" "}
+                <code className="break-all">{`${AGENT_API_BASE}/update_reservation`}</code>
+              </li>
+              <li>
+                <strong>reconfirm_reservation</strong> — gast bevestigt of annuleert telefonisch
+                een eerdere herbevestigings-vraag.{" "}
+                <code className="break-all">{`${AGENT_API_BASE}/reconfirm_reservation`}</code>
+              </li>
+              <li>
+                <strong>create_waitlist_entry</strong> — als alles vol zit, gast op de wachtlijst
+                zetten.{" "}
+                <code className="break-all">{`${AGENT_API_BASE}/create_waitlist_entry`}</code>
+              </li>
+              <li>
+                <strong>get_opening_hours</strong> — agent kan info-vragen over openingstijden
+                beantwoorden zonder te raden.{" "}
+                <code className="break-all">{`${AGENT_API_BASE}/get_opening_hours`}</code>
+              </li>
+            </ul>
+          </div>
         </div>
       );
     },
@@ -536,11 +642,17 @@ const SECTIONS: Section[] = [
           <ul className="list-disc list-inside space-y-1">
             <li>
               <strong>401 Missing X-Agent-Api-Key / Invalid key</strong> — sleutel niet juist gekopieerd in de
-              custom value <code>TW Agent API Key</code> of in de tool-headers.
+              custom value <code>tw_agent_api_key</code> of in de tool-headers.
             </li>
             <li>
-              <strong>403 Scope missing</strong> — sleutel opnieuw genereren in TableWise (default scopes:
-              <code> availability</code>, <code>book</code>, <code>cancel</code>).
+              <strong>403 Scope missing</strong> — sleutel mist een scope (default:{" "}
+              <code>availability</code>, <code>book</code>, <code>cancel</code>). Vraag support
+              om de scope toe te voegen of een nieuwe sleutel met de juiste scopes te maken.
+            </li>
+            <li>
+              <strong>403 Channel action not allowed</strong> — dit kanaal mag deze action niet
+              gebruiken. Vraag support om <code>allowed_actions</code> uit te breiden voor
+              <code> phone_ai</code>.
             </li>
             <li>
               <strong>400 Missing field</strong> — een variabele in de body-template is leeg gebleven; controleer
@@ -548,15 +660,66 @@ const SECTIONS: Section[] = [
             </li>
             <li>
               <strong>404 Reservation not found</strong> — de gast belt met een code uit een ander restaurant of
-              een al verwijderde reservering.
+              een al verwijderde reservering, of de code/telefoonnummer matcht geen actieve reservering.
             </li>
           </ul>
         </Callout>
 
         <Callout tone="success" title="Klaar voor live?">
-          Pas als alle 5 teststappen kloppen: zet in TableWise → Voice Agent de modus van <strong>Sandbox</strong>{" "}
-          op <strong>Live</strong>. De bestaande ClickWise bevestigings- en reminder-flow pakt de boeking dan
-          automatisch op.
+          Loop eerst de <strong>Pilot-readiness checklist</strong> door op{" "}
+          <Link to="/app/instellingen/pilot-launch" className="underline">
+            Instellingen → Pilot lancering
+          </Link>
+          . Pas als alle verplichte items groen zijn → ga door naar sectie 11 hieronder en zet de
+          modus op <strong>Live</strong>. ClickWise pakt de boeking dan automatisch op in de
+          bestaande bevestigings- en reminder-flow.
+        </Callout>
+      </div>
+    ),
+  },
+  {
+    id: "go-live",
+    title: "11. Live zetten — stap voor stap",
+    icon: ListChecks,
+    keywords: "live productie pilot launch readiness gaan markeer",
+    render: () => (
+      <div className="space-y-3 text-sm">
+        <ol className="list-decimal list-inside space-y-2">
+          <li>
+            Open <Link to="/app/instellingen/pilot-launch" className="underline">
+              TableWise → Instellingen → Pilot lancering
+            </Link>{" "}
+            (alleen zichtbaar voor de eigenaar).
+          </li>
+          <li>
+            Controleer dat alle <strong>verplichte</strong> items op de readiness-checklist groen
+            staan. Niet groen? Klik <em>Naar instellingen</em> per item om dat eerst te regelen.
+          </li>
+          <li>
+            Vink alle <strong>handmatige controles</strong> af (openingstijden, tafelplan,
+            test-reservering, team geïnformeerd, ClickWise workflows getest).
+          </li>
+          <li>
+            Ga naar <strong>AI Voice Agent → Configuratie</strong>, zet de schakelaar bij
+            <strong> Modus</strong> op <strong>Live</strong> en klik <strong>Opslaan</strong>.
+          </li>
+          <li>
+            Bel het ClickWise-nummer en boek een echte testreservering. Controleer dat:
+            <ul className="list-disc list-inside ml-5 mt-1 text-xs text-muted-foreground space-y-0.5">
+              <li>de boeking met kanaal <code>phone_ai</code> in TableWise verschijnt;</li>
+              <li>de gast de bevestigings-SMS ontvangt vanuit ClickWise;</li>
+              <li>het call-log een outcome <code>booked</code> heeft.</li>
+            </ul>
+          </li>
+          <li>
+            (Optioneel maar aanbevolen) Klik in <strong>Pilot lancering</strong> op
+            <strong> Markeer als live</strong> — dat zet <code>is_live</code> op het restaurant
+            zodat dashboards en rapportages weten dat dit géén testdata meer is.
+          </li>
+        </ol>
+        <Callout tone="info" title="Iets niet in orde?">
+          Zet de modus terug op <strong>Sandbox</strong> in <strong>Configuratie</strong>. Live
+          calls stoppen direct. Geen impact op bestaande reserveringen.
         </Callout>
       </div>
     ),
