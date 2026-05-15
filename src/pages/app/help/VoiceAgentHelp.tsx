@@ -165,30 +165,90 @@ const SECTIONS: Section[] = [
     id: "tablewise-key",
     title: "2. Stappen in TableWise (eenmalig, ~2 min)",
     icon: KeyRound,
-    keywords: "api sleutel key genereer voice agent pagina",
+    keywords: "api sleutel key voice agent pagina kopieer status configuratie",
     render: () => (
-      <ol className="text-sm space-y-2 list-decimal list-inside">
-        <li>Log in als owner of manager.</li>
-        <li>Ga naar <strong>AI Voice Agent</strong> in de zijbalk (<code>/app/voice-agent</code>).</li>
-        <li>
-          Tab <strong>Configuratie</strong> → Provider = <strong>ClickWise Voice Agent</strong> →
-          Modus = <strong>Sandbox</strong> → klik <strong>Opslaan</strong>.
-        </li>
-        <li>
-          Tab <strong>API-sleutels</strong> → naam: <code>ClickWise Voice Test</code> → klik <strong>Genereer</strong>.
-        </li>
-        <li>
-          <strong>Kopieer de sleutel meteen</strong> (begint met <code>tw_voice_…</code>). Deze zie je maar één keer.
-          Bewaar hem in een kladblok — je plakt hem zo in ClickWise.
-        </li>
-        <li className="pt-2">
-          <Button asChild variant="outline" size="sm">
-            <Link to="/app/voice-agent">
-              <ArrowLeft className="h-3 w-3 mr-1" /> Open Voice Agent pagina
-            </Link>
-          </Button>
-        </li>
-      </ol>
+      <div className="space-y-3">
+        <ol className="text-sm space-y-2 list-decimal list-inside">
+          <li>Log in als <strong>owner</strong> of <strong>manager</strong>.</li>
+          <li>
+            Open in de zijbalk <strong>AI Voice Agent</strong>
+            <span className="text-muted-foreground"> (<code>/app/voice-agent</code>)</span>.
+          </li>
+          <li>
+            Tab <strong>Status &amp; test</strong> — controleer dat <em>API-sleutel</em> op
+            <Badge variant="outline" className="mx-1">✅ Actief</Badge> staat.
+            <div className="text-xs text-muted-foreground ml-5 mt-1">
+              Staat er ⚠️ Ontbreekt? Vraag TableWise support of een system admin om een sleutel
+              voor jouw restaurant aan te maken — die wordt 1× volledig getoond en daarna alleen
+              als prefix bewaard.
+            </div>
+          </li>
+          <li>
+            Tab <strong>API-koppeling</strong> — klik <em>Kopieer</em> bij de
+            <strong> Base URL</strong> en de <strong>API-sleutel</strong>. Plak ze tijdelijk in
+            een kladblok; je hebt ze zo nodig in ClickWise.
+          </li>
+          <li>
+            Tab <strong>Configuratie</strong> — Provider = <strong>ClickWise Voice AI</strong>,
+            Modus = <strong>Sandbox</strong>, vul het telefoonnummer in en klik <strong>Opslaan</strong>.
+          </li>
+          <li>
+            Klaar — de rest gebeurt in ClickWise (zie volgende secties).
+          </li>
+          <li className="pt-2">
+            <Button asChild variant="outline" size="sm">
+              <Link to="/app/voice-agent">
+                <ArrowLeft className="h-3 w-3 mr-1" /> Open Voice Agent pagina
+              </Link>
+            </Button>
+          </li>
+        </ol>
+        <Callout tone="info" title="Heb je al een master snapshot in ClickWise?">
+          Sla secties 3–9 over en gebruik de korte onboarding in sectie 2b — dan ben je in 6
+          stappen klaar.
+        </Callout>
+      </div>
+    ),
+  },
+  {
+    id: "snapshot-onboarding",
+    title: "2b. Snel onboarden vanuit master snapshot (6 stappen)",
+    icon: Sparkles,
+    keywords: "master snapshot sub-account custom values onboarding nieuwe klant",
+    render: () => (
+      <div className="space-y-3 text-sm">
+        <p className="text-muted-foreground">
+          Heeft jullie ClickWise-account een <strong>TableWise master snapshot</strong>? Dan
+          staat alles (Custom Fields, Custom Values, Voice Agent, Workflows) al klaar met
+          placeholders. Je hoeft per klant alleen de waarden in te vullen.
+        </p>
+        <ol className="list-decimal list-inside space-y-2">
+          <li>Maak in ClickWise een <strong>nieuwe sub-account vanuit de TableWise master snapshot</strong>.</li>
+          <li>
+            Ga naar <strong>Instellingen → Custom Values → Account</strong> en plak in
+            <code className="mx-1">tw_agent_api_key</code> de sleutel uit TableWise (sectie 2, stap 4).
+          </li>
+          <li>
+            Vul <code>tw_restaurant_name</code> in met de naam van het restaurant zoals die in
+            TableWise staat (gebruikt in de greeting en SMS).
+          </li>
+          <li>
+            Controleer dat <code>tw_agent_api_url</code> gelijk is aan de Base URL uit sectie 1.
+            Deze is voor alle klanten hetzelfde — alleen aanpassen als support dat zegt.
+          </li>
+          <li>
+            Koppel een telefoonnummer aan de Voice Agent (zie sectie 6).
+          </li>
+          <li>
+            Doe een test-call (zie sectie 10). Als die slaagt en in TableWise zichtbaar is, ben je
+            klaar voor de live-stap (sectie 11).
+          </li>
+        </ol>
+        <Callout tone="info" title="Géén snapshot? Lees eerst secties 3–9">
+          Dan moet je Custom Fields, Custom Values, Voice Agent en Workflow eenmalig handmatig
+          opzetten. Daarna kun je hier zelf een snapshot van maken voor volgende klanten.
+        </Callout>
+      </div>
     ),
   },
   {
