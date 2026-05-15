@@ -327,17 +327,19 @@ Deno.serve(async (req) => {
           hour: "2-digit", minute: "2-digit",
           timeZone: restaurant.timezone || "Europe/Amsterdam",
         });
-        // Direct fetch met expliciete service-role auth — supabase.functions.invoke()
+        // Direct fetch met expliciete anon-key auth — supabase.functions.invoke()
         // van binnenuit een edge function stuurt de Authorization header soms niet
-        // mee, wat send-transactional-email (verify_jwt=true) afwijst.
-        const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+        // mee, en SUPABASE_SERVICE_ROLE_KEY is in de nieuwe key-formaat geen geldige
+        // JWT meer voor de gateway. De anon key (klassieke JWT) is wél geldig en
+        // bypasst verify_jwt=true op send-transactional-email.
+        const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
         const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
         const mailRes = await fetch(`${supabaseUrl}/functions/v1/send-transactional-email`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${serviceKey}`,
-            apikey: serviceKey,
+            Authorization: `Bearer ${anonKey}`,
+            apikey: anonKey,
           },
           body: JSON.stringify({
             templateName: "reservation-confirmation",
