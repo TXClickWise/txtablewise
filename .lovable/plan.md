@@ -1,66 +1,98 @@
 ## Doel
 
-Eén consistente regel voor verblijfsduur, met twee drempels:
+Eén help-pagina (`src/pages/app/help/VoiceAgentHelp.tsx`) is in gebruik. Die loopt op meerdere punten achter op de huidige Voice Agent-pagina, het `agent_api` endpoint en de ClickWise snapshot-aanpak. Doel: alle informatie 100% correct + alle "wat moet ik doen" als duidelijke stap-voor-stap voor een niet-technisch persoon.
 
-- **Vanaf "Grote groep"-drempel** (bv. 8 personen) → vaste verblijfsduur uit `large_group_minutes` (bv. 120 min).
-- **Vanaf "Extra-grote groep"-drempel** (nieuw, bv. 16 personen) → daar bovenop nog `large_group_extra_minutes` (bv. +30, dus 150 min).
+Geen andere help-bestanden gevonden (`docs/PUBLIC_API.md` is een API-referentie voor ontwikkelaars, geen eindgebruiker-help — laten staan zoals het is).
 
-Alle plekken (availability, book, manage, floor) gebruiken dezelfde formule.
+## Bevindingen (wat klopt niet meer)
 
-## Wijzigingen
+1. **Tab-namen** kloppen niet met `VoiceAgentPage.tsx`:
+   - Help noemt: "Configuratie" en "API-sleutels".
+   - In de app heten ze nu: **Status & test**, **API-koppeling**, **Configuratie**, **Hoe koppelen**.
+2. **Provider-naam**: help noemt "ClickWise Voice Agent", de selector toont **"ClickWise Voice AI"**.
+3. **Sleutel genereren** (sectie 2): help laat de gebruiker zelf een sleutel aanmaken via een knop "Genereer". In de huidige UI is dat verwijderd — wanneer er nog geen sleutel is staat er: *"Neem contact op met TableWise support om een sleutel voor jouw restaurant te laten aanmaken."* De flow voor de eindgebruiker is dus: support / system admin maakt de sleutel, eindgebruiker kopieert hem.
+4. **Endpoints**: alleen `check_availability`, `book_reservation`, `cancel_reservation`, `log_call` worden beschreven. `agent_api` ondersteunt óók: `find_reservation`, `update_reservation`, `create_waitlist_entry`, `get_opening_hours`, `reconfirm_reservation`. Deze moeten minstens als optionele uitbreiding genoemd worden.
+5. **PROJECT_REF** is hardcoded bovenin het bestand. Beter consistent maken met `VoiceAgentPage` (env `VITE_SUPABASE_PROJECT_ID`).
+6. **ClickWise snapshot-aanpak** (zie memory `clickwise-snapshot`): in productie is er een master sub-account met placeholders via `{{custom_values.*}}`. Per nieuwe klant zijn er ~6 handmatige stappen (custom values invullen). De help beschrijft alleen de "vanaf nul"-flow. Toevoegen: expliciete sectie "Snel klant onboarden vanaf master snapshot" met die 6 stappen.
+7. **Pilot Launch koppeling ontbreekt**: voordat je live gaat moet de pilot-readiness check groen zijn. Verwijzen naar `/app/instellingen/pilot-launch`.
+8. **Party-size grens**: prompt zegt 1–8. Klopt voor de telefoon-agent (groter wordt via large-group-aanvraag afgehandeld), maar onduidelijk dat die grens overeenkomt met `tw_max_party_online`. Kort verduidelijken zodat een klant snapt wat er gebeurt bij 9+ personen.
+9. **Sandbox → Live overgang**: voeg een korte "Live-zetten" stap-voor-stap toe (incl. waar het in TableWise zit + readiness-check + verwachte ClickWise-effecten).
 
-### 1. Database
-Migratie: nieuwe kolom op `restaurants`:
-- `extra_large_group_threshold integer` (nullable, default `NULL` = feature uit).
+## Wijzigingen in `src/pages/app/help/VoiceAgentHelp.tsx`
 
-`large_group_minutes` en `large_group_extra_minutes` blijven bestaan met hun nieuwe, duidelijke betekenis.
+A. **Bovenaan**
+- Vervang `PROJECT_REF` constante door dynamische lezing van `VITE_SUPABASE_PROJECT_ID` (zelfde patroon als `VoiceAgentPage`). Fallback houden voor printweergave.
+- Korte intro herschrijven: één alinea die uitlegt wie wat doet (TableWise = backend, ClickWise = belplatform, jij = invullen + testen).
 
-### 2. Gedeelde helper
-Nieuwe util `supabase/functions/_shared/duration.ts` met één functie:
+B. **Sectie 1 — Vaste TableWise-waarden**: ongewijzigd, alleen base-URL via env.
 
-```text
-durationMinutesFor(party_size, restaurant) =
-  default_reservation_minutes
-  + (party_size >= large_group_threshold ? (large_group_minutes - default_reservation_minutes) : 0)
-  + (extra_large_group_threshold && party_size >= extra_large_group_threshold ? large_group_extra_minutes : 0)
-```
+C. **Sectie 2 — Stappen in TableWise (herschreven)**:
+- Verwijder "Genereer-sleutel" stappen.
+- Nieuwe stap-voor-stap (genummerd, één handeling per regel, zonder jargon):
+  1. Open in de zijbalk **AI Voice Agent**.
+  2. Tab **Status & test** — controleer of "API-sleutel" op ✅ Actief staat. Zo niet → vraag TableWise support om een sleutel.
+  3. Tab **API-koppeling** — kopieer de **Base URL** en de **API-sleutel** (knop "Kopieer"). Plak ze tijdelijk in een kladblok.
+  4. Tab **Configuratie** — Provider = **ClickWise Voice AI**, Modus = **Sandbox**, vul telefoonnummer in, klik **Opslaan**.
+  5. Klaar — verder in ClickWise.
 
-Toegepast in:
-- `supabase/functions/availability/index.ts`
-- `supabase/functions/book_reservation/index.ts` (vervangt huidige `baseDuration + extra`)
-- `supabase/functions/manage_reservation/index.ts`
-- `supabase/functions/public_api/index.ts`
-- `supabase/functions/_shared/pacing.ts` (`durationFor`)
+D. **Nieuwe sectie 2b — "Snel onboarden vanuit master snapshot"** (collapsible/toelichting):
+- Wanneer ClickWise al een master sub-account met TableWise-snapshot heeft. 6 stappen:
+  1. Maak nieuwe sub-account vanuit master snapshot.
+  2. Custom Values → `tw_agent_api_key` plak nieuwe sleutel.
+  3. `tw_restaurant_name` invullen.
+  4. `tw_agent_api_url` controleren (blijft gelijk).
+  5. Telefoonnummer koppelen aan de Voice Agent (sectie 6).
+  6. Test-call zoals in sectie 10.
+- Als dit niet van toepassing is → lees secties 3–9 voor de volledige opzet.
 
-Frontend equivalent in `src/lib/duration.ts` voor `ReservationFormSheet` en Floor pagina's.
+E. **Sectie 3 — Custom Fields**: ongewijzigd (klopt nog).
 
-### 3. UI
+F. **Sectie 4 — Custom Values**: ongewijzigd (klopt nog).
 
-**Capaciteit-tab** (`CapacitySettings.tsx`):
-- Veld "Verblijfsduur grote groep (min)" krijgt verduidelijkte hint: "Geldt vanaf de grote-groep drempel. Voor extra-grote groepen kun je in de tab Grote groepen nog extra tijd toevoegen."
+G. **Sectie 5 — Voice Agent aanmaken**: ongewijzigd qua structuur; provider-naamcorrectie waar nodig.
 
-**Grote groepen-tab** (`LargeGroupSettings.tsx`):
-- Nieuw veld **"Extra-grote groep vanaf (personen)"** (optioneel) naast "Extra verblijfsduur (minuten)".
-- Hint bij "Extra verblijfsduur": "Wordt alleen opgeteld voor groepen vanaf de extra-grote-groep drempel. Laat het drempel-veld leeg om dit uit te schakelen."
-- Bij lege drempel: extra minuten wordt nooit toegepast — kleine info-regel toont dat.
+H. **Sectie 6 — Telefoonnummer**: ongewijzigd.
 
-**ReservationFormSheet**: regel "Verblijfsduur is automatisch +X minuten" wordt vervangen door dynamische berekende totale duur ("Verblijfsduur: 150 min").
+I. **Sectie 7 — Inbound Webhook Workflow**: ongewijzigd.
 
-### 4. Validatie
-Frontend save in beide tabs:
-- `large_group_minutes >= default_reservation_minutes` (anders waarschuwing).
-- `extra_large_group_threshold > large_group_threshold` indien gezet.
+J. **Sectie 8 — System Prompt**: kleine clarifier toevoegen: "1–8 personen" hoort bij `tw_max_party_online`; voor grotere groepen → niet boeken, doorverwijzen naar grote-groep aanvraag op de website.
 
-## Resultaat voor eigeweis
+K. **Sectie 9 — Tool-definities**:
+- Houd 4 verplichte tools.
+- Voeg subsectie **"Optionele extra tools"** toe (kort, met endpoint-URL en wanneer te gebruiken):
+  - `find_reservation` — opzoeken via telefoon of code.
+  - `update_reservation` — wijzigen.
+  - `reconfirm_reservation` — herbevestiging via telefoon.
+  - `create_waitlist_entry` — wachtlijst plaatsen als alles vol is.
+  - `get_opening_hours` — openingstijden uitlezen voor info-vragen.
+- Per tool: één regel doel + URL + verwijzing naar `docs/PUBLIC_API.md` (of agent_api implementatie) voor parameterdetails.
 
-Met huidige defaults (drempel 8, large 150, extra 30):
-- 1–7 pers → 90 min
-- 8–15 pers → 150 min
-- 16+ pers (als extra-drempel op 16 staat) → 180 min
+L. **Sectie 10 — Test & foutmeldingen**:
+- Test-stappen ongewijzigd.
+- Foutmeldingenlijst aanvullen met:
+  - **403 Channel action not allowed** — sleutel mist deze action; vraag support om scope toe te voegen.
+  - **404 Reservation not found** — code of telefoonnummer matcht geen reservering.
+- Laatste callout uitbreiden met: voordat je naar **Live** schakelt, doorloop je eerst de **Pilot-readiness checklist** in TableWise → **Instellingen → Pilot lancering**. Pas als alle verplichte items groen zijn op Live zetten. (Met directe link `/app/instellingen/pilot-launch`.)
 
-Wil je liever 8–15 = 120 min en 16+ = 150 min, dan zet je `large_group_minutes` op 120 en de extra-drempel op 16. Geen conflict meer tussen widget-availability en daadwerkelijke boeking.
+M. **Nieuwe sectie 11 — "Live zetten" stap-voor-stap**:
+  1. Open TableWise → **Instellingen → Pilot lancering**.
+  2. Controleer dat alle verplichte items op de checklist groen staan.
+  3. Vink de handmatige checks af.
+  4. Ga terug naar **AI Voice Agent → Configuratie**, zet Modus op **Live**, klik Opslaan.
+  5. Bel het ClickWise-nummer en boek een echte reservering om te bevestigen dat ClickWise de bevestigings-SMS verstuurt.
+  6. (Optioneel) Klik op **Markeer als live** in Pilot lancering om het restaurant officieel live te zetten.
 
 ## Niet in scope
 
-- Geen UI voor automatische aanbeveling van defaults.
-- Geen migratie van bestaande waarden — defaults blijven werken zoals voorheen, omdat de extra-drempel default `NULL` is (extra minuten niet toegepast).
+- Geen wijzigingen aan `VoiceAgentPage.tsx`, `agent_api` of ClickWise-componenten.
+- Geen nieuwe help-pagina's voor andere modules — alleen Voice Agent help bestaat en is in scope.
+- Geen wijzigingen aan `docs/*.md` (developer-docs, niet eindgebruiker-help).
+
+## Resultaat
+
+Eén bijgewerkte help-pagina met:
+- Correcte tab- en knopnamen.
+- Realistische sleutel-flow (via support).
+- Korte master-snapshot route voor nieuwe klanten (6 stappen).
+- Volledige lijst van beschikbare agent-tools.
+- Heldere "live-zetten" procedure met readiness-check.

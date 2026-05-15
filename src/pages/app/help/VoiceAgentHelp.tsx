@@ -13,7 +13,9 @@ import {
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
-const PROJECT_REF = "lbhtztbpxmqlzhyephew";
+const PROJECT_REF =
+  ((import.meta as any).env?.VITE_SUPABASE_PROJECT_ID as string | undefined) ||
+  "lbhtztbpxmqlzhyephew";
 const AGENT_API_BASE = `https://${PROJECT_REF}.supabase.co/functions/v1/agent_api`;
 
 function copy(text: string) {
