@@ -575,6 +575,43 @@ const SECTIONS: Section[] = [
               <code>summary</code> — korte NL-samenvatting (max 2 zinnen).
             </div>
           </div>
+
+          {/* Optionele extra tools */}
+          <div className="space-y-2 pt-2 border-t">
+            <div className="font-medium">Optionele extra tools (geavanceerd)</div>
+            <p className="text-xs text-muted-foreground">
+              Niet nodig voor een basis-koppeling. Voeg ze pas toe als je deze flows wilt
+              ondersteunen via de telefoon. Methode = <code>POST</code>, headers gelijk aan
+              hierboven. Parameter-details staan in <code>docs/PUBLIC_API.md</code> en de
+              <code> agent_api</code> edge function.
+            </p>
+            <ul className="text-xs space-y-1.5 list-disc list-inside">
+              <li>
+                <strong>find_reservation</strong> — bestaande reservering opzoeken op telefoon of
+                bevestigingscode.{" "}
+                <code className="break-all">{`${AGENT_API_BASE}/find_reservation`}</code>
+              </li>
+              <li>
+                <strong>update_reservation</strong> — datum, tijd of aantal personen wijzigen.{" "}
+                <code className="break-all">{`${AGENT_API_BASE}/update_reservation`}</code>
+              </li>
+              <li>
+                <strong>reconfirm_reservation</strong> — gast bevestigt of annuleert telefonisch
+                een eerdere herbevestigings-vraag.{" "}
+                <code className="break-all">{`${AGENT_API_BASE}/reconfirm_reservation`}</code>
+              </li>
+              <li>
+                <strong>create_waitlist_entry</strong> — als alles vol zit, gast op de wachtlijst
+                zetten.{" "}
+                <code className="break-all">{`${AGENT_API_BASE}/create_waitlist_entry`}</code>
+              </li>
+              <li>
+                <strong>get_opening_hours</strong> — agent kan info-vragen over openingstijden
+                beantwoorden zonder te raden.{" "}
+                <code className="break-all">{`${AGENT_API_BASE}/get_opening_hours`}</code>
+              </li>
+            </ul>
+          </div>
         </div>
       );
     },
