@@ -442,6 +442,13 @@ const SECTIONS: Section[] = [
           Plak in de Voice Agent → Prompt-tab. Vervang <code>[RESTAURANTNAAM]</code> door je restaurantnaam,
           óf gebruik <code>{`{{custom_values.tw_restaurant_name}}`}</code> als ClickWise dat in de prompt rendert.
         </p>
+        <Callout tone="info" title="Waarom max. 8 personen via telefoon?">
+          De grens van 1–8 personen komt overeen met de Custom Value{" "}
+          <code>tw_max_party_online</code>. Voor grotere groepen moet de gast een
+          grote-groep-aanvraag doen via de website-widget — de telefoon-agent zegt dat een
+          collega persoonlijk terugbelt en boekt zelf <strong>niet</strong>. Pas
+          <code> tw_max_party_online</code> én de prompt aan als je deze grens wilt verhogen.
+        </Callout>
         <CodeBlock label="System prompt — Nederlands">{SYSTEM_PROMPT}</CodeBlock>
       </div>
     ),
