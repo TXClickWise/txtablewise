@@ -332,9 +332,10 @@ Deno.serve(async (req) => {
         // mee, en SUPABASE_SERVICE_ROLE_KEY is in de nieuwe key-formaat geen geldige
         // JWT meer voor de gateway. De anon key (klassieke JWT) is wél geldig en
         // bypasst verify_jwt=true op send-transactional-email.
-        const anonKey = Deno.env.get("SUPABASE_PUBLISHABLE_KEY")
-          || Deno.env.get("SUPABASE_ANON_KEY")
-          || "";
+        // Legacy anon JWT — publieke key, alleen nodig om gateway-verify_jwt te
+        // passeren omdat de nieuwe sb_publishable_... keys niet als JWT herkend worden.
+        const LEGACY_ANON_JWT = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxiaHR6dGJweG1xbHpoeWVwaGV3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzcwNjE3OTAsImV4cCI6MjA5MjYzNzc5MH0.rbPfp5VdOkgPysCU57BpQoLikGyyZ-UYn9cKSaSPxvA";
+        const anonKey = LEGACY_ANON_JWT;
         const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
         const mailRes = await fetch(`${supabaseUrl}/functions/v1/send-transactional-email`, {
           method: "POST",
