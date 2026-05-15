@@ -642,11 +642,17 @@ const SECTIONS: Section[] = [
           <ul className="list-disc list-inside space-y-1">
             <li>
               <strong>401 Missing X-Agent-Api-Key / Invalid key</strong> — sleutel niet juist gekopieerd in de
-              custom value <code>TW Agent API Key</code> of in de tool-headers.
+              custom value <code>tw_agent_api_key</code> of in de tool-headers.
             </li>
             <li>
-              <strong>403 Scope missing</strong> — sleutel opnieuw genereren in TableWise (default scopes:
-              <code> availability</code>, <code>book</code>, <code>cancel</code>).
+              <strong>403 Scope missing</strong> — sleutel mist een scope (default:{" "}
+              <code>availability</code>, <code>book</code>, <code>cancel</code>). Vraag support
+              om de scope toe te voegen of een nieuwe sleutel met de juiste scopes te maken.
+            </li>
+            <li>
+              <strong>403 Channel action not allowed</strong> — dit kanaal mag deze action niet
+              gebruiken. Vraag support om <code>allowed_actions</code> uit te breiden voor
+              <code> phone_ai</code>.
             </li>
             <li>
               <strong>400 Missing field</strong> — een variabele in de body-template is leeg gebleven; controleer
@@ -654,15 +660,66 @@ const SECTIONS: Section[] = [
             </li>
             <li>
               <strong>404 Reservation not found</strong> — de gast belt met een code uit een ander restaurant of
-              een al verwijderde reservering.
+              een al verwijderde reservering, of de code/telefoonnummer matcht geen actieve reservering.
             </li>
           </ul>
         </Callout>
 
         <Callout tone="success" title="Klaar voor live?">
-          Pas als alle 5 teststappen kloppen: zet in TableWise → Voice Agent de modus van <strong>Sandbox</strong>{" "}
-          op <strong>Live</strong>. De bestaande ClickWise bevestigings- en reminder-flow pakt de boeking dan
-          automatisch op.
+          Loop eerst de <strong>Pilot-readiness checklist</strong> door op{" "}
+          <Link to="/app/instellingen/pilot-launch" className="underline">
+            Instellingen → Pilot lancering
+          </Link>
+          . Pas als alle verplichte items groen zijn → ga door naar sectie 11 hieronder en zet de
+          modus op <strong>Live</strong>. ClickWise pakt de boeking dan automatisch op in de
+          bestaande bevestigings- en reminder-flow.
+        </Callout>
+      </div>
+    ),
+  },
+  {
+    id: "go-live",
+    title: "11. Live zetten — stap voor stap",
+    icon: ListChecks,
+    keywords: "live productie pilot launch readiness gaan markeer",
+    render: () => (
+      <div className="space-y-3 text-sm">
+        <ol className="list-decimal list-inside space-y-2">
+          <li>
+            Open <Link to="/app/instellingen/pilot-launch" className="underline">
+              TableWise → Instellingen → Pilot lancering
+            </Link>{" "}
+            (alleen zichtbaar voor de eigenaar).
+          </li>
+          <li>
+            Controleer dat alle <strong>verplichte</strong> items op de readiness-checklist groen
+            staan. Niet groen? Klik <em>Naar instellingen</em> per item om dat eerst te regelen.
+          </li>
+          <li>
+            Vink alle <strong>handmatige controles</strong> af (openingstijden, tafelplan,
+            test-reservering, team geïnformeerd, ClickWise workflows getest).
+          </li>
+          <li>
+            Ga naar <strong>AI Voice Agent → Configuratie</strong>, zet de schakelaar bij
+            <strong> Modus</strong> op <strong>Live</strong> en klik <strong>Opslaan</strong>.
+          </li>
+          <li>
+            Bel het ClickWise-nummer en boek een echte testreservering. Controleer dat:
+            <ul className="list-disc list-inside ml-5 mt-1 text-xs text-muted-foreground space-y-0.5">
+              <li>de boeking met kanaal <code>phone_ai</code> in TableWise verschijnt;</li>
+              <li>de gast de bevestigings-SMS ontvangt vanuit ClickWise;</li>
+              <li>het call-log een outcome <code>booked</code> heeft.</li>
+            </ul>
+          </li>
+          <li>
+            (Optioneel maar aanbevolen) Klik in <strong>Pilot lancering</strong> op
+            <strong> Markeer als live</strong> — dat zet <code>is_live</code> op het restaurant
+            zodat dashboards en rapportages weten dat dit géén testdata meer is.
+          </li>
+        </ol>
+        <Callout tone="info" title="Iets niet in orde?">
+          Zet de modus terug op <strong>Sandbox</strong> in <strong>Configuratie</strong>. Live
+          calls stoppen direct. Geen impact op bestaande reserveringen.
         </Callout>
       </div>
     ),
