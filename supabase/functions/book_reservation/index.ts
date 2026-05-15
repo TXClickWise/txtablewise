@@ -327,8 +327,19 @@ Deno.serve(async (req) => {
           hour: "2-digit", minute: "2-digit",
           timeZone: restaurant.timezone || "Europe/Amsterdam",
         });
-        await supabase.functions.invoke("send-transactional-email", {
-          body: {
+        // Direct fetch met expliciete service-role auth — supabase.functions.invoke()
+        // van binnenuit een edge function stuurt de Authorization header soms niet
+        // mee, wat send-transactional-email (verify_jwt=true) afwijst.
+        const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+        const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+        const mailRes = await fetch(`${supabaseUrl}/functions/v1/send-transactional-email`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${serviceKey}`,
+            apikey: serviceKey,
+          },
+          body: JSON.stringify({
             templateName: "reservation-confirmation",
             recipientEmail: body.guest.email,
             idempotencyKey: `reservation-confirmation-${reservation.id}`,
@@ -342,8 +353,12 @@ Deno.serve(async (req) => {
               timeLabel,
               partySize: body.party_size,
             },
-          },
+          }),
         });
+        if (!mailRes.ok) {
+          const errText = await mailRes.text().catch(() => "");
+          console.error("guest confirmation email failed (non-fatal)", mailRes.status, errText);
+        }
       } catch (mailErr) {
         console.error("guest confirmation email failed (non-fatal)", mailErr);
       }
