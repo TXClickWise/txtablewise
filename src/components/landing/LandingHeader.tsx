@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Menu, UtensilsCrossed } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 const navLinks = [
   { href: "#functies", label: "Functies" },
@@ -90,6 +91,11 @@ export function LandingHeader() {
         </nav>
 
         <div className="flex items-center gap-2">
+          <ThemeToggle
+            className={cn(
+              !scrolled && "text-primary-foreground hover:bg-primary-foreground/10 hover:text-primary-foreground",
+            )}
+          />
           <Button
             asChild
             variant="ghost"

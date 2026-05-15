@@ -12,6 +12,7 @@ import { TrialBanner } from "./plan/TrialBanner";
 import { PilotWarningBanner } from "./pilot/PilotWarningBanner";
 import { AdminOverrideBanner } from "./admin/AdminOverrideBanner";
 import { InstallPrompt } from "./pwa/InstallPrompt";
+import { ThemeToggle } from "./ThemeToggle";
 import { useIsCompact } from "@/hooks/use-breakpoint";
 import { cn } from "@/lib/utils";
 
@@ -52,6 +53,9 @@ const AppShellInner = ({ children }: { children?: ReactNode }) => {
                 {current.restaurants.name}
               </div>
             )}
+            <div className={cn(showTabBar && current?.restaurants?.name ? "ml-2" : "ml-auto")}>
+              <ThemeToggle />
+            </div>
           </header>
           <AdminOverrideBanner />
           <ConnectionStatusNotice />
