@@ -24,6 +24,6 @@ project_id = "lbhtztbpxmqlzhyephew"
   [functions.reminder_scheduler]
     verify_jwt = false
   [functions.send-transactional-email]
-    verify_jwt = true
+    verify_jwt = false
   [functions.translate-email-templates]
     verify_jwt = true
