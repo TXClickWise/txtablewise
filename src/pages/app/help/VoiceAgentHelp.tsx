@@ -764,9 +764,10 @@ const SECTIONS: Section[] = [
             name: "update_reservation",
             url: `${AGENT_API_BASE}/update_reservation`,
             description:
-              "Wijzig datum, tijd en/of aantal personen van een bestaande reservering. Vul minimaal één van new_date, new_time of new_party_size. Controleer eerst met check_availability of de nieuwe combinatie kan. Het reservation_id wordt ALTIJD intern opgehaald via find_reservation — nooit aan de beller vragen.",
+              "Wijzig datum, tijd en/of aantal personen van een bestaande reservering. Vul minimaal één van new_date, new_time of new_party_size. Controleer eerst met check_availability of de nieuwe combinatie kan. Het reservation_id wordt ALTIJD intern opgehaald via find_reservation — nooit aan de beller vragen. VERPLICHT: stuur confirmed_by_guest=true pas NADAT de beller hardop heeft bevestigd dat de wijziging mag worden doorgevoerd; zonder dit veld wordt er NIETS gewijzigd.",
             params: [
               { name: "reservation_id", type: "String", required: true, description: "UUID van de bestaande reservering. Intern verkregen via find_reservation — nooit aan de beller vragen.", example: "00000000-0000-0000-0000-000000000000" },
+              { name: "confirmed_by_guest", type: "Boolean", required: true, description: "VERPLICHT op true zetten ZODRA de beller hardop heeft bevestigd. Zonder true blijft de reservering ongewijzigd en krijg je 'Wil je bevestigen dat je deze wijziging wilt doorvoeren?' terug.", example: "true" },
               { name: "new_date", type: "String", required: false, description: "Nieuwe datum YYYY-MM-DD. Laat leeg als de datum niet wijzigt.", example: "2026-05-27" },
               { name: "new_time", type: "String", required: false, description: "Nieuwe tijd HH:mm (24-uurs). Laat leeg als de tijd niet wijzigt.", example: "20:00" },
               { name: "new_party_size", type: "Number", required: false, description: "Nieuw aantal personen, 1 t/m 8. Laat leeg als het aantal niet wijzigt.", example: "6" },
@@ -774,6 +775,7 @@ const SECTIONS: Section[] = [
             ],
             body: `{
   "reservation_id": "{{reservation_id}}",
+  "confirmed_by_guest": true,
   "new_date": "{{new_date}}",
   "new_time": "{{new_time}}",
   "new_party_size": {{new_party_size}},
@@ -782,9 +784,14 @@ const SECTIONS: Section[] = [
             responseHint: (
               <>
                 Response bevat de bijgewerkte reservering. Bevestig hardop met de nieuwe datum,
-                tijd en aantal personen.
+                tijd en aantal personen. <strong>Let op:</strong> krijg je{" "}
+                <code>success: false</code> met <code>reason_code: confirmation_required</code> →
+                dan stond <code>confirmed_by_guest</code> niet op <code>true</code>; vraag de
+                beller om bevestiging en roep de tool opnieuw aan met{" "}
+                <code>confirmed_by_guest: true</code>.
               </>
             ),
+            sayBefore: "Goed, ik werk de reservering nu bij.",
           })}
 
           {toolBlock({
