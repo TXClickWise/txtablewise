@@ -54,6 +54,68 @@ function CopyRow({ label, value }: { label: string; value: string }) {
   );
 }
 
+type ToolParam = {
+  name: string;
+  type: "String" | "Number" | "Boolean";
+  required: boolean;
+  description: string;
+  example: string;
+};
+
+function ToolParamTable({ params }: { params: ToolParam[] }) {
+  return (
+    <div className="rounded-md border overflow-hidden">
+      <div className="bg-muted/40 px-3 py-1.5 text-xs text-muted-foreground border-b">
+        Data collection — Body params (vul deze rijen exact zo in bij <code>Data collection for query params and body params</code>)
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full text-xs">
+          <thead className="bg-muted/20 text-muted-foreground">
+            <tr className="text-left">
+              <th className="px-2 py-1.5 font-medium">Field name</th>
+              <th className="px-2 py-1.5 font-medium">Type</th>
+              <th className="px-2 py-1.5 font-medium">In</th>
+              <th className="px-2 py-1.5 font-medium">Required</th>
+              <th className="px-2 py-1.5 font-medium">Description (copy)</th>
+              <th className="px-2 py-1.5 font-medium">Example</th>
+            </tr>
+          </thead>
+          <tbody>
+            {params.map((p) => (
+              <tr key={p.name} className="border-t align-top">
+                <td className="px-2 py-1.5 font-mono whitespace-nowrap">{p.name}</td>
+                <td className="px-2 py-1.5">{p.type}</td>
+                <td className="px-2 py-1.5">Body</td>
+                <td className="px-2 py-1.5">
+                  {p.required ? (
+                    <span className="text-emerald-600 font-medium">Ja</span>
+                  ) : (
+                    <span className="text-muted-foreground">Nee</span>
+                  )}
+                </td>
+                <td className="px-2 py-1.5">
+                  <div className="flex items-start gap-1">
+                    <span className="flex-1">{p.description}</span>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-6 px-1.5 shrink-0"
+                      onClick={() => copy(p.description)}
+                    >
+                      <Copy className="h-3 w-3" />
+                    </Button>
+                  </div>
+                </td>
+                <td className="px-2 py-1.5 font-mono text-[11px] whitespace-nowrap">{p.example}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
 function Callout({
   tone = "info",
   title,
