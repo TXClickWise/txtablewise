@@ -10,6 +10,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
+import { ReservationDatePicker } from "@/components/reservations/ReservationDatePicker";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   RefreshCw, Sparkles, UserPlus, Users, Clock, Crown, Beer,
