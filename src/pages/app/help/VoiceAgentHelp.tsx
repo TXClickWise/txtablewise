@@ -453,7 +453,7 @@ const SECTIONS: Section[] = [
         <div>
           <div className="font-medium mb-2">Tab: Tools / Actions</div>
           <p className="text-muted-foreground mb-2">
-            Voeg de 4 Custom Webhook Actions toe uit sectie <a href="#tools" className="underline">9</a>.
+            Voeg de 5 Custom Webhook Actions toe uit sectie <a href="#tools" className="underline">9</a>.
           </p>
         </div>
 
