@@ -47,11 +47,12 @@ type ManageRequest = {
 const ALLOWED_TRANSITIONS: Record<string, string[]> = {
   hold:      ["pending", "confirmed", "cancelled"],
   pending:   ["confirmed", "cancelled", "no_show"],
-  confirmed: ["seated", "cancelled", "no_show"],
-  seated:    ["completed", "cancelled"],
-  completed: [],
-  cancelled: [],
-  no_show:   [],
+  confirmed: ["pending", "seated", "cancelled", "no_show"],
+  seated:    ["confirmed", "completed", "cancelled"],
+  // Eindstatussen mogen handmatig teruggezet worden voor correcties door staff
+  completed: ["seated", "confirmed"],
+  cancelled: ["pending", "confirmed"],
+  no_show:   ["pending", "confirmed"],
 };
 
 Deno.serve(async (req) => {
