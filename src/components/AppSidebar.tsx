@@ -147,7 +147,11 @@ export function AppSidebar() {
 
   const handleNavigate = isMobile ? () => setOpenMobile(false) : undefined;
   const { count: pendingLargeGroups } = usePendingLargeGroups();
-  const quickAccessBadges = { "/app/gasten?tab=grote-groepen": pendingLargeGroups };
+  const { count: pendingGuestChanges } = usePendingGuestChanges();
+  const quickAccessBadges = {
+    "/app/gasten?tab=grote-groepen": pendingLargeGroups,
+    "/app": pendingGuestChanges,
+  };
 
   return (
     <Sidebar collapsible="icon" className="glass-sidebar">
