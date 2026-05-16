@@ -470,42 +470,74 @@ async function runCancelReservation(input: DispatchInput): Promise<AIActionRespo
 }
 
 async function runFindReservationByPhone(input: DispatchInput): Promise<AIActionResponse> {
-  const schema = z.object({ phone: z.string().trim().min(4).max(40) });
+  const schema = z
+    .object({
+      phone: z.string().trim().min(4).max(40).optional(),
+      first_name: z.string().trim().min(1).max(80).optional(),
+      last_name: z.string().trim().min(1).max(80).optional(),
+      date: dateSchema.optional(),
+      time: timeSchema.optional(),
+    })
+    .refine(
+      (d) => !!d.phone || !!d.last_name || (!!d.first_name && !!d.date),
+      { message: "Minimaal één van: telefoon, achternaam, of voornaam + datum." },
+    );
   const r = v(schema, input.payload, "find_reservation_by_phone");
   if (!r.ok) return r.res;
-  const phoneNorm = r.data.phone.replace(/[^\d+]/g, "");
+  const { phone, first_name, last_name, date, time } = r.data;
   const today = format(new Date(), "yyyy-MM-dd");
 
-  const { data: guests } = await supabase
+  let guestQuery = supabase
     .from("guests")
     .select("id")
     .eq("restaurant_id", input.restaurantId)
-    .ilike("phone", `%${phoneNorm.slice(-7)}%`)
-    .limit(5);
+    .limit(50);
+  if (phone) {
+    const phoneNorm = phone.replace(/[^\d+]/g, "");
+    guestQuery = guestQuery.ilike("phone", `%${phoneNorm.slice(-7)}%`);
+  } else {
+    if (last_name) guestQuery = guestQuery.ilike("last_name", `%${last_name}%`);
+    if (first_name) guestQuery = guestQuery.ilike("first_name", `%${first_name}%`);
+  }
+  const { data: guests } = await guestQuery;
 
   const guestIds = (guests ?? []).map((g) => g.id);
   if (guestIds.length === 0) {
     return err(
       "find_reservation_by_phone",
-      "Ik kan geen reservering op dit nummer vinden. Mag ik je naam of e-mail?",
-      "no guest matched phone",
+      "Ik kan geen reservering vinden met die gegevens. Mag ik je naam en datum?",
+      "no guest matched",
       "not_found",
     );
   }
 
-  const { data: reservations } = await supabase
+  let resQuery = supabase
     .from("reservations")
     .select("id, reservation_date, start_time, party_size, status, confirmation_code")
     .eq("restaurant_id", input.restaurantId)
     .in("guest_id", guestIds)
     .gte("reservation_date", today)
     .order("reservation_date", { ascending: true })
-    .limit(5);
+    .limit(10);
+  if (date) resQuery = resQuery.eq("reservation_date", date);
+  const { data: reservations } = await resQuery;
 
-  if (!reservations || reservations.length === 0) {
+  let filtered = reservations ?? [];
+  if (time) {
+    const [th, tm] = time.split(":").map(Number);
+    const target = th * 60 + tm;
+    filtered = filtered.filter((r2) => {
+      const m = String(r2.start_time).match(/^(\d{2}):(\d{2})/);
+      if (!m) return true;
+      const mins = Number(m[1]) * 60 + Number(m[2]);
+      return Math.abs(mins - target) <= 15;
+    });
+  }
+
+  if (filtered.length === 0) {
     return err(
       "find_reservation_by_phone",
-      "Ik zie geen aankomende reservering op dit nummer.",
+      "Ik zie geen aankomende reservering met die gegevens.",
       "no upcoming reservations",
       "not_found",
     );
@@ -513,8 +545,8 @@ async function runFindReservationByPhone(input: DispatchInput): Promise<AIAction
   return ok(
     "find_reservation_by_phone",
     "Ik zie je reservering staan.",
-    `Found ${reservations.length} reservation(s)`,
-    { reservations },
+    `Found ${filtered.length} reservation(s)`,
+    { reservations: filtered.slice(0, 5) },
   );
 }
 
