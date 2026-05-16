@@ -1,44 +1,55 @@
-Ik heb opnieuw gecontroleerd in database, reserverings-events en codepaden. Conclusie: dit is inderdaad een systeem-/datamodelprobleem in hoe bestaande reserveringen worden getoond.
+## 1. Beheerlocatie bevestigen (geen code-wijziging)
 
-## Wat er gebeurt
+De juiste plek in de sidebar is:
 
-- Er is één gastrecord met e-mail `demo@clickwise.app`.
-- `book_reservation` zoekt bestaande gasten op via `(restaurant_id, email)`.
-- Als dezelfde e-mail opnieuw wordt gebruikt, wordt dat gastrecord bijgewerkt naar de laatste naam/telefoon.
-- Alle oude reserveringen blijven gekoppeld aan datzelfde gastrecord.
-- De reserveringenpagina toont de huidige naam uit `guests`, niet de naam zoals die op dat moment bij de reservering is ingevoerd.
+**Gastcommunicatie → tab "Drankjes vooraf"**
+- Sidebar-item: `Gastcommunicatie` (icon: MessageSquare), zichtbaar voor `owner` en `manager`
+- Route: `/app/gastcommunicatie?tab=drankjes` (oude `/app/drankjes` redirect bestaat al)
+- Daar staan álle item-instellingen: naam, beschrijving, categorie, prijs, `is_active`, `show_in_widget`, sorteervolgorde
+- Toegang: `RequireRole owner|manager`
 
-Daardoor lijken oudere testreserveringen nu ineens allemaal van “Demo4 Vier”, terwijl de aanmaak-events laten zien dat ze oorspronkelijk andere namen hadden, o.a. `Test`, `Pierre`, `Dennis`, `Demo`, `Demo2`, `Demo3`.
+Eventueel later: een directe shortcut "Drankjes vooraf" als sub-item onder Gastcommunicatie in de sidebar. Niet nodig nu — laat ik buiten scope.
 
-## Belangrijke bevinding
+## 2. Master aan/uit-schakelaar voor de hele sectie per restaurant
 
-De reservering van 17 mei 17:00 is wel correct aangemaakt als nieuwe reservering via de widget:
+Eén switch die de complete "drankjes vooraf"-functionaliteit voor een restaurant aan- of uitzet. Als uit:
+- Widget toont stap "Drankjes vooraf" niet meer (gast ziet 'm gewoon niet).
+- Reservering-detail toont geen pre-order sectie meer (alleen historische pre-orders blijven leesbaar als ze er al zijn).
+- Beheerpagina blijft bereikbaar maar toont een duidelijke "Module staat uit"-banner met de toggle bovenaan.
 
-- Datum/tijd lokaal: 17 mei 17:00
-- Naam bij aanmaak: Demo4 Vier
-- E-mail: demo@clickwise.app
-- Bron: website_widget
+### Opslag
 
-Maar oude reserveringen worden onterecht onder de nieuwste gastnaam weergegeven. Dat verklaart waarom het “willekeurig veel Demo4 Vier” lijkt.
+Gebruik de bestaande `restaurant_modules` tabel met `module_key = 'pre_orders'`.
+- Default = aan (geen rij of `is_enabled = true` → aan), zodat bestaande restaurants niks merken.
+- RLS: members read, manager write (consistent met andere module-achtige tabellen). Migratie voegt RLS toe als die nog ontbreekt.
 
-## Plan voor de fix
+### Frontend
 
-1. **Reserveringen krijgen een vaste gast-snapshot**
-   - Voeg op `reservations` een veld toe voor de gastgegevens zoals ingevoerd bij het boeken.
-   - Bijvoorbeeld: naam, e-mail, telefoon en taal op het moment van reserveren.
-   - Dit voorkomt dat oude reserveringen van naam veranderen als hetzelfde e-mailadres later opnieuw boekt.
+- Nieuwe hook `useModuleEnabled(restaurantId, "pre_orders")` met React Query.
+- Bovenaan `PreOrderDrinksPage`: een `Card` met label "Drankjes vooraf inschakelen voor dit restaurant" + `Switch` + korte uitleg. Alleen schakelbaar door `owner|manager` (anders disabled).
+- Als uit: rest van de pagina dimt/disabled met een uitleg-strook ("Schakel de module in om drankjes te beheren"). Bestaande items blijven leesbaar zodat niks per ongeluk verloren voelt.
+- Widget (`PreOrderSelectionStep` / `ReserveWidget` flow): sla de pre-order stap over als module uit. Voor publieke widget halen we de flag op via een publiek-leesbare bron — eenvoudigste: leesbaar maken voor `anon` voor `module_key = 'pre_orders'` only, of laten meedraaien in de bestaande publieke restaurant-fetch.
+- Reservering-detail (`ReservationPreOrderSection`): verberg de "voeg toe"-UI als module uit (lees-only voor bestaande items).
 
-2. **Nieuwe reserveringen vullen die snapshot automatisch**
-   - Update `book_reservation` zodat elke nieuwe reservering de ingevoerde gastgegevens vastlegt.
-   - De centrale gastkaart mag nog steeds bijgewerkt worden voor CRM/herhaalbezoek, maar reserveringsregels blijven historisch correct.
+### Technische details
 
-3. **Bestaande reserveringen herstellen waar mogelijk**
-   - Voor oude reserveringen gebruik ik de beschikbare `reservation.created` events om de oorspronkelijke naam/telefoon terug te vullen.
-   - Waar geen event-payload beschikbaar is, blijft fallback naar het huidige gastrecord.
+```text
+restaurant_modules
+  └─ module_key = 'pre_orders'
+     └─ is_enabled boolean  (default true via afwezigheid van rij)
+```
 
-4. **Reserveringen UI toont snapshot eerst**
-   - Update de reserveringenlijst, dag/week/floor/detail-weergaves zodat ze eerst de snapshot tonen.
-   - Alleen als snapshot ontbreekt, gebruiken ze het gekoppelde gastrecord.
+- Migratie: alleen RLS toevoegen indien nog niet aanwezig. Geen seed nodig (afwezigheid = aan).
+- Publieke read voor anon: policy `SELECT` waar `module_key = 'pre_orders'` (smal scoped, geen lekken).
+- Helper `services/modules.ts` met `getModuleEnabled / setModuleEnabled` (upsert op `restaurant_id + module_key`).
+- Gating-punten:
+  - `src/pages/app/PreOrderDrinksPage.tsx` (toggle UI + dim)
+  - `src/components/pre-orders/ReservationPreOrderSection.tsx` (verberg add-UI)
+  - `src/pages/ReserveWidget.tsx` / `PreOrderSelectionStep` (skip stap)
+  - `src/services/publicBooking.ts::getActivePreOrderItems` (return `[]` als module uit, zodat oudere callers ook safe zijn)
 
-5. **Optioneel direct opschonen na de fix**
-   - Daarna kunnen we de foutief ogende oude testreserveringen verwijderen of annuleren, maar pas nadat de weergave/data-oorzaak is opgelost.
+### Buiten scope
+
+- Geen verandering aan bestaande items of `show_in_widget` per item.
+- Geen migratie van `restaurants`-tabel; bewust geen nieuwe kolom.
+- Geen sidebar-herstructurering.

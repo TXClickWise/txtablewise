@@ -23,6 +23,8 @@ import {
 } from "@/services/preOrders";
 import { PreOrderStatusBadge } from "@/components/pre-orders/PreOrderStatusBadge";
 import { PreOrderReadyList } from "@/components/pre-orders/PreOrderReadyList";
+import { usePreordersEnabled } from "@/hooks/usePreordersEnabled";
+import { Power } from "lucide-react";
 
 type FormState = {
   name: string;
@@ -45,6 +47,8 @@ type SourceFilter = "guest" | "loyverse" | "all";
 const PreOrderDrinksPage = () => {
   const { current } = useRestaurant();
   const restaurantId = current?.restaurant_id;
+  const canManage = current?.role === "owner" || current?.role === "manager";
+  const moduleSwitch = usePreordersEnabled(restaurantId);
 
   const [items, setItems] = useState<PreOrderItem[]>([]);
   const [today, setToday] = useState<ReadyListEntry[]>([]);
@@ -185,6 +189,39 @@ const PreOrderDrinksPage = () => {
         </div>
       </header>
 
+      <Card className={moduleSwitch.enabled ? "border-primary/30" : "border-muted"}>
+        <CardContent className="py-4 flex items-start justify-between gap-4 flex-wrap">
+          <div className="flex items-start gap-3 min-w-0">
+            <div className={`mt-0.5 h-9 w-9 rounded-full grid place-items-center ${moduleSwitch.enabled ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"}`}>
+              <Power className="h-4 w-4" />
+            </div>
+            <div className="min-w-0">
+              <div className="font-medium">
+                Drankjes vooraf {moduleSwitch.enabled ? "staat aan" : "staat uit"}
+              </div>
+              <p className="text-xs text-muted-foreground max-w-xl mt-0.5">
+                {moduleSwitch.enabled
+                  ? "Gasten zien deze sectie in het reserveringsformulier en je team kan items klaarzetten per reservering."
+                  : "De sectie is verborgen in de gast-widget en in reserveringsdetails. Bestaande items en eerdere wensen blijven bewaard."}
+              </p>
+            </div>
+          </div>
+          <Switch
+            checked={moduleSwitch.enabled}
+            disabled={!canManage || moduleSwitch.isLoading}
+            onCheckedChange={async (v) => {
+              try {
+                await moduleSwitch.setEnabled(v);
+                toast.success(v ? "Module aangezet." : "Module uitgezet.");
+              } catch {
+                toast.error("Kon module-status niet wijzigen.");
+              }
+            }}
+          />
+        </CardContent>
+      </Card>
+
+      <div className={moduleSwitch.enabled ? "" : "opacity-60 pointer-events-none select-none"} aria-disabled={!moduleSwitch.enabled}>
       <div className="grid lg:grid-cols-3 gap-4">
         <div className="lg:col-span-2 space-y-4">
           <Card>
@@ -348,6 +385,7 @@ const PreOrderDrinksPage = () => {
             </CardContent>
           </Card>
         </div>
+      </div>
       </div>
 
       <Dialog open={openForm} onOpenChange={setOpenForm}>

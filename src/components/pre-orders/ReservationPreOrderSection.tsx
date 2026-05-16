@@ -12,6 +12,7 @@ import {
 import { pushPreorderToLoyverse } from "@/services/pos";
 import { PreOrderStatusBadge } from "./PreOrderStatusBadge";
 import { AddPreOrderSheet } from "./AddPreOrderSheet";
+import { usePreordersEnabled } from "@/hooks/usePreordersEnabled";
 
 type Props = {
   reservationId: string;
@@ -31,6 +32,7 @@ export function ReservationPreOrderSection({
   const [busyId, setBusyId] = useState<string | null>(null);
   const [pushStatus, setPushStatus] = useState<{ pushed_at: string | null; status: string | null; receipt_id: string | null }>({ pushed_at: null, status: null, receipt_id: null });
   const [pushing, setPushing] = useState(false);
+  const { enabled: moduleEnabled } = usePreordersEnabled(restaurantId);
 
   const refreshPushStatus = async () => {
     const { data } = await (supabase as unknown as { from: (t: string) => { select: (s: string) => { eq: (c: string, v: unknown) => { maybeSingle: () => Promise<{ data: { pos_preorder_pushed_at: string | null; pos_preorder_status: string | null; pos_preorder_receipt_id: string | null } | null }> } } } })
@@ -97,6 +99,8 @@ export function ReservationPreOrderSection({
     partySize, occasion, largeGroupThreshold, isVip,
   }).filter((s) => !items.some((i) => i.item_name.toLowerCase() === s.itemName.toLowerCase()));
 
+  if (!moduleEnabled && items.length === 0 && !loading) return null;
+
   return (
     <div className="rounded-lg border bg-card p-3 space-y-3">
       <div className="flex items-center justify-between flex-wrap gap-2">
@@ -121,9 +125,11 @@ export function ReservationPreOrderSection({
               Nu naar Loyverse
             </Button>
           )}
-          <Button size="sm" variant="outline" className="h-8" onClick={() => setAddOpen(true)}>
-            <Plus className="h-3.5 w-3.5 mr-1" /> Toevoegen
-          </Button>
+          {moduleEnabled && (
+            <Button size="sm" variant="outline" className="h-8" onClick={() => setAddOpen(true)}>
+              <Plus className="h-3.5 w-3.5 mr-1" /> Toevoegen
+            </Button>
+          )}
         </div>
       </div>
 
