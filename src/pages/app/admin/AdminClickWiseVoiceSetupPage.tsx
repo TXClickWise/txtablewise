@@ -1019,8 +1019,8 @@ X-Agent-Api-Key: ${apiKey}`;
             <ul className="text-sm space-y-1.5 list-disc pl-4 text-muted-foreground">
               <li>Tool URLs gebruiken <code>{`{{custom_values.tablewise_base_url}}`}</code> i.p.v. een hardcoded URL — staging/prod-split mogelijk.</li>
               <li>Tool headers gebruiken <code>{`{{custom_values.tablewise_api_key}}`}</code> — geen sleutel in de Custom Action body.</li>
-              <li>System prompt + first message gebruiken <code>{`{{custom_values.restaurant_name}}`}</code> — zelfde tekst werkt in elke sub-account.</li>
-              <li>SMS-bodies in workflow gebruiken <code>{`{{custom_values.restaurant_name}}`}</code>.</li>
+              <li>System prompt + first message gebruiken <code>{`{{location.name}}`}</code> en <code>{`{{location.timezone}}`}</code> — automatisch per sub-account, geen custom value nodig.</li>
+              <li>SMS-bodies in workflow gebruiken <code>{`{{location.name}}`}</code>.</li>
               <li>Identity-velden komen uit standaard ClickWise <code>{`{{contact.*}}`}</code> — bestaan automatisch in elke sub-account.</li>
               <li>Custom Fields zijn generiek (geen restaurantnaam in de field-naam) — herbruikbaar zonder rename.</li>
               <li>Inbound-webhook workflows hebben een vaste naam-conventie (<code>TW — &lt;event_label&gt;</code>) zodat ze in elke snapshot herkenbaar zijn.</li>
