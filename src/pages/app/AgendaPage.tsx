@@ -453,7 +453,16 @@ const AgendaPage = () => {
       party_size: r.party_size,
       status: r.status,
       channel: r.channel,
+      occasion: r.occasion,
+      dietary_notes: r.dietary_notes,
+      large_group_status: r.large_group_status,
+      requires_manual_approval: r.requires_manual_approval,
+      reminder_confirmed_at: r.reminder_confirmed_at,
+      guest_first_name: r.guest_first_name,
+      guest_last_name: r.guest_last_name,
       guests: r.guests ?? null,
+      reservation_tables: r.reservation_tables ?? [],
+      pre_orders: r.pre_orders ?? [],
     }));
   }, [reservations]);
 
