@@ -786,6 +786,9 @@ X-Agent-Api-Key: ${apiKey}`;
               <li>Workflow-naam consistent maken: <code>TW — &lt;event_label&gt;</code> (bv. <code>TW — 24u-reminder</code>). Maakt snapshot-herkenning makkelijker.</li>
               <li>Kopieer de unieke <strong>webhook URL</strong> die ClickWise toont na opslaan.</li>
               <li>
+                <strong>Mapping Reference</strong>: stuur eerst eenmalig een sample-payload naar die URL (via cURL of TableWise test-knop), kies dan in de trigger-popup <em>"Check for new requests"</em> en selecteer de binnengekomen payload. Pas dán kun je <strong>Save Trigger</strong> klikken. Volledige uitleg in helptekst stap 7.
+              </li>
+              <li>
                 In TableWise: ga naar <em>Settings → API & Webhooks</em> → <em>Endpoint toevoegen</em>.
                 <ul className="list-disc pl-5 mt-1 text-muted-foreground space-y-0.5">
                   <li><strong>Label</strong>: zelfde als workflow-naam.</li>
