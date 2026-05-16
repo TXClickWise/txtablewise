@@ -651,21 +651,34 @@ const AgendaPage = () => {
                       const endMin = minutesFromStart(r.end_time);
                       const left = Math.max(0, startMin) * pxPerMin;
                       const width = Math.max(20, (endMin - startMin) * pxPerMin - 2);
+                      const guestName = `${r.guests?.first_name ?? "Gast"} ${r.guests?.last_name ?? ""}`.trim();
                       return (
-                        <button
+                        <div
                           key={r.id}
-                          onClick={(e) => { e.stopPropagation(); setSelectedId(r.id); }}
-                          className={cn(
-                            "absolute rounded-md px-2 text-left text-xs overflow-hidden transition-all duration-150 z-[2] hover:shadow-elevated hover:z-[3]",
-                            STATUS_BG[r.status] ?? "bg-muted border-l-[3px] border-border",
-                          )}
+                          className="absolute group z-[2] hover:z-[3]"
                           style={{ left, top: 6, height: rowHeight - 12, width }}
                         >
-                          <div className="font-medium truncate">
-                            {format(new Date(r.start_time), "HH:mm")} · {r.guests?.first_name ?? "Gast"} {r.guests?.last_name ?? ""}
-                          </div>
-                          <div className="text-[10px] opacity-80">{r.party_size}p</div>
-                        </button>
+                          <button
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); setSelectedId(r.id); }}
+                            className={cn(
+                              "w-full h-full rounded-md px-2 text-left text-xs overflow-hidden transition-all duration-150 hover:shadow-elevated",
+                              STATUS_BG[r.status] ?? "bg-muted border-l-[3px] border-border",
+                            )}
+                          >
+                            <div className="font-medium truncate pr-5">
+                              {format(new Date(r.start_time), "HH:mm")} · {guestName}
+                            </div>
+                            <div className="text-[10px] opacity-80">{r.party_size}p</div>
+                          </button>
+                          <ReservationQuickActionsPopover
+                            reservationId={r.id}
+                            status={r.status}
+                            title={`${format(new Date(r.start_time), "HH:mm")} · ${guestName}`}
+                            subtitle={`${r.party_size} pers · Tafel ${t.label}`}
+                            onOpenDetails={() => setSelectedId(r.id)}
+                          />
+                        </div>
                       );
                     })}
                   </div>
