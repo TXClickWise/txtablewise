@@ -169,7 +169,7 @@ export function AppSidebar() {
       <SidebarContent>
         {(() => {
           const role = (current?.role as Role | undefined) ?? null;
-          const settingsActive = location.pathname.startsWith("/app/instellingen");
+          
           const canBeheer = role === "owner" || role === "manager";
           return (
             <>
