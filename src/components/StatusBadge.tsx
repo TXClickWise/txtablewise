@@ -8,13 +8,13 @@ const statusBadgeVariants = cva(
     variants: {
       status: {
         hold: "bg-muted-foreground",
-        pending: "bg-status-pending text-foreground",
+        pending: "bg-status-pending",
         confirmed: "bg-status-confirmed",
         seated: "bg-status-seated",
-        completed: "bg-status-completed text-foreground",
-        cancelled: "bg-status-cancelled text-foreground",
+        completed: "bg-status-completed",
+        cancelled: "bg-status-cancelled",
         no_show: "bg-status-noshow",
-        request_received: "bg-status-pending text-foreground",
+        request_received: "bg-status-pending",
         awaiting_approval: "bg-warning text-foreground",
         awaiting_deposit: "bg-warning text-foreground",
         approved: "bg-status-confirmed",
@@ -27,10 +27,10 @@ const statusBadgeVariants = cva(
 
 const STATUS_LABELS: Record<string, string> = {
   hold: "Tijdelijk vast",
-  pending: "In afwachting",
+  pending: "Verwacht",
   confirmed: "Bevestigd",
   seated: "Aan tafel",
-  completed: "Afgerond",
+  completed: "Vertrokken",
   cancelled: "Geannuleerd",
   no_show: "No-show",
   request_received: "Aanvraag ontvangen",
