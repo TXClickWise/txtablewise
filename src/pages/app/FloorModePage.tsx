@@ -955,13 +955,6 @@ function ActiveReservationActions({
         </div>
       </div>
 
-      <ReservationStatusQuickBar
-        reservationId={r.id}
-        status={r.status}
-        size="lg"
-        layout="grid"
-      />
-
       <MoveReservationButton
         reservationId={r.id}
         startTimeIso={r.start_time}
