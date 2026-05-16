@@ -7,9 +7,11 @@ import {
 import { NavLink, useLocation } from "react-router-dom";
 import {
   Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel,
-  SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarHeader, SidebarFooter, useSidebar,
+  SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarMenuSub, SidebarMenuSubButton, SidebarMenuSubItem,
+  SidebarHeader, SidebarFooter, useSidebar,
 } from "@/components/ui/sidebar";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { SETTINGS_ITEMS } from "@/components/settings-nav";
 import { useAuth } from "@/hooks/useAuth";
 import { useRestaurant } from "@/hooks/useRestaurant";
 import { useIsSystemAdmin } from "@/hooks/useIsSystemAdmin";
@@ -167,7 +169,7 @@ export function AppSidebar() {
       <SidebarContent>
         {(() => {
           const role = (current?.role as Role | undefined) ?? null;
-          const settingsActive = location.pathname.startsWith("/app/instellingen");
+          
           const canBeheer = role === "owner" || role === "manager";
           return (
             <>
@@ -175,20 +177,12 @@ export function AppSidebar() {
               <Group storageKey="hospitality" label="Hospitality" items={hospitality} collapsed={collapsed} pathname={location.pathname} search={location.search} onNavigate={handleNavigate} canSeeAdvanced={canSeeAdvanced} role={role} />
               <Group storageKey="beheer" label="Beheer" items={beheer} collapsed={collapsed} pathname={location.pathname} search={location.search} onNavigate={handleNavigate} canSeeAdvanced={canSeeAdvanced} role={role} />
               {canBeheer && (
-                <SidebarGroup>
-                  <SidebarGroupContent>
-                    <SidebarMenu>
-                      <SidebarMenuItem>
-                        <SidebarMenuButton asChild isActive={settingsActive}>
-                          <NavLink to="/app/instellingen" end onClick={handleNavigate}>
-                            <Settings className="h-4 w-4 shrink-0" />
-                            {!collapsed && <span>Instellingen</span>}
-                          </NavLink>
-                        </SidebarMenuButton>
-                      </SidebarMenuItem>
-                    </SidebarMenu>
-                  </SidebarGroupContent>
-                </SidebarGroup>
+                <SettingsCollapsibleGroup
+                  collapsed={collapsed}
+                  pathname={location.pathname}
+                  onNavigate={handleNavigate}
+                  isOwner={role === "owner"}
+                />
               )}
               {isSystemAdmin && (
                 <Group storageKey="admin" label="Admin" items={admin} collapsed={collapsed} pathname={location.pathname} search={location.search} accent onNavigate={handleNavigate} canSeeAdvanced={canSeeAdvanced} role={role} />
@@ -228,5 +222,78 @@ export function AppSidebar() {
         )}
       </SidebarFooter>
     </Sidebar>
+  );
+}
+
+function SettingsCollapsibleGroup({
+  collapsed, pathname, onNavigate, isOwner,
+}: {
+  collapsed: boolean; pathname: string; onNavigate?: () => void; isOwner: boolean;
+}) {
+  const settingsActive = pathname.startsWith("/app/instellingen");
+  const { open, setOpen } = useCollapsibleGroup("sidebar.settings", settingsActive);
+  const items = SETTINGS_ITEMS.filter((i) => !i.ownerOnly || isOwner);
+
+  if (collapsed) {
+    return (
+      <SidebarGroup>
+        <SidebarGroupContent>
+          <SidebarMenu>
+            <SidebarMenuItem>
+              <SidebarMenuButton asChild isActive={settingsActive}>
+                <NavLink to="/app/instellingen" end onClick={onNavigate}>
+                  <Settings className="h-4 w-4 shrink-0" />
+                </NavLink>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          </SidebarMenu>
+        </SidebarGroupContent>
+      </SidebarGroup>
+    );
+  }
+
+  return (
+    <SidebarGroup>
+      <SidebarGroupContent>
+        <Collapsible open={open} onOpenChange={setOpen}>
+          <SidebarMenu>
+            <SidebarMenuItem>
+              <CollapsibleTrigger asChild>
+                <SidebarMenuButton isActive={settingsActive && pathname === "/app/instellingen"}>
+                  <Settings className="h-4 w-4 shrink-0" />
+                  <span>Instellingen</span>
+                  <ChevronDown
+                    className={cn(
+                      "ml-auto h-3.5 w-3.5 transition-transform opacity-70",
+                      !open && "-rotate-90",
+                    )}
+                  />
+                </SidebarMenuButton>
+              </CollapsibleTrigger>
+              <CollapsibleContent>
+                <SidebarMenuSub>
+                  {items.map((item) => {
+                    const active = item.end
+                      ? pathname === item.to
+                      : pathname.startsWith(item.to);
+                    const Icon = item.icon;
+                    return (
+                      <SidebarMenuSubItem key={item.to}>
+                        <SidebarMenuSubButton asChild isActive={active}>
+                          <NavLink to={item.to} end={item.end} onClick={onNavigate}>
+                            <Icon className="h-3.5 w-3.5 shrink-0" />
+                            <span>{item.label}</span>
+                          </NavLink>
+                        </SidebarMenuSubButton>
+                      </SidebarMenuSubItem>
+                    );
+                  })}
+                </SidebarMenuSub>
+              </CollapsibleContent>
+            </SidebarMenuItem>
+          </SidebarMenu>
+        </Collapsible>
+      </SidebarGroupContent>
+    </SidebarGroup>
   );
 }
