@@ -274,14 +274,19 @@ export function ReservationDetailDialog({ reservationId, open, onOpenChange }: P
                 </div>
               )}
 
-              {/* Operator quick-actions — uniform via QuickStatusBar */}
-              <ReservationStatusQuickBar
-                reservationId={data.id}
-                status={data.status}
-                size="lg"
-                layout="grid"
-                onChanged={refresh}
-              />
+              {/* Operator quick-actions — duidelijk gelabeld blok voor statuswijzigingen */}
+              <div className="rounded-lg border border-border bg-muted/30 p-3 space-y-2">
+                <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  Status wijzigen
+                </div>
+                <ReservationStatusQuickBar
+                  reservationId={data.id}
+                  status={data.status}
+                  size="lg"
+                  layout="grid"
+                  onChanged={refresh}
+                />
+              </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
