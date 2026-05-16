@@ -18,6 +18,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { ReservationDetailDialog } from "@/components/ReservationDetailDialog";
 import { ReservationDetailSheet } from "@/components/reservations/ReservationDetailSheet";
 import { ReservationCard, type CardReservation } from "@/components/reservations/ReservationCard";
+import { ReservationDatePicker } from "@/components/reservations/ReservationDatePicker";
 import { ReservationFormSheet } from "@/components/reservations/ReservationFormSheet";
 import { WalkInDialog } from "@/components/WalkInDialog";
 import { ReservationViewSwitcher, type ReservationView } from "@/components/reservations/ReservationViewSwitcher";
