@@ -51,6 +51,7 @@ const GROUPS: Group[] = [
     items: [
       { to: "/app/instellingen/gasten", label: "Gasten", icon: Users },
       { to: "/app/instellingen/berichten", label: "Berichten", icon: MessageSquare },
+      { to: "/app/instellingen/pre-orders", label: "Drankjes vooraf", icon: Wine },
       { to: "/app/instellingen/ai-voice", label: "AI & Voice", icon: Bot },
     ],
   },
