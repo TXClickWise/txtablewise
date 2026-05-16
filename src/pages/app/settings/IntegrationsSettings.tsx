@@ -72,9 +72,18 @@ export default function IntegrationsSettings() {
 
   return (
     <div className="space-y-6">
+      <div className="rounded-md border border-dashed p-3 text-sm flex flex-wrap items-center justify-between gap-2 bg-muted/30">
+        <div>
+          <span className="font-medium">Geavanceerde weergave.</span>{" "}
+          <span className="text-muted-foreground">
+            Liever zonder technische velden? Ga naar{" "}
+            <a href="/app/koppelingen" className="underline text-primary">Koppelingen</a>.
+          </span>
+        </div>
+      </div>
       <Card>
         <CardHeader>
-          <CardTitle className="font-display text-lg">ClickWise / Webhook</CardTitle>
+          <CardTitle className="font-display text-lg">ClickWise / Webhook (geavanceerd)</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <p className="text-sm text-muted-foreground">
