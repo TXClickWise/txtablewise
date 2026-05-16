@@ -986,7 +986,7 @@ function buildBundle() {
           log_call:           `${AGENT_API_BASE}/log_call`,
         },
         tool_params: {
-          check_availability: ["date (String, required)", "party_size (Number, required)", "preferred_time (String, optional)"],
+          check_availability: ["date (String, required)", "party_size (Number, required)", "preferred_time (String, required)"],
           book_reservation:   ["date (String, required)", "time (String, required)", "party_size (Number, required)", "first_name (String, required)", "last_name (String, optional)", "phone (String, required)", "email (String, optional)", "special_requests (String, optional)"],
           cancel_reservation: ["reservation_id (String, required)", "reason (String, optional)"],
           update_reservation: ["reservation_id (String, required)", "new_date (String, optional)", "new_time (String, optional)", "new_party_size (Number, optional)", "special_requests (String, optional)"],
