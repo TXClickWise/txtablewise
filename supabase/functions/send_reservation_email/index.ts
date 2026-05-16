@@ -146,10 +146,10 @@ Deno.serve(async (req) => {
 
   // Build manage / confirm / cancel URLs
   const baseUrl = (Deno.env.get('SITE_URL') || 'https://www.txtablewise.nl').replace(/\/+$/, '')
-  const manageUrl = `${baseUrl}/g/${reservation.manage_token}`
-  const cancelUrl = `${baseUrl}/g/${reservation.cancel_token}?action=cancel`
-  const confirmUrl = `${baseUrl}/g/${reservation.manage_token}?action=reconfirm`
-  const reviewUrl = `${baseUrl}/g/${reservation.manage_token}?action=review`
+  const manageUrl = `${baseUrl}/r/manage/${reservation.manage_token}`
+  const cancelUrl = `${baseUrl}/r/manage/${reservation.cancel_token}?action=cancel`
+  const confirmUrl = `${baseUrl}/r/manage/${reservation.manage_token}?action=reconfirm`
+  const reviewUrl = `${baseUrl}/r/manage/${reservation.manage_token}?action=review`
 
   const templateData: Record<string, any> = {
     guestName,
