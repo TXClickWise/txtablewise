@@ -72,7 +72,7 @@ export const defaultCopy: LocaleCopy = {
     outro: 'Door even te bevestigen help je ons de avond goed voor te bereiden.',
     signature: 'Bedankt, het team van {{restaurantName}}',
     labelDate: 'Datum', labelTime: 'Tijd', labelParty: 'Aantal gasten',
-    ctaConfirm: 'Ja, ik kom', ctaCancel: 'Nee, ik kan niet',
+    ctaConfirm: 'Ja, ik kom', ctaCancel: 'Nee, ik kan niet', ctaManage: 'Wijzig je reservering',
   },
   en: {
     subject: 'Please confirm your reservation at {{restaurantName}}',
@@ -82,7 +82,7 @@ export const defaultCopy: LocaleCopy = {
     outro: 'A quick confirmation helps us prepare the evening.',
     signature: 'Thanks, the team at {{restaurantName}}',
     labelDate: 'Date', labelTime: 'Time', labelParty: 'Guests',
-    ctaConfirm: 'Yes, I will be there', ctaCancel: 'No, I cannot make it',
+    ctaConfirm: 'Yes, I will be there', ctaCancel: 'No, I cannot make it', ctaManage: 'Change your reservation',
   },
   de: {
     subject: 'Bitte bestätigen Sie Ihre Reservierung bei {{restaurantName}}',
@@ -92,7 +92,7 @@ export const defaultCopy: LocaleCopy = {
     outro: 'Eine kurze Bestätigung hilft uns, den Abend gut vorzubereiten.',
     signature: 'Vielen Dank, das Team von {{restaurantName}}',
     labelDate: 'Datum', labelTime: 'Uhrzeit', labelParty: 'Gäste',
-    ctaConfirm: 'Ja, ich komme', ctaCancel: 'Nein, ich kann nicht',
+    ctaConfirm: 'Ja, ich komme', ctaCancel: 'Nein, ich kann nicht', ctaManage: 'Reservierung ändern',
   },
   fr: {
     subject: 'Veuillez confirmer votre réservation au {{restaurantName}}',
@@ -102,7 +102,7 @@ export const defaultCopy: LocaleCopy = {
     outro: 'Une confirmation rapide nous aide à bien préparer la soirée.',
     signature: 'Merci, l’équipe du {{restaurantName}}',
     labelDate: 'Date', labelTime: 'Heure', labelParty: 'Convives',
-    ctaConfirm: 'Oui, je viens', ctaCancel: 'Non, je ne peux pas',
+    ctaConfirm: 'Oui, je viens', ctaCancel: 'Non, je ne peux pas', ctaManage: 'Modifier ma réservation',
   },
 }
 
@@ -120,6 +120,7 @@ export const template = {
     partySize: 4,
     confirmUrl: 'https://example.com/confirm',
     cancelUrl: 'https://example.com/cancel',
+    manageUrl: 'https://example.com/manage',
   },
 } satisfies TemplateEntry
 
