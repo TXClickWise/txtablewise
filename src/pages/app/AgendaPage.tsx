@@ -763,9 +763,13 @@ function FloorPlanBody({
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
-    const ro = new ResizeObserver(() => setContainerW(el.clientWidth));
+    const update = () => {
+      const w = el.clientWidth;
+      setContainerW((prev) => (Math.abs(prev - w) > 1 ? w : prev));
+    };
+    const ro = new ResizeObserver(update);
     ro.observe(el);
-    setContainerW(el.clientWidth);
+    update();
     return () => ro.disconnect();
   }, []);
 
