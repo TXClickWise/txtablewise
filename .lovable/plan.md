@@ -1,82 +1,96 @@
-## Scope
+## Doel
 
-Twee provisioning-routes voor ClickWise ↔ TableWise. **Telefoonnummer aanschaffen + koppelen blijft buiten scope** (handmatig in HighLevel/LC-Phone i.v.m. Twilio Regulatory Bundle). Route 2 maakt gebruik van een HighLevel **SaaS-plan "TX TableWise"** waaraan de master-snapshot al gekoppeld is — die snapshot wordt automatisch geladen bij het aanmaken van een nieuw sub-account, dus TableWise hoeft de snapshot-load API niet zelf aan te roepen.
+Sectie 9 ("Tool definities") in `src/pages/app/help/VoiceAgentHelp.tsx` zo maken dat je in ClickWise letterlijk veld-voor-veld kunt invullen wat er in de schermen "Query parameters" en "Data collection for query params and body params" hoort. En `update_reservation` promoten van "optioneel" naar volwaardige tool 4, want telefonisch wijzigen van reserveringen is een kernflow.
 
----
+## Antwoord op je vraag over wijzigen
 
-## Route 1 — Snapshot uitrollen op een **bestaand** sub-account
+Ja — `update_reservation` bestaat al in `agent_api` (en in `AI_ACTION_CATALOG`), maar staat nu onderaan als "optioneel". Dat klopt niet met de realiteit van een telefonische gastvrouw: "kunnen we van 4 naar 6 personen?" of "kan het een uur later?" zijn standaard-vragen. Hij wordt opgewaardeerd naar Tool 4. `log_call` schuift door naar Tool 5.
 
-**Wanneer:** tenant (of agency) heeft al een ClickWise sub-account, met of zonder de TableWise-snapshot al geladen.
+## Tool-volgorde na de wijziging
 
-**Wat TableWise doet:**
-1. Operator opent admin-pagina onder Koppelingen → ClickWise.
-2. Plakt eenmalig de `clickwise_location_id` van het bestaande sub-account.
-3. Optioneel: vinkje "snapshot al geladen in ClickWise" (anders eerst handmatig vanuit HighLevel UI snapshot loaden — Route 1 doet géén snapshot-load).
-4. Knop **"Sync configuratie naar ClickWise"** → edge function:
-   - `PUT`/`UPSERT` alle Custom Values (zie `mem://features/clickwise-snapshot`) op het sub-account.
-   - Raakt géén native sub-account velden (naam, adres, e-mail, telefoon, tijdzone).
-   - Idempotent — kan onbeperkt opnieuw gedraaid worden.
-5. Audit-log + `clickwise_synced_at` timestamp tonen.
+1. `check_availability`
+2. `create_reservation` (huidige naam in ClickWise; de edge function accepteert ook `book_reservation` als alias — we tonen `create_reservation` overal omdat dat matcht met je screenshots)
+3. `cancel_reservation`
+4. `update_reservation`  ← nieuw als verplichte tool
+5. `log_call`
 
-**Operator-handwerk:** sub-account aanmaken, snapshot één keer laden (als nog niet via SaaS-plan gebeurd), LC-Phone nummer kopen + koppelen, Voice AI assistant aan dat nummer hangen.
+## Wat er per tool wordt getoond
 
-**Benodigd:**
-- Migratie: `restaurants.clickwise_location_id`, `restaurants.clickwise_synced_at`.
-- Edge function `clickwise_sync_custom_values` (alleen Custom Values push).
-- 1 secret: `HIGHLEVEL_AGENCY_API_KEY` (of per-locatie PIT-token).
-- UI: read-only preview van Custom Values + "Sync nu" knop.
+Voor elke tool één compact blok met:
 
----
+- **Description** (copy-knop) — exacte tekst die je in ClickWise plakt
+- **URL** (copy-knop) — `${AGENT_API_BASE}/<tool_name>`
+- **Method**: `POST`
+- **Headers** (copy-blok): `X-Agent-Api-Key` + `Content-Type`
+- **Query parameters**: expliciet "**Leeg laten**" (alle tools gebruiken alleen body)
+- **Data collection for body params** — als invul-tabel met exact deze kolommen, identiek aan de ClickWise-UI:
 
-## Route 2 — **Nieuw** sub-account aanmaken vanuit TableWise (via SaaS-plan)
+  | Field name | Type | In | Required | Description (copy) | Example |
 
-**Wanneer:** tenant heeft nog géén sub-account en heeft de ClickWise-add-on geactiveerd.
+  Elke rij heeft een mini "kopieer"-knop voor de Description-cel, zodat je hem 1-op-1 in ClickWise plakt.
 
-**Voorwerk in HighLevel (eenmalig, door TableWise admin):**
-- SaaS-plan **"TX TableWise"** aanmaken met de master-snapshot al gekoppeld → `HIGHLEVEL_SAAS_PLAN_ID` als secret in TableWise.
-- Master-snapshot bevat alle workflows, triggers, templates en **placeholder Custom Values** zoals beschreven in `mem://features/clickwise-snapshot`.
+- **Voorbeeld-body (JSON)** met `{{custom_values.*}}` / `{{contact.*}}` placeholders
+- **Response mapping** — welke velden de agent kan lezen (`result.slots[].time`, `result.reservation_id`, etc.)
 
-**Wat TableWise doet (één "Provisioneer ClickWise" knop):**
-1. **Billing-gate:** `restaurants.clickwise_addon = 'active'` vereist. In pilot-fase handmatig door system admin op active gezet (factuur buiten Lovable).
-2. **Pre-flight:** bedrijfsnaam, e-mail, telefoon, adres, tijdzone en `locale` ingevuld (wizard om aan te vullen indien niet).
-3. Edge function `clickwise_provision_subaccount`:
-   - `POST /locations/` met tenant-data **+ `saasPlanId = HIGHLEVEL_SAAS_PLAN_ID`** → HighLevel maakt locatie en koppelt automatisch de snapshot uit het plan. Geen aparte snapshot-load API call meer nodig.
-   - Korte wachtperiode (~5–10s) zodat workflows/templates klaarstaan.
-   - `PUT /locations/{id}/customValues/{key}` voor álle TableWise Custom Values (hergebruikt de Route-1 sync-functie).
-   - Update `restaurants` met `clickwise_location_id`, `clickwise_provisioned_at`, `clickwise_saas_plan_id`.
-   - Audit-log.
-   - Bij failure ná `POST /locations`: `DELETE /locations/{id}` rollback, zodat tenant niet voor een halve sub-account betaalt.
-4. UI toont stap-checklist: ✅ Sub-account + snapshot aangemaakt / ✅ Custom Values gesynchroniseerd / ⏳ Telefoonnummer (handmatige vervolgactie).
+## Exacte body-velden per tool (bron: `src/services/aiHost/contracts.ts` + `supabase/functions/agent_api/index.ts`)
 
-**Operator-handwerk (na auto-provisioning):** LC-Phone nummer kopen, Regulatory Bundle indienen bij Twilio, nummer koppelen aan Voice AI assistant. Buiten dit plan.
+**check_availability**
+- `date` String body required — YYYY-MM-DD, reken vanaf `{{system__time_utc}}`
+- `party_size` Number body required — geheel getal 1–8
+- `preferred_time` String body optional — HH:mm 24u, alleen als beller specifieke tijd noemt
 
-**Benodigd:**
-- Migratie: `restaurants.clickwise_location_id`, `clickwise_provisioned_at`, `clickwise_saas_plan_id` (text), `clickwise_addon` (enum: `none | active | past_due | cancelled`), `clickwise_addon_updated_at`.
-- Edge function `clickwise_provision_subaccount` (met rollback + 1/uur rate-limit per restaurant).
-- 3 secrets: `HIGHLEVEL_AGENCY_API_KEY`, `HIGHLEVEL_COMPANY_ID`, `HIGHLEVEL_SAAS_PLAN_ID`.
-  - `HIGHLEVEL_MASTER_SNAPSHOT_ID` is **niet meer nodig** als directe parameter, omdat de snapshot via het SaaS-plan gekoppeld is. (Wel handig om als referentie ergens vast te leggen.)
-- Admin-UI (`/app/admin/clickwise-voice-setup` of nieuwe pagina):
-  - Add-on status (toggle voor system admin in pilot-fase).
-  - "Provisioneer" knop (alleen actief als add-on `active` + tenant-velden compleet).
-  - Live stap-status met rollback-melding bij fail.
-  - Deeplink "open in ClickWise" na succes.
-- Hergebruik van Route-1 sync-functie voor latere updates aan Custom Values.
+**create_reservation**
+- `date` String body required — YYYY-MM-DD
+- `time` String body required — HH:mm 24u
+- `party_size` Number body required — 1–8
+- `first_name` String body required
+- `last_name` String body optional
+- `phone` String body optional — E.164, bijv. +31612345678
+- `email` String body optional
+- `special_requests` String body optional — allergieën / gelegenheid / kinderstoel
 
----
+**cancel_reservation**
+- `reservation_id` String body required — UUID uit eerdere boeking of find_reservation
+- `reason` String body optional — korte NL-reden
 
-## Wijzigingen t.o.v. vorige planversie
+**update_reservation** (nieuw als hoofdtool)
+- `reservation_id` String body required
+- `new_date` String body optional — YYYY-MM-DD
+- `new_time` String body optional — HH:mm
+- `new_party_size` Number body optional — 1–8
+- `special_requests` String body optional
+- Description benadrukt: minimaal één van `new_date` / `new_time` / `new_party_size` invullen, anders niets te wijzigen. Eerst `check_availability` voor de nieuwe combinatie.
 
-- ✅ `POST /snapshots/{id}/load` + status-polling **vervalt** in Route 2 — snapshot komt via SaaS-plan mee.
-- ✅ Nieuwe secret `HIGHLEVEL_SAAS_PLAN_ID`, oude `HIGHLEVEL_MASTER_SNAPSHOT_ID` niet meer hard nodig.
-- ✅ Nieuwe kolom `clickwise_saas_plan_id` op `restaurants` voor traceability (welk plan gebruikt voor provisioning).
-- ✅ Provisioning-flow korter: locatie aanmaken → korte wait → Custom Values pushen → klaar.
-- ❌ Geen LC-Phone automation (telefoonnummer + Regulatory Bundle blijven handmatig).
-- ❌ Geen Stripe/Paddle voor add-on billing — handmatig door system admin in pilot-fase.
+**log_call**
+- `external_call_id` String body required — `{{call.id}}`
+- `caller_phone` String body required — `{{contact.phone}}`
+- `callee_phone` String body optional — `{{call.to_number}}`
+- `outcome` String body required — enum: `booked` | `cancelled` | `updated` | `info_only` | `no_action` | `callback_needed`
+- `reservation_id` String body optional — alleen bij booked/cancelled/updated
+- `duration_seconds` Number body optional
+- `summary` String body optional — max 2 NL-zinnen
+- `agent_id` String body optional — vrij label
 
----
+## Implementatiestappen
 
-## Open vragen vóór ik bouw
+1. **`src/pages/app/help/VoiceAgentHelp.tsx`**
+   - Nieuw klein component `ToolParamTable` (lokaal in dit bestand) dat de 6-koloms tabel rendert met per rij een copy-knop voor de Description-cel.
+   - Sectie 9 herschrijven naar 5 tool-blokken in bovenstaande volgorde. Elk blok krijgt: Description-copy, URL-copy, "Query parameters: leeg laten"-regel, Headers code-blok, `ToolParamTable`, Body JSON-blok, Response-mapping uitleg.
+   - "Optionele extra tools" sectie behouden, maar `update_reservation` daaruit verwijderen (verplaatst naar Tool 4). `find_reservation`, `reconfirm_reservation`, `create_waitlist_entry`, `get_opening_hours` blijven optioneel.
+   - `buildBundle()` JSON uitbreiden: `update_reservation` URL toevoegen onder `tools`, en per tool een `params`-array meeleveren zodat één export alle 5 tools volledig dekt.
+   - In sectie 5 ("System prompt") de regel over `log_call`-outcomes uitbreiden met `updated` en een korte flow-regel: "Bij verzoek tot wijzigen → `check_availability` voor nieuwe combinatie → `update_reservation` → bevestig hardop."
+   - Sectie 8 ("ClickWise routing/setup") tekst die "4 Custom Webhook Actions" zegt → "5 Custom Webhook Actions".
 
-1. **Beide routes tegelijk** (aanbevolen — Route 2 hergebruikt Route-1 sync) of alleen Route 1 eerst?
-2. **Add-on billing pilot-fase**: akkoord dat `clickwise_addon` voorlopig handmatig op `active` wordt gezet door system admin (Stripe-integratie later)?
-3. **SaaS-plan in HighLevel**: heb je het plan "TX TableWise" met snapshot-koppeling al aangemaakt, of doe je dat parallel met deze bouw? (`HIGHLEVEL_SAAS_PLAN_ID` heb ik nodig vóór ingebruikname.)
+2. **Geen wijzigingen in edge functions of contracts** — `update_reservation` werkt al server-side. Dit is puur een docs/UI-update.
+
+## Niet doen
+
+- Geen aanpassing aan `agent_api/index.ts`, `contracts.ts`, of database. Pure frontend/docs.
+- Geen losse Loyverse-help (eerder besloten).
+- `ClickWiseToolSetupPanel` blijft ongemoeid; dat genereert al automatisch uit het catalog.
+
+## Verificatie achteraf
+
+- Vergelijken met je screenshot van `check_availability` → de 3 velden in de tabel moeten 1-op-1 matchen met de "Data collection"-rijen.
+- `buildBundle()`-export bevat nu 5 tool-URLs en per tool een `params`-array.
+- Search in de help-pagina op "update_reservation" landt op het nieuwe Tool 4-blok.
