@@ -334,8 +334,9 @@ Deno.serve(async (req) => {
           timeZone: restaurant.timezone || "Europe/Amsterdam",
         });
         const baseUrl = (Deno.env.get("SITE_URL") || "https://www.txtablewise.nl").replace(/\/+$/, "");
-        const manageUrl = reservation.manage_token ? `${baseUrl}/r/manage/${reservation.manage_token}` : undefined;
-        const cancelUrl = reservation.cancel_token ? `${baseUrl}/r/manage/${reservation.cancel_token}?action=cancel` : undefined;
+        const slugPart = restaurant.slug ? `/${restaurant.slug}` : "";
+        const manageUrl = reservation.manage_token ? `${baseUrl}/r${slugPart}/manage/${reservation.manage_token}` : undefined;
+        const cancelUrl = reservation.cancel_token ? `${baseUrl}/r${slugPart}/manage/${reservation.cancel_token}?action=cancel` : undefined;
         // Direct fetch met expliciete anon-key auth — supabase.functions.invoke()
         // van binnenuit een edge function stuurt de Authorization header soms niet
         // mee, en SUPABASE_SERVICE_ROLE_KEY is in de nieuwe key-formaat geen geldige

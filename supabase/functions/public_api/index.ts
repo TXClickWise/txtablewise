@@ -154,14 +154,15 @@ function mapSourceToChannel(source: string | undefined): string {
 }
 
 // Bouw publieke links voor self/update/cancel + guest-manage page.
-function buildLinks(req: Request, reservationId: string, manageToken?: string | null) {
+function buildLinks(req: Request, reservationId: string, manageToken?: string | null, restaurantSlug?: string | null) {
   const base = `${SUPABASE_URL}/functions/v1/public_api/reservations/${reservationId}`;
   const origin = req.headers.get("origin") || "https://txtablewise.lovable.app";
+  const slugPart = restaurantSlug ? `/${restaurantSlug}` : "";
   return {
     self: base,
     update: base,
     cancel: base,
-    guestManage: manageToken ? `${origin}/manage/${manageToken}` : null,
+    guestManage: manageToken ? `${origin}/r${slugPart}/manage/${manageToken}` : null,
   };
 }
 
@@ -490,10 +491,11 @@ async function handleCreateReservation(req: Request, keyRow: KeyRow): Promise<Re
   // Haal manage_token op voor guestManage link
   const { data: full } = await sb
     .from("reservations")
-    .select("manage_token, guest:guests(first_name, last_name, phone, email)")
+    .select("manage_token, guest:guests(first_name, last_name, phone, email), restaurant:restaurants(slug)")
     .eq("id", r.id).maybeSingle();
 
   const guest = full?.guest as any;
+  const restSlug = (full?.restaurant as any)?.slug ?? null;
   const fullName = [guest?.first_name, guest?.last_name].filter(Boolean).join(" ").trim();
 
   return jsonResp({
@@ -508,7 +510,7 @@ async function handleCreateReservation(req: Request, keyRow: KeyRow): Promise<Re
       phone: guest?.phone || null,
       email: emailProvided ? guest?.email || null : null,
     },
-    links: buildLinks(req, r.id, full?.manage_token),
+    links: buildLinks(req, r.id, full?.manage_token, restSlug),
   }, 201);
 }
 
@@ -888,7 +890,7 @@ async function handleUpdateReservation(req: Request, keyRow: KeyRow, reservation
       phone: guest?.phone || null,
       email: guest?.email || null,
     },
-    links: buildLinks(req, current.id, refreshed?.manage_token),
+    links: buildLinks(req, current.id, refreshed?.manage_token, restaurant?.slug ?? null),
   });
 }
 

@@ -26,6 +26,11 @@ type Reservation = {
   confirmation_code: string | null;
   reminder_confirmed_at: string | null;
   special_requests: string | null;
+  dietary_notes: string | null;
+  guest_first_name: string | null;
+  guest_last_name: string | null;
+  guest_email: string | null;
+  guest_phone: string | null;
 };
 type RestaurantPublic = {
   name: string;
@@ -240,7 +245,25 @@ export default function GuestManageReservation() {
                     <CalendarCheck2 className="h-4 w-4" /> {t("imComing")}
                   </Button>
                 )}
-                <Button variant="outline" onClick={() => setShowChange(true)} disabled={acting} className="gap-2">
+                <Button variant="outline" onClick={() => {
+                  // Prefill change form with current reservation data so guest doesn't have to retype.
+                  const localTime = new Intl.DateTimeFormat("en-GB", {
+                    hour: "2-digit", minute: "2-digit", hour12: false,
+                    timeZone: restaurant.timezone,
+                  }).format(new Date(reservation.start_time));
+                  setChangeForm({
+                    desired_date: reservation.reservation_date,
+                    desired_time: localTime,
+                    desired_party_size: String(reservation.party_size),
+                    desired_first_name: reservation.guest_first_name ?? "",
+                    desired_last_name: reservation.guest_last_name ?? "",
+                    desired_email: reservation.guest_email ?? "",
+                    desired_phone: reservation.guest_phone ?? "",
+                    desired_dietary_notes: reservation.dietary_notes ?? "",
+                    message: "",
+                  });
+                  setShowChange(true);
+                }} disabled={acting} className="gap-2">
                   <Clock className="h-4 w-4" /> {t("requestChange")}
                 </Button>
                 <Button variant="ghost" onClick={() => setShowCancel(true)} disabled={acting} className="gap-2 text-destructive hover:text-destructive sm:col-span-2">
