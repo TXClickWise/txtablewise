@@ -103,14 +103,23 @@ export default function IntegrationHubPage() {
   return (
     <div className="p-4 sm:p-6 space-y-6 max-w-6xl mx-auto">
       <PageHeader
-        title="Integratiehub"
-        description="Beheer API-sleutels, webhooks en test live je koppelingen met externe systemen."
+        title="Integratiehub (geavanceerd)"
+        description="Technische weergave voor developers en partners. Voor de dagelijkse koppeling: gebruik 'Koppelingen' in het hoofdmenu."
         badge={
           <Badge variant="outline" className="gap-1.5">
-            <Plug className="h-3 w-3 text-primary" /> Open platform
+            <Plug className="h-3 w-3 text-primary" /> Geavanceerd
           </Badge>
         }
       />
+
+      <div className="rounded-md border border-dashed p-3 text-sm bg-muted/30 flex flex-wrap items-center justify-between gap-2">
+        <span className="text-muted-foreground">
+          Liever de eenvoudige weergave?
+        </span>
+        <Button asChild variant="outline" size="sm">
+          <Link to="/app/koppelingen">Naar Koppelingen</Link>
+        </Button>
+      </div>
 
       <Tabs defaultValue="overview">
         <TabsList className="flex-wrap h-auto">
