@@ -6,8 +6,14 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
+  DropdownMenuSeparator, DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
-import { KeyRound, Webhook, Send, ScrollText } from "lucide-react";
+import { KeyRound, Webhook, Send, ScrollText, ChevronDown } from "lucide-react";
+import { webhookFixtures, type WebhookFixture } from "@/lib/webhookFixtures";
+import { WebhookHealthBadge } from "@/components/integrations/WebhookHealthBadge";
 
 export default function ApiWebhooksSettings() {
   const { current } = useRestaurant();
@@ -54,6 +60,35 @@ export default function ApiWebhooksSettings() {
     }
   };
 
+  const sendTestEvent = async (fixture?: WebhookFixture) => {
+    if (!restaurantId) return;
+    if (!r?.webhook_url) {
+      toast.error("Vul eerst een Webhook-URL in en klik buiten het veld om op te slaan.");
+      return;
+    }
+    const event_type = fixture?.event_type ?? "test_webhook";
+    const payload = fixture?.payload ?? { source: "settings_test", at: new Date().toISOString() };
+    const { error } = await supabase.from("integration_events").insert({
+      restaurant_id: restaurantId,
+      event_type,
+      target: "webhook",
+      payload,
+    } as any);
+    if (error) { toast.error("Mislukt: " + error.message); return; }
+    toast.success(`${fixture?.label ?? "Test-event"} verstuurd — bezorgen…`);
+    const { data: dispatch, error: dispatchError } = await supabase.functions.invoke(
+      "dispatch_webhooks",
+      { body: { restaurant_id: restaurantId } },
+    );
+    if (dispatchError) {
+      toast.error("Bezorgen mislukt: " + dispatchError.message);
+    } else {
+      const n = (dispatch as any)?.dispatched ?? 0;
+      if (n > 0) toast.success(`Bezorgd aan ${n} endpoint(s) — check ClickWise + integratielog.`);
+      else toast.message("Verstuurd — controleer de integratielog voor het resultaat.");
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div>
@@ -62,6 +97,8 @@ export default function ApiWebhooksSettings() {
           Externe systemen koppelen aan TableWise — POS, CRM, AI agents of eigen back-office.
         </p>
       </div>
+
+      {restaurantId && <WebhookHealthBadge restaurantId={restaurantId} />}
 
       <Card className="p-6">
         <div className="flex items-start gap-3 mb-4">
@@ -83,48 +120,37 @@ export default function ApiWebhooksSettings() {
               onBlur={(e) => patch({ webhook_url: e.target.value || null })}
             />
           </div>
-          <Button
-            variant="outline"
-            onClick={async () => {
-              if (!restaurantId) return;
-              if (!r?.webhook_url) {
-                toast.error("Vul eerst een Webhook-URL in en klik buiten het veld om op te slaan.");
-                return;
-              }
-              const { error } = await supabase.from("integration_events").insert({
-                restaurant_id: restaurantId,
-                event_type: "test_webhook",
-                target: "webhook",
-                payload: { source: "settings_test", at: new Date().toISOString() },
-              } as any);
-              if (error) {
-                toast.error("Mislukt: " + error.message);
-                return;
-              }
-              toast.success("Test-event verstuurd — bezorgen…");
-              // Trigger de dispatcher direct zodat de test ook echt bij ClickWise aankomt
-              // (zonder hoeven wachten op de achtergrondcron).
-              const { data: dispatch, error: dispatchError } = await supabase.functions.invoke(
-                "dispatch_webhooks",
-                { body: { restaurant_id: restaurantId } },
-              );
-              if (dispatchError) {
-                toast.error("Bezorgen mislukt: " + dispatchError.message);
-              } else {
-                const n = (dispatch as any)?.dispatched ?? 0;
-                if (n > 0) {
-                  toast.success(`Bezorgd aan ${n} endpoint(s) — check ClickWise + integratielog.`);
-                } else {
-                  toast.message("Verstuurd — controleer de integratielog voor het resultaat.");
-                }
-              }
-            }}
-          >
-            <Send className="h-4 w-4 mr-2" />
-            Stuur test-event
-          </Button>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button variant="outline" onClick={() => sendTestEvent()}>
+              <Send className="h-4 w-4 mr-2" />
+              Stuur leeg test-event
+            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline">
+                  Voorbeeld-events <ChevronDown className="h-4 w-4 ml-2" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="w-80">
+                <DropdownMenuLabel>Kies een realistisch test-event</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                {webhookFixtures.map((f) => (
+                  <DropdownMenuItem
+                    key={f.key}
+                    onClick={() => sendTestEvent(f)}
+                    className="flex flex-col items-start gap-0.5 py-2"
+                  >
+                    <span className="font-medium">{f.label}</span>
+                    <span className="text-xs text-muted-foreground">{f.description}</span>
+                    <span className="font-mono text-[10px] text-muted-foreground">{f.event_type}</span>
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         </div>
       </Card>
+
 
       <Card className="p-6">
         <div className="flex items-start justify-between gap-4 mb-4">
