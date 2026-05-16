@@ -222,6 +222,7 @@ const SECTIONS: Section[] = [
         <CopyRow label="Endpoint — beschikbaarheid" value={`${AGENT_API_BASE}/check_availability`} />
         <CopyRow label="Endpoint — reserveren" value={`${AGENT_API_BASE}/book_reservation`} />
         <CopyRow label="Endpoint — annuleren" value={`${AGENT_API_BASE}/cancel_reservation`} />
+        <CopyRow label="Endpoint — wijzigen" value={`${AGENT_API_BASE}/update_reservation`} />
         <CopyRow label="Endpoint — call-log" value={`${AGENT_API_BASE}/log_call`} />
         <div className="grid sm:grid-cols-2 gap-3 pt-1">
           <CopyRow label="Auth-header naam" value="X-Agent-Api-Key" />
