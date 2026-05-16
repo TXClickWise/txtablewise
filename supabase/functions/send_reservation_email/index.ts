@@ -171,6 +171,8 @@ Deno.serve(async (req) => {
       idempotencyKey: `${event_type}:${reservation.id}:${event_id || crypto.randomUUID()}`,
       restaurantId: restaurant_id,
       locale,
+      fromName: restaurant.name,
+      replyTo: restaurant.guest_reply_to_email || undefined,
       templateData,
     },
   })
