@@ -744,9 +744,9 @@ const SECTIONS: Section[] = [
             name: "update_reservation",
             url: `${AGENT_API_BASE}/update_reservation`,
             description:
-              "Wijzig datum, tijd en/of aantal personen van een bestaande reservering. Vul minimaal één van new_date, new_time of new_party_size. Controleer eerst met check_availability of de nieuwe combinatie kan.",
+              "Wijzig datum, tijd en/of aantal personen van een bestaande reservering. Vul minimaal één van new_date, new_time of new_party_size. Controleer eerst met check_availability of de nieuwe combinatie kan. Het reservation_id wordt ALTIJD intern opgehaald via find_reservation — nooit aan de beller vragen.",
             params: [
-              { name: "reservation_id", type: "String", required: true, description: "UUID van de bestaande reservering.", example: "00000000-0000-0000-0000-000000000000" },
+              { name: "reservation_id", type: "String", required: true, description: "UUID van de bestaande reservering. Intern verkregen via find_reservation — nooit aan de beller vragen.", example: "00000000-0000-0000-0000-000000000000" },
               { name: "new_date", type: "String", required: false, description: "Nieuwe datum YYYY-MM-DD. Laat leeg als de datum niet wijzigt.", example: "2026-05-27" },
               { name: "new_time", type: "String", required: false, description: "Nieuwe tijd HH:mm (24-uurs). Laat leeg als de tijd niet wijzigt.", example: "20:00" },
               { name: "new_party_size", type: "Number", required: false, description: "Nieuw aantal personen, 1 t/m 8. Laat leeg als het aantal niet wijzigt.", example: "6" },
