@@ -189,6 +189,7 @@ ANNULEREN
 - Bevestig de annulering hardop.
 
 WIJZIGEN
+- Probeer eerst stilzwijgend te matchen op {{contact.phone}} via find_reservation. Lukt dat → bevestig hardop welke reservering je gevonden hebt. Lukt dat niet → vraag het bevestigingsnummer of een ander telefoonnummer.
 - Vraag het bevestigingsnummer (of telefoonnummer + datum) om de reservering te vinden.
 - Vraag wat er moet veranderen: datum, tijd en/of aantal personen.
 - Roep eerst check_availability aan voor de nieuwe datum/tijd/aantal.
