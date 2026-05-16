@@ -733,6 +733,7 @@ const SECTIONS: Section[] = [
                 wanneer je het door de agent wilt láten uitvragen.
               </>
             ),
+            sayBefore: "Helder, ik leg de reservering nu voor u vast.",
           })}
 
           {toolBlock({
