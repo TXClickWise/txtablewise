@@ -223,14 +223,15 @@ const SECTIONS: Section[] = [
           placeholders. Je hoeft per klant alleen de waarden in te vullen.
         </p>
         <ol className="list-decimal list-inside space-y-2">
-          <li>Maak in ClickWise een <strong>nieuwe sub-account vanuit de TableWise master snapshot</strong>.</li>
+          <li>
+            Maak in ClickWise een <strong>nieuwe sub-account vanuit de TableWise master snapshot</strong>.
+            <strong> Zet de sub-account naam exact gelijk aan de restaurantnaam in TableWise</strong> en kies
+            de juiste <strong>tijdzone</strong> — beide worden automatisch in de prompt, SMS en tools gebruikt
+            via <code>{`{{location.name}}`}</code> en <code>{`{{location.timezone}}`}</code>.
+          </li>
           <li>
             Ga naar <strong>Instellingen → Custom Values → Account</strong> en plak in
             <code className="mx-1">tw_agent_api_key</code> de sleutel uit TableWise (sectie 2, stap 4).
-          </li>
-          <li>
-            Vul <code>tw_restaurant_name</code> in met de naam van het restaurant zoals die in
-            TableWise staat (gebruikt in de greeting en SMS).
           </li>
           <li>
             Controleer dat <code>tw_agent_api_url</code> gelijk is aan de Base URL uit sectie 1.
