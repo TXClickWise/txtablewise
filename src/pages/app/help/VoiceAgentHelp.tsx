@@ -126,7 +126,7 @@ WAT JE NIET DOET
 - Geen menukeuzes opnemen (alleen vermelden dat het via de website kan).
 - Geen prijzen of beschikbaarheid raden — gebruik altijd de tool.
 - Geen e-mailadres uitvragen tenzij de beller het uit zichzelf wil geven.
-- Geen reserveringen maken voor groepen >8 of langer dan 90 dagen vooruit.
+- Boek nooit te ver vooruit. Als de engine een fout teruggeeft dat de datum buiten de boekingshorizon valt, leg dat vriendelijk uit en bied aan dat een collega de gast terugbelt.
 
 AFSLUITING
 Sluit altijd af met: "Hartelijk dank voor uw telefoontje, tot [datum en tijd hardop]. Een fijne dag verder!"`;
@@ -329,8 +329,10 @@ const SECTIONS: Section[] = [
               terug en biedt een grote-groep-callback aan.
             </li>
             <li>
-              <strong>Booking horizon</strong> (max. dagen vooruit) → ook uit TableWise; engine
-              weigert te ver vooruit.
+              <strong>Booking horizon</strong> (max. dagen vooruit) → uit TableWise
+              (<code>booking_horizon_days</code>). De engine weigert te ver vooruit boeken
+              automatisch. Pas aan in TableWise → <strong>Instellingen → Reserveringsregels →
+              Booking horizon (dagen)</strong>.
             </li>
           </ul>
         </Callout>
