@@ -1,62 +1,49 @@
-## Doel
+# Gastlinks & selfservice wijzigen
 
-Geen aparte Instellingen-sidebar meer. Klik op "Instellingen" in de main sidebar klapt een sub-menu uit met alle settings-items (zoals in de Guestplan-screenshot). Sub-items met meerdere subpagina's (zoals Openingstijden, Reserveringen) kunnen op hun eigen settings-pagina nog tabs blijven gebruiken.
+## 1. URL slug — geen technisch probleem, wel een branding-verbetering
 
-## Wijzigingen
+**Belangrijk om te weten:** `manage_token` is een willekeurig uuid dat globaal uniek is in `reservations`. De edge function `guest_reservation` zoekt puur op token — dus er is **geen risico op tenant-vervuiling** met de huidige `/r/manage/{token}`-route. Reserveringen van verschillende restaurants kunnen nooit door elkaar lopen.
 
-### 1. `src/components/AppSidebar.tsx` — Settings als uitklapbare groep
-- Vervang de huidige losse "Instellingen" `SidebarMenuButton` door een `Collapsible` (zoals de andere groepen), maar dan met het tandwiel-icoon + "Instellingen" als header.
-- Standaard open als route met `/app/instellingen` start (anders dichtgeklapt, persisted via `useCollapsibleGroup("sidebar.settings")`).
-- Sub-items als platte lijst onder elkaar (groep-labels Basis/Operatie/Gasten & communicatie/Techniek/Account blijven als kleine `SidebarGroupLabel`-achtige tussenkopjes binnen het uitgeklapte blok, of we gebruiken één geheel platte lijst — zie keuze hieronder).
-- Gebruik dezelfde `SidebarMenuButton` + `NavLink` styling als andere items, zodat actieve route gehighlight wordt.
-- In `collapsed` (icon-only) sidebar: tandwiel klikt door naar `/app/instellingen` (geen uitklap mogelijk).
-- Owner-only items (Pilot launch) respecteren de rol; alleen tonen voor `owner`.
-- De settings-items komen rechtstreeks uit dezelfde `GROUPS`-definitie die nu in `SettingsPage.tsx` staat — verplaats die naar een gedeeld bestand `src/components/settings-nav.ts` zodat zowel sidebar als (optioneel) mobile fallback dezelfde bron gebruiken.
+Wél nuttig om de slug toe te voegen:
+- Gast ziet meteen in de URL bij welk restaurant het hoort (vertrouwen, herkenbaarheid).
+- Toekomstige white-label / custom domains zijn makkelijker te scopen.
+- Logs en support-vragen worden leesbaarder.
 
-### 2. `src/pages/app/SettingsPage.tsx` — verwijder de eigen sidebar
-- Verwijder de hele `<aside>` met `SettingsGroupNav` en de mobile pill-strip.
-- Layout wordt simpelweg `<Outlet />` in een container (geen 2-koloms grid meer).
-- Importeer `GROUPS` uit het nieuwe shared bestand (alleen nog nodig voor de mobile fallback — zie keuze).
-- `/app/instellingen` (index) blijft `GeneralSettings` tonen.
+**Voorgestelde aanpak:**
+- Nieuw routepatroon: `/r/:slug/manage/:token` (bijv. `/r/eigeweis/manage/abc-123`).
+- Oude route `/r/manage/:token` blijft werken als fallback (alle al verstuurde e-mails en bestaande links blijven geldig) → in `App.tsx` beide routes naar `GuestManageReservation` mappen.
+- De edge function blijft op token zoeken; `slug` in de URL wordt alleen voor weergave gebruikt en (optioneel) gevalideerd tegen de gevonden reservering — bij mismatch redirecten naar de juiste slug i.p.v. fout tonen.
+- E-mail-templates en linkgeneratie aanpassen in:
+  - `supabase/functions/send_reservation_email/index.ts`
+  - `supabase/functions/book_reservation/index.ts`
+  - `supabase/functions/guest_reservation/index.ts`
+  - `supabase/functions/public_api/index.ts` (`guestManage`)
+  - Preview-tokens in de template-bestanden (`reservation-confirmation.tsx`, `reservation-reminder.tsx`, `reservation-change-approved.tsx`).
+- Restaurant `slug` ophalen bij linkgeneratie (komt al uit `restaurants`-tabel in dezelfde queries).
 
-### 3. Mobiele weergave
-Twee opties:
-- **A (voorkeur):** mobile gebruikt de gewone main sidebar (sheet) met het uitgeklapte Instellingen-blok. Geen aparte mobile pill-strip meer. Eenvoudiger, één bron van waarheid.
-- **B:** behoud mobile pill-strip bovenaan settings-pagina's als snelle navigatie.
+## 2. Wijzigingsformulier voorinvullen met huidige reservering
 
-Voorstel: **A**.
+Nu staan in `GuestManageReservation.tsx` alle velden van `changeForm` leeg. Aanpassingen:
 
-### 4. Tussenkopjes binnen uitgeklapt Instellingen-menu
-Twee opties:
-- **A (matcht screenshot):** platte lijst, zonder groep-labels. Volgorde: Algemeen, Openingstijden, Reserveringen, Online reserveren, Tafels & zones, Gasten, Berichten, Drankjes vooraf, AI & Voice, Integraties, API & webhooks, Gebruikers & rollen, Abonnement, Pilot lancering.
-- **B:** met kleine tussenkopjes (Basis / Operatie / Gasten & communicatie / Techniek / Account).
-
-Screenshot van Guestplan is platte lijst → **A**.
-
-### 5. Niet aanraken
-- Geen routes wijzigen.
-- Geen settings-subpagina's wijzigen (Openingstijden, Reserveringen blijven hun eigen interne tabs houden).
-- `useCollapsibleGroup` blijft zoals het is.
+- **Reservering ophalen** (`guest_reservation` action `view`): payload uitbreiden met `guest_first_name`, `guest_last_name`, `guest_email`, `guest_phone`, `dietary_notes` en `reservation_date` + lokale `start_time` (HH:mm) op basis van `restaurant.timezone`.
+- **`Reservation` type** in `GuestManageReservation.tsx` uitbreiden met die velden.
+- **Prefill bij openen van de dialog**: in de "Wijzig"-knop (of via `useEffect` op `showChange`) `setChangeForm({...})` aanroepen met:
+  - `desired_date` = `reservation.reservation_date`
+  - `desired_time` = lokale HH:mm afgeleid uit `start_time` in `restaurant.timezone` (Intl.DateTimeFormat met `hourCycle: "h23"`).
+  - `desired_party_size` = `String(reservation.party_size)`
+  - `desired_first_name/last_name/email/phone/dietary_notes` = huidige waarden
+  - `message` blijft leeg (dat is de extra opmerking van de gast).
+- Submit-logica blijft hetzelfde: edge function vergelijkt al met huidige waarden en doet niks als er niets gewijzigd is.
 
 ## Technische details
 
-- Nieuw bestand: `src/components/settings-nav.ts` exporteert `SETTINGS_ITEMS: { to, label, icon, end?, ownerOnly? }[]`.
-- `AppSidebar.tsx`: nieuwe sectie ná Beheer, voor Admin:
-  ```
-  <Collapsible open={open} onOpenChange={setOpen}>
-    <CollapsibleTrigger asChild>
-      <SidebarMenuButton isActive={settingsActive}>
-        <Settings/> Instellingen <ChevronDown/>
-      </SidebarMenuButton>
-    </CollapsibleTrigger>
-    <CollapsibleContent>
-      <SidebarMenuSub>… SETTINGS_ITEMS.map(…) …</SidebarMenuSub>
-    </CollapsibleContent>
-  </Collapsible>
-  ```
-  In `collapsed` mode: render als gewone `NavLink` naar `/app/instellingen`.
-- `SettingsPage.tsx` wordt:
-  ```tsx
-  <div className="p-4 sm:p-6 max-w-5xl mx-auto"><Outlet/></div>
-  ```
-  (header "Instellingen" verplaatst naar individuele subpagina's, die hebben die al; `GeneralSettings` heeft eigen titel).
+**Bestanden die wijzigen:**
+- `src/App.tsx` — extra route `/r/:slug/manage/:token` naast bestaande fallback.
+- `src/pages/GuestManageReservation.tsx` — type uitbreiden + prefill bij open + slug uit `useParams` accepteren (geen functionele rol).
+- `supabase/functions/guest_reservation/index.ts` — `view`-response uitbreiden met guest-velden + `reservation_date` + restaurant `slug`.
+- `supabase/functions/send_reservation_email/index.ts`, `book_reservation/index.ts`, `guest_reservation/index.ts`, `public_api/index.ts` — `manageUrl`/`cancelUrl` met slug bouwen wanneer beschikbaar.
+- Preview-tokens in 3 template-bestanden updaten naar `/r/{slug}/manage/...`-vorm.
+
+**Geen DB-migratie nodig.** Tokens en slug bestaan al.
+
+**Backwards compat:** oude `/r/manage/{token}`-links blijven werken (fallback-route + tokenzoeker is ongewijzigd).
