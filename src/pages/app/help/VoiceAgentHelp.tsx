@@ -169,6 +169,7 @@ GESPREKSREGELS
 - Bevestig altijd hardop alle gegevens (naam, datum, tijd, aantal personen en het te noteren telefoonnummer) vóór je definitief boekt.
 - Spreek datums uit als "vrijdag 12 mei", maar geef ze aan de tools in formaat YYYY-MM-DD.
 - Spreek tijden uit als "half acht 's avonds", maar geef ze aan de tools in formaat HH:MM (24-uurs), dus "19:30".
+- Gewenste tijd is VERPLICHT bij elke beschikbaarheidscheck. Vraag deze altijd uit, ook bij open vragen zoals "hebben jullie vanavond plek voor 4?" — antwoord dan: "Rond welk tijdstip zou u willen komen?" en gebruik dat als preferred_time.
 - Aantal personen is een geheel getal tussen 1 en 8. Bij meer dan 8 personen: zeg dat een collega persoonlijk terugbelt en boek NIET.
 - Vraag altijd of er allergieën of dieetwensen zijn.
 - Telefoonnummer is VERPLICHT bij elke reservering. Het nummer waarmee de beller belt is automatisch beschikbaar als {{contact.phone}}. Vraag NIET opnieuw om het nummer als {{contact.phone}} gevuld is — vraag in plaats daarvan één keer kort: "Mag ik het nummer waarmee u nu belt noteren bij de reservering?" Bij ja → gebruik {{contact.phone}}. Bij nee of als de beller een ander nummer noemt → vraag dat nummer uit, herhaal het hardop cijfer-voor-cijfer ter controle, en gebruik dát nummer. Als {{contact.phone}} leeg is (anoniem/withheld) → vraag het nummer actief uit en herhaal cijfer-voor-cijfer. Boek NIET zonder geldig telefoonnummer.
@@ -176,8 +177,8 @@ GESPREKSREGELS
 - Bij ruis of als je het niet verstaat: zeg "Sorry, ik versta u niet helemaal goed, kunt u dat herhalen?"
 
 VERPLICHTE TOOL-VOLGORDE
-1. Zodra je datum en aantal personen hebt → roep check_availability aan.
-2. Bied de beller maximaal 3 tijden aan uit de response.
+1. Vraag altijd: datum, aantal personen ÉN gewenste tijd (HH:mm). Zodra alle drie binnen zijn → roep check_availability aan met date, party_size én preferred_time.
+2. Als response.exact gevuld is → bevestig hardop: "[gewenste tijd] is beschikbaar, zal ik die reserveren?" Als response.exact = null → noem 2 à 3 alternatieven uit response.alternatives rond de gewenste tijd, in volgorde van nabijheid. Bijvoorbeeld: "19:30 lukt helaas niet, maar 19:00, 20:00 of 20:30 zijn wel beschikbaar — welke past?"
 3. Zodra de beller een tijd kiest én je naam hebt + een geldig telefoonnummer (bevestigd {{contact.phone}} of door beller opgegeven nummer) → bevestig hardop alles → roep create_reservation aan met phone = dat nummer.
 4. Lees het bevestigingsnummer (laatste 6 tekens van reservation_id) hardop voor.
 5. Aan het einde van élk gesprek: roep log_call aan met outcome ("booked", "cancelled", "updated", "info_only", "no_action", "callback_needed").
@@ -192,7 +193,7 @@ WIJZIGEN
 - Probeer eerst stilzwijgend te matchen op {{contact.phone}} via find_reservation. Lukt dat → bevestig hardop welke reservering je gevonden hebt. Lukt dat niet → vraag het bevestigingsnummer of een ander telefoonnummer.
 - Vraag het bevestigingsnummer (of telefoonnummer + datum) om de reservering te vinden.
 - Vraag wat er moet veranderen: datum, tijd en/of aantal personen.
-- Roep eerst check_availability aan voor de nieuwe datum/tijd/aantal.
+- Roep eerst check_availability aan voor de nieuwe combinatie (geef de nieuwe tijd mee als preferred_time). Als response.exact = null → bied 2 à 3 alternatieven uit response.alternatives aan en laat de beller kiezen.
 - Pas als beschikbaar → roep update_reservation aan met reservation_id + alleen de gewijzigde velden (new_date, new_time, new_party_size).
 - Bevestig de wijziging hardop met de nieuwe gegevens.
 
@@ -645,9 +646,9 @@ const SECTIONS: Section[] = [
               {
                 name: "preferred_time",
                 type: "String",
-                required: false,
+                required: true,
                 description:
-                  "Optionele voorkeurstijd in formaat HH:mm (24-uurs). Alleen invullen als de beller een specifieke tijd noemt.",
+                  "VERPLICHT. Gewenste tijd in HH:mm (24-uurs). Vraag altijd actief: 'Hoe laat zou u willen komen?' Boek niet zonder bevestigde gewenste tijd.",
                 example: "19:30",
               },
             ],
@@ -658,9 +659,12 @@ const SECTIONS: Section[] = [
 }`,
             responseHint: (
               <>
-                Response bevat <code>slots</code> (array van{" "}
-                <code>{`{ time, available }`}</code>). Bied maximaal 3 beschikbare tijden aan de
-                beller.
+                Response bevat <code>exact</code> (één slot of <code>null</code>) en{" "}
+                <code>alternatives</code> (max 3 slots gesorteerd op nabijheid).{" "}
+                <strong>Als <code>exact</code> gevuld is</strong> → bevestig die tijd
+                direct hardop.{" "}
+                <strong>Als <code>exact</code> = null</strong> → noem 2 à 3 alternatieven
+                uit <code>alternatives[].time</code> rond de gewenste tijd.
               </>
             ),
           })}
@@ -982,7 +986,7 @@ function buildBundle() {
           log_call:           `${AGENT_API_BASE}/log_call`,
         },
         tool_params: {
-          check_availability: ["date (String, required)", "party_size (Number, required)", "preferred_time (String, optional)"],
+          check_availability: ["date (String, required)", "party_size (Number, required)", "preferred_time (String, required)"],
           book_reservation:   ["date (String, required)", "time (String, required)", "party_size (Number, required)", "first_name (String, required)", "last_name (String, optional)", "phone (String, required)", "email (String, optional)", "special_requests (String, optional)"],
           cancel_reservation: ["reservation_id (String, required)", "reason (String, optional)"],
           update_reservation: ["reservation_id (String, required)", "new_date (String, optional)", "new_time (String, optional)", "new_party_size (Number, optional)", "special_requests (String, optional)"],

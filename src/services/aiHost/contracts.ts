@@ -98,7 +98,7 @@ export const AI_ACTION_CATALOG: AIActionContract[] = [
     inputs: [
       { name: "date", label: "Datum", type: "date", required: true },
       { name: "party_size", label: "Aantal gasten", type: "number", required: true },
-      { name: "preferred_time", label: "Gewenste tijd (HH:mm)", type: "time", required: false },
+      { name: "preferred_time", label: "Gewenste tijd (HH:mm)", type: "time", required: true },
     ],
     allowedCallers: ["voice_ai", "whatsapp_ai", "sms_ai", "webchat_ai", "internal_ai", "staff_user"],
     mode: "external",

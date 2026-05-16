@@ -165,11 +165,34 @@ async function handle(
     switch (ctx.action) {
       case "check_availability": {
         if (!keyRow.scopes.includes("availability")) return json({ error: "Scope missing: availability", error_code: "auth_scope_missing", field: "availability" }, 403);
-        const { date, party_size } = payload as { date?: string; party_size?: number };
+        const { date, party_size, preferred_time } = payload as { date?: string; party_size?: number; preferred_time?: string };
         if (!date) return json({ error: "date required (YYYY-MM-DD)", error_code: "missing_field", field: "date" }, 400);
         if (!party_size) return json({ error: "party_size required", error_code: "missing_field", field: "party_size" }, 400);
+        if (!preferred_time) return json({ error: "preferred_time required (HH:mm)", error_code: "missing_field", field: "preferred_time" }, 400);
+        if (!/^\d{2}:\d{2}$/.test(preferred_time)) return json({ error: "preferred_time must be HH:mm", error_code: "invalid_field", field: "preferred_time" }, 400);
         const r = await callInternalFn("availability", { restaurant_id: keyRow.restaurant_id, date, party_size });
-        return json(r.body, r.status);
+        // Post-process: build exact + alternatives based on preferred_time.
+        const body = r.body as { slots?: Array<{ time: string; available: boolean; available_table_count?: number }>; closed?: boolean; large_group?: boolean; message?: string } | null;
+        const slots = body?.slots ?? [];
+        const available = slots.filter((s) => s.available);
+        const exact = available.find((s) => s.time.startsWith(preferred_time)) ?? null;
+        const [ph, pm] = preferred_time.split(":").map(Number);
+        const prefMin = ph * 60 + pm;
+        const alternatives = [...available]
+          .map((s) => {
+            const [h, m] = s.time.split(":").map(Number);
+            return { slot: s, dist: Math.abs(h * 60 + m - prefMin) };
+          })
+          .sort((a, b) => a.dist - b.dist)
+          .slice(0, 3)
+          .map((x) => x.slot);
+        return json({
+          ...body,
+          preferred_time,
+          available: available.length > 0,
+          exact,
+          alternatives,
+        }, r.status);
       }
       case "book_reservation": {
         if (!keyRow.scopes.includes("book")) return json({ error: "Scope missing: book", error_code: "auth_scope_missing", field: "book" }, 403);
