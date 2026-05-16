@@ -316,8 +316,9 @@ async function handleRequestChange(sb: any, reservation: any, restaurant: any, b
   // Send the appropriate email — best-effort
   if (recipientEmail && !/@tablewise\.local$/i.test(recipientEmail)) {
     const baseUrl = (Deno.env.get("SITE_URL") || "https://www.txtablewise.nl").replace(/\/+$/, "");
-    const manageUrl = reservation.manage_token ? `${baseUrl}/r/manage/${reservation.manage_token}` : undefined;
-    const cancelUrl = reservation.cancel_token ? `${baseUrl}/r/manage/${reservation.cancel_token}?action=cancel` : undefined;
+    const slugPart = restaurant.slug ? `/${restaurant.slug}` : "";
+    const manageUrl = reservation.manage_token ? `${baseUrl}/r${slugPart}/manage/${reservation.manage_token}` : undefined;
+    const cancelUrl = reservation.cancel_token ? `${baseUrl}/r${slugPart}/manage/${reservation.cancel_token}?action=cancel` : undefined;
 
     let templateName: string;
     let templateData: Record<string, any> = {
