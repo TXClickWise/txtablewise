@@ -478,6 +478,78 @@ export type Database = {
         }
         Relationships: []
       }
+      guest_change_requests: {
+        Row: {
+          contact_patch: Json
+          created_at: string
+          current_party_size: number | null
+          current_reservation_date: string | null
+          current_start_time: string | null
+          desired_party_size: number | null
+          desired_reservation_date: string | null
+          desired_time: string | null
+          dietary_notes: string | null
+          guest_email: string | null
+          guest_name: string | null
+          id: string
+          message: string | null
+          reason_code: string | null
+          reservation_id: string
+          restaurant_id: string
+          reviewed_at: string | null
+          reviewed_by: string | null
+          reviewer_note: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          contact_patch?: Json
+          created_at?: string
+          current_party_size?: number | null
+          current_reservation_date?: string | null
+          current_start_time?: string | null
+          desired_party_size?: number | null
+          desired_reservation_date?: string | null
+          desired_time?: string | null
+          dietary_notes?: string | null
+          guest_email?: string | null
+          guest_name?: string | null
+          id?: string
+          message?: string | null
+          reason_code?: string | null
+          reservation_id: string
+          restaurant_id: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          reviewer_note?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          contact_patch?: Json
+          created_at?: string
+          current_party_size?: number | null
+          current_reservation_date?: string | null
+          current_start_time?: string | null
+          desired_party_size?: number | null
+          desired_reservation_date?: string | null
+          desired_time?: string | null
+          dietary_notes?: string | null
+          guest_email?: string | null
+          guest_name?: string | null
+          id?: string
+          message?: string | null
+          reason_code?: string | null
+          reservation_id?: string
+          restaurant_id?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          reviewer_note?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       guest_notes: {
         Row: {
           created_at: string
