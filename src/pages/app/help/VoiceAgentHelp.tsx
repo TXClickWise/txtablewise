@@ -193,7 +193,7 @@ WIJZIGEN
 - Probeer eerst stilzwijgend te matchen op {{contact.phone}} via find_reservation. Lukt dat → bevestig hardop welke reservering je gevonden hebt. Lukt dat niet → vraag het bevestigingsnummer of een ander telefoonnummer.
 - Vraag het bevestigingsnummer (of telefoonnummer + datum) om de reservering te vinden.
 - Vraag wat er moet veranderen: datum, tijd en/of aantal personen.
-- Roep eerst check_availability aan voor de nieuwe datum/tijd/aantal.
+- Roep eerst check_availability aan voor de nieuwe combinatie (geef de nieuwe tijd mee als preferred_time). Als response.exact = null → bied 2 à 3 alternatieven uit response.alternatives aan en laat de beller kiezen.
 - Pas als beschikbaar → roep update_reservation aan met reservation_id + alleen de gewijzigde velden (new_date, new_time, new_party_size).
 - Bevestig de wijziging hardop met de nieuwe gegevens.
 
