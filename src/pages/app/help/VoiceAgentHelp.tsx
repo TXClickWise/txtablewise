@@ -564,9 +564,9 @@ const SECTIONS: Section[] = [
   {
     id: "tools",
     group: "manual",
-    title: "9. Tool definities (5 stuks)",
+    title: "9. Tool definities (9 stuks)",
     icon: ListChecks,
-    keywords: "tool action webhook check_availability book_reservation create_reservation cancel_reservation update_reservation wijzigen log_call query parameters data collection",
+    keywords: "tool action webhook check_availability book_reservation create_reservation cancel_reservation update_reservation wijzigen log_call find_reservation reconfirm_reservation create_waitlist_entry get_opening_hours query parameters data collection what to say before",
     render: () => {
       const headers = `X-Agent-Api-Key: {{custom_values.tw_agent_api_key}}\nContent-Type: application/json`;
 
@@ -579,6 +579,9 @@ const SECTIONS: Section[] = [
         body: string;
         responseHint: React.ReactNode;
         endNote?: React.ReactNode;
+        sayBefore?: string;
+        sayBeforeNote?: React.ReactNode;
+        optional?: boolean;
       }) => (
         <div className="space-y-2">
           <div className="font-medium flex items-center gap-2">
@@ -587,6 +590,9 @@ const SECTIONS: Section[] = [
               <Badge className="bg-amber-500/15 text-amber-700 border-amber-500/40">
                 verplicht aan einde
               </Badge>
+            )}
+            {args.optional && (
+              <Badge variant="secondary">optioneel</Badge>
             )}
           </div>
           <CopyRow label="Description (voor de agent)" value={args.description} />
@@ -606,6 +612,17 @@ const SECTIONS: Section[] = [
             </div>
           </div>
           <CodeBlock label="Headers">{headers}</CodeBlock>
+          {args.sayBefore !== undefined && (
+            <div className="space-y-1">
+              <CopyRow
+                label='ClickWise-veld: "What to say before performing the action"'
+                value={args.sayBefore}
+              />
+              {args.sayBeforeNote && (
+                <div className="text-xs text-muted-foreground pl-1">{args.sayBeforeNote}</div>
+              )}
+            </div>
+          )}
           <ToolParamTable params={args.params} />
           <CodeBlock label="Body (JSON) — voorbeeld">{args.body}</CodeBlock>
           <div className="text-xs text-muted-foreground">{args.responseHint}</div>
