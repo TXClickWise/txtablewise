@@ -1,56 +1,80 @@
-## Antwoord kort
+## Doel
 
-Ja, de prompt moet aangepast worden. Telefoonnummer wordt verplicht (met `{{contact.phone}}` als default), e-mail blijft optioneel. Alleen prompt-tekst en de parameter-tabel van `create_reservation` in de help-pagina — geen edge functions of contracts.
+`preferred_time` wordt verplicht bij `check_availability`. De agent vraagt altijd actief om de gewenste tijd, en het backend-antwoord bevat ofwel een exacte beschikbare match, ofwel 2–3 alternatieven dicht bij de gewenste tijd. Help-files en system-prompt aanpassen zodat dit gedrag overal hetzelfde is.
 
-## Wijzigingen in `src/pages/app/help/VoiceAgentHelp.tsx`
+## Wijzigingen
 
-### A. `SYSTEM_PROMPT` — telefoonnummer-regel
+### 1. `supabase/functions/agent_api/index.ts` — `check_availability` server-side
+- `preferred_time` (`HH:mm`) wordt **required**. Ontbreekt het → `400 missing_field` met `field: "preferred_time"`.
+- Validatie: regex `^\d{2}:\d{2}$`, anders `invalid_field`.
+- Roep `availability` aan zoals nu (full day slots).
+- Post-processing op de response (gespiegeld aan `dispatcher.ts` zodat gedrag identiek is):
+  - `availableSlots = slots.filter(s => s.available)`
+  - `exact = availableSlots.find(s => s.time.startsWith(preferred_time))`
+  - `nearby = availableSlots` gesorteerd op absolute afstand (in minuten) tot `preferred_time`, top 3.
+  - Output JSON:
+    ```json
+    {
+      "preferred_time": "19:30",
+      "available": true|false,
+      "exact": { "time": "19:30", "available_table_count": 2 } | null,
+      "alternatives": [ { "time": "19:00", ... }, { "time": "20:00", ... }, { "time": "20:30", ... } ],
+      "closed": false,
+      "large_group": false,
+      "slots": [ ...full day, ongewijzigd ]
+    }
+    ```
+  - Bij `closed` of `large_group`: zelfde gedrag als nu, plus lege `exact`/`alternatives`.
 
-Vervangen onder GESPREKSREGELS:
-- **Oud:** "Vraag het mobiele nummer ter bevestiging, ook als nummerherkenning aanwezig is."
-- **Nieuw:** "Telefoonnummer is VERPLICHT bij elke reservering. Het nummer waarmee de beller belt is automatisch beschikbaar als `{{contact.phone}}`. Vraag NIET opnieuw om het nummer als `{{contact.phone}}` gevuld is — vraag in plaats daarvan één keer kort: *'Mag ik het nummer waarmee u nu belt noteren bij de reservering?'* Bij **ja** → gebruik `{{contact.phone}}`. Bij **nee** of als de beller een ander nummer noemt → vraag dat nummer uit, herhaal het hardop cijfer-voor-cijfer ter controle, en gebruik dát nummer. Als `{{contact.phone}}` leeg is (anoniem/withheld) → vraag het nummer actief uit en herhaal cijfer-voor-cijfer. Boek NIET zonder geldig telefoonnummer."
+### 2. `src/services/aiHost/dispatcher.ts`
+- Schema: `preferred_time: timeSchema` (zonder `.optional()`).
+- Bij ontbrekende `preferred_time` → `validation_error` "Gewenste tijd ontbreekt".
+- Response uitbreiden met `exact` + `alternatives[0..2]` analoog aan agent_api, zodat in-app simulator en agent_api dezelfde shape teruggeven.
 
-### B. `SYSTEM_PROMPT` — bevestigingsregel
+### 3. `src/services/aiHost/contracts.ts`
+- `preferred_time` parameter `required: false` → **`true`** in de catalog-definitie van `check_availability`.
 
-Vervangen:
-- **Oud:** "Bevestig altijd hardop alle gegevens (naam, datum, tijd, aantal personen, telefoonnummer) vóór je definitief boekt."
-- **Nieuw:** "Bevestig altijd hardop alle gegevens (naam, datum, tijd, aantal personen en het te noteren telefoonnummer) vóór je definitief boekt."
+### 4. `src/pages/app/help/VoiceAgentHelp.tsx`
 
-### C. `SYSTEM_PROMPT` — VERPLICHTE TOOL-VOLGORDE stap 3
+**A. `ToolParamTable` voor `check_availability`:**
+- `preferred_time`: Required **ja** (was nee).
+- Description: "VERPLICHT. Gewenste tijd in HH:mm (24-uurs). Vraag altijd actief: *'Hoe laat zou u willen komen?'* Boek niet zonder bevestigde gewenste tijd."
 
-Vervangen:
-- **Oud:** "Zodra de beller een tijd kiest én je naam + telefoon hebt → bevestig hardop alles → roep book_reservation aan."
-- **Nieuw:** "Zodra de beller een tijd kiest én je naam hebt + een geldig telefoonnummer (bevestigd `{{contact.phone}}` of door beller opgegeven nummer) → bevestig hardop alles → roep `create_reservation` aan met `phone` = dat nummer."
+**B. Body-voorbeeld voor `check_availability`:**
+- Verwijder *"Alleen meesturen als beller specifiek tijdstip noemt"*-tekst.
+- Body wordt: `{ "date": "...", "party_size": ..., "preferred_time": "{{preferred_time}}" }`.
 
-### D. `SYSTEM_PROMPT` — "WAT JE NIET DOET" → e-mail
+**C. Response-mapping uitleg:**
+- Toelichten dat de response nu `exact` (één slot of `null`) + `alternatives` (max 3 slots) bevat.
+- Voorbeeld: `result.exact.time` → bevestig die tijd direct. `result.alternatives[0..2].time` → bied 2–3 alternatieven aan als `exact` `null` is.
 
-Vervangen:
-- **Oud:** "Geen e-mailadres uitvragen tenzij de beller het uit zichzelf wil geven."
-- **Nieuw:** "E-mailadres is optioneel. Vraag het NIET standaard uit. Alleen noteren als de beller het uit zichzelf opgeeft of expliciet een digitale bevestiging vraagt."
+**D. `SYSTEM_PROMPT` — VERPLICHTE TOOL-VOLGORDE:**
+- Stap 1 vervangen:
+  - Oud: "Zodra je datum en aantal personen hebt → roep check_availability aan."
+  - Nieuw: "Vraag altijd: datum, aantal personen ÉN gewenste tijd (HH:mm). Zodra alle drie binnen zijn → roep `check_availability` aan met `date`, `party_size` en `preferred_time`."
+- Stap 2 vervangen:
+  - Oud: "Bied de beller maximaal 3 tijden aan uit de response."
+  - Nieuw: "Als `result.exact` gevuld is → bevestig hardop: *'[gewenste tijd] is beschikbaar, zal ik die reserveren?'* Als `result.exact` `null` is → noem maximaal 2 (bij voorkeur 3) alternatieven uit `result.alternatives` rond de gewenste tijd, in volgorde van nabijheid. Bijvoorbeeld: *'19:30 lukt helaas niet, maar 19:00, 20:00 of 20:30 zijn wel beschikbaar — welke past?'*"
 
-### E. ANNULEREN / WIJZIGEN — auto-match op nummer
+**E. `SYSTEM_PROMPT` — GESPREKSREGELS:**
+- Toevoegen na de tijd-regel: "Vraag de gewenste tijd altijd uit, ook bij open vragen zoals *'hebben jullie vanavond plek voor 4?'* — antwoord dan: *'Rond welk tijdstip zou u willen komen?'* en gebruik dat als `preferred_time`."
 
-In beide blokken één regel toevoegen bovenaan:
-- "Probeer eerst stilzwijgend te matchen op `{{contact.phone}}` via `find_reservation`. Lukt dat → bevestig hardop welke reservering je gevonden hebt. Lukt dat niet → vraag het bevestigingsnummer of een ander telefoonnummer."
+**F. `SYSTEM_PROMPT` — WIJZIGEN:**
+- In de stap "Roep eerst `check_availability` aan voor de nieuwe datum/tijd/aantal" expliciet maken dat de nieuwe tijd óók als `preferred_time` meegaat, en dat bij mismatch alternatieven worden voorgesteld.
 
-### F. Sectie 9 — `create_reservation` parameter-tabel
+**G. `buildBundle()` JSON:**
+- `tool_params.check_availability`: `"preferred_time (String, optional)"` → `"preferred_time (String, required)"`.
 
-In de `ToolParamTable` voor `create_reservation`:
-- `phone`: Required **ja** (was: nee). Description: "Telefoonnummer in E.164. Default `{{contact.phone}}` (nummer waarmee beller belt). Alleen anders als beller expliciet ander nummer opgeeft."
-- `email`: Required **nee** (blijft). Description aanvullen: "Optioneel. Alleen invullen als de beller dit zelf opgeeft of digitale bevestiging vraagt."
+### 5. Geen aanpassing nodig
 
-Ook in `buildBundle()` de `params`-string voor `create_reservation`/`book_reservation` aanpassen: `"phone (String, required)"` en `"email (String, optional)"`.
-
-## Niet veranderen
-
-- `agent_api/index.ts` — `phone` blijft daar technisch optional op DB-niveau; de prompt dwingt de verplichting af op gesprek-niveau. Geen schema-wijziging nodig.
-- `contracts.ts` — ongewijzigd.
-- `voiceFlow.ts` (in-app simulator) — daar is `phone` al required.
-- ClickWise tool-config — `phone` blijft als body-param bestaan; alleen de description/required-vlag in de help-tabel verandert zodat de gebruiker bij het invullen weet dat ie het op Required moet zetten.
+- `src/components/ai-host/ClickWiseToolSetupPanel.tsx` — leest uit `AI_ACTION_CATALOG`, krijgt automatisch de nieuwe required-flag mee.
+- `availability` edge function — blijft onveranderd, agent_api/dispatcher doen de filtering.
+- `voiceFlow.ts` simulator — gebruikt `/public_api/availability` direct met `localTime` en is niet betrokken bij `preferred_time` semantiek.
 
 ## Verificatie
 
-- Zoeken op "nummerherkenning" → 0 hits.
-- Zoeken op "{{contact.phone}}" in `SYSTEM_PROMPT` → ≥1 hit.
-- `create_reservation`-rij voor `phone` in sectie 9 toont Required = ja.
-- `buildBundle()` JSON-export bevat `"phone (String, required)"`.
+- `check_availability` zonder `preferred_time` → 400 met `field: "preferred_time"`.
+- `check_availability` met `preferred_time: "19:30"` waar exact beschikbaar → `exact.time = "19:30:00"`, `alternatives` gevuld.
+- `check_availability` met `preferred_time: "19:30"` waar niet beschikbaar maar 19:00/20:00/20:30 wel → `exact: null`, `alternatives` toont die 3 op nabijheid.
+- Help-pagina `/app/help/voice-agent#tools`: `preferred_time`-rij in `check_availability`-tabel toont Required = ja.
+- `buildBundle()` JSON-export bevat `"preferred_time (String, required)"`.
