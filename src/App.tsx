@@ -136,7 +136,7 @@ const App = () => (
                 <Route path="gasten" element={<GuestsSettings />} />
                 <Route path="berichten" element={<MessagesSettings />} />
                 <Route path="ai-voice" element={<AiVoiceSettings />} />
-                <Route path="pre-orders" element={<PreOrderDrinksPage /></RequireRole> ? null : null} />
+                <Route path="pre-orders" element={<PreOrderDrinksPage />} />
                 <Route path="integraties" element={<RequireRole allow={["owner"]}><IntegrationsSettings /></RequireRole>} />
                 <Route path="api" element={<RequireRole allow={["owner"]}><ApiWebhooksSettings /></RequireRole>} />
                 <Route path="gebruikers" element={<RequireRole allow={["owner"]}><UsersRolesSettings /></RequireRole>} />
