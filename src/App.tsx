@@ -128,7 +128,7 @@ const App = () => (
               <Route path="pilot-readiness" element={<RequireSystemAdmin><PilotReadinessPage /></RequireSystemAdmin>} />
               <Route path="integraties/clickwise" element={<RequireRole allow={["owner","manager"]}><ClickWiseIntegrationPage /></RequireRole>} />
               <Route path="integraties/pos" element={<RequireRole allow={["owner","manager"]}><POSIntegrationPage /></RequireRole>} />
-              <Route path="integraties/hub" element={<RequireRole allow={["owner","manager"]}><IntegrationHubPage /></RequireRole>} />
+              <Route path="integraties/hub" element={<RequireSystemAdmin><IntegrationHubPage /></RequireSystemAdmin>} />
               <Route path="integraties/logs" element={<RequireRole allow={["owner","manager"]}><IntegrationLogsPage /></RequireRole>} />
               <Route path="instellingen" element={<RequireRole allow={["owner","manager"]}><SettingsPage /></RequireRole>}>
                 <Route index element={<GeneralSettings />} />
