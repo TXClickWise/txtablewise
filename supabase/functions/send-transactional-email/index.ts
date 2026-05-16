@@ -301,14 +301,18 @@ Deno.serve(async (req) => {
   // Priority: requested locale → restaurant.default_locale → 'nl'.
   let restaurantDefaultLocale: string | undefined
   let restaurantName: string | undefined
+  let restaurantReplyTo: string | undefined
   if (restaurantId) {
     const { data: r } = await supabase
       .from('restaurants')
-      .select('default_locale, name')
+      .select('default_locale, name, guest_reply_to_email')
       .eq('id', restaurantId)
       .maybeSingle()
     restaurantDefaultLocale = r?.default_locale
     restaurantName = r?.name
+    restaurantReplyTo = typeof r?.guest_reply_to_email === 'string'
+      ? r.guest_reply_to_email.trim()
+      : undefined
   }
   const locale = resolveLocale(requestedLocale, restaurantDefaultLocale)
 
@@ -390,13 +394,20 @@ Deno.serve(async (req) => {
     .trim()
     .slice(0, 80) || SITE_NAME
 
+  const sanitizedReplyTo = (restaurantReplyTo || replyToOverride || '')
+    .replace(/[\r\n]/g, '')
+    .trim()
+  const effectiveReplyTo = /^\S+@\S+\.\S+$/.test(sanitizedReplyTo)
+    ? sanitizedReplyTo
+    : undefined
+
   const { error: enqueueError } = await supabase.rpc('enqueue_email', {
     queue_name: 'transactional_emails',
     payload: {
       message_id: messageId,
       to: effectiveRecipient,
       from: `${safeFromName} <noreply@${FROM_DOMAIN}>`,
-      reply_to: replyToOverride,
+      reply_to: effectiveReplyTo,
       sender_domain: SENDER_DOMAIN,
       subject: resolvedSubject,
       html,
