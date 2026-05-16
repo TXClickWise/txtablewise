@@ -18,6 +18,7 @@ import { getWidgetBaseUrl } from "@/lib/widgetUrl";
 import { usePlan } from "@/hooks/usePlan";
 import { Sparkles, Lock } from "lucide-react";
 import { LogoUploader } from "@/components/branding/LogoUploader";
+import { AdvancedSection } from "@/components/AdvancedSection";
 
 type RestaurantBrand = {
   id: string;
@@ -281,59 +282,55 @@ const WidgetSettings = () => {
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Standaard instellingen</CardTitle>
-              <CardDescription>Worden meegegeven in de gegenereerde links en embed-code. Gasten kunnen ze nog wijzigen.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Aantal personen</Label>
-                  <Select value={String(defaultParty)} onValueChange={(v) => setDefaultParty(parseInt(v, 10))}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      {[1, 2, 3, 4, 5, 6, 7, 8].map((n) => (
-                        <SelectItem key={n} value={String(n)}>{n}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label>Taal</Label>
-                  <Select value={language} onValueChange={(v) => setLanguage(v as "nl" | "en")}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="nl">Nederlands</SelectItem>
-                      <SelectItem value="en">English</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label>Standaard datum</Label>
-                  <Input type="date" value={defaultDate} onChange={(e) => setDefaultDate(e.target.value)} />
-                  <div className="flex gap-2">
-                    <Button type="button" variant="outline" size="sm" onClick={() => setDefaultDate(format(new Date(), "yyyy-MM-dd"))}>Vandaag</Button>
-                    <Button type="button" variant="outline" size="sm" onClick={() => setDefaultDate(format(new Date(Date.now() + 86400000), "yyyy-MM-dd"))}>Morgen</Button>
-                    <Button type="button" variant="ghost" size="sm" onClick={() => setDefaultDate("")}>Wis</Button>
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <Label>Standaard tijd</Label>
-                  <Input type="time" value={defaultTime} onChange={(e) => setDefaultTime(e.target.value)} />
-                  <p className="text-xs text-muted-foreground">Optioneel — wordt voorgeselecteerd als beschikbaar.</p>
+          <AdvancedSection
+            title="Voorgevulde waarden in de link (optioneel)"
+            description="Standaard aantal personen, datum, tijd of taal. Gasten kunnen alles nog wijzigen."
+          >
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Aantal personen</Label>
+                <Select value={String(defaultParty)} onValueChange={(v) => setDefaultParty(parseInt(v, 10))}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {[1, 2, 3, 4, 5, 6, 7, 8].map((n) => (
+                      <SelectItem key={n} value={String(n)}>{n}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Taal</Label>
+                <Select value={language} onValueChange={(v) => setLanguage(v as "nl" | "en")}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="nl">Nederlands</SelectItem>
+                    <SelectItem value="en">English</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Standaard datum</Label>
+                <Input type="date" value={defaultDate} onChange={(e) => setDefaultDate(e.target.value)} />
+                <div className="flex gap-2">
+                  <Button type="button" variant="outline" size="sm" onClick={() => setDefaultDate(format(new Date(), "yyyy-MM-dd"))}>Vandaag</Button>
+                  <Button type="button" variant="outline" size="sm" onClick={() => setDefaultDate(format(new Date(Date.now() + 86400000), "yyyy-MM-dd"))}>Morgen</Button>
+                  <Button type="button" variant="ghost" size="sm" onClick={() => setDefaultDate("")}>Wis</Button>
                 </div>
               </div>
-
-              <div className="flex items-center justify-between pt-2 border-t border-border">
-                <div>
-                  <Label htmlFor="show-tw-logo" className="text-sm">Toon "powered by TX TableWise"</Label>
-                  <p className="text-xs text-muted-foreground">Subtiel onderaan de header.</p>
-                </div>
-                <Switch id="show-tw-logo" checked={showTableWiseLogo} onCheckedChange={setShowTableWiseLogo} />
+              <div className="space-y-2">
+                <Label>Standaard tijd</Label>
+                <Input type="time" value={defaultTime} onChange={(e) => setDefaultTime(e.target.value)} />
+                <p className="text-xs text-muted-foreground">Optioneel — wordt voorgeselecteerd als beschikbaar.</p>
               </div>
-            </CardContent>
-          </Card>
+            </div>
+            <div className="flex items-center justify-between pt-2 border-t border-border">
+              <div>
+                <Label htmlFor="show-tw-logo" className="text-sm">Toon "powered by TX TableWise"</Label>
+                <p className="text-xs text-muted-foreground">Subtiel onderaan de header.</p>
+              </div>
+              <Switch id="show-tw-logo" checked={showTableWiseLogo} onCheckedChange={setShowTableWiseLogo} />
+            </div>
+          </AdvancedSection>
         </div>
 
         {/* RIGHT: distribution */}
@@ -356,22 +353,19 @@ const WidgetSettings = () => {
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Embed op je website</CardTitle>
-              <CardDescription>Kopieer deze code en plak hem in je website-builder of HTML.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <textarea
-                readOnly
-                value={embedSnippet}
-                className="w-full h-32 rounded-md border border-border bg-muted/30 p-3 font-mono text-xs"
-              />
-              <Button variant="outline" onClick={() => copy(embedSnippet, "Embed-code")} className="gap-2">
-                <Copy className="h-4 w-4" /> Kopieer embed-code
-              </Button>
-            </CardContent>
-          </Card>
+          <AdvancedSection
+            title="Embed-code voor je website (voor je webbouwer)"
+            description="HTML-snippet om de widget direct in je site te plakken. Stuur deze door naar je webbouwer als je dat liever uitbesteedt."
+          >
+            <textarea
+              readOnly
+              value={embedSnippet}
+              className="w-full h-32 rounded-md border border-border bg-muted/30 p-3 font-mono text-xs"
+            />
+            <Button variant="outline" onClick={() => copy(embedSnippet, "Embed-code")} className="gap-2">
+              <Copy className="h-4 w-4" /> Kopieer embed-code
+            </Button>
+          </AdvancedSection>
 
           <Card>
             <CardHeader>

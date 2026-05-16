@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { Sparkles, Loader2 } from "lucide-react";
+import { AdvancedSection } from "@/components/AdvancedSection";
 import { Switch } from "@/components/ui/switch";
 
 const NOTIFICATION_KEYS: { key: string; label: string; description: string }[] = [
@@ -385,9 +386,11 @@ export default function MessagesSettings() {
         </p>
       </Card>
 
-      <div>
-        <h2 className="font-display text-xl mb-2">E-mailteksten per taal</h2>
-        <p className="text-sm text-muted-foreground mb-4">
+      <AdvancedSection
+        title="E-mailteksten zelf aanpassen (per taal)"
+        description="Standaardteksten werken prima. Open dit alleen als je de bevestigings- of herinneringsmails wilt herschrijven of vertalen."
+      >
+        <p className="text-sm text-muted-foreground">
           Pas de standaardtekst van elke e-mail aan en laat AI hem automatisch vertalen naar Engels, Duits en Frans.
         </p>
         <div className="space-y-4">
@@ -400,7 +403,7 @@ export default function MessagesSettings() {
             />
           ))}
         </div>
-      </div>
+      </AdvancedSection>
     </div>
   );
 }
