@@ -238,7 +238,10 @@ function SettingsCollapsibleGroup({
 }) {
   const settingsActive = pathname.startsWith("/app/instellingen");
   const { open, setOpen } = useCollapsibleGroup("sidebar.settings", settingsActive);
-  const items = SETTINGS_ITEMS.filter((i) => !i.ownerOnly || isOwner);
+  const { canSeeAdvanced } = useAdvancedMode();
+  const items = SETTINGS_ITEMS
+    .filter((i) => !i.ownerOnly || isOwner)
+    .filter((i) => !i.advanced || canSeeAdvanced);
 
   if (collapsed) {
     return (
