@@ -12,24 +12,29 @@ function admin() {
   return createClient(SUPABASE_URL, SERVICE_KEY);
 }
 
-async function getUserId(authHeader: string | null): Promise<string | null> {
-  if (!authHeader?.startsWith("Bearer ")) return null;
-  const sb = createClient(SUPABASE_URL, ANON_KEY, {
+function userClient(authHeader: string) {
+  return createClient(SUPABASE_URL, ANON_KEY, {
     global: { headers: { Authorization: authHeader } },
   });
-  const { data, error } = await sb.auth.getUser();
-  if (error) return null;
-  return data?.user?.id ?? null;
 }
 
-async function isManager(restaurantId: string, userId: string): Promise<boolean> {
-  const { data } = await admin()
+async function canManageRestaurant(restaurantId: string, authHeader: string): Promise<boolean> {
+  const { data: managerAllowed, error: managerError } = await userClient(authHeader)
+    .rpc("is_restaurant_manager", { _restaurant_id: restaurantId });
+  if (managerError) console.error("is_restaurant_manager failed", managerError.message);
+  if (managerAllowed === true) return true;
+
+  const { data: systemAdminAllowed, error: systemAdminError } = await userClient(authHeader)
+    .rpc("is_system_admin");
+  if (systemAdminError) console.error("is_system_admin failed", systemAdminError.message);
+  if (systemAdminAllowed === true) return true;
+
+  const { data: member } = await userClient(authHeader)
     .from("restaurant_members")
     .select("role")
     .eq("restaurant_id", restaurantId)
-    .eq("user_id", userId)
     .maybeSingle();
-  return !!data && ["owner", "manager"].includes((data as { role: string }).role);
+  return !!member && ["owner", "manager"].includes((member as { role: string }).role);
 }
 
 async function logEvent(restaurantId: string, eventType: string, payload: Record<string, unknown>) {
@@ -221,8 +226,8 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
   try {
-    const userId = await getUserId(req.headers.get("Authorization"));
-    if (!userId) {
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader?.startsWith("Bearer ")) {
       return new Response(JSON.stringify({ error: "unauthorized" }), {
         status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -236,7 +241,7 @@ Deno.serve(async (req) => {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-    if (!(await isManager(restaurantId, userId))) {
+    if (!(await canManageRestaurant(restaurantId, authHeader))) {
       return new Response(JSON.stringify({ error: "forbidden" }), {
         status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
