@@ -140,6 +140,7 @@ Sluit altijd af met: "Hartelijk dank voor uw telefoontje, tot [datum en tijd har
 const SECTIONS: Section[] = [
   {
     id: "fixed-values",
+    group: "quickstart",
     title: "1. Vaste TableWise-waarden",
     icon: Database,
     keywords: "url endpoint header datum tijd formaat tijdzone",
@@ -166,6 +167,7 @@ const SECTIONS: Section[] = [
   },
   {
     id: "tablewise-key",
+    group: "quickstart",
     title: "2. Stappen in TableWise (eenmalig, ~2 min)",
     icon: KeyRound,
     keywords: "api sleutel key voice agent pagina kopieer status configuratie",
@@ -215,6 +217,7 @@ const SECTIONS: Section[] = [
   },
   {
     id: "snapshot-onboarding",
+    group: "quickstart",
     title: "2b. Snel onboarden vanuit master snapshot (6 stappen)",
     icon: Sparkles,
     keywords: "master snapshot sub-account custom values onboarding nieuwe klant",
@@ -257,6 +260,7 @@ const SECTIONS: Section[] = [
   },
   {
     id: "custom-fields",
+    group: "manual",
     title: "3. ClickWise — Custom Fields",
     icon: Database,
     keywords: "clickwise contact custom field reservation",
@@ -300,6 +304,7 @@ const SECTIONS: Section[] = [
   },
   {
     id: "custom-values",
+    group: "manual",
     title: "4. ClickWise — Custom Values",
     icon: Database,
     keywords: "clickwise custom values account url key restaurant location",
@@ -344,6 +349,7 @@ const SECTIONS: Section[] = [
   },
   {
     id: "voice-agent",
+    group: "manual",
     title: "5. ClickWise — Voice Agent aanmaken",
     icon: Sparkles,
     keywords: "clickwise voice agent assistant prompt tools settings",
@@ -397,6 +403,7 @@ const SECTIONS: Section[] = [
   },
   {
     id: "phone",
+    group: "manual",
     title: "6. ClickWise — Telefoonnummer koppelen",
     icon: Phone,
     keywords: "telefoon nummer phone inbound",
@@ -414,6 +421,7 @@ const SECTIONS: Section[] = [
   },
   {
     id: "workflow",
+    group: "manual",
     title: "7. ClickWise — Inbound Webhook Workflow",
     icon: Workflow,
     keywords: "workflow inbound webhook contact sms bevestiging",
@@ -455,6 +463,7 @@ const SECTIONS: Section[] = [
   },
   {
     id: "system-prompt",
+    group: "manual",
     title: "8. System Prompt (copy-paste)",
     icon: BookOpen,
     keywords: "prompt system instructie nederlands gastvrouw",
@@ -479,6 +488,7 @@ const SECTIONS: Section[] = [
   },
   {
     id: "tools",
+    group: "manual",
     title: "9. Tool definities (4 stuks)",
     icon: ListChecks,
     keywords: "tool action webhook check_availability book_reservation cancel_reservation log_call",
@@ -642,6 +652,7 @@ const SECTIONS: Section[] = [
   },
   {
     id: "test",
+    group: "golive",
     title: "10. Eerste test (5 min) & foutmeldingen",
     icon: FlaskConical,
     keywords: "test sandbox bellen 401 403 400 troubleshoot",
@@ -703,6 +714,7 @@ const SECTIONS: Section[] = [
   },
   {
     id: "go-live",
+    group: "golive",
     title: "11. Live zetten — stap voor stap",
     icon: ListChecks,
     keywords: "live productie pilot launch readiness gaan markeer",
