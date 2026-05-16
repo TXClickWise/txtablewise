@@ -257,8 +257,8 @@ export function ReservationDetailSheet({ reservationId, open, onOpenChange, onOp
                 {guest ? (
                   <>
                     <Block title="Contact">
-                      <div>{guest.email ?? "—"}</div>
-                      <div>{guest.phone ?? "—"}</div>
+                      <div>{display?.email ?? "—"}</div>
+                      <div>{display?.phone ?? "—"}</div>
                     </Block>
                     <Block title="Geschiedenis">
                       <div className="grid grid-cols-3 gap-3">
