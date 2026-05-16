@@ -394,3 +394,23 @@
   from { opacity: 0; transform: translateY(8px); }
   to { opacity: 1; transform: translateY(0); }
 }
+
+/* Datumkiezer: puntje onder dagen met minimaal 1 reservering */
+.tw-has-reservations {
+  position: relative;
+}
+.tw-has-reservations::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: 3px;
+  transform: translateX(-50%);
+  width: 4px;
+  height: 4px;
+  border-radius: 9999px;
+  background: hsl(var(--primary));
+  pointer-events: none;
+}
+.rdp-day_selected.tw-has-reservations::after {
+  background: hsl(var(--primary-foreground));
+}

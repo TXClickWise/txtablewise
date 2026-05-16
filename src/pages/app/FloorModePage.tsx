@@ -10,6 +10,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
+import { ReservationDatePicker } from "@/components/reservations/ReservationDatePicker";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   RefreshCw, Sparkles, UserPlus, Users, Clock, Crown, Beer,
@@ -369,25 +370,7 @@ const FloorModePage = () => {
             >
               <ChevronLeft className="h-4 w-4" />
             </Button>
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button variant="outline" className="h-9">
-                  <CalendarIcon className="mr-2 h-4 w-4" />
-                  <span className="hidden sm:inline">{format(selectedDate, "d MMM yyyy", { locale: nl })}</span>
-                  <span className="sm:hidden">{format(selectedDate, "d MMM", { locale: nl })}</span>
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="end">
-                <Calendar
-                  mode="single"
-                  selected={selectedDate}
-                  onSelect={(d) => d && setSelectedDate(d)}
-                  locale={nl}
-                  initialFocus
-                  className={cn("p-3 pointer-events-auto")}
-                />
-              </PopoverContent>
-            </Popover>
+            <ReservationDatePicker value={selectedDate} onChange={setSelectedDate} restaurantId={restaurantId} />
             <Button
               variant="outline" size="icon" className="h-9 w-9"
               onClick={() => setSelectedDate(addDays(selectedDate, 1))}

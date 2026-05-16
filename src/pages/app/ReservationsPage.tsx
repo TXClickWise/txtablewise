@@ -18,6 +18,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { ReservationDetailDialog } from "@/components/ReservationDetailDialog";
 import { ReservationDetailSheet } from "@/components/reservations/ReservationDetailSheet";
 import { ReservationCard, type CardReservation } from "@/components/reservations/ReservationCard";
+import { ReservationDatePicker } from "@/components/reservations/ReservationDatePicker";
 import { ReservationFormSheet } from "@/components/reservations/ReservationFormSheet";
 import { WalkInDialog } from "@/components/WalkInDialog";
 import { ReservationViewSwitcher, type ReservationView } from "@/components/reservations/ReservationViewSwitcher";
@@ -268,17 +269,7 @@ const ReservationsPage = () => {
               <Button variant="outline" size="icon" className="h-11 w-11" onClick={() => setDate(subDays(date, 1))} aria-label="Vorige dag">
                 <ChevronLeft className="h-4 w-4" />
               </Button>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button variant="outline" className="h-11">
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {format(date, "d MMM yyyy", { locale: nl })}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="end">
-                  <Calendar mode="single" selected={date} onSelect={(d) => d && setDate(d)} locale={nl} initialFocus className={cn("p-3 pointer-events-auto")} />
-                </PopoverContent>
-              </Popover>
+              <ReservationDatePicker value={date} onChange={setDate} restaurantId={restaurantId} buttonClassName="h-11" />
               <Button variant="outline" size="icon" className="h-11 w-11" onClick={() => setDate(addDays(date, 1))} aria-label="Volgende dag">
                 <ChevronRight className="h-4 w-4" />
               </Button>
