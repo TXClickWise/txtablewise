@@ -41,6 +41,7 @@ export function WeekView({
       const { data, error } = await supabase.from("reservations")
         .select(`
           id, reservation_date, start_time, party_size, status, channel,
+          guest_first_name, guest_last_name,
           guests(first_name, last_name, is_vip)
         `)
         .eq("restaurant_id", restaurantId)
