@@ -1,7 +1,7 @@
 import {
   LayoutDashboard, CalendarDays, Users, Settings, MessageSquare,
   Hand, ListChecks, BarChart3, Plug, Tablet, ShieldCheck, Bot,
-  Database, FileText, CreditCard, Shield, Crown, GraduationCap, Store,
+  Database, FileText, CreditCard, Shield, Crown, GraduationCap, Store, Rocket,
   ChevronDown,
 } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
@@ -50,6 +50,7 @@ const admin: Item[] = [
   { title: "POS-beheer", url: "/app/admin/pos", icon: CreditCard },
   { title: "Voice Agent debug", url: "/app/admin/voice-agent", icon: Bot },
   { title: "ClickWise Voice setup", url: "/app/admin/clickwise-voice-setup", icon: GraduationCap },
+  { title: "ClickWise provisioning", url: "/app/admin/clickwise-provisioning", icon: Rocket },
   { title: "Pilot readiness", url: "/app/admin/pilot-readiness", icon: ShieldCheck },
 ];
 

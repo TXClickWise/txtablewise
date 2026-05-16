@@ -47,6 +47,7 @@ import PilotLaunchSettings from "./pages/app/settings/PilotLaunchSettings.tsx";
 import AdminVoiceAgentPage from "./pages/app/admin/AdminVoiceAgentPage.tsx";
 import AdminPlanRequestsPage from "./pages/app/admin/AdminPlanRequestsPage.tsx";
 import AdminClickWiseVoiceSetupPage from "./pages/app/admin/AdminClickWiseVoiceSetupPage.tsx";
+import AdminClickWiseProvisioningPage from "./pages/app/admin/AdminClickWiseProvisioningPage.tsx";
 import AdminRestaurantsPage from "./pages/app/admin/AdminRestaurantsPage.tsx";
 import AdminRestaurantDetailPage from "./pages/app/admin/AdminRestaurantDetailPage.tsx";
 import { RequireSystemAdmin } from "./components/RequireSystemAdmin";
@@ -114,6 +115,8 @@ const App = () => (
               <Route path="admin/restaurants/:id" element={<RequireSystemAdmin><AdminRestaurantDetailPage /></RequireSystemAdmin>} />
               <Route path="admin/voice-agent" element={<RequireSystemAdmin><AdminVoiceAgentPage /></RequireSystemAdmin>} />
               <Route path="admin/clickwise-voice-setup" element={<RequireSystemAdmin><AdminClickWiseVoiceSetupPage /></RequireSystemAdmin>} />
+              <Route path="admin/clickwise-provisioning" element={<RequireSystemAdmin><AdminClickWiseProvisioningPage /></RequireSystemAdmin>} />
+              <Route path="admin/clickwise-provisioning/:id" element={<RequireSystemAdmin><AdminClickWiseProvisioningPage /></RequireSystemAdmin>} />
               <Route path="admin/plan-requests" element={<RequireSystemAdmin><AdminPlanRequestsPage /></RequireSystemAdmin>} />
               <Route path="admin/integraties" element={<RequireSystemAdmin><IntegrationHubPage /></RequireSystemAdmin>} />
               <Route path="admin/logs" element={<RequireSystemAdmin><IntegrationLogsPage /></RequireSystemAdmin>} />
