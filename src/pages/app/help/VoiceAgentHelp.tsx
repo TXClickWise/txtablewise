@@ -686,6 +686,7 @@ const SECTIONS: Section[] = [
                 uit <code>alternatives[].time</code> rond de gewenste tijd.
               </>
             ),
+            sayBefore: "Eén moment, ik kijk even of dat lukt.",
           })}
 
           {toolBlock({
