@@ -513,6 +513,41 @@ const SECTIONS: Section[] = [
             de Voice Agent (tool 4 / log_call of een aparte action) aangeroepen om het contact bij te werken.
           </p>
         </div>
+        <Callout tone="warn" title='Mapping Reference verplicht — stuur eerst een test-payload'>
+          <p>
+            ClickWise toont de melding <em>"A Mapping Reference is required for an Inbound Webhook Trigger"</em>
+            omdat HighLevel pas weet welke velden je payload heeft nadat er één keer een echte request is binnengekomen.
+            Eénmalige setup per workflow:
+          </p>
+          <ol className="list-decimal list-inside space-y-1 mt-2">
+            <li>Kopieer de <strong>Inbound Webhook URL</strong> uit het trigger-popup
+              (bv. <code>https://services.leadconnectorhq.com/hooks/...</code>).</li>
+            <li>Stuur eenmalig een voorbeeld-payload naar die URL. Snelste manier: onderstaande cURL in je terminal.
+              Alternatief: in TableWise → <em>Instellingen → API &amp; Webhooks</em> tijdelijk een endpoint met die URL
+              aanmaken, event <code>reservation.created</code> kiezen en op <strong>Test</strong> klikken.</li>
+            <li>Ga terug naar de ClickWise trigger-popup → open de dropdown <strong>Mapping Reference</strong> →
+              klik <strong>"Check for new requests"</strong>. De zojuist verzonden payload verschijnt — selecteer hem.</li>
+            <li>Klik <strong>Save Trigger</strong>. Vanaf nu zijn <code>{`{{trigger.phone}}`}</code>, <code>{`{{trigger.first_name}}`}</code> enz. beschikbaar in alle Actions.</li>
+          </ol>
+          <CodeBlock label="cURL — vervang <WEBHOOK_URL>">
+{`curl -X POST '<WEBHOOK_URL>' \\
+  -H 'Content-Type: application/json' \\
+  -d '{
+    "phone": "+31612345678",
+    "first_name": "Test",
+    "email": "test@voorbeeld.nl",
+    "reservation_id": "00000000-0000-0000-0000-000000000000",
+    "reservation_date": "2026-05-10",
+    "reservation_time": "19:30",
+    "party_size": 4,
+    "manage_token": "demo-token"
+  }'`}
+          </CodeBlock>
+          <p className="text-xs mt-2">
+            Tip: voeg je later extra velden toe aan de payload, stuur dan opnieuw een sample en ververs de Mapping
+            Reference — anders blijven nieuwe velden onzichtbaar in de Actions.
+          </p>
+        </Callout>
         <div>
           <div className="font-medium">Action 1 — Find or Create Contact</div>
           <ul className="list-disc list-inside text-muted-foreground space-y-0.5">
