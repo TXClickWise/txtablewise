@@ -1089,7 +1089,7 @@ const SECTIONS: Section[] = [
           </p>
           <ol className="list-decimal list-inside text-xs space-y-1">
             <li>ClickWise → Assistant → <strong>Advanced Settings</strong> → <strong>Webhooks</strong>.</li>
-            <li>Plak in <strong>Post-call webhook URL</strong>: <code>{`{AGENT_API_BASE}/log_call`}</code></li>
+            <li>Plak in <strong>Post-call webhook URL</strong> de URL hieronder.</li>
             <li>Voeg header <code>X-Agent-Api-Key</code> toe met je API-sleutel.</li>
             <li>Sla op — je kunt nu de <code>log_call</code> tool in tools-lijst behouden als fallback (geen kwaad).</li>
           </ol>
