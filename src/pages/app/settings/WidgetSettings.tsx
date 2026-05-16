@@ -353,22 +353,19 @@ const WidgetSettings = () => {
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Embed op je website</CardTitle>
-              <CardDescription>Kopieer deze code en plak hem in je website-builder of HTML.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <textarea
-                readOnly
-                value={embedSnippet}
-                className="w-full h-32 rounded-md border border-border bg-muted/30 p-3 font-mono text-xs"
-              />
-              <Button variant="outline" onClick={() => copy(embedSnippet, "Embed-code")} className="gap-2">
-                <Copy className="h-4 w-4" /> Kopieer embed-code
-              </Button>
-            </CardContent>
-          </Card>
+          <AdvancedSection
+            title="Embed-code voor je website (voor je webbouwer)"
+            description="HTML-snippet om de widget direct in je site te plakken. Stuur deze door naar je webbouwer als je dat liever uitbesteedt."
+          >
+            <textarea
+              readOnly
+              value={embedSnippet}
+              className="w-full h-32 rounded-md border border-border bg-muted/30 p-3 font-mono text-xs"
+            />
+            <Button variant="outline" onClick={() => copy(embedSnippet, "Embed-code")} className="gap-2">
+              <Copy className="h-4 w-4" /> Kopieer embed-code
+            </Button>
+          </AdvancedSection>
 
           <Card>
             <CardHeader>
