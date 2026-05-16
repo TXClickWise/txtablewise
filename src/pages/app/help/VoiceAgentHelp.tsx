@@ -1064,6 +1064,136 @@ const SECTIONS: Section[] = [
     ),
   },
   {
+    id: "optimizations",
+    group: "golive",
+    title: "10b. Optimalisaties — eenvoudiger logging, betere agent",
+    icon: Sparkles,
+    keywords: "logging native webhook post-call update contact field knowledge base defaults silence interrupt transcription",
+    render: () => (
+      <div className="space-y-4 text-sm">
+        <p className="text-muted-foreground">
+          Optioneel maar sterk aanbevolen. Deze instellingen verlagen het risico op verloren call-logs,
+          hallucinaties en stille gesprekken. Configureer ze in ClickWise op de assistant.
+        </p>
+
+        {/* A — Native post-call webhook */}
+        <div className="rounded-lg border p-3 space-y-2">
+          <div className="font-medium">A. Native post-call webhook (vervangt <code>log_call</code> als fallback)</div>
+          <p className="text-xs text-muted-foreground">
+            De ingebouwde post-call webhook van ClickWise vuurt op <strong>elk</strong> gesprek
+            (ook bij hangup, time-out of crash van de agent) — de <code>log_call</code> tool is
+            LLM-afhankelijk en kan worden vergeten. Onze <code>/agent_api/log_call</code> endpoint
+            herkent automatisch de native payload (<code>call.id</code>, <code>from</code>,
+            <code>to</code>, <code>duration</code>, <code>transcript</code>,
+            <code>recording_url</code>, <code>summary</code>, <code>cost</code>).
+          </p>
+          <ol className="list-decimal list-inside text-xs space-y-1">
+            <li>ClickWise → Assistant → <strong>Advanced Settings</strong> → <strong>Webhooks</strong>.</li>
+            <li>Plak in <strong>Post-call webhook URL</strong> de URL hieronder.</li>
+            <li>Voeg header <code>X-Agent-Api-Key</code> toe met je API-sleutel.</li>
+            <li>Sla op — je kunt nu de <code>log_call</code> tool in tools-lijst behouden als fallback (geen kwaad).</li>
+          </ol>
+          <CopyRow label="Post-call webhook URL" value={`${AGENT_API_BASE}/log_call`} />
+        </div>
+
+        {/* B — Update contact field */}
+        <div className="rounded-lg border p-3 space-y-2">
+          <div className="font-medium">B. After-call: Update contact field (lichte CRM-sync)</div>
+          <p className="text-xs text-muted-foreground">
+            Lichter alternatief voor een volledige Inbound Webhook Workflow: schrijf 4 velden
+            direct vanuit de assistant terug op het ClickWise-contact. Handig voor segmentatie en
+            ClickWise-rapportages.
+          </p>
+          <ol className="list-decimal list-inside text-xs space-y-1">
+            <li>ClickWise → Assistant → <strong>After the call</strong> → <strong>Update contact field</strong>.</li>
+            <li>Voeg 4 acties toe (1 per veld):
+              <ul className="list-disc list-inside ml-4 mt-1 space-y-0.5 text-muted-foreground">
+                <li><code>First Name</code> ← <code>{`{{response.first_name}}`}</code></li>
+                <li><code>Last Name</code> ← <code>{`{{response.last_name}}`}</code></li>
+                <li><code>Phone</code> ← <code>{`{{response.phone}}`}</code></li>
+                <li><code>TW Reservation ID</code> ← <code>{`{{response.reservation_id}}`}</code> (custom field, type text)</li>
+              </ul>
+            </li>
+            <li>Sla op. Bij elk gesprek met een geboekte reservering wordt het contact in
+              ClickWise meteen verrijkt — bevestigings-SMS-templates kunnen <code>{`{{contact.custom_field.tw_reservation_id}}`}</code> gebruiken.</li>
+          </ol>
+        </div>
+
+        {/* C — Knowledge base */}
+        <div className="rounded-lg border p-3 space-y-2">
+          <div className="font-medium">C. Knowledge Base — verlaag hallucinatie-risico</div>
+          <p className="text-xs text-muted-foreground">
+            De huidige system prompt bevat openingstijden, adres en parkeren niet hardgecodeerd —
+            dat komt uit <code>get_opening_hours</code> en <code>{`{{custom_values.*}}`}</code>.
+            Vul daarnaast de Knowledge Base met restaurant-specifieke FAQ-tekst, zodat de agent
+            niet hoeft te raden bij vragen die <em>niet</em> in tools zitten.
+          </p>
+          <ul className="list-disc list-inside text-xs space-y-0.5">
+            <li>Openingstijden &amp; sluitingsdagen (synchroon met TableWise).</li>
+            <li>Adres, parkeren, OV-bereikbaarheid.</li>
+            <li>Allergie-beleid in 2–3 zinnen ("we kunnen rekening houden met X, niet met Y").</li>
+            <li>Dresscode, kindvriendelijkheid, huisdieren.</li>
+            <li>Cadeaubonnen, privé-zaal, terras-status.</li>
+          </ul>
+          <p className="text-xs text-muted-foreground">
+            ClickWise → Assistant → <strong>Knowledge Base</strong> → upload als losse documenten
+            of plak per onderwerp.
+          </p>
+        </div>
+
+        {/* D — Defaults table */}
+        <div className="rounded-lg border p-3 space-y-2">
+          <div className="font-medium">D. Aanbevolen agent-instellingen</div>
+          <div className="overflow-x-auto">
+            <table className="text-xs w-full">
+              <thead>
+                <tr className="border-b">
+                  <th className="text-left py-1 pr-3">Instelling</th>
+                  <th className="text-left py-1 pr-3">Waarde</th>
+                  <th className="text-left py-1">Waarom</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y">
+                <tr><td className="py-1 pr-3">Response delay</td><td className="py-1 pr-3"><code>600 ms</code></td><td className="py-1">natuurlijker, minder onderbreken</td></tr>
+                <tr><td className="py-1 pr-3">Interruption sensitivity</td><td className="py-1 pr-3"><code>medium</code></td><td className="py-1">gast kan agent onderbreken</td></tr>
+                <tr><td className="py-1 pr-3">Idle reminder</td><td className="py-1 pr-3"><code>"Bent u er nog?" na 8 s</code></td><td className="py-1">voorkomt stille hangups</td></tr>
+                <tr><td className="py-1 pr-3">Silence timeout</td><td className="py-1 pr-3"><code>15 s</code></td><td className="py-1">netjes afronden bij geen reactie</td></tr>
+                <tr><td className="py-1 pr-3">Temperature</td><td className="py-1 pr-3"><code>0.3</code></td><td className="py-1">consistente, voorspelbare antwoorden</td></tr>
+                <tr><td className="py-1 pr-3">End call timeout</td><td className="py-1 pr-3"><code>30 s</code></td><td className="py-1">hangup na 2× geen reactie</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* E — Reporting + transcription */}
+        <div className="rounded-lg border p-3 space-y-2">
+          <div className="font-medium">E. Rapportage &amp; betere transcriptie</div>
+          <ul className="list-disc list-inside text-xs space-y-1">
+            <li>
+              ClickWise → Assistant → <strong>Reporting</strong> → zet <em>Daily performance summary</em>
+              aan met je eigen e-mailadres. Je krijgt 1× per dag een overzicht (volume, duur, kosten,
+              succesratio).
+            </li>
+            <li>
+              ClickWise → Assistant → <strong>Transcription</strong> → voeg restaurant-specifieke
+              <strong> custom vocabulary</strong> toe (restaurantnaam, gerechten, wijken). Verhoogt
+              de STT-nauwkeurigheid bij namen en eigennamen.
+            </li>
+            <li>
+              In TableWise zie je alle calls per kanaal terug op <Link to="/app/reports" className="underline">Rapportage</Link>
+              en in <Link to="/app/voice-agent" className="underline">Voice Agent → Status &amp; test</Link>.
+            </li>
+          </ul>
+        </div>
+
+        <Callout tone="success" title="Klaar in ~10 minuten">
+          A en B zijn het belangrijkst — die maken je integratie betrouwbaar. C, D en E zijn
+          incrementele verbeteringen die je later kunt doen.
+        </Callout>
+      </div>
+    ),
+  },
+  {
     id: "go-live",
     group: "golive",
     title: "11. Live zetten — stap voor stap",

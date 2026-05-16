@@ -237,24 +237,48 @@ async function handle(
         return json(r.body, r.status);
       }
       case "log_call": {
-        const { external_call_id, caller_phone, callee_phone, outcome, reservation_id, duration_seconds, cost_cents, transcript_url, summary, agent_id, metadata } = payload as Record<string, unknown>;
+        // Adapter: accepteert zowel ons interne schema als de native ClickWise/HighLevel
+        // post-call webhook payload (call.id, from, to, duration, transcript, ...).
+        const p = payload as Record<string, any>;
+        const call = (p.call ?? {}) as Record<string, any>;
+        const external_call_id = p.external_call_id ?? call.id ?? p.call_id ?? null;
+        const caller_phone = p.caller_phone ?? p.from ?? call.from ?? null;
+        const callee_phone = p.callee_phone ?? p.to ?? call.to ?? null;
+        const outcome = p.outcome ?? call.status ?? p.status ?? null;
+        const reservation_id = p.reservation_id ?? p.tw_reservation_id ?? null;
+        const duration_seconds = p.duration_seconds ?? p.duration ?? call.duration ?? null;
+        // cost kan in dollars (number) of cents binnenkomen
+        const rawCost = p.cost_cents ?? p.cost ?? call.cost ?? null;
+        const cost_cents = typeof rawCost === "number"
+          ? (rawCost < 100 && rawCost > 0 ? Math.round(rawCost * 100) : Math.round(rawCost))
+          : null;
+        const transcript_url = p.transcript_url ?? call.transcript_url ?? p.recording_url ?? call.recording_url ?? null;
+        const summary = p.summary ?? call.summary ?? null;
+        const agent_id = p.agent_id ?? call.agent_id ?? null;
+        const transcript = p.transcript ?? call.transcript ?? null;
+        const metadata = {
+          ...(typeof p.metadata === "object" && p.metadata ? p.metadata : {}),
+          ...(transcript ? { transcript } : {}),
+          ...(p.recording_url ? { recording_url: p.recording_url } : {}),
+          source_payload_keys: Object.keys(p).slice(0, 30),
+        };
         const { error } = await sb.from("agent_call_logs").insert({
           restaurant_id: keyRow.restaurant_id,
           provider: keyRow.provider,
-          agent_id: agent_id as string | null,
-          external_call_id: external_call_id as string | null,
-          caller_phone: caller_phone as string | null,
-          callee_phone: callee_phone as string | null,
-          outcome: outcome as string | null,
-          reservation_id: (reservation_id as string | null) ?? null,
-          duration_seconds: (duration_seconds as number | null) ?? null,
-          cost_cents: (cost_cents as number | null) ?? null,
-          transcript_url: transcript_url as string | null,
-          summary: summary as string | null,
-          metadata: (metadata as object) ?? {},
+          agent_id,
+          external_call_id,
+          caller_phone,
+          callee_phone,
+          outcome,
+          reservation_id,
+          duration_seconds,
+          cost_cents,
+          transcript_url,
+          summary,
+          metadata,
         });
         if (error) return json({ error: error.message, error_code: "internal" }, 400);
-        return json({ ok: true });
+        return json({ ok: true, external_call_id });
       }
       case "find_reservation": {
         if (!keyRow.scopes.includes("availability")) return json({ error: "Scope missing: availability", error_code: "auth_scope_missing", field: "availability" }, 403);
