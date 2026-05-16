@@ -677,8 +677,8 @@ const SECTIONS: Section[] = [
               { name: "party_size", type: "Number", required: true, description: "Aantal personen, 1 t/m 8.", example: "4" },
               { name: "first_name", type: "String", required: true, description: "Voornaam van de gast.", example: "Jan" },
               { name: "last_name", type: "String", required: false, description: "Achternaam van de gast (optioneel).", example: "de Vries" },
-              { name: "phone", type: "String", required: false, description: "Telefoonnummer in E.164-formaat, bijv. +31612345678.", example: "+31612345678" },
-              { name: "email", type: "String", required: false, description: "E-mailadres als de gast dat zelf geeft.", example: "gast@voorbeeld.nl" },
+              { name: "phone", type: "String", required: true, description: "VERPLICHT. Telefoonnummer in E.164. Default {{contact.phone}} (nummer waarmee beller belt). Alleen anders als beller expliciet ander nummer opgeeft.", example: "+31612345678" },
+              { name: "email", type: "String", required: false, description: "Optioneel. Alleen invullen als de beller dit zelf opgeeft of digitale bevestiging vraagt.", example: "gast@voorbeeld.nl" },
               { name: "special_requests", type: "String", required: false, description: "Allergieën, gelegenheid of andere wensen.", example: "Kinderstoel graag" },
             ],
             body: `{
