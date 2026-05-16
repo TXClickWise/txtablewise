@@ -1,23 +1,34 @@
-Ik ga dit gericht oplossen in de bestaande app-e-mailflow:
+## Doel
 
-1. **Bevestigingsmail: beheerlinks echt meesturen**
-   - In de directe boekingsflow (`book_reservation`) worden `manageUrl` en `cancelUrl` nu niet meegestuurd naar de bevestigingstemplate, waardoor de knop in de template niet rendert.
-   - Ik voeg daar de beheerlink en annuleerlink toe op basis van de reserveringstokens.
+De navigatie in `/app` opschonen zodat er geen dubbele menu's meer ontstaan, groepen inklapbaar zijn en "Drankjes vooraf" een eigen plek krijgt onder Instellingen in plaats van onder Gastcommunicatie.
 
-2. **Wijzigingsmail: beheerlinks toevoegen waar ze horen**
-   - De wijzigingsmail “Wijziging bevestigd” krijgt dezelfde primaire knop **“Beheer je reservering”** en secundaire link **“Kan je niet komen? Laat het ons weten”**.
-   - Ik voeg de vertaalde CTA-copy toe voor NL/EN/DE/FR.
-   - Ik geef bij wijzigingsmails `manageUrl` en `cancelUrl` mee vanuit de manage-flow.
-   - Annulering- en bedankmail blijven bewust zonder deze beheer/cancel CTA’s; bedankmail behoudt alleen de review-CTA.
+## Wijzigingen
 
-3. **Reply-to adres corrigeren**
-   - De automatische reserveringsmails vanuit de event-dispatcher lezen nu het veld “Reply-to inbox van het restaurant” niet mee.
-   - Ik pas de restaurant-query aan zodat `guest_reply_to_email` wordt opgehaald.
-   - Bij het versturen geef ik `fromName` en `replyTo` mee, zodat antwoorden naar het door de klant ingestelde restaurantadres gaan.
-   - Ik pas dit ook toe op wijzigingsmails vanuit de gast-manage-flow.
+### 1. Dubbele "Instellingen" sub-sidebar weghalen (`src/components/AppSidebar.tsx`)
+- De `settingsSubItems` (AI Host & Voice, Koppelingen, Reserveringen, Tafels & zones) staan nu als `SidebarMenuSub` onder de Instellingen-knop én verschijnen nogmaals in de aparte tweede sidebar op `/app/instellingen` (`SettingsPage.tsx`). Dat is dubbel en verwarrend.
+- Oplossing: verwijder de `SidebarMenuSub` met die 4 snelkoppelingen. De Instellingen-knop wordt een gewone link naar `/app/instellingen`, waarbinnen de bestaande gegroepeerde settings-navigatie (Basis / Operatie / Gasten & communicatie / Techniek / Account) leidend is.
 
-4. **Deploy van e-mailfuncties**
-   - Omdat dit wijzigingen onder `supabase/functions/` zijn, deploy ik de aangepaste backendfuncties daarna opnieuw zodat de live e-mails de nieuwe template en reply-to gebruiken.
+### 2. Hoofdsidebar inklapbare groepen
+- De huidige `Group`-component rendert vaste groepen ("Snel naar", "Hospitality", "Beheer", "Admin"). Maak die inklapbaar met `Collapsible` (zelfde patroon als shadcn sidebar collapsibles), met state persistent in `localStorage` (key per groep, b.v. `sidebar.group.snel-naar`). Standaard open.
+- "Admin"-groep krijgt dezelfde collapsible-behandeling.
+- In collapsed (icon-only) sidebar-modus blijven groepen gewoon getoond zoals nu (geen header om in te klappen).
 
-5. **Controle**
-   - Ik controleer via code/preview-data dat de bevestiging en wijziging-bevestigd template de CTA’s krijgen, en dat annulering/bedankmail buiten scope blijven zoals bedoeld.
+### 3. Instellingen-sectie zelf inklapbare groepen (`src/pages/app/SettingsPage.tsx`)
+- De groepen Basis/Operatie/Gasten & communicatie/Techniek/Account worden ook `Collapsible` met onthouden open/dicht-state per groep (`localStorage`, key b.v. `settings.group.basis`). Standaard alle open.
+- Mobiele horizontale pillen-fallback blijft ongewijzigd.
+
+### 4. "Drankjes vooraf" verhuist van Gastcommunicatie naar Instellingen
+- `src/pages/app/GastcommunicatiePage.tsx`: tab "Drankjes vooraf" verwijderen. Alleen "No-show preventie" en "Reviews & aftercare" blijven.
+- Nieuwe settings-route `pre-orders` in `src/App.tsx` onder `/app/instellingen`, rendert het bestaande `PreOrderDrinksPage` component (geen herbouw, alleen verplaatsing).
+- `SettingsPage.tsx`: voeg item "Drankjes vooraf" toe aan de groep "Gasten & communicatie" (icon `Wine` of `Beer` uit lucide) met `to="/app/instellingen/pre-orders"`.
+- Legacy redirect bijwerken: `/app/drankjes` en `/app/gastcommunicatie?tab=drankjes` -> `/app/instellingen/pre-orders`.
+- Sidebar-quicklink in `AppSidebar` (bestond niet als eigen item) niet toevoegen — blijft bereikbaar via Instellingen.
+
+### 5. Verifieer
+- Klikken op "Instellingen" in hoofdsidebar opent enkel `/app/instellingen` met de interne settings-nav; geen tweede sub-lijst meer in de hoofdsidebar.
+- Groepen in beide sidebars klappen in/uit en onthouden state na refresh.
+- Oude links naar `/app/gastcommunicatie?tab=drankjes` redirecten naar `/app/instellingen/pre-orders`.
+
+## Buiten scope
+- Geen wijzigingen aan de `restaurants.preorders_enabled` master-toggle of widget-logica — die blijft binnen de pre-orders pagina zelf werken.
+- Geen visuele restyling buiten het collapsible-gedrag.

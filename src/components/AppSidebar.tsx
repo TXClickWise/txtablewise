@@ -2,17 +2,19 @@ import {
   LayoutDashboard, CalendarDays, Users, Settings, MessageSquare,
   Hand, ListChecks, BarChart3, Plug, Tablet, ShieldCheck, Bot,
   Database, FileText, CreditCard, Shield, Crown, GraduationCap, Store,
+  ChevronDown,
 } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import {
   Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel,
   SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarHeader, SidebarFooter, useSidebar,
-  SidebarMenuSub, SidebarMenuSubItem, SidebarMenuSubButton,
 } from "@/components/ui/sidebar";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useAuth } from "@/hooks/useAuth";
 import { useRestaurant } from "@/hooks/useRestaurant";
 import { useIsSystemAdmin } from "@/hooks/useIsSystemAdmin";
 import { useAdvancedMode } from "@/hooks/useAdvancedMode";
+import { useCollapsibleGroup } from "@/hooks/useCollapsibleGroup";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
@@ -21,10 +23,6 @@ import { usePendingLargeGroups } from "@/hooks/usePendingLargeGroups";
 
 type Role = "owner" | "manager" | "host" | "staff";
 type Item = { title: string; url: string; icon: typeof LayoutDashboard; end?: boolean; advanced?: boolean; roles?: Role[] };
-
-// Operationele schermen (Vandaag, Agenda, Vloer, Wachtlijst, Gasten) zitten
-// nu in de OperationTabBar bovenaan — niet meer in de sidebar.
-// Snelkoppelingen voor de meest gebruikte schermen blijven hier wel staan.
 
 const quickAccess: Item[] = [
   { title: "Dashboard", url: "/app", icon: LayoutDashboard, end: true, roles: ["owner","manager","host","staff"] },
@@ -37,14 +35,6 @@ const hospitality: Item[] = [
 
 const beheer: Item[] = [
   { title: "Rapportages", url: "/app/rapportages", icon: BarChart3, roles: ["owner","manager"] },
-];
-
-// Sub-items onder "Instellingen". Snelle toegang tot de meest bezochte secties.
-const settingsSubItems: { title: string; url: string }[] = [
-  { title: "AI Host & Voice", url: "/app/instellingen/ai-voice" },
-  { title: "Koppelingen", url: "/app/instellingen/integraties" },
-  { title: "Reserveringen", url: "/app/instellingen/reserveringen" },
-  { title: "Tafels & zones", url: "/app/instellingen/zones" },
 ];
 
 // System admin only
@@ -60,56 +50,91 @@ const admin: Item[] = [
   { title: "Pilot readiness", url: "/app/admin/pilot-readiness", icon: ShieldCheck },
 ];
 
-function Group({ label, items, collapsed, pathname, search, accent, onNavigate, canSeeAdvanced, role, badges }: { label: string; items: Item[]; collapsed: boolean; pathname: string; search: string; accent?: boolean; onNavigate?: () => void; canSeeAdvanced: boolean; role: Role | null; badges?: Record<string, number> }) {
+function Group({
+  label, items, collapsed, pathname, search, accent, onNavigate, canSeeAdvanced, role, badges, storageKey,
+}: {
+  label: string; items: Item[]; collapsed: boolean; pathname: string; search: string;
+  accent?: boolean; onNavigate?: () => void; canSeeAdvanced: boolean; role: Role | null;
+  badges?: Record<string, number>; storageKey: string;
+}) {
   const visible = items.filter((i) => (!i.advanced || canSeeAdvanced) && (!i.roles || (role && i.roles.includes(role))));
+  const { open, setOpen } = useCollapsibleGroup(`sidebar.${storageKey}`, true);
   if (visible.length === 0) return null;
   const currentFull = pathname + search;
+
+  const menu = (
+    <SidebarMenu>
+      {visible.map((item) => {
+        const hasQuery = item.url.includes("?");
+        const active = hasQuery
+          ? currentFull === item.url || currentFull.startsWith(item.url + "&")
+          : item.end
+            ? pathname === item.url
+            : pathname.startsWith(item.url);
+        const badgeCount = badges?.[item.url] ?? 0;
+        return (
+          <SidebarMenuItem key={item.url}>
+            <SidebarMenuButton asChild isActive={active}>
+              <NavLink to={item.url} end={item.end} onClick={onNavigate} className="relative">
+                <span className="relative inline-flex shrink-0">
+                  <item.icon className="h-4 w-4" />
+                  {collapsed && badgeCount > 0 && <PendingBadge count={badgeCount} variant="dot" />}
+                </span>
+                {!collapsed && (
+                  <span className="flex items-center gap-1.5">
+                    {item.title}
+                    {item.advanced && <span className="text-[9px] uppercase tracking-wide text-sidebar-foreground/60">adv</span>}
+                  </span>
+                )}
+                {!collapsed && badgeCount > 0 && <PendingBadge count={badgeCount} variant="sidebar" />}
+              </NavLink>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        );
+      })}
+    </SidebarMenu>
+  );
+
+  // In icon-only modus geen collapsible-header (geen ruimte).
+  if (collapsed) {
+    return (
+      <SidebarGroup>
+        <SidebarGroupContent>{menu}</SidebarGroupContent>
+      </SidebarGroup>
+    );
+  }
+
   return (
     <SidebarGroup>
-      <SidebarGroupLabel className={cn("text-sidebar-foreground/70", accent && "text-sidebar-primary flex items-center gap-1.5")}>
-        {accent && <Shield className="h-3 w-3" />} {label}
-      </SidebarGroupLabel>
-      <SidebarGroupContent>
-        <SidebarMenu>
-          {visible.map((item) => {
-            const hasQuery = item.url.includes("?");
-            const active = hasQuery
-              ? currentFull === item.url || currentFull.startsWith(item.url + "&")
-              : item.end
-                ? pathname === item.url
-                : pathname.startsWith(item.url);
-            const badgeCount = badges?.[item.url] ?? 0;
-            return (
-              <SidebarMenuItem key={item.url}>
-                <SidebarMenuButton asChild isActive={active}>
-                  <NavLink to={item.url} end={item.end} onClick={onNavigate} className="relative">
-                    <span className="relative inline-flex shrink-0">
-                      <item.icon className="h-4 w-4" />
-                      {collapsed && badgeCount > 0 && <PendingBadge count={badgeCount} variant="dot" />}
-                    </span>
-                    {!collapsed && (
-                      <span className="flex items-center gap-1.5">
-                        {item.title}
-                        {item.advanced && <span className="text-[9px] uppercase tracking-wide text-sidebar-foreground/60">adv</span>}
-                      </span>
-                    )}
-                    {!collapsed && badgeCount > 0 && <PendingBadge count={badgeCount} variant="sidebar" />}
-                  </NavLink>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            );
-          })}
-        </SidebarMenu>
-      </SidebarGroupContent>
+      <Collapsible open={open} onOpenChange={setOpen}>
+        <CollapsibleTrigger asChild>
+          <SidebarGroupLabel
+            className={cn(
+              "group/lbl cursor-pointer select-none flex items-center justify-between w-full text-sidebar-foreground/70 hover:text-sidebar-foreground",
+              accent && "text-sidebar-primary",
+            )}
+          >
+            <span className="flex items-center gap-1.5">
+              {accent && <Shield className="h-3 w-3" />} {label}
+            </span>
+            <ChevronDown
+              className={cn(
+                "h-3.5 w-3.5 transition-transform opacity-70",
+                !open && "-rotate-90",
+              )}
+            />
+          </SidebarGroupLabel>
+        </CollapsibleTrigger>
+        <CollapsibleContent>
+          <SidebarGroupContent>{menu}</SidebarGroupContent>
+        </CollapsibleContent>
+      </Collapsible>
     </SidebarGroup>
   );
 }
 
 export function AppSidebar() {
   const { state, isMobile, setOpenMobile } = useSidebar();
-  // In mobile/tablet (sheet) modus is de sidebar altijd volledig zichtbaar,
-  // dus negeer de "collapsed" desktop-state — anders krijg je alleen iconen
-  // in een uitgeklapte sheet.
   const collapsed = !isMobile && state === "collapsed";
   const { signOut, user } = useAuth();
   const { current } = useRestaurant();
@@ -146,9 +171,9 @@ export function AppSidebar() {
           const canBeheer = role === "owner" || role === "manager";
           return (
             <>
-              <Group label="Snel naar" items={quickAccess} collapsed={collapsed} pathname={location.pathname} search={location.search} onNavigate={handleNavigate} canSeeAdvanced={canSeeAdvanced} role={role} badges={quickAccessBadges} />
-              <Group label="Hospitality" items={hospitality} collapsed={collapsed} pathname={location.pathname} search={location.search} onNavigate={handleNavigate} canSeeAdvanced={canSeeAdvanced} role={role} />
-              <Group label="Beheer" items={beheer} collapsed={collapsed} pathname={location.pathname} search={location.search} onNavigate={handleNavigate} canSeeAdvanced={canSeeAdvanced} role={role} />
+              <Group storageKey="snel" label="Snel naar" items={quickAccess} collapsed={collapsed} pathname={location.pathname} search={location.search} onNavigate={handleNavigate} canSeeAdvanced={canSeeAdvanced} role={role} badges={quickAccessBadges} />
+              <Group storageKey="hospitality" label="Hospitality" items={hospitality} collapsed={collapsed} pathname={location.pathname} search={location.search} onNavigate={handleNavigate} canSeeAdvanced={canSeeAdvanced} role={role} />
+              <Group storageKey="beheer" label="Beheer" items={beheer} collapsed={collapsed} pathname={location.pathname} search={location.search} onNavigate={handleNavigate} canSeeAdvanced={canSeeAdvanced} role={role} />
               {canBeheer && (
                 <SidebarGroup>
                   <SidebarGroupContent>
@@ -160,29 +185,13 @@ export function AppSidebar() {
                             {!collapsed && <span>Instellingen</span>}
                           </NavLink>
                         </SidebarMenuButton>
-                        {!collapsed && (
-                          <SidebarMenuSub>
-                            {settingsSubItems.map((s) => {
-                              const active = location.pathname === s.url;
-                              return (
-                                <SidebarMenuSubItem key={s.url}>
-                                  <SidebarMenuSubButton asChild isActive={active}>
-                                    <NavLink to={s.url} onClick={handleNavigate}>
-                                      <span>{s.title}</span>
-                                    </NavLink>
-                                  </SidebarMenuSubButton>
-                                </SidebarMenuSubItem>
-                              );
-                            })}
-                          </SidebarMenuSub>
-                        )}
                       </SidebarMenuItem>
                     </SidebarMenu>
                   </SidebarGroupContent>
                 </SidebarGroup>
               )}
               {isSystemAdmin && (
-                <Group label="Admin" items={admin} collapsed={collapsed} pathname={location.pathname} search={location.search} accent onNavigate={handleNavigate} canSeeAdvanced={canSeeAdvanced} role={role} />
+                <Group storageKey="admin" label="Admin" items={admin} collapsed={collapsed} pathname={location.pathname} search={location.search} accent onNavigate={handleNavigate} canSeeAdvanced={canSeeAdvanced} role={role} />
               )}
             </>
           );

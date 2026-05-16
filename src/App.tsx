@@ -33,6 +33,7 @@ import ApiWebhooksSettings from "./pages/app/settings/ApiWebhooksSettings.tsx";
 import UsersRolesSettings from "./pages/app/settings/UsersRolesSettings.tsx";
 import SubscriptionSettings from "./pages/app/settings/SubscriptionSettings.tsx";
 import WidgetSettings from "./pages/app/settings/WidgetSettings.tsx";
+import PreOrderDrinksPage from "./pages/app/PreOrderDrinksPage.tsx";
 import WaitlistPage from "./pages/app/WaitlistPage.tsx";
 import VoiceAgentHelp from "./pages/app/help/VoiceAgentHelp.tsx";
 import IntegrationHubPage from "./pages/app/IntegrationHubPage.tsx";
@@ -101,7 +102,7 @@ const App = () => (
               <Route path="floor" element={<Navigate to="/app/vloer" replace />} />
               <Route path="grote-groepen" element={<Navigate to="/app/gasten?tab=grote-groepen" replace />} />
               <Route path="no-show" element={<Navigate to="/app/gastcommunicatie?tab=no-show" replace />} />
-              <Route path="drankjes" element={<Navigate to="/app/gastcommunicatie?tab=drankjes" replace />} />
+              <Route path="drankjes" element={<Navigate to="/app/instellingen/pre-orders" replace />} />
               <Route path="reviews" element={<Navigate to="/app/gastcommunicatie?tab=reviews" replace />} />
               <Route path="ai-host" element={<Navigate to="/app/ai-voice?tab=ai-host" replace />} />
               <Route path="voice-agent" element={<Navigate to="/app/ai-voice?tab=voice" replace />} />
@@ -135,6 +136,7 @@ const App = () => (
                 <Route path="gasten" element={<GuestsSettings />} />
                 <Route path="berichten" element={<MessagesSettings />} />
                 <Route path="ai-voice" element={<AiVoiceSettings />} />
+                <Route path="pre-orders" element={<PreOrderDrinksPage />} />
                 <Route path="integraties" element={<RequireRole allow={["owner"]}><IntegrationsSettings /></RequireRole>} />
                 <Route path="api" element={<RequireRole allow={["owner"]}><ApiWebhooksSettings /></RequireRole>} />
                 <Route path="gebruikers" element={<RequireRole allow={["owner"]}><UsersRolesSettings /></RequireRole>} />

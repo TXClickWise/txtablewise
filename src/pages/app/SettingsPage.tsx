@@ -1,6 +1,8 @@
 import { NavLink, Outlet, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { useRestaurant } from "@/hooks/useRestaurant";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { useCollapsibleGroup } from "@/hooks/useCollapsibleGroup";
 import {
   Settings as SettingsIcon,
   Clock,
@@ -15,6 +17,8 @@ import {
   Crown,
   Globe,
   Rocket,
+  Wine,
+  ChevronDown,
 } from "lucide-react";
 
 type Item = {
@@ -47,6 +51,7 @@ const GROUPS: Group[] = [
     items: [
       { to: "/app/instellingen/gasten", label: "Gasten", icon: Users },
       { to: "/app/instellingen/berichten", label: "Berichten", icon: MessageSquare },
+      { to: "/app/instellingen/pre-orders", label: "Drankjes vooraf", icon: Wine },
       { to: "/app/instellingen/ai-voice", label: "AI & Voice", icon: Bot },
     ],
   },
@@ -112,39 +117,10 @@ const SettingsPage = () => {
             </div>
           </div>
 
-          {/* Tablet+desktop: grouped vertical nav */}
-          <nav className="hidden md:block space-y-5">
+          {/* Tablet+desktop: grouped vertical nav (inklapbaar) */}
+          <nav className="hidden md:block space-y-3">
             {groups.map((g) => (
-              <div key={g.label}>
-                <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-1.5 px-2">
-                  {g.label}
-                </p>
-                <ul className="space-y-0.5">
-                  {g.items.map((item) => {
-                    const active = item.end
-                      ? location.pathname === item.to
-                      : location.pathname.startsWith(item.to);
-                    const Icon = item.icon;
-                    return (
-                      <li key={item.to}>
-                        <NavLink
-                          to={item.to}
-                          end={item.end}
-                          className={cn(
-                            "flex items-center gap-2.5 px-2.5 py-2 rounded-md text-sm transition-colors border-l-2",
-                            active
-                              ? "bg-primary/8 text-foreground font-medium border-primary"
-                              : "border-transparent text-muted-foreground hover:bg-sidebar-accent/60 hover:text-foreground",
-                          )}
-                        >
-                          <Icon className={cn("h-4 w-4 shrink-0", active ? "text-primary" : "")} />
-                          {item.label}
-                        </NavLink>
-                      </li>
-                    );
-                  })}
-                </ul>
-              </div>
+              <SettingsGroupNav key={g.label} group={g} pathname={location.pathname} />
             ))}
           </nav>
         </aside>
@@ -156,4 +132,50 @@ const SettingsPage = () => {
     </div>
   );
 };
+
+function SettingsGroupNav({
+  group,
+  pathname,
+}: {
+  group: Group;
+  pathname: string;
+}) {
+  const slug = group.label.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+  const { open, setOpen } = useCollapsibleGroup(`settings.${slug}`, true);
+  return (
+    <Collapsible open={open} onOpenChange={setOpen}>
+      <CollapsibleTrigger className="w-full flex items-center justify-between px-2 mb-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground hover:text-foreground transition-colors">
+        <span>{group.label}</span>
+        <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", !open && "-rotate-90")} />
+      </CollapsibleTrigger>
+      <CollapsibleContent>
+        <ul className="space-y-0.5">
+          {group.items.map((item) => {
+            const active = item.end
+              ? pathname === item.to
+              : pathname.startsWith(item.to);
+            const Icon = item.icon;
+            return (
+              <li key={item.to}>
+                <NavLink
+                  to={item.to}
+                  end={item.end}
+                  className={cn(
+                    "flex items-center gap-2.5 px-2.5 py-2 rounded-md text-sm transition-colors border-l-2",
+                    active
+                      ? "bg-primary/8 text-foreground font-medium border-primary"
+                      : "border-transparent text-muted-foreground hover:bg-sidebar-accent/60 hover:text-foreground",
+                  )}
+                >
+                  <Icon className={cn("h-4 w-4 shrink-0", active ? "text-primary" : "")} />
+                  {item.label}
+                </NavLink>
+              </li>
+            );
+          })}
+        </ul>
+      </CollapsibleContent>
+    </Collapsible>
+  );
+}
 export default SettingsPage;
