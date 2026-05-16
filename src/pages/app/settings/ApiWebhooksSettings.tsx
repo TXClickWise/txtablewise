@@ -91,11 +91,19 @@ export default function ApiWebhooksSettings() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="font-display text-2xl mb-1">API &amp; webhooks</h1>
-        <p className="text-sm text-muted-foreground">
-          Externe systemen koppelen aan TableWise — POS, CRM, AI agents of eigen back-office.
-        </p>
+      <div className="flex items-start justify-between gap-3 flex-wrap">
+        <div>
+          <div className="flex items-center gap-2">
+            <h1 className="font-display text-2xl">API &amp; webhooks</h1>
+            <span className="text-[10px] uppercase tracking-wide px-1.5 py-0.5 rounded border border-border text-muted-foreground">
+              Geavanceerd
+            </span>
+          </div>
+          <p className="text-sm text-muted-foreground mt-1">
+            Voor developers en integratie-partners. De meeste ondernemers regelen koppelingen via{" "}
+            <Link to="/app/koppelingen" className="underline text-primary">Koppelingen</Link>.
+          </p>
+        </div>
       </div>
 
       {restaurantId && <WebhookHealthBadge restaurantId={restaurantId} />}
