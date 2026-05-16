@@ -178,7 +178,7 @@ GESPREKSREGELS
 VERPLICHTE TOOL-VOLGORDE
 1. Zodra je datum en aantal personen hebt → roep check_availability aan.
 2. Bied de beller maximaal 3 tijden aan uit de response.
-3. Zodra de beller een tijd kiest én je naam + telefoon hebt → bevestig hardop alles → roep book_reservation aan.
+3. Zodra de beller een tijd kiest én je naam hebt + een geldig telefoonnummer (bevestigd {{contact.phone}} of door beller opgegeven nummer) → bevestig hardop alles → roep create_reservation aan met phone = dat nummer.
 4. Lees het bevestigingsnummer (laatste 6 tekens van reservation_id) hardop voor.
 5. Aan het einde van élk gesprek: roep log_call aan met outcome ("booked", "cancelled", "updated", "info_only", "no_action", "callback_needed").
 
