@@ -983,7 +983,7 @@ function buildBundle() {
         },
         tool_params: {
           check_availability: ["date (String, required)", "party_size (Number, required)", "preferred_time (String, optional)"],
-          book_reservation:   ["date (String, required)", "time (String, required)", "party_size (Number, required)", "first_name (String, required)", "last_name (String, optional)", "phone (String, optional)", "email (String, optional)", "special_requests (String, optional)"],
+          book_reservation:   ["date (String, required)", "time (String, required)", "party_size (Number, required)", "first_name (String, required)", "last_name (String, optional)", "phone (String, required)", "email (String, optional)", "special_requests (String, optional)"],
           cancel_reservation: ["reservation_id (String, required)", "reason (String, optional)"],
           update_reservation: ["reservation_id (String, required)", "new_date (String, optional)", "new_time (String, optional)", "new_party_size (Number, optional)", "special_requests (String, optional)"],
           log_call:           ["external_call_id (String, required)", "caller_phone (String, required)", "callee_phone (String, optional)", "outcome (String, required: booked|cancelled|updated|info_only|no_action|callback_needed)", "reservation_id (String, optional)", "duration_seconds (Number, optional)", "summary (String, optional)", "agent_id (String, optional)"],
