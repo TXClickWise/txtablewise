@@ -299,25 +299,41 @@ const SECTIONS: Section[] = [
     id: "custom-values",
     title: "4. ClickWise — Custom Values",
     icon: Database,
-    keywords: "clickwise custom values account url key restaurant",
+    keywords: "clickwise custom values account url key restaurant location",
     render: () => (
       <div className="space-y-3">
         <p className="text-sm text-muted-foreground">
-          ClickWise → <strong>Instellingen → Custom Values → Account</strong>. Maak deze 6 waarden aan.
-          De waarden van <code>TW Restaurant Name</code> en <code>TW Agent API Key</code> vul je zelf in.
+          ClickWise → <strong>Instellingen → Custom Values → Account</strong>. Je hebt nog maar
+          twee waarden nodig per klant — alle restaurant-specifieke info (naam, tijdzone, max.
+          groepsgrootte) wordt automatisch opgehaald.
         </p>
         <CopyRow label="TW Agent API URL" value={AGENT_API_BASE} />
         <div className="rounded border bg-muted/30 px-3 py-2 text-sm">
           <div className="text-xs text-muted-foreground">TW Agent API Key</div>
           <div className="font-mono">tw_voice_… (plak hier de sleutel uit stap 2)</div>
         </div>
-        <div className="rounded border bg-muted/30 px-3 py-2 text-sm">
-          <div className="text-xs text-muted-foreground">TW Restaurant Name</div>
-          <div className="font-mono">(naam van je test-restaurant zoals in TableWise)</div>
-        </div>
-        <CopyRow label="TW Timezone" value="Europe/Amsterdam" />
-        <CopyRow label="TW Booking Horizon Days" value="90" />
-        <CopyRow label="TW Max Party Online" value="8" />
+        <Callout tone="success" title="Automatisch ingevuld — niet meer als custom value nodig">
+          <ul className="list-disc list-inside space-y-1">
+            <li>
+              <strong>Restaurantnaam</strong> → <code>{`{{location.name}}`}</code> (sub-account
+              naam in ClickWise). Zet die bij het aanmaken gelijk aan de naam in TableWise.
+            </li>
+            <li>
+              <strong>Tijdzone</strong> → <code>{`{{location.timezone}}`}</code> (sub-account
+              tijdzone). Standaard <code>Europe/Amsterdam</code>.
+            </li>
+            <li>
+              <strong>Max. groepsgrootte</strong> → komt rechtstreeks uit TableWise
+              (<code>max_party_size_online</code>). De engine weigert te grote groepen
+              automatisch met code <code>TW_409_PARTY_TOO_LARGE</code>; de agent leest die
+              terug en biedt een grote-groep-callback aan.
+            </li>
+            <li>
+              <strong>Booking horizon</strong> (max. dagen vooruit) → ook uit TableWise; engine
+              weigert te ver vooruit.
+            </li>
+          </ul>
+        </Callout>
       </div>
     ),
   },
