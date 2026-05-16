@@ -1,6 +1,8 @@
 import { NavLink, Outlet, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { useRestaurant } from "@/hooks/useRestaurant";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { useCollapsibleGroup } from "@/hooks/useCollapsibleGroup";
 import {
   Settings as SettingsIcon,
   Clock,
@@ -15,6 +17,8 @@ import {
   Crown,
   Globe,
   Rocket,
+  Wine,
+  ChevronDown,
 } from "lucide-react";
 
 type Item = {
