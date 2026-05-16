@@ -26,6 +26,8 @@ import { WalkInDialog } from "@/components/WalkInDialog";
 import { DayView } from "@/components/reservations/views/DayView";
 import { ReservationDatePicker } from "@/components/reservations/ReservationDatePicker";
 import { EmptyState } from "@/components/touch/StateViews";
+import { ReservationQuickActionsPopover } from "@/components/reservations/ReservationQuickActionsPopover";
+import { PendingLargeGroupsAlert } from "@/components/large-groups/PendingLargeGroupsAlert";
 import { cn } from "@/lib/utils";
 
 const START_HOUR = 11;
@@ -463,6 +465,7 @@ const AgendaPage = () => {
 
   return (
     <div className={containerClass}>
+      <PendingLargeGroupsAlert variant="banner" />
       {/* === STICKY KOP === */}
       <div className="relative z-30 shrink-0 bg-card border-b border-border">
         {/* Rij 1: view-switcher · spring naar · toolbar */}
@@ -649,21 +652,34 @@ const AgendaPage = () => {
                       const endMin = minutesFromStart(r.end_time);
                       const left = Math.max(0, startMin) * pxPerMin;
                       const width = Math.max(20, (endMin - startMin) * pxPerMin - 2);
+                      const guestName = `${r.guests?.first_name ?? "Gast"} ${r.guests?.last_name ?? ""}`.trim();
                       return (
-                        <button
+                        <div
                           key={r.id}
-                          onClick={(e) => { e.stopPropagation(); setSelectedId(r.id); }}
-                          className={cn(
-                            "absolute rounded-md px-2 text-left text-xs overflow-hidden transition-all duration-150 z-[2] hover:shadow-elevated hover:z-[3]",
-                            STATUS_BG[r.status] ?? "bg-muted border-l-[3px] border-border",
-                          )}
+                          className="absolute group z-[2] hover:z-[3]"
                           style={{ left, top: 6, height: rowHeight - 12, width }}
                         >
-                          <div className="font-medium truncate">
-                            {format(new Date(r.start_time), "HH:mm")} · {r.guests?.first_name ?? "Gast"} {r.guests?.last_name ?? ""}
-                          </div>
-                          <div className="text-[10px] opacity-80">{r.party_size}p</div>
-                        </button>
+                          <button
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); setSelectedId(r.id); }}
+                            className={cn(
+                              "w-full h-full rounded-md px-2 text-left text-xs overflow-hidden transition-all duration-150 hover:shadow-elevated",
+                              STATUS_BG[r.status] ?? "bg-muted border-l-[3px] border-border",
+                            )}
+                          >
+                            <div className="font-medium truncate pr-5">
+                              {format(new Date(r.start_time), "HH:mm")} · {guestName}
+                            </div>
+                            <div className="text-[10px] opacity-80">{r.party_size}p</div>
+                          </button>
+                          <ReservationQuickActionsPopover
+                            reservationId={r.id}
+                            status={r.status}
+                            title={`${format(new Date(r.start_time), "HH:mm")} · ${guestName}`}
+                            subtitle={`${r.party_size} pers · Tafel ${t.label}`}
+                            onOpenDetails={() => setSelectedId(r.id)}
+                          />
+                        </div>
                       );
                     })}
                   </div>
@@ -852,69 +868,82 @@ function FloorPlanBody({
               ? Math.max(0, Math.round((now.getTime() - new Date(active.start_time).getTime()) / 60000))
               : null;
             return (
-              <button
+              <div
                 key={t.id}
-                type="button"
-                onClick={handleClick}
-                className={cn(
-                  "absolute flex flex-col items-center justify-center border-2 shadow-sm select-none text-left transition-all hover:brightness-105 active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none overflow-hidden",
-                  isRound ? "rounded-full" : "rounded-lg",
-                  FLOOR_TONE[tone],
-                )}
+                className="absolute"
                 style={{
                   left: (t.pos_x ?? 0) * scale,
                   top: (t.pos_y ?? 0) * scale,
                   width: w,
                   height: h,
-                  padding: compact ? 4 : 8,
                 }}
-                aria-label={active
-                  ? `Tafel ${t.label}: ${active.guests?.first_name ?? "Gast"} ${active.party_size}p`
-                  : `Tafel ${t.label} vrij — nieuwe reservering`}
               >
-                <div className="w-full flex items-center justify-between gap-1">
-                  <div className="font-display text-base font-bold leading-none truncate">{t.label}</div>
-                  <div className="flex items-center gap-1 shrink-0">
-                    <span
-                      className={cn(
-                        "h-1.5 w-1.5 rounded-full",
-                        FLOOR_DOT[tone],
-                        FLOOR_PULSE[tone] && "status-dot-active",
-                      )}
-                    />
-                    <div className="text-[10px] text-muted-foreground tabular-nums">{cap}</div>
+                <button
+                  type="button"
+                  onClick={handleClick}
+                  className={cn(
+                    "w-full h-full flex flex-col items-center justify-center border-2 shadow-sm select-none text-left transition-all hover:brightness-105 active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none overflow-hidden",
+                    isRound ? "rounded-full" : "rounded-lg",
+                    FLOOR_TONE[tone],
+                  )}
+                  style={{ padding: compact ? 4 : 8 }}
+                  aria-label={active
+                    ? `Tafel ${t.label}: ${active.guests?.first_name ?? "Gast"} ${active.party_size}p`
+                    : `Tafel ${t.label} vrij — nieuwe reservering`}
+                >
+                  <div className="w-full flex items-center justify-between gap-1">
+                    <div className="font-display text-base font-bold leading-none truncate">{t.label}</div>
+                    <div className="flex items-center gap-1 shrink-0">
+                      <span
+                        className={cn(
+                          "h-1.5 w-1.5 rounded-full",
+                          FLOOR_DOT[tone],
+                          FLOOR_PULSE[tone] && "status-dot-active",
+                        )}
+                      />
+                      <div className="text-[10px] text-muted-foreground tabular-nums">{cap}</div>
+                    </div>
                   </div>
-                </div>
-                {active ? (
-                  <div className="w-full mt-1 text-center">
-                    <div className="text-[11px] font-semibold truncate">
-                      {active.guests?.is_vip ? <span className="text-accent">★ </span> : ""}
-                      {active.guests?.first_name ?? "Gast"} {active.guests?.last_name ?? ""}
-                    </div>
-                    <div className="text-[10px] text-muted-foreground tabular-nums">
-                      {format(new Date(active.start_time), "HH:mm")} · {active.party_size}p
-                      {minSeated !== null && <> · {minSeated}m</>}
-                    </div>
-                    {!compact && (active.guests?.allergies || active.dietary_notes
-                      || (largeGroupThreshold && active.party_size >= largeGroupThreshold)
-                      || (active.pre_orders?.length ?? 0) > 0) && (
-                      <div className="text-[9px] mt-0.5 truncate flex items-center justify-center gap-1">
-                        {(active.guests?.allergies || active.dietary_notes) && <span className="text-destructive">▲</span>}
-                        {(active.pre_orders?.length ?? 0) > 0 && <span>🥂</span>}
-                        {largeGroupThreshold && active.party_size >= largeGroupThreshold && <span>👥</span>}
+                  {active ? (
+                    <div className="w-full mt-1 text-center">
+                      <div className="text-[11px] font-semibold truncate">
+                        {active.guests?.is_vip ? <span className="text-accent">★ </span> : ""}
+                        {active.guests?.first_name ?? "Gast"} {active.guests?.last_name ?? ""}
                       </div>
-                    )}
-                  </div>
-                ) : next && !compact ? (
-                  <div className="w-full mt-1 text-center text-[10px] text-muted-foreground truncate">
-                    {format(new Date(next.start_time), "HH:mm")} · {next.guests?.first_name ?? "Gast"} ({next.party_size}p)
-                  </div>
-                ) : (
-                  <div className="mt-1 inline-flex items-center gap-1 rounded-full bg-table-free-border/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-table-free-border">
-                    {FLOOR_LABEL[tone]}
-                  </div>
+                      <div className="text-[10px] text-muted-foreground tabular-nums">
+                        {format(new Date(active.start_time), "HH:mm")} · {active.party_size}p
+                        {minSeated !== null && <> · {minSeated}m</>}
+                      </div>
+                      {!compact && (active.guests?.allergies || active.dietary_notes
+                        || (largeGroupThreshold && active.party_size >= largeGroupThreshold)
+                        || (active.pre_orders?.length ?? 0) > 0) && (
+                        <div className="text-[9px] mt-0.5 truncate flex items-center justify-center gap-1">
+                          {(active.guests?.allergies || active.dietary_notes) && <span className="text-destructive">▲</span>}
+                          {(active.pre_orders?.length ?? 0) > 0 && <span>🥂</span>}
+                          {largeGroupThreshold && active.party_size >= largeGroupThreshold && <span>👥</span>}
+                        </div>
+                      )}
+                    </div>
+                  ) : next && !compact ? (
+                    <div className="w-full mt-1 text-center text-[10px] text-muted-foreground truncate">
+                      {format(new Date(next.start_time), "HH:mm")} · {next.guests?.first_name ?? "Gast"} ({next.party_size}p)
+                    </div>
+                  ) : (
+                    <div className="mt-1 inline-flex items-center gap-1 rounded-full bg-table-free-border/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-table-free-border">
+                      {FLOOR_LABEL[tone]}
+                    </div>
+                  )}
+                </button>
+                {active && (
+                  <ReservationQuickActionsPopover
+                    reservationId={active.id}
+                    status={active.status}
+                    title={`${format(new Date(active.start_time), "HH:mm")} · ${active.guests?.first_name ?? "Gast"} ${active.guests?.last_name ?? ""}`.trim()}
+                    subtitle={`${active.party_size} pers · Tafel ${t.label}`}
+                    onOpenDetails={() => onOpenReservation(active.id)}
+                  />
                 )}
-              </button>
+              </div>
             );
           })}
         </div>

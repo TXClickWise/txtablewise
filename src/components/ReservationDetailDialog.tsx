@@ -18,7 +18,7 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { ChannelBadge } from "@/components/ChannelBadge";
 import { toast } from "sonner";
 import { reservations as resService, type ReservationStatus } from "@/services/reservations";
-import { CheckCircle2, UserCheck, XCircle, AlertOctagon, ShieldCheck, ShieldX } from "lucide-react";
+import { CheckCircle2, UserCheck, XCircle, AlertOctagon, ShieldCheck, ShieldX, Activity } from "lucide-react";
 import { ReservationNoShowSection } from "@/components/no-show/ReservationNoShowSection";
 import { ReservationPreOrderSection } from "@/components/pre-orders/ReservationPreOrderSection";
 import { GuestPreviewInReservation } from "@/components/guests/GuestPreviewInReservation";
@@ -209,6 +209,27 @@ export function ReservationDetailDialog({ reservationId, open, onOpenChange }: P
                 )}
               </div>
 
+              {/* Status wijzigen — bovenaan, prominent, geen scrollen nodig */}
+              <div className="rounded-lg border-2 border-primary/20 bg-card shadow-sm p-4 space-y-2">
+                <div className="flex items-center justify-between gap-2 flex-wrap">
+                  <div className="flex items-center gap-2">
+                    <Activity className="h-4 w-4 text-primary" />
+                    <span className="font-semibold text-sm">Status van reservering</span>
+                  </div>
+                  <div className="text-xs text-muted-foreground flex items-center gap-1.5">
+                    <span>Nu:</span>
+                    <StatusBadge status={data.status} />
+                  </div>
+                </div>
+                <ReservationStatusQuickBar
+                  reservationId={data.id}
+                  status={data.status}
+                  size="lg"
+                  layout="grid"
+                  onChanged={refresh}
+                />
+              </div>
+
               <div className="rounded-lg bg-muted/50 p-3">
                 <div className="font-medium">
                   {(data.guest_first_name ?? data.guests?.first_name) ?? ""} {(data.guest_last_name ?? data.guests?.last_name) ?? ""}
@@ -273,20 +294,6 @@ export function ReservationDetailDialog({ reservationId, open, onOpenChange }: P
                   </div>
                 </div>
               )}
-
-              {/* Operator quick-actions — duidelijk gelabeld blok voor statuswijzigingen */}
-              <div className="rounded-lg border border-border bg-muted/30 p-3 space-y-2">
-                <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                  Status wijzigen
-                </div>
-                <ReservationStatusQuickBar
-                  reservationId={data.id}
-                  status={data.status}
-                  size="lg"
-                  layout="grid"
-                  onChanged={refresh}
-                />
-              </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">

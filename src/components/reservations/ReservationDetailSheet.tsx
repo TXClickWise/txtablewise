@@ -17,7 +17,7 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { ChannelBadge } from "@/components/ChannelBadge";
 import {
   CheckCircle2, UserCheck, XCircle, AlertOctagon, Pencil, ExternalLink,
-  Clock, Bell, History, Plug, Phone,
+  Clock, Bell, History, Plug, Phone, Activity,
 } from "lucide-react";
 import { reservations as resService } from "@/services/reservations";
 import { ReservationStatusQuickBar } from "./ReservationStatusQuickBar";
@@ -186,11 +186,12 @@ export function ReservationDetailSheet({ reservationId, open, onOpenChange, onOp
                 </div>
               </div>
 
-              {/* Quick status actions — uniform overal, met duidelijke header */}
-              <div className="rounded-lg border border-border bg-muted/30 p-3 space-y-2">
-                <div className="flex items-center justify-between gap-2">
-                  <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                    Status wijzigen
+              {/* Status wijzigen — prominent en bovenaan, geen scrollen nodig */}
+              <div className="rounded-lg border-2 border-primary/20 bg-card shadow-sm p-3 space-y-2">
+                <div className="flex items-center justify-between gap-2 flex-wrap">
+                  <div className="flex items-center gap-2">
+                    <Activity className="h-4 w-4 text-primary" />
+                    <span className="font-semibold text-sm">Status van reservering</span>
                   </div>
                   <Button size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={() => { onOpenFullEditor(data.id); onOpenChange(false); }}>
                     <Pencil className="h-3.5 w-3.5 mr-1" /> Bewerk details
@@ -199,7 +200,8 @@ export function ReservationDetailSheet({ reservationId, open, onOpenChange, onOp
                 <ReservationStatusQuickBar
                   reservationId={data.id}
                   status={data.status}
-                  size="md"
+                  size="lg"
+                  layout="grid"
                   onChanged={refresh}
                 />
               </div>

@@ -834,6 +834,20 @@ function DetailPanel({
 
       <ScrollArea className={cn(!embedded && "flex-1")}>
         <div className="p-4 space-y-4">
+          {active && (
+            <div className="rounded-lg border-2 border-primary/20 bg-card shadow-sm p-3 space-y-2">
+              <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Status wijzigen
+              </div>
+              <ReservationStatusQuickBar
+                reservationId={active.id}
+                status={active.status}
+                size="lg"
+                layout="grid"
+              />
+            </div>
+          )}
+
           <div className="rounded-lg border border-border bg-muted/30 p-3 text-sm">
             <strong className="text-foreground">Status:</strong> {CELL_LABEL[status]}
           </div>
@@ -940,13 +954,6 @@ function ActiveReservationActions({
           {isSeated && minutesSeated !== null && <>Aan tafel sinds <strong className="text-foreground">{minutesSeated} min</strong>.</>}
         </div>
       </div>
-
-      <ReservationStatusQuickBar
-        reservationId={r.id}
-        status={r.status}
-        size="lg"
-        layout="grid"
-      />
 
       <MoveReservationButton
         reservationId={r.id}
