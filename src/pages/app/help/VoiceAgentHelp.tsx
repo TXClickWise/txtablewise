@@ -701,9 +701,9 @@ const SECTIONS: Section[] = [
 }`,
             responseHint: (
               <>
-                Response bevat <code>reservation_id</code> en <code>manage_token</code>. Lees de
-                laatste 6 tekens van <code>reservation_id</code> hardop voor als
-                bevestigingscode.
+                Response bevat <code>reservation_id</code> en <code>manage_token</code>. <strong>Niet
+                hardop voorlezen</strong> — de gast krijgt het bevestigingsnummer automatisch per
+                SMS en/of WhatsApp toegestuurd. Bevestig alleen hardop datum, tijd en aantal personen.
               </>
             ),
             endNote: (
