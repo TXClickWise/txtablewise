@@ -199,10 +199,11 @@ Roep ALTIJD \`log_call\` aan met de samenvatting, outcome (booked/changed/cancel
 }`;
 
   // Custom values voor de HUIDIGE klant — handig om direct in zijn sub-account te plakken.
+  // Restaurantnaam + tijdzone komen automatisch uit {{location.name}} / {{location.timezone}}
+  // en hoeven NIET als custom value ingevuld te worden.
   const customValues = `tablewise_api_key = ${apiKey}
 tablewise_restaurant_id = ${restaurantId}
 tablewise_base_url = ${FN_BASE}
-restaurant_name = ${current?.restaurants?.name ?? "<NAAM_RESTAURANT>"}
 restaurant_phone = +31 20 000 0000
 restaurant_address = <adres>
 opening_hours_short = di t/m za 17:00–22:00, zondag 17:00–21:00`;
@@ -212,7 +213,6 @@ opening_hours_short = di t/m za 17:00–22:00, zondag 17:00–21:00`;
   const customValuesSnapshot = `tablewise_api_key = REPLACE_PER_CLIENT_tw_live_xxx
 tablewise_restaurant_id = REPLACE_PER_CLIENT_uuid
 tablewise_base_url = ${FN_BASE}
-restaurant_name = REPLACE_PER_CLIENT
 restaurant_phone = REPLACE_PER_CLIENT
 restaurant_address = REPLACE_PER_CLIENT
 opening_hours_short = REPLACE_PER_CLIENT`;
