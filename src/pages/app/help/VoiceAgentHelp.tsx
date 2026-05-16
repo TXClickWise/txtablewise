@@ -442,7 +442,7 @@ const SECTIONS: Section[] = [
         <div>
           <div className="font-medium">Action 2 — Send SMS</div>
           <CodeBlock label="SMS naar {{contact.phone}}">
-{`Hallo {{contact.first_name}}, uw reservering bij {{custom_values.tw_restaurant_name}} op {{contact.tw_reservation_date}} om {{contact.tw_reservation_time}} voor {{contact.tw_party_size}} personen is bevestigd. Wijzigen of annuleren? Bel ons of antwoord op deze sms.`}
+{`Hallo {{contact.first_name}}, uw reservering bij {{location.name}} op {{contact.tw_reservation_date}} om {{contact.tw_reservation_time}} voor {{contact.tw_party_size}} personen is bevestigd. Wijzigen of annuleren? Bel ons of antwoord op deze sms.`}
           </CodeBlock>
         </div>
       </div>
