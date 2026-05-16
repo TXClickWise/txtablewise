@@ -1,56 +1,61 @@
-## Tijdslot-generator fixen (availability edge function)
+# ClickWise snapshot — minder Custom Values, meer dynamiek
 
-Beide problemen ontstaan in `supabase/functions/availability/index.ts` bij hoe shift-vensters naar tijdslots worden vertaald.
+Doel: het master-snapshot in ClickWise moet voor een nieuwe klant met zo min mogelijk handmatige stappen werken. Drie aanpassingen.
 
-### Oorzaak
+## 1. Restaurantnaam via `{{location.name}}`
 
-```ts
-const windows: Window[] = [];           // één Window per (openingstijd × shift)
-…
-for (const w of windows) {
-  let cur = toMinutes(w.start);
-  const lastStart = toMinutes(w.end) - durationMinutes;   // ⚠️ stopt elk venster `duration` minuten voor het einde
-  while (cur <= lastStart) { … slotCandidates.push(…) }
-}
-```
+In ClickWise is `{{location.name}}` een ingebouwd sub-account veld dat automatisch de naam van de sub-account bevat. Door dit te gebruiken in plaats van een Custom Value:
 
-1. **Gat 14:30 → 17:00**
-   Lunch- en dinershift worden als **aparte vensters** behandeld. Voor elk venster wordt afgekapt op `end − reserveringsduur`. Met lunch tot 17:00 en duur ±150 min stopt het laatste lunchslot rond 14:30; het volgende venster (diner) start pas om 17:00. Het is dus geen "te dichte sluitingstijd", het is de loze afkapping per shift terwijl de keuken eigenlijk doorloopt naar diner.
+- Geen handmatige `TW Restaurant Name` per klant meer invullen
+- Werkt automatisch zodra de sub-account naam = restaurantnaam
 
-2. **Slots niet op chronologische volgorde**
-   `windows` wordt gevuld in de volgorde waarin Supabase de shifts teruggeeft (geen ORDER BY). Komt diner-shift eerst uit de DB, dan worden eerst alle diner-slots gegenereerd en daarna pas de lunch-slots → in de UI staat 17:00, 17:15, …, 12:00, 12:15.
+**Wijzigingen in de help-/setup-documentatie:**
+- `src/pages/app/help/VoiceAgentHelp.tsx` (regels 314-316, 344, 428, 443): vervang elke `{{custom_values.tw_restaurant_name}}` door `{{location.name}}` en verwijder de "TW Restaurant Name" rij uit de Custom Values lijst (sectie 4).
+- `src/pages/app/admin/AdminClickWiseVoiceSetupPage.tsx` (regels 73, 267, 274, 645, 989, 1019, 1020): idem voor `{{custom_values.restaurant_name}}`.
 
-3. **Mogen eind- en begintijd gelijk zijn?**
-   Ja, lunch 11:00–17:00 + diner 17:00–22:00 is prima — mits we de vensters samenvoegen zodat de slot-generator ze als één doorlopend blok 11:00–22:00 ziet.
+**Voorwaarde voor de operator (1 zin in de docs toevoegen):** "Zet bij het aanmaken van de ClickWise sub-account de naam exact gelijk aan de restaurantnaam in TableWise — die naam wordt overal automatisch ingevuld."
 
-### Oplossing in `availability/index.ts`
+## 2. Tijdzone via `{{location.timezone}}`
 
-Tussen het bouwen van `windows` (regel ±117) en de slot-generatie (regel 127) één extra stap toevoegen:
+Ook `timezone` is een standaard ClickWise location-veld (gevuld bij het aanmaken van de sub-account). 
 
-```ts
-// 1. Sorteer vensters chronologisch
-windows.sort((a, b) => a.start.localeCompare(b.start));
+- `VoiceAgentHelp.tsx` regel 317: vervang de hardcoded `CopyRow "TW Timezone" "Europe/Amsterdam"` door een uitleg-blokje: "Tijdzone wordt automatisch uit de ClickWise sub-account gehaald via `{{location.timezone}}` — zet die juist bij het aanmaken."
+- Overal waar de prompt of een tool-body een tijdzone refereert → `{{location.timezone}}` i.p.v. `{{custom_values.tw_timezone}}`.
 
-// 2. Voeg aansluitende of overlappende vensters samen
-//    (lunch 11-17 + diner 17-22 → 11-22; diner 17-22 + late 21-24 → 17-24)
-const merged: Window[] = [];
-for (const w of windows) {
-  const last = merged[merged.length - 1];
-  if (last && w.start <= last.end) {
-    last.end = w.end > last.end ? w.end : last.end;
-  } else {
-    merged.push({ ...w });
-  }
-}
-```
+Resultaat: één handmatige stap minder per klant.
 
-Daarna `merged` gebruiken in de bestaande `for (const w of windows)`-loop in plaats van `windows`.
+## 3. `TW Max Party Online` dynamisch uit TableWise
 
-Effect:
-- **Issue 1**: lunch- en dinershift worden samengevoegd tot één doorlopend venster, dus de slot-generator plaatst slots elke `slot_duration_minutes` minuten van 11:00 t/m `eindtijd − reserveringsduur`. Geen gat meer rond 14:30–17:00.
-- **Issue 2**: door eerst te sorteren staan slots altijd op chronologische volgorde, ongeacht de volgorde waarin shifts uit de DB komen.
-- **Vraag over eindtijd = begintijd**: blijft toegestaan en werkt nu correct dankzij de merge (`w.start <= last.end`).
+Custom Values in ClickWise zijn statisch en moeten per sub-account ingesteld worden. Beter is om de limiet **server-side** te leveren zodat hij altijd matcht met `restaurants.max_party_size_online`.
 
-### Out of scope
+Twee complementaire stappen:
 
-Geen wijzigingen aan settings-schermen, reserveringsduur, pacing, sluitingsdagen of UI van de widget — alleen de venster-naar-slot logica in de edge function.
+**A. Engine geeft de limiet terug (al deels het geval — maken expliciet).**
+- In `supabase/functions/availability/index.ts`: voeg `restaurantConfig: { maxPartyOnline, bookingHorizonDays, timezone }` toe aan elk response. De agent kan dan in de prompt-instructie zien "als party_size > maxPartyOnline → vertel gast dat collega terugbelt".
+- `supabase/functions/agent_api/index.ts` (check_availability + book_reservation): bij `party_size > max_party_size_online` retourneer een duidelijke fout `TW_409_PARTY_TOO_LARGE` met `maxPartyOnline` in de body, zodat de agent dat in z'n antwoord kan citeren.
+
+**B. Optioneel: nieuwe lichte tool `get_restaurant_config` (GET, geen body) die `{ name, timezone, maxPartyOnline, bookingHorizonDays }` teruggeeft. De agent roept hem aan in de begroeting/eerste turn en gebruikt de waarden in z'n redenering.** Dit haalt ook de hardcoded `8` uit de prompt.
+
+**Docs-wijziging:**
+- `VoiceAgentHelp.tsx` sectie 4 regel 319: verwijder `TW Max Party Online` uit de Custom Values lijst.
+- Sectie 8 regels 445-450 (Callout): herschrijf — "De grens komt automatisch uit TableWise (`max_party_size_online`). De agent leest hem bij elke call uit de API; pas hem aan in TableWise → Instellingen → Reserveringsregels."
+- Sectie 9 tools: voeg `get_restaurant_config` toe of beschrijf hoe `check_availability` de limiet teruggeeft.
+
+## Resulterend snapshot-checklist per nieuwe klant
+
+Van 6 handmatige Custom Values → **2**:
+1. `TW Agent API URL` (constant, kan zelfs hardcoded in tool-URLs)
+2. `TW Agent API Key` (per klant uniek — onvermijdbaar)
+3. `TW Webhook Secret` (per klant uniek — onvermijdbaar)
+
+Plus: sub-account naam exact gelijk aan restaurantnaam zetten, en timezone correct kiezen in ClickWise sub-account.
+
+## Update geheugen
+
+Werk `mem://features/clickwise-snapshot` bij: restaurant_name + timezone gaan via `{{location.*}}`, max_party komt uit de engine response — niet meer als custom value.
+
+## Buiten scope
+
+- Geen wijzigingen aan reservering- of widget-logica
+- Geen nieuwe tabellen
+- ClickWise master-snapshot zelf updaten is een handmatige stap die de operator buiten Lovable doet — wij leveren alleen de juiste docs/templates.
