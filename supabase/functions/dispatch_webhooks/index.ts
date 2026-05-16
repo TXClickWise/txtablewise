@@ -21,7 +21,16 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   try {
     const url = new URL(req.url);
-    const restaurantFilter = url.searchParams.get("restaurant_id");
+    let restaurantFilter = url.searchParams.get("restaurant_id");
+    // Sta ook JSON body toe (supabase.functions.invoke gebruikt body, geen query params).
+    if (!restaurantFilter && (req.method === "POST" || req.method === "PUT")) {
+      try {
+        const body = await req.json();
+        if (body && typeof body.restaurant_id === "string") {
+          restaurantFilter = body.restaurant_id;
+        }
+      } catch (_) { /* geen body, prima */ }
+    }
 
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL")!,
