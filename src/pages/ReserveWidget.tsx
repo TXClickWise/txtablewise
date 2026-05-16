@@ -671,8 +671,8 @@ const ReserveWidget = () => {
                 <Input id="ph" type="tel" required value={phone} onChange={(e) => setPhone(e.target.value)} className="h-12" placeholder={t("phonePlaceholder")} />
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="em">{t("emailOptional")}</Label>
-                <Input id="em" type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="h-12" />
+                <Label htmlFor="em">{t("email")} *</Label>
+                <Input id="em" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} className="h-12" />
               </div>
             </div>
 
