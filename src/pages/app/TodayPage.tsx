@@ -160,6 +160,8 @@ const TodayPage = () => {
 
       {restaurantId && <LastMinuteFillPanel restaurantId={restaurantId} />}
 
+      {restaurantId && <GuestChangeRequestsPanel restaurantId={restaurantId} />}
+
       <SectionCard title="Reserveringen vandaag" icon={<CalendarDays />}>
         {isLoading ? (
           <CardSkeletonGrid count={3} />
