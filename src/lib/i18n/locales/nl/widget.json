@@ -67,6 +67,7 @@
   "approvalBanner": "We bevestigen je reservering binnen 24 uur. Je krijgt bericht zodra de tafel definitief gereserveerd is.",
   "errors": {
     "firstNameRequired": "Voornaam is verplicht",
+    "emailRequired": "E-mailadres is verplicht",
     "emailInvalid": "Geldig e-mailadres vereist",
     "phoneRequired": "Telefoonnummer is verplicht",
     "messageRequired": "Voeg even een korte toelichting toe voor het restaurant",

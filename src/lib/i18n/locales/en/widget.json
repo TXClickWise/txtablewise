@@ -67,6 +67,7 @@
   "approvalBanner": "We'll confirm your reservation within 24 hours. You'll receive a message as soon as the table is definitively reserved.",
   "errors": {
     "firstNameRequired": "First name is required",
+    "emailRequired": "Email address is required",
     "emailInvalid": "Valid email address required",
     "phoneRequired": "Phone number is required",
     "messageRequired": "Please add a short note for the restaurant",
