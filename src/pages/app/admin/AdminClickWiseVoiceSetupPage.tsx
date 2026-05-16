@@ -264,14 +264,14 @@ steps:
     then:
       - send_sms:
           to: "{{contact.phone}}"
-          body: "Bedankt voor je reservering bij {{custom_values.restaurant_name}} op {{reservation_date}} om {{reservation_time}}. Tot dan!"
+          body: "Bedankt voor je reservering bij {{location.name}} op {{reservation_date}} om {{reservation_time}}. Tot dan!"
       - add_tag: "tw_reservation_booked_via_voice"
     else: goto: 9_handoff
 
   3_cancel_done:
     type: send_sms
     to: "{{contact.phone}}"
-    body: "Je reservering bij {{custom_values.restaurant_name}} is geannuleerd. Welkom terug wanneer het uitkomt."
+    body: "Je reservering bij {{location.name}} is geannuleerd. Welkom terug wanneer het uitkomt."
 
   4_change_done:
     type: send_sms
