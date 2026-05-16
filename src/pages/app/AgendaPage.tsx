@@ -24,6 +24,7 @@ import { ReservationDetailDialog } from "@/components/ReservationDetailDialog";
 import { ReservationFormSheet, type ReservationFormPrefill } from "@/components/reservations/ReservationFormSheet";
 import { WalkInDialog } from "@/components/WalkInDialog";
 import { DayView } from "@/components/reservations/views/DayView";
+import { ReservationDatePicker } from "@/components/reservations/ReservationDatePicker";
 import { EmptyState } from "@/components/touch/StateViews";
 import { cn } from "@/lib/utils";
 
