@@ -26,6 +26,11 @@ type Reservation = {
   confirmation_code: string | null;
   reminder_confirmed_at: string | null;
   special_requests: string | null;
+  dietary_notes: string | null;
+  guest_first_name: string | null;
+  guest_last_name: string | null;
+  guest_email: string | null;
+  guest_phone: string | null;
 };
 type RestaurantPublic = {
   name: string;
