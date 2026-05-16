@@ -80,10 +80,12 @@ function Callout({
   );
 }
 
+type SectionGroup = "quickstart" | "manual" | "golive";
 type Section = {
   id: string;
   title: string;
   icon: React.ComponentType<{ className?: string }>;
+  group: SectionGroup;
   /** searchable haystack — extra trefwoorden bovenop de titel */
   keywords: string;
   render: () => React.ReactNode;
