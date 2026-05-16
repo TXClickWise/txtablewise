@@ -87,14 +87,37 @@ export default function ApiWebhooksSettings() {
             variant="outline"
             onClick={async () => {
               if (!restaurantId) return;
+              if (!r?.webhook_url) {
+                toast.error("Vul eerst een Webhook-URL in en klik buiten het veld om op te slaan.");
+                return;
+              }
               const { error } = await supabase.from("integration_events").insert({
                 restaurant_id: restaurantId,
                 event_type: "test_webhook",
                 target: "webhook",
                 payload: { source: "settings_test", at: new Date().toISOString() },
               } as any);
-              if (error) toast.error("Mislukt: " + error.message);
-              else toast.success("Test-event in wachtrij");
+              if (error) {
+                toast.error("Mislukt: " + error.message);
+                return;
+              }
+              toast.success("Test-event verstuurd — bezorgen…");
+              // Trigger de dispatcher direct zodat de test ook echt bij ClickWise aankomt
+              // (zonder hoeven wachten op de achtergrondcron).
+              const { data: dispatch, error: dispatchError } = await supabase.functions.invoke(
+                "dispatch_webhooks",
+                { body: { restaurant_id: restaurantId } },
+              );
+              if (dispatchError) {
+                toast.error("Bezorgen mislukt: " + dispatchError.message);
+              } else {
+                const n = (dispatch as any)?.dispatched ?? 0;
+                if (n > 0) {
+                  toast.success(`Bezorgd aan ${n} endpoint(s) — check ClickWise + integratielog.`);
+                } else {
+                  toast.message("Verstuurd — controleer de integratielog voor het resultaat.");
+                }
+              }
             }}
           >
             <Send className="h-4 w-4 mr-2" />
