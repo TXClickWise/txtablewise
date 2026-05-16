@@ -8,8 +8,9 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
   ArrowLeft, BookOpen, Copy, Search, Phone, KeyRound, Database, Sparkles,
-  Workflow, FlaskConical, ListChecks, AlertCircle, Printer,
+  Workflow, FlaskConical, ListChecks, AlertCircle, Printer, ChevronDown, Wrench, Rocket,
 } from "lucide-react";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
