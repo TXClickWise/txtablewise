@@ -756,6 +756,7 @@ const SECTIONS: Section[] = [
                 beller.
               </>
             ),
+            sayBefore: "Geen probleem, ik annuleer de reservering nu voor u.",
           })}
 
           {toolBlock({
