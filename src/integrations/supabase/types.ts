@@ -204,6 +204,8 @@ export type Database = {
       clickwise_settings: {
         Row: {
           api_base_url: string | null
+          clickwise_addon: string
+          clickwise_addon_updated_at: string | null
           connection_mode: string
           contact_sync_enabled: boolean
           contact_sync_rules: Json
@@ -211,17 +213,25 @@ export type Database = {
           custom_field_mapping: Json
           id: string
           last_error: string | null
+          last_provision_attempt_at: string | null
           last_test_at: string | null
           location_id: string | null
           privacy_options: Json
+          provisioned_at: string | null
+          provisioning_error: string | null
+          provisioning_status: string
           restaurant_id: string
+          saas_plan_id: string | null
           sandbox_mode: boolean
+          synced_at: string | null
           tag_mapping: Json
           updated_at: string
           workflow_mapping: Json
         }
         Insert: {
           api_base_url?: string | null
+          clickwise_addon?: string
+          clickwise_addon_updated_at?: string | null
           connection_mode?: string
           contact_sync_enabled?: boolean
           contact_sync_rules?: Json
@@ -229,17 +239,25 @@ export type Database = {
           custom_field_mapping?: Json
           id?: string
           last_error?: string | null
+          last_provision_attempt_at?: string | null
           last_test_at?: string | null
           location_id?: string | null
           privacy_options?: Json
+          provisioned_at?: string | null
+          provisioning_error?: string | null
+          provisioning_status?: string
           restaurant_id: string
+          saas_plan_id?: string | null
           sandbox_mode?: boolean
+          synced_at?: string | null
           tag_mapping?: Json
           updated_at?: string
           workflow_mapping?: Json
         }
         Update: {
           api_base_url?: string | null
+          clickwise_addon?: string
+          clickwise_addon_updated_at?: string | null
           connection_mode?: string
           contact_sync_enabled?: boolean
           contact_sync_rules?: Json
@@ -247,11 +265,17 @@ export type Database = {
           custom_field_mapping?: Json
           id?: string
           last_error?: string | null
+          last_provision_attempt_at?: string | null
           last_test_at?: string | null
           location_id?: string | null
           privacy_options?: Json
+          provisioned_at?: string | null
+          provisioning_error?: string | null
+          provisioning_status?: string
           restaurant_id?: string
+          saas_plan_id?: string | null
           sandbox_mode?: boolean
+          synced_at?: string | null
           tag_mapping?: Json
           updated_at?: string
           workflow_mapping?: Json
