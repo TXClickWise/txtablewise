@@ -465,6 +465,7 @@ const AgendaPage = () => {
 
   return (
     <div className={containerClass}>
+      <PendingLargeGroupsAlert variant="banner" />
       {/* === STICKY KOP === */}
       <div className="relative z-30 shrink-0 bg-card border-b border-border">
         {/* Rij 1: view-switcher · spring naar · toolbar */}
