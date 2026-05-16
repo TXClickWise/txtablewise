@@ -1387,9 +1387,7 @@ function SimpleVoiceAgentHelp() {
   );
 }
 
-export default function VoiceAgentHelp() {
-  const { canSeeAdvanced } = useAdvancedMode();
-  if (!canSeeAdvanced) return <SimpleVoiceAgentHelp />;
+function AdvancedVoiceAgentHelp() {
   const [q, setQ] = useState("");
   const [showManual, setShowManual] = useState(false);
 
@@ -1517,4 +1515,10 @@ export default function VoiceAgentHelp() {
       </div>
     </div>
   );
+}
+
+export default function VoiceAgentHelp() {
+  const { canSeeAdvanced } = useAdvancedMode();
+  if (!canSeeAdvanced) return <SimpleVoiceAgentHelp />;
+  return <AdvancedVoiceAgentHelp />;
 }
