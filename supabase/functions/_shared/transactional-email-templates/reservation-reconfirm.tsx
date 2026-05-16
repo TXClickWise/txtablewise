@@ -1,6 +1,6 @@
 import * as React from 'npm:react@18.3.1'
 import {
-  Body, Button, Container, Head, Heading, Html, Preview, Section, Text,
+  Body, Button, Container, Head, Heading, Html, Link, Preview, Section, Text,
 } from 'npm:@react-email/components@0.0.22'
 import type { TemplateEntry } from './registry.ts'
 import type { CopyFields, LocaleCopy } from './i18n.ts'
@@ -13,6 +13,7 @@ interface Props {
   partySize?: number
   confirmUrl?: string
   cancelUrl?: string
+  manageUrl?: string
   locale?: string
 }
 
