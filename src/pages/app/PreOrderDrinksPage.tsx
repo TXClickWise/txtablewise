@@ -47,6 +47,8 @@ type SourceFilter = "guest" | "loyverse" | "all";
 const PreOrderDrinksPage = () => {
   const { current } = useRestaurant();
   const restaurantId = current?.restaurant_id;
+  const canManage = current?.role === "owner" || current?.role === "manager";
+  const moduleSwitch = usePreordersEnabled(restaurantId);
 
   const [items, setItems] = useState<PreOrderItem[]>([]);
   const [today, setToday] = useState<ReadyListEntry[]>([]);
