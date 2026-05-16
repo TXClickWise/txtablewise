@@ -177,20 +177,12 @@ export function AppSidebar() {
               <Group storageKey="hospitality" label="Hospitality" items={hospitality} collapsed={collapsed} pathname={location.pathname} search={location.search} onNavigate={handleNavigate} canSeeAdvanced={canSeeAdvanced} role={role} />
               <Group storageKey="beheer" label="Beheer" items={beheer} collapsed={collapsed} pathname={location.pathname} search={location.search} onNavigate={handleNavigate} canSeeAdvanced={canSeeAdvanced} role={role} />
               {canBeheer && (
-                <SidebarGroup>
-                  <SidebarGroupContent>
-                    <SidebarMenu>
-                      <SidebarMenuItem>
-                        <SidebarMenuButton asChild isActive={settingsActive}>
-                          <NavLink to="/app/instellingen" end onClick={handleNavigate}>
-                            <Settings className="h-4 w-4 shrink-0" />
-                            {!collapsed && <span>Instellingen</span>}
-                          </NavLink>
-                        </SidebarMenuButton>
-                      </SidebarMenuItem>
-                    </SidebarMenu>
-                  </SidebarGroupContent>
-                </SidebarGroup>
+                <SettingsCollapsibleGroup
+                  collapsed={collapsed}
+                  pathname={location.pathname}
+                  onNavigate={handleNavigate}
+                  isOwner={role === "owner"}
+                />
               )}
               {isSystemAdmin && (
                 <Group storageKey="admin" label="Admin" items={admin} collapsed={collapsed} pathname={location.pathname} search={location.search} accent onNavigate={handleNavigate} canSeeAdvanced={canSeeAdvanced} role={role} />
