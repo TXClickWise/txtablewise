@@ -1359,8 +1359,12 @@ export type Database = {
           dietary_notes: string | null
           end_time: string
           external_reference: string | null
+          guest_email: string | null
+          guest_first_name: string | null
           guest_id: string | null
           guest_language: string | null
+          guest_last_name: string | null
+          guest_phone: string | null
           hold_expires_at: string | null
           id: string
           internal_notes: string | null
@@ -1416,8 +1420,12 @@ export type Database = {
           dietary_notes?: string | null
           end_time: string
           external_reference?: string | null
+          guest_email?: string | null
+          guest_first_name?: string | null
           guest_id?: string | null
           guest_language?: string | null
+          guest_last_name?: string | null
+          guest_phone?: string | null
           hold_expires_at?: string | null
           id?: string
           internal_notes?: string | null
@@ -1473,8 +1481,12 @@ export type Database = {
           dietary_notes?: string | null
           end_time?: string
           external_reference?: string | null
+          guest_email?: string | null
+          guest_first_name?: string | null
           guest_id?: string | null
           guest_language?: string | null
+          guest_last_name?: string | null
+          guest_phone?: string | null
           hold_expires_at?: string | null
           id?: string
           internal_notes?: string | null

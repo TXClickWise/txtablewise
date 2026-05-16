@@ -7,6 +7,7 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { ChannelBadge } from "@/components/ChannelBadge";
 import { ReservationBadges, type ReservationFlags } from "./ReservationBadges";
 import { ReservationStatusQuickBar } from "./ReservationStatusQuickBar";
+import { resolveReservationGuest } from "@/lib/reservationGuest";
 import { cn } from "@/lib/utils";
 
 // Loose shape — matches what the page selects. Keep flexible so callers don't
@@ -26,6 +27,11 @@ export type CardReservation = {
   requires_manual_approval?: boolean;
   large_group_status?: string | null;
   reminder_confirmed_at?: string | null;
+  // Snapshot of guest data at time of booking (preferred for display)
+  guest_first_name?: string | null;
+  guest_last_name?: string | null;
+  guest_email?: string | null;
+  guest_phone?: string | null;
   guests?: {
     first_name?: string | null; last_name?: string | null;
     phone?: string | null; email?: string | null;
@@ -51,6 +57,7 @@ export function ReservationCard({
 }: Props) {
   const r = reservation;
   const guest = r.guests;
+  const display = resolveReservationGuest(r);
   const tableLabel = r.reservation_tables?.map((rt) => rt?.tables?.label).filter(Boolean).join(", ");
   const isWalkIn = r.channel === "walk_in";
 
@@ -99,8 +106,8 @@ export function ReservationCard({
         >
           <div className="flex items-center gap-2 flex-wrap">
             <span className="font-medium truncate">
-              {guest?.first_name ?? (isWalkIn ? "Walk-in" : "Gast")}{" "}
-              {guest?.last_name ?? ""}
+              {display.first_name ?? (isWalkIn ? "Walk-in" : "Gast")}{" "}
+              {display.last_name ?? ""}
             </span>
             <StatusBadge status={status as never} />
             <ChannelBadge channel={r.channel as never} />
@@ -108,8 +115,8 @@ export function ReservationCard({
 
           <div className="text-sm text-muted-foreground mt-0.5 truncate">
             {tableLabel ? <span>Tafel {tableLabel}</span> : <span>Geen tafel toegewezen</span>}
-            {guest?.phone && <span> · {guest.phone}</span>}
-            {guest?.email && !guest?.phone && <span> · {guest.email}</span>}
+            {display.phone && <span> · {display.phone}</span>}
+            {display.email && !display.phone && <span> · {display.email}</span>}
           </div>
 
           {(r.special_requests || guest?.allergies) && (

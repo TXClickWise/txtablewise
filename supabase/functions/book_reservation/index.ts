@@ -257,6 +257,12 @@ Deno.serve(async (req) => {
       large_group_status: largeGroupStatus,
       table_combination_id: chosenCombinationId,
       guest_language: body.guest?.language && ["nl","en","de","fr"].includes(body.guest.language) ? body.guest.language : null,
+      // Snapshot of guest data at time of booking (so historic reservations
+      // don't change name/contact when the same email re-books later).
+      guest_first_name: body.guest.first_name,
+      guest_last_name: body.guest.last_name ?? null,
+      guest_email: body.guest.email ?? null,
+      guest_phone: body.guest.phone ?? null,
     }).select("*").single();
 
     if (resErr) return json({ error: resErr.message }, 500);

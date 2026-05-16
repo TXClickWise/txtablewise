@@ -210,9 +210,11 @@ export function ReservationDetailDialog({ reservationId, open, onOpenChange }: P
               </div>
 
               <div className="rounded-lg bg-muted/50 p-3">
-                <div className="font-medium">{data.guests?.first_name} {data.guests?.last_name ?? ""}</div>
-                <div className="text-sm text-muted-foreground">{data.guests?.email}</div>
-                {data.guests?.phone && <div className="text-sm text-muted-foreground">{data.guests.phone}</div>}
+                <div className="font-medium">
+                  {(data.guest_first_name ?? data.guests?.first_name) ?? ""} {(data.guest_last_name ?? data.guests?.last_name) ?? ""}
+                </div>
+                <div className="text-sm text-muted-foreground">{data.guest_email ?? data.guests?.email}</div>
+                {(data.guest_phone ?? data.guests?.phone) && <div className="text-sm text-muted-foreground">{data.guest_phone ?? data.guests.phone}</div>}
                 {data.reservation_tables?.length > 0 && (
                   <div className="text-xs text-muted-foreground mt-1">
                     Tafel: {data.reservation_tables.map((rt: { tables?: { label?: string } }) => rt.tables?.label).join(", ")}

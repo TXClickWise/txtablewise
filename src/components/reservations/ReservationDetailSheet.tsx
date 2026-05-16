@@ -138,6 +138,12 @@ export function ReservationDetailSheet({ reservationId, open, onOpenChange, onOp
   };
 
   const guest = data?.guests as any;
+  const display = data ? {
+    first_name: (data as any).guest_first_name ?? guest?.first_name ?? null,
+    last_name:  (data as any).guest_last_name  ?? guest?.last_name  ?? null,
+    email:      (data as any).guest_email      ?? guest?.email      ?? null,
+    phone:      (data as any).guest_phone      ?? guest?.phone      ?? null,
+  } : null;
   const tableLabels = useMemo(() => (
     (data?.reservation_tables as any[] ?? [])
       .map((rt) => rt?.tables?.label).filter(Boolean).join(", ")
@@ -171,7 +177,7 @@ export function ReservationDetailSheet({ reservationId, open, onOpenChange, onOp
               </div>
               <div>
                 <div className="font-display text-lg">
-                  {guest?.first_name ?? "Gast"} {guest?.last_name ?? ""}
+                  {display?.first_name ?? "Gast"} {display?.last_name ?? ""}
                 </div>
                 <div className="text-sm text-muted-foreground">
                   {format(new Date(data.start_time), "EEE d MMM yyyy · HH:mm", { locale: nl })}{" "}
@@ -251,8 +257,8 @@ export function ReservationDetailSheet({ reservationId, open, onOpenChange, onOp
                 {guest ? (
                   <>
                     <Block title="Contact">
-                      <div>{guest.email ?? "—"}</div>
-                      <div>{guest.phone ?? "—"}</div>
+                      <div>{display?.email ?? "—"}</div>
+                      <div>{display?.phone ?? "—"}</div>
                     </Block>
                     <Block title="Geschiedenis">
                       <div className="grid grid-cols-3 gap-3">

@@ -63,7 +63,7 @@ export function TableGridView({
     enabled: !!restaurantId,
     queryFn: async () => {
       const { data } = await supabase.from("reservations")
-        .select("id, start_time, end_time, status, party_size, guests(first_name, last_name), reservation_tables(table_id)")
+        .select("id, start_time, end_time, status, party_size, guest_first_name, guest_last_name, guests(first_name, last_name), reservation_tables(table_id)")
         .eq("restaurant_id", restaurantId).eq("reservation_date", dateStr);
       return data ?? [];
     },

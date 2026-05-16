@@ -97,6 +97,7 @@ const ReservationsPage = () => {
           special_requests, internal_notes, occasion, dietary_notes, confirmation_code,
           requires_manual_approval, large_group_status, reminder_confirmed_at,
           guest_id, no_show_risk, reconfirmation_status,
+          guest_first_name, guest_last_name, guest_email, guest_phone,
           guests(first_name, last_name, phone, email, is_vip, allergies),
           reservation_tables(table_id, tables(label)),
           pre_orders(id)
@@ -163,13 +164,14 @@ const ReservationsPage = () => {
       // search
       if (filters.search) {
         const q = filters.search.toLowerCase();
+        const snapName = `${r.guest_first_name ?? ""} ${r.guest_last_name ?? ""}`.toLowerCase();
         const name = `${r.guests?.first_name ?? ""} ${r.guests?.last_name ?? ""}`.toLowerCase();
-        const email = (r.guests?.email ?? "").toLowerCase();
-        const phone = (r.guests?.phone ?? "").toLowerCase();
+        const email = ((r.guest_email ?? r.guests?.email) ?? "").toLowerCase();
+        const phone = ((r.guest_phone ?? r.guests?.phone) ?? "").toLowerCase();
         const code = (r.confirmation_code ?? "").toLowerCase();
         const note = `${r.special_requests ?? ""} ${r.internal_notes ?? ""}`.toLowerCase();
         const tables = (r.reservation_tables ?? []).map((rt) => rt?.tables?.label ?? "").join(" ").toLowerCase();
-        if (![name, email, phone, code, note, tables].some((s) => s.includes(q))) return false;
+        if (![snapName, name, email, phone, code, note, tables].some((s) => s.includes(q))) return false;
       }
       return true;
     });
