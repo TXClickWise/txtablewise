@@ -1,52 +1,33 @@
-## Wat ik nu wel zie en wat nog mist
+## Wat speelt er
 
-In jouw screenshots staan status-knoppen **wél** al inline bij:
-- **Vandaag** — kaartjes met *Heropenen / Afgerond / Annuleer*
-- **Agenda → Lijst** — kaartjes met *Aan tafel / No-show / Annuleer / Heropenen*
+In ClickWise/HighLevel is een **Inbound Webhook** trigger pas op te slaan als er een **Mapping Reference** is gekozen. Dat is een eerder ontvangen sample-payload die HighLevel gebruikt om de JSON-structuur (en dus de `{{trigger.*}}` velden) te kennen. Zolang er nog geen request naar de unieke webhook-URL is gestuurd, blijft de dropdown leeg en krijg je de melding *"A Mapping Reference is required for an Inbound Webhook Trigger"*.
 
-Status-knoppen **ontbreken nog** bij:
-1. **Agenda → Tijdlijn** — gekleurde blokjes openen wel de detail-dialog, geen snelmenu op het blok zelf
-2. **Agenda → Plattegrond** — tafelkaartjes met reservering geen actie-knoppen
-3. **Vloer-pagina** — grote tafelkaarten geen status-actie
+Dit zit nu nog niet in de helptekst (stap 7 op `/app/help/voice-agent`) en ook niet in de admin setup-tab. Daarom loopt elke nieuwe klant hier tegenaan.
 
-In de **detail-popup** staat de quickbar nu pas helemaal onderaan — niet werkbaar, je moet steeds eerst scrollen.
+## Doel
 
-Daarnaast is de **grote-groep-aanvragen indicator** alleen nog een kleine badge in de sidebar. Die moet weer prominent op Vandaag + Agenda.
+Gebruiker (en system admin) precies vertellen hoe ze die Mapping Reference krijgen, zonder zelf te hoeven Googlen.
 
-## Voorstel
+## Aanpassing
 
-### A. Quickbar bovenaan in detail-popup en zijdeur
-In `ReservationDetailDialog.tsx` en `reservations/ReservationDetailSheet.tsx`:
-- **"Status wijzigen"-blok verplaatsen** van onderin naar **direct onder de header** (boven gastblok, no-show preventie, drankjes, etc.).
-- Visueel sterker frame: `bg-card border-2 border-primary/20 shadow-sm p-4`, kop met icoon "Status van reservering" + regel *"Status nu: [badge]"*.
-- Bestaande quickbar onderin verwijderen (één plek, niet dubbel).
+**Bestand:** `src/pages/app/help/VoiceAgentHelp.tsx` — sectie *7. ClickWise — Inbound Webhook Workflow* (rond regel 509–515, het "Trigger" blokje).
 
-### B. Snelmenu op tijdlijn-blokjes (Agenda → Tijdlijn)
-In `src/components/reservations/views/TableGridView.tsx`: het blokje wrappen in een **Popover** die opent op klein "⋯"-knopje rechtsboven het blok (kort tikken op blok blijft = detail openen). Popover-inhoud:
-- Gastnaam + tijd + party-size kop
-- `<ReservationStatusQuickBar layout="grid" size="md">`
-- Linkje "Open details"
+Onder het "Trigger" blokje een nieuwe **Callout (tone="warning")** toevoegen met titel *"Mapping Reference verplicht — stuur eerst een test-payload"* en daarin de stappen:
 
-### C. Snelmenu op plattegrond-tafelkaarten (Agenda → Plattegrond)
-Tafelkaart met reservering krijgt zelfde Popover-patroon via kebab-knop in de hoek. Lege tafel blijft direct openen om snel reservering toe te voegen.
+1. Kopieer de **Inbound Webhook URL** die ClickWise toont (bv. `https://services.leadconnectorhq.com/hooks/...`).
+2. Stuur eenmalig een voorbeeld-payload naar die URL — twee opties:
+   - **Snel via TableWise:** open *Instellingen → API & Webhooks*, maak een tijdelijk webhook-endpoint aan met die URL en klik **Test** (event `reservation.created`). Of, voor admins: vanuit `AdminClickWiseVoiceSetupPage` tab *Inbound webhooks* de "Stuur testpayload" knop (indien aanwezig — anders cURL).
+   - **Via cURL** (één-regel voorbeeld in een `CodeBlock`) met een minimale JSON die alle `{{trigger.*}}` velden bevat die we in Action 1 gebruiken (`phone`, `first_name`, `email`, `reservation_id`, `reservation_date`, `reservation_time`, `party_size`, `manage_token`).
+3. Ga terug naar ClickWise → de trigger-popup → klik in de dropdown **Mapping Reference** op **"Check for new requests"**. De zojuist verzonden payload verschijnt — selecteer hem.
+4. Klik **Save Trigger**. Vanaf nu zijn `{{trigger.phone}}` etc. beschikbaar in alle Actions.
 
-### D. Snelmenu op Vloer-tafelkaarten
-In `src/pages/app/FloorModePage.tsx`: de bestaande Sheet krijgt bovenaan een **actie-rij** met `ReservationStatusQuickBar size="lg" layout="grid"` (grote touch-targets). Op desktop ook een Popover via kebab-knop op de kaart zelf.
+Plus een kleine tip: als je later de payload-structuur uitbreidt (extra velden), moet je nogmaals een sample sturen en de Mapping Reference verversen, anders blijven nieuwe velden onzichtbaar.
 
-### E. Grote-groep aanvragen weer prominent
-- **Vandaag (`TodayPage.tsx`)**: alert-tegel tussen KPI-rij en "Reserveringen vandaag" — *"X groepsaanvragen wachten op goedkeuring"* + knop "Bekijken" → `/app/reserveringen/grote-groepen`. Alleen tonen als count > 0.
-- **Agenda (`AgendaPage.tsx`/`AgendaTabsPage.tsx`)**: smalle banner bovenaan boven de tab-switcher Tijdlijn/Lijst/Plattegrond.
-- Sidebar-badge blijft staan.
+## Eventueel ook
 
-## Geen wijzigingen aan
-- `manage_reservation` edge function (transitions zijn vorige ronde al verruimd)
-- `ReservationStatusQuickBar` interne logica — wordt alleen op nieuwe plekken hergebruikt
-- Vandaag- en Lijst-kaartjes (werkt al)
+Korte spiegel-zin toevoegen in `src/pages/app/admin/AdminClickWiseVoiceSetupPage.tsx` rond regel 785 (`<li>ClickWise → Automation → Workflow → New → trigger: Inbound Webhook</li>`) — één regel "Eerst sample-payload sturen voor Mapping Reference, zie helptekst stap 7" zodat admins die de stappenkaart volgen niet vastlopen.
 
-## Bestanden
-- `src/components/ReservationDetailDialog.tsx` — status-blok bovenaan, sterker frame
-- `src/components/reservations/ReservationDetailSheet.tsx` — idem
-- `src/components/reservations/views/TableGridView.tsx` — Popover op tijdlijn-blok + tafelkaart
-- `src/pages/app/FloorModePage.tsx` — quickbar bovenaan tafel-sheet + kebab-Popover
-- `src/pages/app/TodayPage.tsx` — grote-groep alert-tegel
-- `src/pages/app/AgendaPage.tsx` (of `AgendaTabsPage.tsx`) — grote-groep banner
+## Niet doen
+
+- Geen wijzigingen aan edge functions of `dispatch_webhooks` — payload-structuur is al correct, dit is puur een ClickWise-configuratiestap die gedocumenteerd moet worden.
+- Geen nieuwe knop/automatisering bouwen (kan later, eerst documentatie afmaken).
