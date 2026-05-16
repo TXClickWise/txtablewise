@@ -27,6 +27,7 @@ import { ReservationAftercareSection } from "@/components/reviews/ReservationAft
 import { createReviewRequestForReservation } from "@/services/reviews";
 import { ReservationPOSSection } from "@/components/pos/ReservationPOSSection";
 import { ReservationStatusQuickBar } from "@/components/reservations/ReservationStatusQuickBar";
+import { ReservationCallLogSection } from "@/components/reservations/ReservationCallLogSection";
 
 type Props = {
   reservationId: string | null;
