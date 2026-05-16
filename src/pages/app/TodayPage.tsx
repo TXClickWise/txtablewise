@@ -199,6 +199,15 @@ const TodayPage = () => {
         )}
       </SectionCard>
 
+      {restaurantId && (
+        <PreOrderReadyList
+          restaurantId={restaurantId}
+          windowMinutes={180}
+          onOpenReservation={(id) => setSelectedId(id)}
+          compact
+        />
+      )}
+
       <WalkInDialog open={walkInOpen} onOpenChange={setWalkInOpen} />
       <ReservationFormSheet open={createOpen} onOpenChange={setCreateOpen} />
       <ReservationDetailDialog reservationId={selectedId} open={!!selectedId} onOpenChange={(o) => !o && setSelectedId(null)} />
