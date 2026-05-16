@@ -722,9 +722,9 @@ const SECTIONS: Section[] = [
             name: "cancel_reservation",
             url: `${AGENT_API_BASE}/cancel_reservation`,
             description:
-              "Annuleer een bestaande reservering op basis van het reservation_id dat de beller doorgeeft (of dat je via find_reservation hebt opgehaald).",
+              "Annuleer een bestaande reservering. Het reservation_id wordt ALTIJD intern opgehaald via find_reservation (op telefoon of naam + datum) — vraag dit NOOIT aan de beller.",
             params: [
-              { name: "reservation_id", type: "String", required: true, description: "UUID van de te annuleren reservering.", example: "00000000-0000-0000-0000-000000000000" },
+              { name: "reservation_id", type: "String", required: true, description: "UUID van de te annuleren reservering. Intern verkregen via find_reservation — nooit aan de beller vragen.", example: "00000000-0000-0000-0000-000000000000" },
               { name: "reason", type: "String", required: false, description: "Korte reden van annulering in het Nederlands.", example: "Geannuleerd via telefoon" },
             ],
             body: `{
