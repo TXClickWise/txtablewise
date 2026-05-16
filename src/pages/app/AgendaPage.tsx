@@ -837,7 +837,7 @@ function FloorPlanBody({
   }
 
   return (
-    <div ref={containerRef} className="flex-1 min-h-0 overflow-auto bg-muted/10">
+    <div ref={containerRef} className="flex-1 min-h-0 overflow-x-hidden overflow-y-scroll bg-muted/10">
       <div className="p-4" style={{ minHeight: scaledH + padding * 2 }}>
         <div
           className="relative mx-auto rounded-xl border border-border bg-background shadow-sm"
