@@ -558,52 +558,127 @@ const SECTIONS: Section[] = [
   {
     id: "tools",
     group: "manual",
-    title: "9. Tool definities (4 stuks)",
+    title: "9. Tool definities (5 stuks)",
     icon: ListChecks,
-    keywords: "tool action webhook check_availability book_reservation cancel_reservation log_call",
+    keywords: "tool action webhook check_availability book_reservation create_reservation cancel_reservation update_reservation wijzigen log_call query parameters data collection",
     render: () => {
       const headers = `X-Agent-Api-Key: {{custom_values.tw_agent_api_key}}\nContent-Type: application/json`;
+
+      const toolBlock = (args: {
+        n: number;
+        name: string;
+        url: string;
+        description: string;
+        params: ToolParam[];
+        body: string;
+        responseHint: React.ReactNode;
+        endNote?: React.ReactNode;
+      }) => (
+        <div className="space-y-2">
+          <div className="font-medium flex items-center gap-2">
+            <Badge variant="outline">Tool {args.n}</Badge> {args.name}
+            {args.name === "log_call" && (
+              <Badge className="bg-amber-500/15 text-amber-700 border-amber-500/40">
+                verplicht aan einde
+              </Badge>
+            )}
+          </div>
+          <CopyRow label="Description (voor de agent)" value={args.description} />
+          <CopyRow label="URL" value={args.url} />
+          <div className="grid sm:grid-cols-3 gap-2 text-xs">
+            <div className="rounded border bg-muted/30 px-3 py-2">
+              <div className="text-muted-foreground">Method</div>
+              <div className="font-mono">POST</div>
+            </div>
+            <div className="rounded border bg-muted/30 px-3 py-2">
+              <div className="text-muted-foreground">Query parameters</div>
+              <div className="font-medium">Leeg laten</div>
+            </div>
+            <div className="rounded border bg-muted/30 px-3 py-2">
+              <div className="text-muted-foreground">Auth</div>
+              <div className="font-mono">X-Agent-Api-Key</div>
+            </div>
+          </div>
+          <CodeBlock label="Headers">{headers}</CodeBlock>
+          <ToolParamTable params={args.params} />
+          <CodeBlock label="Body (JSON) — voorbeeld">{args.body}</CodeBlock>
+          <div className="text-xs text-muted-foreground">{args.responseHint}</div>
+          {args.endNote && <div className="text-xs text-muted-foreground">{args.endNote}</div>}
+        </div>
+      );
+
       return (
         <div className="space-y-6">
           <p className="text-sm text-muted-foreground">
-            In ClickWise voeg je per tool een <strong>Custom Webhook Action</strong> toe aan de Voice Agent.
-            Methode is altijd <code>POST</code>. Plak de URL, headers en body exact zoals hieronder.
+            In ClickWise voeg je per tool een <strong>Custom Webhook Action</strong> toe aan de
+            Voice Agent. Methode is altijd <code>POST</code>. Bij <em>Query parameters</em> hoef je
+            <strong> niets</strong> in te vullen — alle velden gaan in de body. Vul bij
+            <em> Data collection for query params and body params</em> precies de rijen in uit de
+            tabel per tool.
           </p>
 
-          {/* Tool 1 */}
-          <div className="space-y-2">
-            <div className="font-medium flex items-center gap-2">
-              <Badge variant="outline">Tool 1</Badge> check_availability
-            </div>
-            <CopyRow
-              label="Description (voor de agent)"
-              value="Controleer welke tijdsloten beschikbaar zijn op een bepaalde datum voor een aantal personen. Gebruik dit ALTIJD voordat je een tijd voorstelt."
-            />
-            <CopyRow label="URL" value={`${AGENT_API_BASE}/check_availability`} />
-            <CodeBlock label="Headers">{headers}</CodeBlock>
-            <CodeBlock label="Body (JSON)">{`{
+          {toolBlock({
+            n: 1,
+            name: "check_availability",
+            url: `${AGENT_API_BASE}/check_availability`,
+            description:
+              "Controleer welke tijdsloten beschikbaar zijn op een bepaalde datum voor een aantal personen. Gebruik dit ALTIJD voordat je een tijd voorstelt of voordat je iets wijzigt.",
+            params: [
+              {
+                name: "date",
+                type: "String",
+                required: true,
+                description:
+                  "Reserveringsdatum in formaat YYYY-MM-DD. Reken vanaf {{system__time_utc}} als de beller 'morgen', 'vrijdag' etc. zegt.",
+                example: "2026-05-26",
+              },
+              {
+                name: "party_size",
+                type: "Number",
+                required: true,
+                description: "Aantal personen, geheel getal tussen 1 en 8.",
+                example: "4",
+              },
+              {
+                name: "preferred_time",
+                type: "String",
+                required: false,
+                description:
+                  "Optionele voorkeurstijd in formaat HH:mm (24-uurs). Alleen invullen als de beller een specifieke tijd noemt.",
+                example: "19:30",
+              },
+            ],
+            body: `{
   "date": "{{date}}",
-  "party_size": {{party_size}}
-}`}</CodeBlock>
-            <div className="text-xs text-muted-foreground">
-              Parameters: <code>date</code> (string, verplicht, YYYY-MM-DD) ·
-              <code> party_size</code> (number, verplicht, 1–8).
-              Response bevat <code>slots</code> (array van <code>{`{ time, available }`}</code>).
-            </div>
-          </div>
+  "party_size": {{party_size}},
+  "preferred_time": "{{preferred_time}}"
+}`,
+            responseHint: (
+              <>
+                Response bevat <code>slots</code> (array van{" "}
+                <code>{`{ time, available }`}</code>). Bied maximaal 3 beschikbare tijden aan de
+                beller.
+              </>
+            ),
+          })}
 
-          {/* Tool 2 */}
-          <div className="space-y-2">
-            <div className="font-medium flex items-center gap-2">
-              <Badge variant="outline">Tool 2</Badge> book_reservation
-            </div>
-            <CopyRow
-              label="Description"
-              value="Maak de reservering definitief aan. Gebruik dit pas nadat je alle gegevens hardop hebt bevestigd met de beller."
-            />
-            <CopyRow label="URL" value={`${AGENT_API_BASE}/book_reservation`} />
-            <CodeBlock label="Headers">{headers}</CodeBlock>
-            <CodeBlock label="Body (JSON)">{`{
+          {toolBlock({
+            n: 2,
+            name: "book_reservation",
+            url: `${AGENT_API_BASE}/book_reservation`,
+            description:
+              "Maak de reservering definitief aan. Gebruik dit pas nadat je alle gegevens hardop hebt bevestigd met de beller.",
+            params: [
+              { name: "date", type: "String", required: true, description: "Reserveringsdatum YYYY-MM-DD.", example: "2026-05-26" },
+              { name: "time", type: "String", required: true, description: "Reserveringstijd HH:mm (24-uurs).", example: "19:30" },
+              { name: "party_size", type: "Number", required: true, description: "Aantal personen, 1 t/m 8.", example: "4" },
+              { name: "first_name", type: "String", required: true, description: "Voornaam van de gast.", example: "Jan" },
+              { name: "last_name", type: "String", required: false, description: "Achternaam van de gast (optioneel).", example: "de Vries" },
+              { name: "phone", type: "String", required: false, description: "Telefoonnummer in E.164-formaat, bijv. +31612345678.", example: "+31612345678" },
+              { name: "email", type: "String", required: false, description: "E-mailadres als de gast dat zelf geeft.", example: "gast@voorbeeld.nl" },
+              { name: "special_requests", type: "String", required: false, description: "Allergieën, gelegenheid of andere wensen.", example: "Kinderstoel graag" },
+            ],
+            body: `{
   "date": "{{date}}",
   "time": "{{time}}",
   "party_size": {{party_size}},
@@ -614,53 +689,92 @@ const SECTIONS: Section[] = [
     "email": "{{contact.email}}"
   },
   "special_requests": "{{special_requests}}"
-}`}</CodeBlock>
-            <div className="text-xs text-muted-foreground">
-              Parameters: <code>date</code> (YYYY-MM-DD), <code>time</code> (HH:MM 24h),
-              <code> party_size</code> (1–8). <strong>Naam, telefoon en e-mail</strong> komen uit de
-              standaard ClickWise contactvelden via <code>{`{{contact.first_name}}`}</code>,{" "}
-              <code>{`{{contact.last_name}}`}</code>, <code>{`{{contact.phone}}`}</code> en{" "}
-              <code>{`{{contact.email}}`}</code> — die hoef je niet als custom field aan te maken.
-              Optioneel: <code>special_requests</code> (allergieën / gelegenheid).
-              Response bevat <code>reservation_id</code> en <code>manage_token</code>.
-              Lees de laatste 6 tekens van <code>reservation_id</code> hardop voor als bevestigingscode.
-            </div>
-          </div>
+}`,
+            responseHint: (
+              <>
+                Response bevat <code>reservation_id</code> en <code>manage_token</code>. Lees de
+                laatste 6 tekens van <code>reservation_id</code> hardop voor als
+                bevestigingscode.
+              </>
+            ),
+            endNote: (
+              <>
+                <strong>Tip:</strong> de standaard contactvelden van ClickWise (
+                <code>{`{{contact.first_name}}`}</code>, <code>{`{{contact.phone}}`}</code> etc.)
+                kun je rechtstreeks in de body gebruiken — die hoef je niet als losse data-collection-rij
+                aan te maken. Voeg <code>first_name</code> alleen toe als data-collection-veld
+                wanneer je het door de agent wilt láten uitvragen.
+              </>
+            ),
+          })}
 
-          {/* Tool 3 */}
-          <div className="space-y-2">
-            <div className="font-medium flex items-center gap-2">
-              <Badge variant="outline">Tool 3</Badge> cancel_reservation
-            </div>
-            <CopyRow
-              label="Description"
-              value="Annuleer een bestaande reservering op basis van het reservation_id dat de beller doorgeeft."
-            />
-            <CopyRow label="URL" value={`${AGENT_API_BASE}/cancel_reservation`} />
-            <CodeBlock label="Headers">{headers}</CodeBlock>
-            <CodeBlock label="Body (JSON)">{`{
+          {toolBlock({
+            n: 3,
+            name: "cancel_reservation",
+            url: `${AGENT_API_BASE}/cancel_reservation`,
+            description:
+              "Annuleer een bestaande reservering op basis van het reservation_id dat de beller doorgeeft (of dat je via find_reservation hebt opgehaald).",
+            params: [
+              { name: "reservation_id", type: "String", required: true, description: "UUID van de te annuleren reservering.", example: "00000000-0000-0000-0000-000000000000" },
+              { name: "reason", type: "String", required: false, description: "Korte reden van annulering in het Nederlands.", example: "Geannuleerd via telefoon" },
+            ],
+            body: `{
   "reservation_id": "{{reservation_id}}",
   "reason": "{{reason}}"
-}`}</CodeBlock>
-            <div className="text-xs text-muted-foreground">
-              Parameters: <code>reservation_id</code> (UUID, verplicht) ·
-              <code> reason</code> (optioneel).
-            </div>
-          </div>
+}`,
+            responseHint: (
+              <>
+                Response bevat <code>success: true</code>. Bevestig de annulering hardop aan de
+                beller.
+              </>
+            ),
+          })}
 
-          {/* Tool 4 */}
-          <div className="space-y-2">
-            <div className="font-medium flex items-center gap-2">
-              <Badge variant="outline">Tool 4</Badge> log_call
-              <Badge className="bg-amber-500/15 text-amber-700 border-amber-500/40">verplicht aan einde</Badge>
-            </div>
-            <CopyRow
-              label="Description"
-              value="Log het resultaat van het gesprek in TableWise. ALTIJD aanroepen vlak voor je het gesprek afsluit."
-            />
-            <CopyRow label="URL" value={`${AGENT_API_BASE}/log_call`} />
-            <CodeBlock label="Headers">{headers}</CodeBlock>
-            <CodeBlock label="Body (JSON)">{`{
+          {toolBlock({
+            n: 4,
+            name: "update_reservation",
+            url: `${AGENT_API_BASE}/update_reservation`,
+            description:
+              "Wijzig datum, tijd en/of aantal personen van een bestaande reservering. Vul minimaal één van new_date, new_time of new_party_size. Controleer eerst met check_availability of de nieuwe combinatie kan.",
+            params: [
+              { name: "reservation_id", type: "String", required: true, description: "UUID van de bestaande reservering.", example: "00000000-0000-0000-0000-000000000000" },
+              { name: "new_date", type: "String", required: false, description: "Nieuwe datum YYYY-MM-DD. Laat leeg als de datum niet wijzigt.", example: "2026-05-27" },
+              { name: "new_time", type: "String", required: false, description: "Nieuwe tijd HH:mm (24-uurs). Laat leeg als de tijd niet wijzigt.", example: "20:00" },
+              { name: "new_party_size", type: "Number", required: false, description: "Nieuw aantal personen, 1 t/m 8. Laat leeg als het aantal niet wijzigt.", example: "6" },
+              { name: "special_requests", type: "String", required: false, description: "Bijgewerkte wensen (overschrijft bestaande wensen).", example: "Toch geen kinderstoel" },
+            ],
+            body: `{
+  "reservation_id": "{{reservation_id}}",
+  "new_date": "{{new_date}}",
+  "new_time": "{{new_time}}",
+  "new_party_size": {{new_party_size}},
+  "special_requests": "{{special_requests}}"
+}`,
+            responseHint: (
+              <>
+                Response bevat de bijgewerkte reservering. Bevestig hardop met de nieuwe datum,
+                tijd en aantal personen.
+              </>
+            ),
+          })}
+
+          {toolBlock({
+            n: 5,
+            name: "log_call",
+            url: `${AGENT_API_BASE}/log_call`,
+            description:
+              "Log het resultaat van het gesprek in TableWise. ALTIJD aanroepen vlak voor je het gesprek afsluit, ook bij info-vragen of geen actie.",
+            params: [
+              { name: "external_call_id", type: "String", required: true, description: "Unieke call-ID van ClickWise (gebruik {{call.id}}).", example: "call_abc123" },
+              { name: "caller_phone", type: "String", required: true, description: "Telefoonnummer van de beller in E.164-formaat.", example: "+31612345678" },
+              { name: "callee_phone", type: "String", required: false, description: "Het nummer dat gebeld werd (restaurantnummer).", example: "+31201234567" },
+              { name: "outcome", type: "String", required: true, description: "Resultaat — exact één van: booked, cancelled, updated, info_only, no_action, callback_needed.", example: "booked" },
+              { name: "reservation_id", type: "String", required: false, description: "Alleen invullen bij outcome=booked, cancelled of updated.", example: "00000000-0000-0000-0000-000000000000" },
+              { name: "duration_seconds", type: "Number", required: false, description: "Gespreksduur in seconden.", example: "92" },
+              { name: "summary", type: "String", required: false, description: "Korte NL-samenvatting van het gesprek, maximaal 2 zinnen.", example: "Reservering gemaakt voor 4p op 26 mei 19:30." },
+              { name: "agent_id", type: "String", required: false, description: "Vrij label om de agent te identificeren.", example: "tablewise-reservering-bot" },
+            ],
+            body: `{
   "external_call_id": "{{call.id}}",
   "caller_phone": "{{contact.phone}}",
   "callee_phone": "{{call.to_number}}",
@@ -669,15 +783,14 @@ const SECTIONS: Section[] = [
   "duration_seconds": {{call.duration_seconds}},
   "summary": "{{summary}}",
   "agent_id": "tablewise-reservering-bot"
-}`}</CodeBlock>
-            <div className="text-xs text-muted-foreground">
-              <code>outcome</code> (verplicht) — een van:{" "}
-              <code>booked</code>, <code>cancelled</code>, <code>info_only</code>,{" "}
-              <code>no_action</code>, <code>callback_needed</code>. <br />
-              <code>reservation_id</code> alleen als er geboekt of geannuleerd is.{" "}
-              <code>summary</code> — korte NL-samenvatting (max 2 zinnen).
-            </div>
-          </div>
+}`,
+            responseHint: (
+              <>
+                Response bevat <code>success: true</code>. Niets hardop bevestigen — dit is een
+                interne log-call.
+              </>
+            ),
+          })}
 
           {/* Optionele extra tools */}
           <div className="space-y-2 pt-2 border-t">
@@ -691,12 +804,8 @@ const SECTIONS: Section[] = [
             <ul className="text-xs space-y-1.5 list-disc list-inside">
               <li>
                 <strong>find_reservation</strong> — bestaande reservering opzoeken op telefoon of
-                bevestigingscode.{" "}
+                bevestigingscode (handig vóór cancel of update).{" "}
                 <code className="break-all">{`${AGENT_API_BASE}/find_reservation`}</code>
-              </li>
-              <li>
-                <strong>update_reservation</strong> — datum, tijd of aantal personen wijzigen.{" "}
-                <code className="break-all">{`${AGENT_API_BASE}/update_reservation`}</code>
               </li>
               <li>
                 <strong>reconfirm_reservation</strong> — gast bevestigt of annuleert telefonisch
