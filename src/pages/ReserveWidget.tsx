@@ -99,7 +99,7 @@ function hexToHslTokens(hex: string): string | null {
 const makeGuestSchema = (t: (k: string) => string) => z.object({
   first_name: z.string().trim().min(1, t("errors.firstNameRequired")).max(80),
   last_name: z.string().trim().max(80).optional(),
-  email: z.string().trim().email(t("errors.emailInvalid")).max(255).optional().or(z.literal("")),
+  email: z.string().trim().min(1, t("errors.emailRequired")).email(t("errors.emailInvalid")).max(255),
   phone: z.string().trim().min(6, t("errors.phoneRequired")).max(40),
 });
 
