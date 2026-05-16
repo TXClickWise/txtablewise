@@ -1,33 +1,50 @@
-## Probleem 1 — "Geen tafel toegewezen" in Agenda → Lijst
+## Datumkiezer verbeteren
 
-**Oorzaak**
-In `src/pages/app/AgendaPage.tsx` selecteert de `agenda-day`-query alleen `reservation_tables(table_id)` — zonder de gekoppelde `tables(label)`. Bovendien wordt in `listReservations` (de mapping naar de `DayView`/`ReservationCard`) het veld `reservation_tables` helemaal weggelaten. `ReservationCard` leest `r.reservation_tables[].tables?.label` om het tafelnummer te tonen, dus die valt altijd leeg → "Geen tafel toegewezen". De Tijdlijn- en Plattegrond-views werken wél omdat die intern via `byTable[table.id]` koppelen, niet via het label.
+Twee aanpassingen aan de datumkiezer (popover-kalender) die in de hele app gebruikt wordt op /app/agenda, /app/reserveringen (lijst) en /app/vloer (Floor Mode):
 
-In `TodayPage`, `ReservationsPage` en `LargeGroupsPage` is `tables(label)` wél meegenomen, dáár klopt de weergave.
+### 1. Puntjes onder dagen met reserveringen
+- Per maand die in de popover zichtbaar is, de set unieke `reservation_date`'s ophalen voor het huidige restaurant (alle statussen behalve `cancelled`).
+- Die data via `modifiers={{ hasReservations: Date[] }}` en `modifiersClassNames` aan `react-day-picker` doorgeven.
+- Stijl: klein bolletje (`bg-primary`) onder het dagnummer via een `::after`-pseudo-element op de cel (semantische token `--primary`), zichtbaar ook op de geselecteerde dag (in primary-foreground kleur voor contrast).
 
-**Fix**
-1. In `AgendaPage.tsx` de query uitbreiden: `reservation_tables(table_id, tables(label))`.
-2. In de `listReservations` `useMemo` het veld `reservation_tables: r.reservation_tables ?? []` doorgeven, zodat `ReservationCard` het tafel-label kan tonen.
+### 2. Auto-sluiten na selectie
+- `Popover` wordt controlled gemaakt (`open` / `onOpenChange`).
+- In `onSelect` van de Calendar: datum updaten **en** popover sluiten.
 
-Geen wijzigingen in andere pagina's nodig — die tonen het tafel-label al correct.
+### Implementatie
 
-## Probleem 2 — Plattegrond "Restaurant"-zone trilt heftig
+**Nieuwe component**: `src/components/reservations/ReservationDatePicker.tsx`
+- Props: `value: Date`, `onChange: (d: Date) => void`, `restaurantId: string`, optioneel `triggerClassName` en `align`.
+- Houdt intern `open` en `month` (zichtbare maand) bij.
+- `useQuery` op key `["reservation-dates", restaurantId, yyyymm]` haalt distinct `reservation_date` op voor de zichtbare maand (start–eind van de maand, status ≠ `cancelled`) en parsed naar `Date[]`.
+- Rendert `Popover` + bestaande `Button` trigger met `CalendarIcon` + `format(value, "EEEE d MMMM", { locale: nl })`.
+- Geeft aan `Calendar`: `month`, `onMonthChange`, `modifiers={{ hasReservations: dates }}`, `modifiersClassNames={{ hasReservations: "tw-has-reservations" }}`.
+- `onSelect` → `onChange(d)` + `setOpen(false)`.
 
-**Oorzaak**
-In `FloorPlanBody` (onderaan `AgendaPage.tsx`) zit een ResizeObserver-feedbackloop:
-- `containerRef` heeft `overflow-auto`.
-- `scale = (containerW - padding*2) / bbox.w` → `scaledH` bepaalt `minHeight` van de inner div.
-- De Restaurant-zone bevat veel/grotere tafels, dus `scaledH` net groter dan de viewport → verticale scrollbar verschijnt → `containerW` krimpt ~15 px → `scale` daalt → `scaledH` daalt → scrollbar verdwijnt → `containerW` groeit → loop. Dit veroorzaakt het zichtbare "trillen".
+**CSS** in `src/index.css`:
+```css
+.tw-has-reservations { position: relative; }
+.tw-has-reservations::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: 4px;
+  transform: translateX(-50%);
+  width: 4px;
+  height: 4px;
+  border-radius: 9999px;
+  background: hsl(var(--primary));
+}
+.rdp-day_selected.tw-has-reservations::after {
+  background: hsl(var(--primary-foreground));
+}
+```
 
-**Fix**
-Twee kleine wijzigingen in `FloorPlanBody`:
-1. De scroll-container krijgt `overflow-y-scroll` (in plaats van `overflow-auto`), zodat de verticale scrollbarbreedte constant is en niet meer toggelt.
-2. `setContainerW` alleen aanroepen wanneer de breedte écht verandert (delta > 1 px), als extra demping tegen sub-pixel oscillaties van de ResizeObserver.
+**Vervangen**: de inline `Popover` + `Calendar` blokken in:
+- `src/pages/app/AgendaPage.tsx` (regels ±426-436)
+- `src/pages/app/ReservationsPage.tsx` (regels ±271-281)
+- `src/pages/app/FloorModePage.tsx` (analoog blok)
 
-## Scope
+door `<ReservationDatePicker value={date} onChange={setDate} restaurantId={current.restaurant_id} />`.
 
-Alleen frontend/presentatie. Geen wijzigingen aan datamodel, edge functions, of aan andere views/pagina's.
-
-## Bestanden
-
-- `src/pages/app/AgendaPage.tsx` — query uitbreiden, mapping aanvullen, `FloorPlanBody` scroll-/observer-stabilisatie.
+Geen wijzigingen aan business logic of edge functions.
