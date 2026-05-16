@@ -1194,6 +1194,7 @@ const SECTIONS: Section[] = [
     ),
   },
   {
+    id: "go-live",
     group: "golive",
     title: "11. Live zetten — stap voor stap",
     icon: ListChecks,
