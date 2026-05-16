@@ -56,11 +56,11 @@
 
     /* ── STATUS TOKENS ── */
     --status-hold: 220 10% 62%;
-    --status-pending: 38 92% 50%;
-    --status-confirmed: 152 56% 40%;
-    --status-seated: 210 72% 50%;
-    --status-completed: 220 12% 72%;
-    --status-cancelled: 220 10% 82%;
+    --status-pending: 220 12% 70%;
+    --status-confirmed: 210 72% 50%;
+    --status-seated: 152 56% 40%;
+    --status-completed: 220 14% 42%;
+    --status-cancelled: 0 72% 51%;
     --status-noshow: 0 72% 51%;
 
     /* ── TAFELSTATUSSEN ── */

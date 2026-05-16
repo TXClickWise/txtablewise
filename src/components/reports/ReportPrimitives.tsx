@@ -95,8 +95,8 @@ export function ExportReadyButton({ label = "Exporteren" }: { label?: string }) 
 
 export function StatusDistributionList({ data }: { data: Record<string, number> }) {
   const labels: Record<string, string> = {
-    pending: "Wachtend", confirmed: "Bevestigd", seated: "Aan tafel",
-    completed: "Voltooid", finished: "Voltooid", cancelled: "Geannuleerd", no_show: "No-show", hold: "Hold",
+    pending: "Verwacht", confirmed: "Bevestigd", seated: "Aan tafel",
+    completed: "Vertrokken", finished: "Vertrokken", cancelled: "Geannuleerd", no_show: "No-show", hold: "Hold",
   };
   const total = Object.values(data).reduce((s, n) => s + n, 0);
   const entries = Object.entries(data).sort((a, b) => b[1] - a[1]);
