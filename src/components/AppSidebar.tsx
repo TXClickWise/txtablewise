@@ -224,3 +224,76 @@ export function AppSidebar() {
     </Sidebar>
   );
 }
+
+function SettingsCollapsibleGroup({
+  collapsed, pathname, onNavigate, isOwner,
+}: {
+  collapsed: boolean; pathname: string; onNavigate?: () => void; isOwner: boolean;
+}) {
+  const settingsActive = pathname.startsWith("/app/instellingen");
+  const { open, setOpen } = useCollapsibleGroup("sidebar.settings", settingsActive);
+  const items = SETTINGS_ITEMS.filter((i) => !i.ownerOnly || isOwner);
+
+  if (collapsed) {
+    return (
+      <SidebarGroup>
+        <SidebarGroupContent>
+          <SidebarMenu>
+            <SidebarMenuItem>
+              <SidebarMenuButton asChild isActive={settingsActive}>
+                <NavLink to="/app/instellingen" end onClick={onNavigate}>
+                  <Settings className="h-4 w-4 shrink-0" />
+                </NavLink>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          </SidebarMenu>
+        </SidebarGroupContent>
+      </SidebarGroup>
+    );
+  }
+
+  return (
+    <SidebarGroup>
+      <SidebarGroupContent>
+        <Collapsible open={open} onOpenChange={setOpen}>
+          <SidebarMenu>
+            <SidebarMenuItem>
+              <CollapsibleTrigger asChild>
+                <SidebarMenuButton isActive={settingsActive && pathname === "/app/instellingen"}>
+                  <Settings className="h-4 w-4 shrink-0" />
+                  <span>Instellingen</span>
+                  <ChevronDown
+                    className={cn(
+                      "ml-auto h-3.5 w-3.5 transition-transform opacity-70",
+                      !open && "-rotate-90",
+                    )}
+                  />
+                </SidebarMenuButton>
+              </CollapsibleTrigger>
+              <CollapsibleContent>
+                <SidebarMenuSub>
+                  {items.map((item) => {
+                    const active = item.end
+                      ? pathname === item.to
+                      : pathname.startsWith(item.to);
+                    const Icon = item.icon;
+                    return (
+                      <SidebarMenuSubItem key={item.to}>
+                        <SidebarMenuSubButton asChild isActive={active}>
+                          <NavLink to={item.to} end={item.end} onClick={onNavigate}>
+                            <Icon className="h-3.5 w-3.5 shrink-0" />
+                            <span>{item.label}</span>
+                          </NavLink>
+                        </SidebarMenuSubButton>
+                      </SidebarMenuSubItem>
+                    );
+                  })}
+                </SidebarMenuSub>
+              </CollapsibleContent>
+            </SidebarMenuItem>
+          </SidebarMenu>
+        </Collapsible>
+      </SidebarGroupContent>
+    </SidebarGroup>
+  );
+}
