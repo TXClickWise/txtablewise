@@ -333,6 +333,9 @@ Deno.serve(async (req) => {
           hour: "2-digit", minute: "2-digit",
           timeZone: restaurant.timezone || "Europe/Amsterdam",
         });
+        const baseUrl = (Deno.env.get("SITE_URL") || "https://www.txtablewise.nl").replace(/\/+$/, "");
+        const manageUrl = reservation.manage_token ? `${baseUrl}/r/manage/${reservation.manage_token}` : undefined;
+        const cancelUrl = reservation.cancel_token ? `${baseUrl}/r/manage/${reservation.cancel_token}?action=cancel` : undefined;
         // Direct fetch met expliciete anon-key auth — supabase.functions.invoke()
         // van binnenuit een edge function stuurt de Authorization header soms niet
         // mee, en SUPABASE_SERVICE_ROLE_KEY is in de nieuwe key-formaat geen geldige
@@ -363,6 +366,8 @@ Deno.serve(async (req) => {
               dateLabel,
               timeLabel,
               partySize: body.party_size,
+              manageUrl,
+              cancelUrl,
             },
           }),
         });

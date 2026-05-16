@@ -92,7 +92,7 @@ Deno.serve(async (req) => {
 
   // Load restaurant + ClickWise + reservation + guest
   const [{ data: restaurant }, { data: cw }, { data: reservation }] = await Promise.all([
-    sb.from('restaurants').select('id, name, locale, default_locale, email_notification_settings, slug').eq('id', restaurant_id).maybeSingle(),
+    sb.from('restaurants').select('id, name, locale, default_locale, email_notification_settings, slug, guest_reply_to_email').eq('id', restaurant_id).maybeSingle(),
     sb.from('clickwise_settings').select('connection_mode').eq('restaurant_id', restaurant_id).maybeSingle(),
     sb.from('reservations').select('id, restaurant_id, guest_id, reservation_date, start_time, party_size, manage_token, cancel_token').eq('id', reservation_id).maybeSingle(),
   ])
@@ -171,6 +171,8 @@ Deno.serve(async (req) => {
       idempotencyKey: `${event_type}:${reservation.id}:${event_id || crypto.randomUUID()}`,
       restaurantId: restaurant_id,
       locale,
+      fromName: restaurant.name,
+      replyTo: restaurant.guest_reply_to_email || undefined,
       templateData,
     },
   })
