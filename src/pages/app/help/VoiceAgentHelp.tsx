@@ -14,7 +14,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { useAdvancedMode } from "@/hooks/useAdvancedMode";
-import { Phone, Mail, CheckCircle2 } from "lucide-react";
+import { Mail, CheckCircle2 } from "lucide-react";
 
 const PROJECT_REF =
   ((import.meta as any).env?.VITE_SUPABASE_PROJECT_ID as string | undefined) ||
