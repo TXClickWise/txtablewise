@@ -19,6 +19,7 @@ import { LastMinuteFillPanel } from "@/components/waitlist/LastMinuteFillPanel";
 import { PreOrderReadyList } from "@/components/pre-orders/PreOrderReadyList";
 import { GuestChangeRequestsPanel } from "@/components/reservations/GuestChangeRequestsPanel";
 import { CardSkeletonGrid, EmptyState } from "@/components/touch/StateViews";
+import { PendingLargeGroupsAlert } from "@/components/large-groups/PendingLargeGroupsAlert";
 
 const TodayPage = () => {
   const { current } = useRestaurant();
@@ -157,6 +158,8 @@ const TodayPage = () => {
           accent={kpis.noShows > 0 ? "destructive" : "default"}
         />
       </div>
+
+      <PendingLargeGroupsAlert variant="card" />
 
       {restaurantId && <LastMinuteFillPanel restaurantId={restaurantId} />}
 
