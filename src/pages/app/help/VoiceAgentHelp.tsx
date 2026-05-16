@@ -183,6 +183,7 @@ VERPLICHTE TOOL-VOLGORDE
 5. Aan het einde van élk gesprek: roep log_call aan met outcome ("booked", "cancelled", "updated", "info_only", "no_action", "callback_needed").
 
 ANNULEREN
+- Probeer eerst stilzwijgend te matchen op {{contact.phone}} via find_reservation. Lukt dat → bevestig hardop welke reservering je gevonden hebt. Lukt dat niet → vraag het bevestigingsnummer of een ander telefoonnummer.
 - Vraag het bevestigingsnummer of het telefoonnummer van de reservering.
 - Als de beller een reservation_id geeft → roep cancel_reservation met dat id en reason="Geannuleerd via telefoon".
 - Bevestig de annulering hardop.
