@@ -21,6 +21,8 @@ export type SettingsItem = {
   icon: typeof SettingsIcon;
   end?: boolean;
   ownerOnly?: boolean;
+  /** Alleen tonen wanneer Advanced Mode aan staat (of system admin). */
+  advanced?: boolean;
 };
 
 export const SETTINGS_ITEMS: SettingsItem[] = [
@@ -32,9 +34,10 @@ export const SETTINGS_ITEMS: SettingsItem[] = [
   { to: "/app/instellingen/gasten", label: "Gasten", icon: Users },
   { to: "/app/instellingen/berichten", label: "Berichten", icon: MessageSquare },
   { to: "/app/instellingen/pre-orders", label: "Drankjes vooraf", icon: Wine },
-  { to: "/app/instellingen/ai-voice", label: "AI & Voice", icon: Bot },
-  { to: "/app/instellingen/integraties", label: "Integraties", icon: Plug },
-  { to: "/app/instellingen/api", label: "API & webhooks", icon: KeyRound },
+  // Verborgen achter Advanced Mode — bereikbaar via "Koppelingen" in zijbalk
+  { to: "/app/instellingen/ai-voice", label: "AI & Voice", icon: Bot, advanced: true },
+  { to: "/app/instellingen/integraties", label: "Integraties (geavanceerd)", icon: Plug, advanced: true },
+  { to: "/app/instellingen/api", label: "API & webhooks", icon: KeyRound, advanced: true },
   { to: "/app/instellingen/gebruikers", label: "Gebruikers & rollen", icon: UserCog },
   { to: "/app/instellingen/abonnement", label: "Abonnement", icon: Crown },
   { to: "/app/instellingen/pilot-launch", label: "Pilot lancering", icon: Rocket, ownerOnly: true },
