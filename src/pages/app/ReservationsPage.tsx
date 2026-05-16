@@ -164,13 +164,14 @@ const ReservationsPage = () => {
       // search
       if (filters.search) {
         const q = filters.search.toLowerCase();
+        const snapName = `${r.guest_first_name ?? ""} ${r.guest_last_name ?? ""}`.toLowerCase();
         const name = `${r.guests?.first_name ?? ""} ${r.guests?.last_name ?? ""}`.toLowerCase();
-        const email = (r.guests?.email ?? "").toLowerCase();
-        const phone = (r.guests?.phone ?? "").toLowerCase();
+        const email = ((r.guest_email ?? r.guests?.email) ?? "").toLowerCase();
+        const phone = ((r.guest_phone ?? r.guests?.phone) ?? "").toLowerCase();
         const code = (r.confirmation_code ?? "").toLowerCase();
         const note = `${r.special_requests ?? ""} ${r.internal_notes ?? ""}`.toLowerCase();
         const tables = (r.reservation_tables ?? []).map((rt) => rt?.tables?.label ?? "").join(" ").toLowerCase();
-        if (![name, email, phone, code, note, tables].some((s) => s.includes(q))) return false;
+        if (![snapName, name, email, phone, code, note, tables].some((s) => s.includes(q))) return false;
       }
       return true;
     });
