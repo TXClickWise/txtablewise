@@ -645,9 +645,9 @@ const SECTIONS: Section[] = [
               {
                 name: "preferred_time",
                 type: "String",
-                required: false,
+                required: true,
                 description:
-                  "Optionele voorkeurstijd in formaat HH:mm (24-uurs). Alleen invullen als de beller een specifieke tijd noemt.",
+                  "VERPLICHT. Gewenste tijd in HH:mm (24-uurs). Vraag altijd actief: 'Hoe laat zou u willen komen?' Boek niet zonder bevestigde gewenste tijd.",
                 example: "19:30",
               },
             ],
@@ -658,9 +658,12 @@ const SECTIONS: Section[] = [
 }`,
             responseHint: (
               <>
-                Response bevat <code>slots</code> (array van{" "}
-                <code>{`{ time, available }`}</code>). Bied maximaal 3 beschikbare tijden aan de
-                beller.
+                Response bevat <code>exact</code> (één slot of <code>null</code>) en{" "}
+                <code>alternatives</code> (max 3 slots gesorteerd op nabijheid).{" "}
+                <strong>Als <code>exact</code> gevuld is</strong> → bevestig die tijd
+                direct hardop.{" "}
+                <strong>Als <code>exact</code> = null</strong> → noem 2 à 3 alternatieven
+                uit <code>alternatives[].time</code> rond de gewenste tijd.
               </>
             ),
           })}
