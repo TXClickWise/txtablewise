@@ -49,6 +49,13 @@ const ReservationReconfirm = ({
             </>
           )}
         </Section>
+        {manageUrl && (
+          <Text style={{ fontSize: '13px', color: '#6b7280', textAlign: 'center', margin: '4px 0 16px' }}>
+            <Link href={manageUrl} style={{ color: '#6b7280', textDecoration: 'underline' }}>
+              {copy.ctaManage || 'Wijzig je reservering'}
+            </Link>
+          </Text>
+        )}
         {copy.outro && <Text style={text}>{copy.outro}</Text>}
         {copy.signature && <Text style={footer}>{copy.signature}</Text>}
       </Container>
