@@ -6,8 +6,14 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
+  DropdownMenuSeparator, DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
-import { KeyRound, Webhook, Send, ScrollText } from "lucide-react";
+import { KeyRound, Webhook, Send, ScrollText, ChevronDown } from "lucide-react";
+import { webhookFixtures, type WebhookFixture } from "@/lib/webhookFixtures";
+import { WebhookHealthBadge } from "@/components/integrations/WebhookHealthBadge";
 
 export default function ApiWebhooksSettings() {
   const { current } = useRestaurant();
