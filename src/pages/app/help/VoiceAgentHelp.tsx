@@ -329,8 +329,10 @@ const SECTIONS: Section[] = [
               terug en biedt een grote-groep-callback aan.
             </li>
             <li>
-              <strong>Booking horizon</strong> (max. dagen vooruit) → ook uit TableWise; engine
-              weigert te ver vooruit.
+              <strong>Booking horizon</strong> (max. dagen vooruit) → uit TableWise
+              (<code>booking_horizon_days</code>). De engine weigert te ver vooruit boeken
+              automatisch. Pas aan in TableWise → <strong>Instellingen → Reserveringsregels →
+              Booking horizon (dagen)</strong>.
             </li>
           </ul>
         </Callout>
