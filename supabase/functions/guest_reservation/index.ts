@@ -87,7 +87,8 @@ Deno.serve(async (req) => {
       .from("restaurants")
       .select("id, name, slug, phone, email, timezone, default_locale, locale, " +
               "default_reservation_minutes, large_group_threshold, " +
-              "guest_changes_auto_apply, guest_changes_min_notice_minutes, guest_changes_auto_reject_party_size")
+              "guest_changes_auto_apply, guest_changes_min_notice_minutes, guest_changes_auto_reject_party_size, " +
+              "guest_reply_to_email")
       .eq("id", reservation.restaurant_id).maybeSingle();
     if (!restaurant) return json({ error: "not_found" }, 404);
 
