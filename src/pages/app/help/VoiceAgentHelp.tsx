@@ -456,15 +456,17 @@ const SECTIONS: Section[] = [
     render: () => (
       <div className="space-y-2">
         <p className="text-sm text-muted-foreground">
-          Plak in de Voice Agent → Prompt-tab. Vervang <code>[RESTAURANTNAAM]</code> door je restaurantnaam,
-          óf gebruik <code>{`{{custom_values.tw_restaurant_name}}`}</code> als ClickWise dat in de prompt rendert.
+          Plak in de Voice Agent → Prompt-tab. Vervang <code>[RESTAURANTNAAM]</code> door
+          <code>{` {{location.name}} `}</code> — ClickWise vult dan automatisch de sub-account
+          naam in. Vervang ook <code>Europe/Amsterdam</code> door <code>{`{{location.timezone}}`}</code>
+          als je meerdere tijdzones gebruikt.
         </p>
-        <Callout tone="info" title="Waarom max. 8 personen via telefoon?">
-          De grens van 1–8 personen komt overeen met de Custom Value{" "}
-          <code>tw_max_party_online</code>. Voor grotere groepen moet de gast een
-          grote-groep-aanvraag doen via de website-widget — de telefoon-agent zegt dat een
-          collega persoonlijk terugbelt en boekt zelf <strong>niet</strong>. Pas
-          <code> tw_max_party_online</code> én de prompt aan als je deze grens wilt verhogen.
+        <Callout tone="info" title="Max. groepsgrootte komt uit TableWise">
+          De grens komt automatisch uit TableWise (<code>max_party_size_online</code>) — je
+          hoeft hem niet als Custom Value te onderhouden. De engine weigert te grote groepen
+          met <code>TW_409_PARTY_TOO_LARGE</code>; de telefoon-agent zegt dan dat een collega
+          persoonlijk terugbelt en boekt zelf <strong>niet</strong>. Pas de grens aan in
+          TableWise → <strong>Instellingen → Reserveringsregels</strong>.
         </Callout>
         <CodeBlock label="System prompt — Nederlands">{SYSTEM_PROMPT}</CodeBlock>
       </div>
