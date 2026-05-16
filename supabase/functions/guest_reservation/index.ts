@@ -61,6 +61,7 @@ Deno.serve(async (req) => {
     const cols =
       "id, restaurant_id, guest_id, reservation_date, start_time, end_time, party_size, status, " +
       "confirmation_code, reminder_confirmed_at, special_requests, dietary_notes, " +
+      "guest_first_name, guest_last_name, guest_email, guest_phone, " +
       "magic_token_expires_at, guest_language, manage_token, cancel_token";
 
     const { data: byManage } = await supabase
@@ -92,6 +93,19 @@ Deno.serve(async (req) => {
       .eq("id", reservation.restaurant_id).maybeSingle();
     if (!restaurant) return json({ error: "not_found" }, 404);
 
+    // Resolve guest contact (snapshot fields first, then linked guests row)
+    let guestRow: { first_name?: string | null; last_name?: string | null; email?: string | null; phone?: string | null } | null = null;
+    if (reservation.guest_id) {
+      const { data: g } = await supabase
+        .from("guests").select("first_name, last_name, email, phone")
+        .eq("id", reservation.guest_id).maybeSingle();
+      guestRow = g ?? null;
+    }
+    const guestFirstName = reservation.guest_first_name ?? guestRow?.first_name ?? null;
+    const guestLastName = reservation.guest_last_name ?? guestRow?.last_name ?? null;
+    const guestEmail = reservation.guest_email ?? guestRow?.email ?? null;
+    const guestPhone = reservation.guest_phone ?? guestRow?.phone ?? null;
+
     const safeReservation = {
       reservation_date: reservation.reservation_date,
       start_time: reservation.start_time,
@@ -101,6 +115,11 @@ Deno.serve(async (req) => {
       confirmation_code: reservation.confirmation_code,
       reminder_confirmed_at: reservation.reminder_confirmed_at,
       special_requests: reservation.special_requests,
+      dietary_notes: reservation.dietary_notes,
+      guest_first_name: guestFirstName,
+      guest_last_name: guestLastName,
+      guest_email: guestEmail,
+      guest_phone: guestPhone,
     };
     const restaurantPublic = {
       name: restaurant.name,
