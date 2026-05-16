@@ -186,17 +186,22 @@ export function ReservationDetailSheet({ reservationId, open, onOpenChange, onOp
                 </div>
               </div>
 
-              {/* Quick status actions — uniform overal */}
-              <div className="flex flex-wrap gap-1.5 pt-1 items-center">
+              {/* Quick status actions — uniform overal, met duidelijke header */}
+              <div className="rounded-lg border border-border bg-muted/30 p-3 space-y-2">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                    Status wijzigen
+                  </div>
+                  <Button size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={() => { onOpenFullEditor(data.id); onOpenChange(false); }}>
+                    <Pencil className="h-3.5 w-3.5 mr-1" /> Bewerk details
+                  </Button>
+                </div>
                 <ReservationStatusQuickBar
                   reservationId={data.id}
                   status={data.status}
                   size="md"
                   onChanged={refresh}
                 />
-                <Button size="sm" variant="outline" className="ml-auto" onClick={() => { onOpenFullEditor(data.id); onOpenChange(false); }}>
-                  <Pencil className="h-4 w-4 mr-1" /> Volledig bewerken
-                </Button>
               </div>
             </div>
 
