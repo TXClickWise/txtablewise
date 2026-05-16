@@ -167,14 +167,18 @@ export const AI_ACTION_CATALOG: AIActionContract[] = [
   {
     name: "find_reservation_by_phone",
     category: "reservations",
-    title: "Reservering zoeken op telefoonnummer",
-    purpose: "Vindt aankomende reservering(en) van een gast op basis van telefoonnummer.",
+    title: "Reservering opzoeken",
+    purpose: "Vindt aankomende reservering(en) op basis van telefoonnummer, of op naam + datum (+ optioneel tijd). Vraag de gast NOOIT om een UUID of bevestigingsnummer.",
     inputs: [
-      { name: "phone", label: "Telefoonnummer", type: "phone", required: true },
+      { name: "phone", label: "Telefoonnummer", type: "phone", required: false },
+      { name: "first_name", label: "Voornaam", type: "text", required: false },
+      { name: "last_name", label: "Achternaam", type: "text", required: false },
+      { name: "date", label: "Datum (YYYY-MM-DD)", type: "date", required: false },
+      { name: "time", label: "Tijd (HH:mm)", type: "time", required: false },
     ],
     allowedCallers: ["voice_ai", "whatsapp_ai", "sms_ai", "webchat_ai", "internal_ai", "staff_user"],
     mode: "external",
-    guardrails: ["Geef nooit details prijs zonder bevestiging van naam/datum."],
+    guardrails: ["Minimaal één van: telefoon, achternaam, of voornaam + datum.", "Geef nooit prijsdetails zonder bevestiging van naam/datum."],
     successHint: "Ik zie je reservering staan.",
   },
   {

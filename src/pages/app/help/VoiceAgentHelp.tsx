@@ -180,22 +180,24 @@ VERPLICHTE TOOL-VOLGORDE
 1. Vraag altijd: datum, aantal personen ÉN gewenste tijd (HH:mm). Zodra alle drie binnen zijn → roep check_availability aan met date, party_size én preferred_time.
 2. Als response.exact gevuld is → bevestig hardop: "[gewenste tijd] is beschikbaar, zal ik die reserveren?" Als response.exact = null → noem 2 à 3 alternatieven uit response.alternatives rond de gewenste tijd, in volgorde van nabijheid. Bijvoorbeeld: "19:30 lukt helaas niet, maar 19:00, 20:00 of 20:30 zijn wel beschikbaar — welke past?"
 3. Zodra de beller een tijd kiest én je naam hebt + een geldig telefoonnummer (bevestigd {{contact.phone}} of door beller opgegeven nummer) → bevestig hardop alles → roep create_reservation aan met phone = dat nummer.
-4. Lees het bevestigingsnummer (laatste 6 tekens van reservation_id) hardop voor.
+4. Bevestig hardop datum, tijd en aantal personen. Lees GEEN reservation_id of bevestigingscode voor — de gast krijgt deze automatisch per SMS/WhatsApp toegestuurd.
 5. Aan het einde van élk gesprek: roep log_call aan met outcome ("booked", "cancelled", "updated", "info_only", "no_action", "callback_needed").
 
 ANNULEREN
-- Probeer eerst stilzwijgend te matchen op {{contact.phone}} via find_reservation. Lukt dat → bevestig hardop welke reservering je gevonden hebt. Lukt dat niet → vraag het bevestigingsnummer of een ander telefoonnummer.
-- Vraag het bevestigingsnummer of het telefoonnummer van de reservering.
-- Als de beller een reservation_id geeft → roep cancel_reservation met dat id en reason="Geannuleerd via telefoon".
-- Bevestig de annulering hardop.
+- Probeer eerst stilzwijgend te matchen op {{contact.phone}} via find_reservation. Lukt dat met precies 1 match → bevestig hardop welke reservering je gevonden hebt (datum + tijd + aantal personen).
+- Lukt dat niet (geen match, anoniem nummer, of meerdere matches): vraag de gast om voor- + achternaam en de datum (en zo nodig de tijd) van de reservering. Roep find_reservation opnieuw aan met first_name/last_name + date (+ optioneel time).
+- Bij meerdere matches → noem ze kort op ("Ik vind er twee: 19:00 voor 2 personen en 20:30 voor 4 personen — welke bedoelt u?") en laat de gast kiezen.
+- Vraag NOOIT om een bevestigingsnummer of reservation_id — die kent de gast niet en is niet nodig.
+- Zodra je 1 reservation_id uit find_reservation hebt → roep cancel_reservation aan met dat id en reason="Geannuleerd via telefoon".
+- Bevestig de annulering hardop met datum + tijd. Lees geen id of code voor.
 
 WIJZIGEN
-- Probeer eerst stilzwijgend te matchen op {{contact.phone}} via find_reservation. Lukt dat → bevestig hardop welke reservering je gevonden hebt. Lukt dat niet → vraag het bevestigingsnummer of een ander telefoonnummer.
-- Vraag het bevestigingsnummer (of telefoonnummer + datum) om de reservering te vinden.
+- Probeer eerst stilzwijgend te matchen op {{contact.phone}} via find_reservation. Lukt dat met precies 1 match → bevestig hardop welke reservering je gevonden hebt.
+- Lukt dat niet of bij meerdere matches: vraag voor- + achternaam en datum (+ optioneel tijd) en roep find_reservation opnieuw aan. Vraag NOOIT om een bevestigingsnummer of reservation_id.
 - Vraag wat er moet veranderen: datum, tijd en/of aantal personen.
 - Roep eerst check_availability aan voor de nieuwe combinatie (geef de nieuwe tijd mee als preferred_time). Als response.exact = null → bied 2 à 3 alternatieven uit response.alternatives aan en laat de beller kiezen.
-- Pas als beschikbaar → roep update_reservation aan met reservation_id + alleen de gewijzigde velden (new_date, new_time, new_party_size).
-- Bevestig de wijziging hardop met de nieuwe gegevens.
+- Pas als beschikbaar → roep update_reservation aan met de intern opgehaalde reservation_id + alleen de gewijzigde velden (new_date, new_time, new_party_size).
+- Bevestig de wijziging hardop met de nieuwe datum/tijd. Lees geen id of code voor.
 
 WAT JE NIET DOET
 - Geen menukeuzes opnemen (alleen vermelden dat het via de website kan).
@@ -699,9 +701,9 @@ const SECTIONS: Section[] = [
 }`,
             responseHint: (
               <>
-                Response bevat <code>reservation_id</code> en <code>manage_token</code>. Lees de
-                laatste 6 tekens van <code>reservation_id</code> hardop voor als
-                bevestigingscode.
+                Response bevat <code>reservation_id</code> en <code>manage_token</code>. <strong>Niet
+                hardop voorlezen</strong> — de gast krijgt het bevestigingsnummer automatisch per
+                SMS en/of WhatsApp toegestuurd. Bevestig alleen hardop datum, tijd en aantal personen.
               </>
             ),
             endNote: (
@@ -720,9 +722,9 @@ const SECTIONS: Section[] = [
             name: "cancel_reservation",
             url: `${AGENT_API_BASE}/cancel_reservation`,
             description:
-              "Annuleer een bestaande reservering op basis van het reservation_id dat de beller doorgeeft (of dat je via find_reservation hebt opgehaald).",
+              "Annuleer een bestaande reservering. Het reservation_id wordt ALTIJD intern opgehaald via find_reservation (op telefoon of naam + datum) — vraag dit NOOIT aan de beller.",
             params: [
-              { name: "reservation_id", type: "String", required: true, description: "UUID van de te annuleren reservering.", example: "00000000-0000-0000-0000-000000000000" },
+              { name: "reservation_id", type: "String", required: true, description: "UUID van de te annuleren reservering. Intern verkregen via find_reservation — nooit aan de beller vragen.", example: "00000000-0000-0000-0000-000000000000" },
               { name: "reason", type: "String", required: false, description: "Korte reden van annulering in het Nederlands.", example: "Geannuleerd via telefoon" },
             ],
             body: `{
@@ -742,9 +744,9 @@ const SECTIONS: Section[] = [
             name: "update_reservation",
             url: `${AGENT_API_BASE}/update_reservation`,
             description:
-              "Wijzig datum, tijd en/of aantal personen van een bestaande reservering. Vul minimaal één van new_date, new_time of new_party_size. Controleer eerst met check_availability of de nieuwe combinatie kan.",
+              "Wijzig datum, tijd en/of aantal personen van een bestaande reservering. Vul minimaal één van new_date, new_time of new_party_size. Controleer eerst met check_availability of de nieuwe combinatie kan. Het reservation_id wordt ALTIJD intern opgehaald via find_reservation — nooit aan de beller vragen.",
             params: [
-              { name: "reservation_id", type: "String", required: true, description: "UUID van de bestaande reservering.", example: "00000000-0000-0000-0000-000000000000" },
+              { name: "reservation_id", type: "String", required: true, description: "UUID van de bestaande reservering. Intern verkregen via find_reservation — nooit aan de beller vragen.", example: "00000000-0000-0000-0000-000000000000" },
               { name: "new_date", type: "String", required: false, description: "Nieuwe datum YYYY-MM-DD. Laat leeg als de datum niet wijzigt.", example: "2026-05-27" },
               { name: "new_time", type: "String", required: false, description: "Nieuwe tijd HH:mm (24-uurs). Laat leeg als de tijd niet wijzigt.", example: "20:00" },
               { name: "new_party_size", type: "Number", required: false, description: "Nieuw aantal personen, 1 t/m 8. Laat leeg als het aantal niet wijzigt.", example: "6" },
@@ -810,8 +812,9 @@ const SECTIONS: Section[] = [
             </p>
             <ul className="text-xs space-y-1.5 list-disc list-inside">
               <li>
-                <strong>find_reservation</strong> — bestaande reservering opzoeken op telefoon of
-                bevestigingscode (handig vóór cancel of update).{" "}
+                <strong>find_reservation</strong> — bestaande reservering opzoeken op telefoon, of
+                op voor-/achternaam + datum (+ optioneel tijd). <strong>Geen UUID nodig</strong>{" "}
+                — vraag nooit om een bevestigingsnummer.{" "}
                 <code className="break-all">{`${AGENT_API_BASE}/find_reservation`}</code>
               </li>
               <li>
@@ -981,6 +984,7 @@ function buildBundle() {
         endpoints: {
           check_availability: `${AGENT_API_BASE}/check_availability`,
           book_reservation:   `${AGENT_API_BASE}/book_reservation`,
+          find_reservation:   `${AGENT_API_BASE}/find_reservation`,
           cancel_reservation: `${AGENT_API_BASE}/cancel_reservation`,
           update_reservation: `${AGENT_API_BASE}/update_reservation`,
           log_call:           `${AGENT_API_BASE}/log_call`,
@@ -988,8 +992,13 @@ function buildBundle() {
         tool_params: {
           check_availability: ["date (String, required)", "party_size (Number, required)", "preferred_time (String, required)"],
           book_reservation:   ["date (String, required)", "time (String, required)", "party_size (Number, required)", "first_name (String, required)", "last_name (String, optional)", "phone (String, required)", "email (String, optional)", "special_requests (String, optional)"],
+          book_reservation_note: "reservation_id/bevestigingscode NIET hardop voorlezen — gast krijgt deze automatisch per SMS/WhatsApp.",
+          find_reservation:   ["phone (String, optional)", "first_name (String, optional)", "last_name (String, optional)", "date (String, optional, YYYY-MM-DD)", "time (String, optional, HH:mm)"],
+          find_reservation_note: "Minimaal één van: phone, last_name, of first_name + date. Vraag NOOIT om UUID of bevestigingsnummer.",
           cancel_reservation: ["reservation_id (String, required)", "reason (String, optional)"],
+          cancel_reservation_note: "reservation_id wordt altijd intern opgehaald via find_reservation — nooit aan de beller vragen.",
           update_reservation: ["reservation_id (String, required)", "new_date (String, optional)", "new_time (String, optional)", "new_party_size (Number, optional)", "special_requests (String, optional)"],
+          update_reservation_note: "reservation_id wordt altijd intern opgehaald via find_reservation — nooit aan de beller vragen.",
           log_call:           ["external_call_id (String, required)", "caller_phone (String, required)", "callee_phone (String, optional)", "outcome (String, required: booked|cancelled|updated|info_only|no_action|callback_needed)", "reservation_id (String, optional)", "duration_seconds (Number, optional)", "summary (String, optional)", "agent_id (String, optional)"],
         },
         clickwise_custom_values: {
