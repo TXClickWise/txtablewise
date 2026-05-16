@@ -177,15 +177,19 @@ Deno.serve(async (req) => {
 
       if (allOk) {
         await supabase.from("integration_events")
-          .update({ status: "delivered", attempts: ev.attempts + 1, last_error: null })
+          .update({ status: "delivered", attempts: ev.attempts + 1, last_error: null, next_retry_at: null })
           .eq("id", ev.id);
         dispatched++;
       } else {
         const newAttempts = ev.attempts + 1;
+        // Exponential backoff: 1m, 2m, 4m, 8m, 16m (capped)
+        const backoffMin = Math.min(Math.pow(2, newAttempts - 1), 60);
+        const nextRetry = new Date(Date.now() + backoffMin * 60_000).toISOString();
         await supabase.from("integration_events").update({
           status: newAttempts >= MAX_ATTEMPTS ? "failed" : "pending",
           attempts: newAttempts,
           last_error: errors.join(" | ").slice(0, 500),
+          next_retry_at: newAttempts >= MAX_ATTEMPTS ? null : nextRetry,
         }).eq("id", ev.id);
         failed++;
       }
