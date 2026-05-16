@@ -1309,7 +1309,87 @@ function buildBundle() {
   );
 }
 
+function SimpleVoiceAgentHelp() {
+  return (
+    <div className="p-6 max-w-3xl mx-auto space-y-6">
+      <div className="flex items-center gap-3">
+        <BookOpen className="h-7 w-7 text-primary" />
+        <div>
+          <h1 className="font-display text-2xl">AI Telefoon-agent</h1>
+          <p className="text-sm text-muted-foreground">
+            Wat het is en hoe je hem laat aanzetten — zonder technische uitleg.
+          </p>
+        </div>
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Wat doet de AI-agent?</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-2 text-sm">
+          {[
+            "Neemt de telefoon op als jij of je team het te druk heeft",
+            "Maakt nieuwe reserveringen — direct in jouw agenda",
+            "Annuleert of wijzigt bestaande reserveringen",
+            "Beantwoordt eenvoudige vragen (openingstijden, locatie, parkeren)",
+            "Spreekt natuurlijk Nederlands en is altijd vriendelijk",
+          ].map((line) => (
+            <div key={line} className="flex items-start gap-2">
+              <CheckCircle2 className="h-4 w-4 text-primary mt-0.5 shrink-0" />
+              <span>{line}</span>
+            </div>
+          ))}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Zo laat je hem aanzetten</CardTitle>
+          <CardDescription>
+            De koppeling is eenmalig technisch werk. TableWise of jouw ClickWise-partner regelt dit binnen 1 dag voor je.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3 text-sm">
+          <ol className="list-decimal list-inside space-y-1.5">
+            <li>Mail of bel ons dat je de AI-agent wilt activeren.</li>
+            <li>Wij regelen de koppeling en het telefoonnummer.</li>
+            <li>Je krijgt een testnummer om zelf te bellen.</li>
+            <li>Akkoord? Wij zetten hem live op jouw eigen nummer.</li>
+          </ol>
+          <div className="flex flex-wrap gap-2 pt-2">
+            <Button asChild size="sm">
+              <a href="mailto:support@txtablewise.nl?subject=AI%20Telefoon-agent%20activeren">
+                <Mail className="h-4 w-4 mr-1" /> Mail support
+              </a>
+            </Button>
+            <Button asChild variant="outline" size="sm">
+              <Link to="/app/koppelingen">Naar Koppelingen</Link>
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card className="bg-muted/30 border-dashed">
+        <CardContent className="py-4 flex flex-wrap items-center justify-between gap-3 text-sm">
+          <div>
+            <div className="font-medium">Ben je technisch of een partner?</div>
+            <div className="text-xs text-muted-foreground">
+              De volledige technische koppelhandleiding staat verborgen achter Geavanceerde modus
+              (zet aan in Algemene instellingen).
+            </div>
+          </div>
+          <Button asChild variant="outline" size="sm">
+            <Link to="/app/instellingen">Algemene instellingen</Link>
+          </Button>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
 export default function VoiceAgentHelp() {
+  const { canSeeAdvanced } = useAdvancedMode();
+  if (!canSeeAdvanced) return <SimpleVoiceAgentHelp />;
   const [q, setQ] = useState("");
   const [showManual, setShowManual] = useState(false);
 
