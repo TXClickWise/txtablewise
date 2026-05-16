@@ -151,9 +151,6 @@ export default function ApiWebhooksSettings() {
         </div>
       </Card>
 
-          </Button>
-        </div>
-      </Card>
 
       <Card className="p-6">
         <div className="flex items-start justify-between gap-4 mb-4">
