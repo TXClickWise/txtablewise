@@ -119,6 +119,20 @@ Deno.serve(async (req) => {
       windows.push(...baseWindows);
     }
 
+    // Sorteer en merge aansluitende/overlappende vensters (lunch 11-17 + diner 17-22 → 11-22)
+    windows.sort((a, b) => a.start.localeCompare(b.start));
+    const mergedWindows: Window[] = [];
+    for (const w of windows) {
+      const last = mergedWindows[mergedWindows.length - 1];
+      if (last && w.start <= last.end) {
+        if (w.end > last.end) last.end = w.end;
+      } else {
+        mergedWindows.push({ ...w });
+      }
+    }
+    windows.length = 0;
+    windows.push(...mergedWindows);
+
     if (windows.length === 0) return json({ slots: [], closed: true, message: "Geen openingstijden voor deze dag." });
 
     // Apply partial closures (time-bound)
