@@ -1,6 +1,6 @@
 // Knowledge-base / help-pagina voor het koppelen van de ClickWise Voice Agent aan TableWise.
 // White-label: nooit "HighLevel" of "GoHighLevel" noemen — alleen "ClickWise".
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
