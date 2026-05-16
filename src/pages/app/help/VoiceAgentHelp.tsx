@@ -166,28 +166,30 @@ DOEL VAN HET GESPREK
 
 GESPREKSREGELS
 - Stel altijd één vraag tegelijk. Wacht op antwoord.
-- Bevestig altijd hardop alle gegevens (naam, datum, tijd, aantal personen, telefoonnummer) vóór je definitief boekt.
+- Bevestig altijd hardop alle gegevens (naam, datum, tijd, aantal personen en het te noteren telefoonnummer) vóór je definitief boekt.
 - Spreek datums uit als "vrijdag 12 mei", maar geef ze aan de tools in formaat YYYY-MM-DD.
 - Spreek tijden uit als "half acht 's avonds", maar geef ze aan de tools in formaat HH:MM (24-uurs), dus "19:30".
 - Aantal personen is een geheel getal tussen 1 en 8. Bij meer dan 8 personen: zeg dat een collega persoonlijk terugbelt en boek NIET.
 - Vraag altijd of er allergieën of dieetwensen zijn.
-- Vraag het mobiele nummer ter bevestiging, ook als nummerherkenning aanwezig is.
+- Telefoonnummer is VERPLICHT bij elke reservering. Het nummer waarmee de beller belt is automatisch beschikbaar als {{contact.phone}}. Vraag NIET opnieuw om het nummer als {{contact.phone}} gevuld is — vraag in plaats daarvan één keer kort: "Mag ik het nummer waarmee u nu belt noteren bij de reservering?" Bij ja → gebruik {{contact.phone}}. Bij nee of als de beller een ander nummer noemt → vraag dat nummer uit, herhaal het hardop cijfer-voor-cijfer ter controle, en gebruik dát nummer. Als {{contact.phone}} leeg is (anoniem/withheld) → vraag het nummer actief uit en herhaal cijfer-voor-cijfer. Boek NIET zonder geldig telefoonnummer.
 - Bij twijfel of onduidelijkheid: vat samen en vraag bevestiging.
 - Bij ruis of als je het niet verstaat: zeg "Sorry, ik versta u niet helemaal goed, kunt u dat herhalen?"
 
 VERPLICHTE TOOL-VOLGORDE
 1. Zodra je datum en aantal personen hebt → roep check_availability aan.
 2. Bied de beller maximaal 3 tijden aan uit de response.
-3. Zodra de beller een tijd kiest én je naam + telefoon hebt → bevestig hardop alles → roep book_reservation aan.
+3. Zodra de beller een tijd kiest én je naam hebt + een geldig telefoonnummer (bevestigd {{contact.phone}} of door beller opgegeven nummer) → bevestig hardop alles → roep create_reservation aan met phone = dat nummer.
 4. Lees het bevestigingsnummer (laatste 6 tekens van reservation_id) hardop voor.
 5. Aan het einde van élk gesprek: roep log_call aan met outcome ("booked", "cancelled", "updated", "info_only", "no_action", "callback_needed").
 
 ANNULEREN
+- Probeer eerst stilzwijgend te matchen op {{contact.phone}} via find_reservation. Lukt dat → bevestig hardop welke reservering je gevonden hebt. Lukt dat niet → vraag het bevestigingsnummer of een ander telefoonnummer.
 - Vraag het bevestigingsnummer of het telefoonnummer van de reservering.
 - Als de beller een reservation_id geeft → roep cancel_reservation met dat id en reason="Geannuleerd via telefoon".
 - Bevestig de annulering hardop.
 
 WIJZIGEN
+- Probeer eerst stilzwijgend te matchen op {{contact.phone}} via find_reservation. Lukt dat → bevestig hardop welke reservering je gevonden hebt. Lukt dat niet → vraag het bevestigingsnummer of een ander telefoonnummer.
 - Vraag het bevestigingsnummer (of telefoonnummer + datum) om de reservering te vinden.
 - Vraag wat er moet veranderen: datum, tijd en/of aantal personen.
 - Roep eerst check_availability aan voor de nieuwe datum/tijd/aantal.
@@ -197,7 +199,7 @@ WIJZIGEN
 WAT JE NIET DOET
 - Geen menukeuzes opnemen (alleen vermelden dat het via de website kan).
 - Geen prijzen of beschikbaarheid raden — gebruik altijd de tool.
-- Geen e-mailadres uitvragen tenzij de beller het uit zichzelf wil geven.
+- E-mailadres is optioneel. Vraag het NIET standaard uit. Alleen noteren als de beller het uit zichzelf opgeeft of expliciet een digitale bevestiging vraagt.
 - Boek nooit te ver vooruit. Als de engine een fout teruggeeft dat de datum buiten de boekingshorizon valt, leg dat vriendelijk uit en bied aan dat een collega de gast terugbelt.
 
 AFSLUITING
@@ -675,8 +677,8 @@ const SECTIONS: Section[] = [
               { name: "party_size", type: "Number", required: true, description: "Aantal personen, 1 t/m 8.", example: "4" },
               { name: "first_name", type: "String", required: true, description: "Voornaam van de gast.", example: "Jan" },
               { name: "last_name", type: "String", required: false, description: "Achternaam van de gast (optioneel).", example: "de Vries" },
-              { name: "phone", type: "String", required: false, description: "Telefoonnummer in E.164-formaat, bijv. +31612345678.", example: "+31612345678" },
-              { name: "email", type: "String", required: false, description: "E-mailadres als de gast dat zelf geeft.", example: "gast@voorbeeld.nl" },
+              { name: "phone", type: "String", required: true, description: "VERPLICHT. Telefoonnummer in E.164. Default {{contact.phone}} (nummer waarmee beller belt). Alleen anders als beller expliciet ander nummer opgeeft.", example: "+31612345678" },
+              { name: "email", type: "String", required: false, description: "Optioneel. Alleen invullen als de beller dit zelf opgeeft of digitale bevestiging vraagt.", example: "gast@voorbeeld.nl" },
               { name: "special_requests", type: "String", required: false, description: "Allergieën, gelegenheid of andere wensen.", example: "Kinderstoel graag" },
             ],
             body: `{
@@ -981,7 +983,7 @@ function buildBundle() {
         },
         tool_params: {
           check_availability: ["date (String, required)", "party_size (Number, required)", "preferred_time (String, optional)"],
-          book_reservation:   ["date (String, required)", "time (String, required)", "party_size (Number, required)", "first_name (String, required)", "last_name (String, optional)", "phone (String, optional)", "email (String, optional)", "special_requests (String, optional)"],
+          book_reservation:   ["date (String, required)", "time (String, required)", "party_size (Number, required)", "first_name (String, required)", "last_name (String, optional)", "phone (String, required)", "email (String, optional)", "special_requests (String, optional)"],
           cancel_reservation: ["reservation_id (String, required)", "reason (String, optional)"],
           update_reservation: ["reservation_id (String, required)", "new_date (String, optional)", "new_time (String, optional)", "new_party_size (Number, optional)", "special_requests (String, optional)"],
           log_call:           ["external_call_id (String, required)", "caller_phone (String, required)", "callee_phone (String, optional)", "outcome (String, required: booked|cancelled|updated|info_only|no_action|callback_needed)", "reservation_id (String, optional)", "duration_seconds (Number, optional)", "summary (String, optional)", "agent_id (String, optional)"],
