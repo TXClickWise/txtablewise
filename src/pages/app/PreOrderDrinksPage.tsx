@@ -386,6 +386,7 @@ const PreOrderDrinksPage = () => {
           </Card>
         </div>
       </div>
+      </div>
 
       <Dialog open={openForm} onOpenChange={setOpenForm}>
         <DialogContent className="max-w-md">
