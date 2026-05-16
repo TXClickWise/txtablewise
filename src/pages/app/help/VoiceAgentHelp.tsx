@@ -975,7 +975,15 @@ function buildBundle() {
           check_availability: `${AGENT_API_BASE}/check_availability`,
           book_reservation:   `${AGENT_API_BASE}/book_reservation`,
           cancel_reservation: `${AGENT_API_BASE}/cancel_reservation`,
+          update_reservation: `${AGENT_API_BASE}/update_reservation`,
           log_call:           `${AGENT_API_BASE}/log_call`,
+        },
+        tool_params: {
+          check_availability: ["date (String, required)", "party_size (Number, required)", "preferred_time (String, optional)"],
+          book_reservation:   ["date (String, required)", "time (String, required)", "party_size (Number, required)", "first_name (String, required)", "last_name (String, optional)", "phone (String, optional)", "email (String, optional)", "special_requests (String, optional)"],
+          cancel_reservation: ["reservation_id (String, required)", "reason (String, optional)"],
+          update_reservation: ["reservation_id (String, required)", "new_date (String, optional)", "new_time (String, optional)", "new_party_size (Number, optional)", "special_requests (String, optional)"],
+          log_call:           ["external_call_id (String, required)", "caller_phone (String, required)", "callee_phone (String, optional)", "outcome (String, required: booked|cancelled|updated|info_only|no_action|callback_needed)", "reservation_id (String, optional)", "duration_seconds (Number, optional)", "summary (String, optional)", "agent_id (String, optional)"],
         },
         clickwise_custom_values: {
           tw_agent_api_url: AGENT_API_BASE,
