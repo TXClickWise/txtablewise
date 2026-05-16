@@ -26,6 +26,8 @@ import { WalkInDialog } from "@/components/WalkInDialog";
 import { DayView } from "@/components/reservations/views/DayView";
 import { ReservationDatePicker } from "@/components/reservations/ReservationDatePicker";
 import { EmptyState } from "@/components/touch/StateViews";
+import { ReservationQuickActionsPopover } from "@/components/reservations/ReservationQuickActionsPopover";
+import { PendingLargeGroupsAlert } from "@/components/large-groups/PendingLargeGroupsAlert";
 import { cn } from "@/lib/utils";
 
 const START_HOUR = 11;
