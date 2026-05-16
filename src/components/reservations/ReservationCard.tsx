@@ -7,6 +7,7 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { ChannelBadge } from "@/components/ChannelBadge";
 import { ReservationBadges, type ReservationFlags } from "./ReservationBadges";
 import { ReservationStatusQuickBar } from "./ReservationStatusQuickBar";
+import { resolveReservationGuest } from "@/lib/reservationGuest";
 import { cn } from "@/lib/utils";
 
 // Loose shape — matches what the page selects. Keep flexible so callers don't
@@ -26,6 +27,11 @@ export type CardReservation = {
   requires_manual_approval?: boolean;
   large_group_status?: string | null;
   reminder_confirmed_at?: string | null;
+  // Snapshot of guest data at time of booking (preferred for display)
+  guest_first_name?: string | null;
+  guest_last_name?: string | null;
+  guest_email?: string | null;
+  guest_phone?: string | null;
   guests?: {
     first_name?: string | null; last_name?: string | null;
     phone?: string | null; email?: string | null;
