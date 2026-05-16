@@ -99,6 +99,8 @@ export function ReservationPreOrderSection({
     partySize, occasion, largeGroupThreshold, isVip,
   }).filter((s) => !items.some((i) => i.item_name.toLowerCase() === s.itemName.toLowerCase()));
 
+  if (!moduleEnabled && items.length === 0 && !loading) return null;
+
   return (
     <div className="rounded-lg border bg-card p-3 space-y-3">
       <div className="flex items-center justify-between flex-wrap gap-2">
@@ -123,9 +125,11 @@ export function ReservationPreOrderSection({
               Nu naar Loyverse
             </Button>
           )}
-          <Button size="sm" variant="outline" className="h-8" onClick={() => setAddOpen(true)}>
-            <Plus className="h-3.5 w-3.5 mr-1" /> Toevoegen
-          </Button>
+          {moduleEnabled && (
+            <Button size="sm" variant="outline" className="h-8" onClick={() => setAddOpen(true)}>
+              <Plus className="h-3.5 w-3.5 mr-1" /> Toevoegen
+            </Button>
+          )}
         </div>
       </div>
 
