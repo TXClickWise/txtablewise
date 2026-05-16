@@ -258,18 +258,32 @@ async function handle(
       }
       case "find_reservation": {
         if (!keyRow.scopes.includes("availability")) return json({ error: "Scope missing: availability", error_code: "auth_scope_missing", field: "availability" }, 403);
-        const { phone, date } = payload as { phone?: string; date?: string };
-        if (!phone) return json({ error: "phone required", error_code: "missing_field", field: "phone" }, 400);
-        const normalizedPhone = phone.replace(/\s+/g, "");
-        // Find guests in this restaurant matching phone
-        const { data: guests } = await sb.from("guests")
-          .select("id, first_name")
+        const { phone, date, first_name, last_name, time } = payload as {
+          phone?: string; date?: string; first_name?: string; last_name?: string; time?: string;
+        };
+        const hasPhone = !!phone && phone.trim().length > 0;
+        const hasLast = !!last_name && last_name.trim().length > 0;
+        const hasFirstPlusDate = !!first_name && first_name.trim().length > 0 && !!date;
+        if (!hasPhone && !hasLast && !hasFirstPlusDate) {
+          return json({ error: "Geef telefoon, of achternaam, of voornaam + datum", error_code: "missing_field", field: "phone" }, 400);
+        }
+        // Find guests in this restaurant matching phone or name
+        let guestQuery = sb.from("guests")
+          .select("id, first_name, last_name, phone")
           .eq("restaurant_id", keyRow.restaurant_id)
-          .ilike("phone", `%${normalizedPhone.slice(-8)}%`);
+          .limit(50);
+        if (hasPhone) {
+          const normalizedPhone = phone!.replace(/\s+/g, "");
+          guestQuery = guestQuery.ilike("phone", `%${normalizedPhone.slice(-8)}%`);
+        } else {
+          if (hasLast) guestQuery = guestQuery.ilike("last_name", `%${last_name!.trim()}%`);
+          if (first_name && first_name.trim().length > 0) guestQuery = guestQuery.ilike("first_name", `%${first_name!.trim()}%`);
+        }
+        const { data: guests } = await guestQuery;
         if (!guests || guests.length === 0) {
           return json(guestSafeResponse("find_reservation", true, {
             matches: [],
-            message_for_guest: "Ik kan geen reservering op dit nummer vinden.",
+            message_for_guest: "Ik kan geen reservering vinden met die gegevens.",
           }));
         }
         const guestIds = guests.map((g) => g.id);
@@ -280,11 +294,24 @@ async function handle(
           .in("status", ["confirmed", "pending", "seated"])
           .gte("start_time", new Date().toISOString())
           .order("start_time", { ascending: true })
-          .limit(5);
+          .limit(10);
         if (date) q = q.eq("reservation_date", date);
         const { data: reservations } = await q;
+        let filtered = reservations ?? [];
+        if (time && /^\d{2}:\d{2}$/.test(time)) {
+          const [th, tm] = time.split(":").map(Number);
+          const target = th * 60 + tm;
+          filtered = filtered.filter((r) => {
+            const d = new Date(r.start_time as string);
+            const mins = d.getUTCHours() * 60 + d.getUTCMinutes();
+            // Also try local string parse fallback
+            const m = String(r.start_time).match(/T(\d{2}):(\d{2})/);
+            const localMins = m ? Number(m[1]) * 60 + Number(m[2]) : mins;
+            return Math.abs(localMins - target) <= 15;
+          });
+        }
         const guestMap = new Map(guests.map((g) => [g.id, g.first_name]));
-        const matches = (reservations ?? []).map((r) => ({
+        const matches = filtered.slice(0, 5).map((r) => ({
           reservation_id: r.id,
           date: r.reservation_date,
           time: r.start_time,
@@ -295,10 +322,10 @@ async function handle(
         return json(guestSafeResponse("find_reservation", true, {
           matches,
           message_for_guest: matches.length === 0
-            ? "Ik kan geen actieve reservering op dit nummer vinden."
+            ? "Ik kan geen actieve reservering vinden met die gegevens."
             : matches.length === 1
               ? `Ik heb je reservering gevonden voor ${matches[0].party_size} personen.`
-              : `Ik vond ${matches.length} reserveringen op dit nummer. Welke bedoel je?`,
+              : `Ik vond ${matches.length} reserveringen. Welke bedoel je?`,
         }));
       }
       case "update_reservation": {
