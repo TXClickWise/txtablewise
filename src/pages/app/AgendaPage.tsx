@@ -180,7 +180,7 @@ const AgendaPage = () => {
     enabled: !!rid,
     queryFn: async () => {
       const { data } = await supabase.from("reservations")
-        .select("id, start_time, end_time, status, party_size, channel, occasion, dietary_notes, large_group_status, requires_manual_approval, reminder_confirmed_at, guest_first_name, guest_last_name, guests(first_name, last_name, is_vip, allergies), reservation_tables(table_id), pre_orders(id)")
+        .select("id, start_time, end_time, status, party_size, channel, occasion, dietary_notes, large_group_status, requires_manual_approval, reminder_confirmed_at, guest_first_name, guest_last_name, guests(first_name, last_name, is_vip, allergies), reservation_tables(table_id, tables(label)), pre_orders(id)")
         .eq("restaurant_id", rid!).eq("reservation_date", dateStr);
       return data ?? [];
     },
@@ -453,7 +453,16 @@ const AgendaPage = () => {
       party_size: r.party_size,
       status: r.status,
       channel: r.channel,
+      occasion: r.occasion,
+      dietary_notes: r.dietary_notes,
+      large_group_status: r.large_group_status,
+      requires_manual_approval: r.requires_manual_approval,
+      reminder_confirmed_at: r.reminder_confirmed_at,
+      guest_first_name: r.guest_first_name,
+      guest_last_name: r.guest_last_name,
       guests: r.guests ?? null,
+      reservation_tables: r.reservation_tables ?? [],
+      pre_orders: r.pre_orders ?? [],
     }));
   }, [reservations]);
 
@@ -754,9 +763,13 @@ function FloorPlanBody({
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
-    const ro = new ResizeObserver(() => setContainerW(el.clientWidth));
+    const update = () => {
+      const w = el.clientWidth;
+      setContainerW((prev) => (Math.abs(prev - w) > 1 ? w : prev));
+    };
+    const ro = new ResizeObserver(update);
     ro.observe(el);
-    setContainerW(el.clientWidth);
+    update();
     return () => ro.disconnect();
   }, []);
 
@@ -824,7 +837,7 @@ function FloorPlanBody({
   }
 
   return (
-    <div ref={containerRef} className="flex-1 min-h-0 overflow-auto bg-muted/10">
+    <div ref={containerRef} className="flex-1 min-h-0 overflow-x-hidden overflow-y-scroll bg-muted/10">
       <div className="p-4" style={{ minHeight: scaledH + padding * 2 }}>
         <div
           className="relative mx-auto rounded-xl border border-border bg-background shadow-sm"
