@@ -67,6 +67,7 @@
   "approvalBanner": "Wir bestätigen Ihre Reservierung innerhalb von 24 Stunden. Sie erhalten eine Nachricht, sobald der Tisch endgültig reserviert ist.",
   "errors": {
     "firstNameRequired": "Vorname ist erforderlich",
+    "emailRequired": "E-Mail-Adresse ist erforderlich",
     "emailInvalid": "Gültige E-Mail-Adresse erforderlich",
     "phoneRequired": "Telefonnummer ist erforderlich",
     "messageRequired": "Bitte fügen Sie eine kurze Notiz für das Restaurant hinzu",
