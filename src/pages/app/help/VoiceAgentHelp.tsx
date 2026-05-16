@@ -962,9 +962,6 @@ const SECTIONS: Section[] = [
             ),
             sayBefore: "Eén moment, ik check even onze openingstijden.",
           })}
-              </li>
-            </ul>
-          </div>
         </div>
       );
     },
