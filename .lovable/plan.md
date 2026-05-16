@@ -1,32 +1,44 @@
-## Doel
+Ik heb opnieuw gecontroleerd in database, reserverings-events en codepaden. Conclusie: dit is inderdaad een systeem-/datamodelprobleem in hoe bestaande reserveringen worden getoond.
 
-Eén theme-toggle waarmee de hele app (landingspagina + `/app` shell) in één klik tussen lichte en donkere modus schakelt. Voorkeur wordt onthouden per browser.
+## Wat er gebeurt
 
-## Huidige situatie
+- Er is één gastrecord met e-mail `demo@clickwise.app`.
+- `book_reservation` zoekt bestaande gasten op via `(restaurant_id, email)`.
+- Als dezelfde e-mail opnieuw wordt gebruikt, wordt dat gastrecord bijgewerkt naar de laatste naam/telefoon.
+- Alle oude reserveringen blijven gekoppeld aan datzelfde gastrecord.
+- De reserveringenpagina toont de huidige naam uit `guests`, niet de naam zoals die op dat moment bij de reservering is ingevoerd.
 
-- `next-themes@^0.3.0` staat al in `package.json`, maar er zit nog geen `ThemeProvider` om de app heen.
-- `src/index.css` heeft volledige `:root` (light) en `.dark` HSL-tokens.
-- Veel componenten gebruiken al `dark:` Tailwind classes en semantische tokens, dus theming werkt zodra de `dark` class op `<html>` staat.
+Daardoor lijken oudere testreserveringen nu ineens allemaal van “Demo4 Vier”, terwijl de aanmaak-events laten zien dat ze oorspronkelijk andere namen hadden, o.a. `Test`, `Pierre`, `Dennis`, `Demo`, `Demo2`, `Demo3`.
 
-## Wijzigingen
+## Belangrijke bevinding
 
-1. **`src/main.tsx`** — wrap met `<ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>` uit `next-themes`.
+De reservering van 17 mei 17:00 is wel correct aangemaakt als nieuwe reservering via de widget:
 
-2. **`tailwind.config.ts`** — `darkMode: "class"` toevoegen als die nog niet aanwezig is.
+- Datum/tijd lokaal: 17 mei 17:00
+- Naam bij aanmaak: Demo4 Vier
+- E-mail: demo@clickwise.app
+- Bron: website_widget
 
-3. **Nieuwe component `src/components/ThemeToggle.tsx`** — knop met `Sun`/`Moon` icoon (lucide-react), gebruikt `useTheme()`. Dropdown-menu (shadcn) met opties Licht / Donker / Systeem. Ghost-button stijl, `aria-label`, 44px touch target.
+Maar oude reserveringen worden onterecht onder de nieuwste gastnaam weergegeven. Dat verklaart waarom het “willekeurig veel Demo4 Vier” lijkt.
 
-4. **Plaatsing**:
-   - **App-shell header** (`src/components/AppShell.tsx`) — rechts in de header, naast bestaande iconen.
-   - **Landing header** (`src/components/landing/LandingHeader.tsx`) — naast "Inloggen / Demo aanvragen".
-   - **Widget** (`/r/:slug`) — geen toggle; volgt automatisch het systeem.
+## Plan voor de fix
 
-## Niet in scope
+1. **Reserveringen krijgen een vaste gast-snapshot**
+   - Voeg op `reservations` een veld toe voor de gastgegevens zoals ingevoerd bij het boeken.
+   - Bijvoorbeeld: naam, e-mail, telefoon en taal op het moment van reserveren.
+   - Dit voorkomt dat oude reserveringen van naam veranderen als hetzelfde e-mailadres later opnieuw boekt.
 
-- Geen restyling van bestaande componenten (alle huidige `dark:` classes en tokens werken zodra de class flipt).
-- Geen per-restaurant theme-instelling in de database.
-- Geen toggle in de gast-widget.
+2. **Nieuwe reserveringen vullen die snapshot automatisch**
+   - Update `book_reservation` zodat elke nieuwe reservering de ingevoerde gastgegevens vastlegt.
+   - De centrale gastkaart mag nog steeds bijgewerkt worden voor CRM/herhaalbezoek, maar reserveringsregels blijven historisch correct.
 
-## Open vraag
+3. **Bestaande reserveringen herstellen waar mogelijk**
+   - Voor oude reserveringen gebruik ik de beschikbare `reservation.created` events om de oorspronkelijke naam/telefoon terug te vullen.
+   - Waar geen event-payload beschikbaar is, blijft fallback naar het huidige gastrecord.
 
-Voorstel = 3-state dropdown (Licht / Donker / Systeem). Wil je liever een simpele 2-state toggle-knop (alleen licht ⇄ donker)? Zo niet, dan ga ik door met de dropdown.
+4. **Reserveringen UI toont snapshot eerst**
+   - Update de reserveringenlijst, dag/week/floor/detail-weergaves zodat ze eerst de snapshot tonen.
+   - Alleen als snapshot ontbreekt, gebruiken ze het gekoppelde gastrecord.
+
+5. **Optioneel direct opschonen na de fix**
+   - Daarna kunnen we de foutief ogende oude testreserveringen verwijderen of annuleren, maar pas nadat de weergave/data-oorzaak is opgelost.
