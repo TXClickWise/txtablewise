@@ -765,18 +765,69 @@ const SECTIONS: Section[] = [
 // ============================================================
 // PAGE
 // ============================================================
+function SectionCard({ s }: { s: Section }) {
+  const Icon = s.icon;
+  return (
+    <Card id={s.id} className="scroll-mt-4">
+      <CardHeader>
+        <CardTitle className="text-lg font-display flex items-center gap-2">
+          <Icon className="h-5 w-5 text-primary" />
+          {s.title}
+        </CardTitle>
+      </CardHeader>
+      <CardContent>{s.render()}</CardContent>
+    </Card>
+  );
+}
+
+// One-click "geef me alles wat ik in ClickWise nodig heb"
+function buildBundle() {
+  return JSON.stringify(
+    {
+      tablewise_voice_agent_setup: {
+        agent_api_base_url: AGENT_API_BASE,
+        auth_header_name: "X-Agent-Api-Key",
+        auth_header_value: "PLAK_HIER_DE_TW_AGENT_API_KEY",
+        content_type: "application/json",
+        method: "POST",
+        timezone: "Europe/Amsterdam",
+        date_format: "YYYY-MM-DD",
+        time_format: "HH:MM",
+        endpoints: {
+          check_availability: `${AGENT_API_BASE}/check_availability`,
+          book_reservation:   `${AGENT_API_BASE}/book_reservation`,
+          cancel_reservation: `${AGENT_API_BASE}/cancel_reservation`,
+          log_call:           `${AGENT_API_BASE}/log_call`,
+        },
+        clickwise_custom_values: {
+          tw_agent_api_url: AGENT_API_BASE,
+          tw_agent_api_key: "PLAK_HIER_DE_TW_AGENT_API_KEY",
+        },
+        greeting: "Goedendag, u spreekt met de digitale gastvrouw van {{location.name}}. Waarmee kan ik u van dienst zijn?",
+        system_prompt: SYSTEM_PROMPT,
+      },
+    },
+    null,
+    2,
+  );
+}
+
 export default function VoiceAgentHelp() {
   const [q, setQ] = useState("");
+  const [showManual, setShowManual] = useState(false);
 
-  const filtered = useMemo(() => {
-    const needle = q.trim().toLowerCase();
-    if (!needle) return SECTIONS;
-    return SECTIONS.filter(
-      (s) =>
-        s.title.toLowerCase().includes(needle) ||
-        s.keywords.toLowerCase().includes(needle),
-    );
-  }, [q]);
+  const needle = q.trim().toLowerCase();
+  const matches = (s: Section) =>
+    !needle ||
+    s.title.toLowerCase().includes(needle) ||
+    s.keywords.toLowerCase().includes(needle);
+
+  const quickstart = SECTIONS.filter((s) => s.group === "quickstart" && matches(s));
+  const manual     = SECTIONS.filter((s) => s.group === "manual"     && matches(s));
+  const golive     = SECTIONS.filter((s) => s.group === "golive"     && matches(s));
+
+  // If search has a hit in the manual block, auto-open it.
+  const manualOpen = showManual || (!!needle && manual.length > 0);
 
   return (
     <div className="p-6 max-w-6xl mx-auto print:p-0">
@@ -786,11 +837,14 @@ export default function VoiceAgentHelp() {
           <div>
             <h1 className="font-display text-2xl">Voice Agent — Koppelhandleiding</h1>
             <p className="text-sm text-muted-foreground">
-              Stap-voor-stap koppelen van de ClickWise Voice Agent aan TableWise. Alle waarden zijn copy-paste klaar.
+              Snelle 6-staps onboarding bovenaan. Volledige handmatige setup achter de knop verderop.
             </p>
           </div>
         </div>
         <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={() => copy(buildBundle())}>
+            <Copy className="h-4 w-4 mr-1" /> Kopieer alles voor ClickWise
+          </Button>
           <Button variant="outline" size="sm" onClick={() => window.print()}>
             <Printer className="h-4 w-4 mr-1" /> Print
           </Button>
@@ -807,21 +861,32 @@ export default function VoiceAgentHelp() {
         <aside className="hidden lg:block print:hidden">
           <div className="sticky top-4 space-y-1">
             <div className="text-xs uppercase tracking-wide text-muted-foreground mb-2 px-2">
-              Inhoudsopgave
+              Snel starten
             </div>
-            {SECTIONS.map((s) => (
-              <a
-                key={s.id}
-                href={`#${s.id}`}
-                className="block text-sm px-2 py-1.5 rounded hover:bg-muted text-muted-foreground hover:text-foreground"
-              >
+            {quickstart.map((s) => (
+              <a key={s.id} href={`#${s.id}`} className="block text-sm px-2 py-1.5 rounded hover:bg-muted text-muted-foreground hover:text-foreground">
+                {s.title}
+              </a>
+            ))}
+            <div className="text-xs uppercase tracking-wide text-muted-foreground mt-3 mb-2 px-2">
+              Live gaan
+            </div>
+            {golive.map((s) => (
+              <a key={s.id} href={`#${s.id}`} className="block text-sm px-2 py-1.5 rounded hover:bg-muted text-muted-foreground hover:text-foreground">
+                {s.title}
+              </a>
+            ))}
+            <div className="text-xs uppercase tracking-wide text-muted-foreground mt-3 mb-2 px-2">
+              Volledige setup
+            </div>
+            {manual.map((s) => (
+              <a key={s.id} href={`#${s.id}`} className="block text-sm px-2 py-1.5 rounded hover:bg-muted text-muted-foreground hover:text-foreground">
                 {s.title}
               </a>
             ))}
           </div>
         </aside>
 
-        {/* Inhoud */}
         <div className="space-y-4">
           <div className="relative print:hidden">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -833,24 +898,44 @@ export default function VoiceAgentHelp() {
             />
           </div>
 
-          {filtered.length === 0 && (
-            <p className="text-sm text-muted-foreground">Geen sectie gevonden voor "{q}".</p>
+          {/* Aanbevolen route (snapshot) */}
+          <div className="rounded-lg border border-primary/40 bg-primary/5 p-4 print:hidden">
+            <div className="flex items-center gap-2 text-sm font-medium">
+              <Rocket className="h-4 w-4 text-primary" />
+              Aanbevolen route — 6 stappen via master snapshot
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">
+              Heb je al een TableWise master snapshot in ClickWise? Volg secties 1, 2 en 2b hieronder en sla
+              de handmatige setup (3–9) over. Werk je zonder snapshot? Open onderaan
+              <strong> "Toon volledige handmatige setup"</strong>.
+            </p>
+          </div>
+
+          {quickstart.map((s) => <SectionCard key={s.id} s={s} />)}
+
+          {/* Manual setup behind a collapse */}
+          {manual.length > 0 && (
+            <Collapsible open={manualOpen} onOpenChange={setShowManual}>
+              <CollapsibleTrigger asChild>
+                <Button variant="outline" className="w-full justify-between print:hidden">
+                  <span className="flex items-center gap-2">
+                    <Wrench className="h-4 w-4" />
+                    {manualOpen ? "Verberg" : "Toon"} volledige handmatige setup (secties 3–9)
+                  </span>
+                  <ChevronDown className={cn("h-4 w-4 transition-transform", manualOpen && "rotate-180")} />
+                </Button>
+              </CollapsibleTrigger>
+              <CollapsibleContent className="space-y-4 mt-4">
+                {manual.map((s) => <SectionCard key={s.id} s={s} />)}
+              </CollapsibleContent>
+            </Collapsible>
           )}
 
-          {filtered.map((s) => {
-            const Icon = s.icon;
-            return (
-              <Card key={s.id} id={s.id} className="scroll-mt-4">
-                <CardHeader>
-                  <CardTitle className="text-lg font-display flex items-center gap-2">
-                    <Icon className="h-5 w-5 text-primary" />
-                    {s.title}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>{s.render()}</CardContent>
-              </Card>
-            );
-          })}
+          {golive.map((s) => <SectionCard key={s.id} s={s} />)}
+
+          {needle && quickstart.length + manual.length + golive.length === 0 && (
+            <p className="text-sm text-muted-foreground">Geen sectie gevonden voor "{q}".</p>
+          )}
         </div>
       </div>
     </div>
