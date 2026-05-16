@@ -37,10 +37,12 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
     );
 
+    const nowIso = new Date().toISOString();
     let q = supabase.from("integration_events")
       .select("*")
       .eq("status", "pending")
       .lt("attempts", MAX_ATTEMPTS)
+      .or(`next_retry_at.is.null,next_retry_at.lte.${nowIso}`)
       .order("created_at", { ascending: true })
       .limit(BATCH_SIZE);
     if (restaurantFilter) q = q.eq("restaurant_id", restaurantFilter);
