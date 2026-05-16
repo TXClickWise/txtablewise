@@ -366,6 +366,8 @@ Deno.serve(async (req) => {
               dateLabel,
               timeLabel,
               partySize: body.party_size,
+              manageUrl,
+              cancelUrl,
             },
           }),
         });
