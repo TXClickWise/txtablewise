@@ -17,6 +17,7 @@ import { ReservationFormSheet } from "@/components/reservations/ReservationFormS
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { LastMinuteFillPanel } from "@/components/waitlist/LastMinuteFillPanel";
 import { PreOrderReadyList } from "@/components/pre-orders/PreOrderReadyList";
+import { GuestChangeRequestsPanel } from "@/components/reservations/GuestChangeRequestsPanel";
 import { CardSkeletonGrid, EmptyState } from "@/components/touch/StateViews";
 
 const TodayPage = () => {
@@ -158,6 +159,8 @@ const TodayPage = () => {
       </div>
 
       {restaurantId && <LastMinuteFillPanel restaurantId={restaurantId} />}
+
+      {restaurantId && <GuestChangeRequestsPanel restaurantId={restaurantId} />}
 
       <SectionCard title="Reserveringen vandaag" icon={<CalendarDays />}>
         {isLoading ? (

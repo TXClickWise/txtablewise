@@ -332,6 +332,39 @@ async function handleRequestChange(sb: any, reservation: any, restaurant: any, b
     },
   });
 
+  // Cancel any older still-open requests for this reservation
+  try {
+    await sb.from("guest_change_requests")
+      .update({ status: "cancelled", reviewed_at: new Date().toISOString() })
+      .eq("reservation_id", reservation.id)
+      .eq("status", "new");
+  } catch (e) { console.error("cancel prior gcr failed (non-fatal)", e); }
+
+  // If staff review needed, persist a row so it shows up in the operator app
+  if (outcome === "pending_review") {
+    try {
+      await sb.from("guest_change_requests").insert({
+        restaurant_id: reservation.restaurant_id,
+        reservation_id: reservation.id,
+        status: "new",
+        reason_code: reasonCode,
+        current_reservation_date: reservation.reservation_date,
+        current_start_time: reservation.start_time,
+        current_party_size: reservation.party_size,
+        desired_reservation_date: desiredDate,
+        desired_time: desiredTime,
+        desired_party_size: desiredParty,
+        message: message || null,
+        contact_patch: contactPatch,
+        dietary_notes: reservationPatch.dietary_notes ?? null,
+        guest_name: [guest?.first_name, guest?.full_name].filter(Boolean)[0] || guestName || null,
+        guest_email: recipientEmail,
+      });
+    } catch (e) {
+      console.error("insert guest_change_requests failed (non-fatal)", e);
+    }
+  }
+
   // Send the appropriate email — best-effort
   if (recipientEmail && !/@tablewise\.local$/i.test(recipientEmail)) {
     const baseUrl = (Deno.env.get("SITE_URL") || "https://www.txtablewise.nl").replace(/\/+$/, "");

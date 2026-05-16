@@ -1,49 +1,82 @@
-# Gastlinks & selfservice wijzigen
+# Probleem
 
-## 1. URL slug — geen technisch probleem, wel een branding-verbetering
+Als een gast zelf via de selfservice-link een reservering wijzigt en de wijziging **niet automatisch toegepast kan worden** (in jouw geval: 13 → 15 personen, boven de large group threshold), gebeurt server-side dit:
 
-**Belangrijk om te weten:** `manage_token` is een willekeurig uuid dat globaal uniek is in `reservations`. De edge function `guest_reservation` zoekt puur op token — dus er is **geen risico op tenant-vervuiling** met de huidige `/r/manage/{token}`-route. Reserveringen van verschillende restaurants kunnen nooit door elkaar lopen.
+- `guest_reservation` zet uitkomst op `pending_review` (reden `large_party_needs_staff`).
+- De reservering zelf wordt **niet** gewijzigd.
+- Er wordt een `integration_events` rij + `audit_log` rij weggeschreven met event `reservation.change_pending_staff`.
+- De gast krijgt een "wijzigingsverzoek ontvangen"-mail.
 
-Wél nuttig om de slug toe te voegen:
-- Gast ziet meteen in de URL bij welk restaurant het hoort (vertrouwen, herkenbaarheid).
-- Toekomstige white-label / custom domains zijn makkelijker te scopen.
-- Logs en support-vragen worden leesbaarder.
+Maar:
 
-**Voorgestelde aanpak:**
-- Nieuw routepatroon: `/r/:slug/manage/:token` (bijv. `/r/eigeweis/manage/abc-123`).
-- Oude route `/r/manage/:token` blijft werken als fallback (alle al verstuurde e-mails en bestaande links blijven geldig) → in `App.tsx` beide routes naar `GuestManageReservation` mappen.
-- De edge function blijft op token zoeken; `slug` in de URL wordt alleen voor weergave gebruikt en (optioneel) gevalideerd tegen de gevonden reservering — bij mismatch redirecten naar de juiste slug i.p.v. fout tonen.
-- E-mail-templates en linkgeneratie aanpassen in:
-  - `supabase/functions/send_reservation_email/index.ts`
-  - `supabase/functions/book_reservation/index.ts`
-  - `supabase/functions/guest_reservation/index.ts`
-  - `supabase/functions/public_api/index.ts` (`guestManage`)
-  - Preview-tokens in de template-bestanden (`reservation-confirmation.tsx`, `reservation-reminder.tsx`, `reservation-change-approved.tsx`).
-- Restaurant `slug` ophalen bij linkgeneratie (komt al uit `restaurants`-tabel in dezelfde queries).
+- Er is **geen tabel** waar het verzoek bewaard wordt (alleen een event-rij).
+- Er is **geen UI** die deze verzoeken toont.
+- `usePendingLargeGroups` triggert niet, want `requires_manual_approval` / `large_group_status` / `large_group_requests` wordt niet aangeraakt.
+- De sidebar krijgt dus geen badge en jij ziet niks.
 
-## 2. Wijzigingsformulier voorinvullen met huidige reservering
+Korte versie: het bestaande "grote-groep goedkeuring"-mechanisme dekt alleen nieuwe boekingen, niet wijzigingen op bestaande boekingen.
 
-Nu staan in `GuestManageReservation.tsx` alle velden van `changeForm` leeg. Aanpassingen:
+# Oplossing
 
-- **Reservering ophalen** (`guest_reservation` action `view`): payload uitbreiden met `guest_first_name`, `guest_last_name`, `guest_email`, `guest_phone`, `dietary_notes` en `reservation_date` + lokale `start_time` (HH:mm) op basis van `restaurant.timezone`.
-- **`Reservation` type** in `GuestManageReservation.tsx` uitbreiden met die velden.
-- **Prefill bij openen van de dialog**: in de "Wijzig"-knop (of via `useEffect` op `showChange`) `setChangeForm({...})` aanroepen met:
-  - `desired_date` = `reservation.reservation_date`
-  - `desired_time` = lokale HH:mm afgeleid uit `start_time` in `restaurant.timezone` (Intl.DateTimeFormat met `hourCycle: "h23"`).
-  - `desired_party_size` = `String(reservation.party_size)`
-  - `desired_first_name/last_name/email/phone/dietary_notes` = huidige waarden
-  - `message` blijft leeg (dat is de extra opmerking van de gast).
-- Submit-logica blijft hetzelfde: edge function vergelijkt al met huidige waarden en doet niks als er niets gewijzigd is.
+Nieuwe tabel + hook + badge + review-paneel, in de stijl van het bestaande large-group flow.
 
-## Technische details
+## 1. Datamodel: `guest_change_requests`
 
-**Bestanden die wijzigen:**
-- `src/App.tsx` — extra route `/r/:slug/manage/:token` naast bestaande fallback.
-- `src/pages/GuestManageReservation.tsx` — type uitbreiden + prefill bij open + slug uit `useParams` accepteren (geen functionele rol).
-- `supabase/functions/guest_reservation/index.ts` — `view`-response uitbreiden met guest-velden + `reservation_date` + restaurant `slug`.
-- `supabase/functions/send_reservation_email/index.ts`, `book_reservation/index.ts`, `guest_reservation/index.ts`, `public_api/index.ts` — `manageUrl`/`cancelUrl` met slug bouwen wanneer beschikbaar.
-- Preview-tokens in 3 template-bestanden updaten naar `/r/{slug}/manage/...`-vorm.
+Nieuwe tabel met RLS (members lezen, managers schrijven, service role insert via edge):
 
-**Geen DB-migratie nodig.** Tokens en slug bestaan al.
+| kolom | type | doel |
+|---|---|---|
+| `id` | uuid pk | |
+| `restaurant_id` | uuid fk | scoping + RLS |
+| `reservation_id` | uuid fk | originele reservering |
+| `status` | text | `new` / `approved` / `rejected` / `cancelled` |
+| `reason_code` | text | bv `large_party_needs_staff`, `no_table_available` |
+| `current_date` / `current_start_time` / `current_party_size` | snapshot huidige boeking |
+| `desired_date` / `desired_time` / `desired_party_size` | gewenste wijziging |
+| `message` | text | bericht van gast |
+| `contact_patch` | jsonb | naam/email/telefoon/dieet diff |
+| `created_at` / `reviewed_at` / `reviewed_by` | timestamps + user_id | |
 
-**Backwards compat:** oude `/r/manage/{token}`-links blijven werken (fallback-route + tokenzoeker is ongewijzigd).
+Plus realtime publication aan.
+
+## 2. Edge function `guest_reservation`
+
+Bij `outcome === "pending_review"`: **ook** een rij in `guest_change_requests` (status `new`) wegschrijven, naast de bestaande integration_event en e-mail naar gast.
+
+Bij `outcome === "applied"` of `rejected` mag een eventueel bestaand `new`-request voor dezelfde reservering automatisch op `cancelled` worden gezet — dan stapelen we niet als de gast nog eens wijzigt.
+
+## 3. Hook + badge
+
+- Nieuwe hook `usePendingGuestChanges` (zelfde patroon als `usePendingLargeGroups`): count + realtime invalidate op `guest_change_requests`.
+- In `AppSidebar` een badge naast **Reserveringen vandaag** (of Reserveringen) met deze count, optellend bij/los van de bestaande large-group badge.
+
+## 4. UI: review-paneel
+
+Op `TodayPage` (boven of naast "Reserveringen vandaag") een inklapbare kaart **"Wijzigingsverzoeken van gasten"** die alleen verschijnt als er `new` rijen zijn. Per rij:
+
+- Gastnaam + originele datum/tijd/party
+- Gewenste datum/tijd/party (visueel als diff)
+- Reden (`Grote groep — handmatige goedkeuring nodig`, etc.)
+- Bericht van gast
+- Knoppen:
+  - **Goedkeuren** → roept een nieuwe edge `apply_guest_change` (of een server-action in `manage_reservation`) die de wijziging alsnog probeert door te voeren (tafelcheck + update), zet request op `approved`, stuurt `reservation-change-approved`-mail.
+  - **Afwijzen (met reden)** → zet op `rejected`, stuurt `reservation-change-rejected`-mail met opgegeven reden.
+- Realtime-update zodat de kaart leeg wordt zodra alles is afgehandeld.
+
+## 5. Geen impact op bestaande flows
+
+- Pure contact/dieet-wijzigingen blijven direct toegepast.
+- Auto-apply binnen threshold blijft werken.
+- Large-group **nieuwe** boekingen blijven via `usePendingLargeGroups`.
+
+# Technische details
+
+- Migratie via `supabase--migration` voor de nieuwe tabel + RLS + realtime + indices op `(restaurant_id, status)` en `reservation_id`.
+- Edge functions die wijzigen: `guest_reservation` (insert request), nieuwe `apply_guest_change` (approve/reject met re-evaluatie van tafel + mail).
+- Frontend nieuw: `src/hooks/usePendingGuestChanges.ts`, `src/components/reservations/GuestChangeRequestsPanel.tsx`, integratie in `AppSidebar` en `TodayPage`.
+- Geen wijziging aan e-mail-templates nodig — `reservation-change-approved` en `reservation-change-rejected` bestaan al.
+
+# Out of scope
+
+- Geen wijzigingen aan de gast-selfservice pagina zelf.
+- Geen aparte "approvals"-pagina; we tonen het inline op Today (later eenvoudig uit te breiden naar eigen route als gewenst).
