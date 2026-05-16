@@ -52,6 +52,7 @@ const TodayPage = () => {
           id, start_time, end_time, party_size, status, channel, special_requests,
           internal_notes, occasion, dietary_notes, confirmation_code,
           requires_manual_approval, large_group_status, reminder_confirmed_at,
+          guest_first_name, guest_last_name, guest_email, guest_phone,
           guests(first_name, last_name, phone, email, is_vip, allergies),
           reservation_tables(tables(label)),
           pre_orders(id)
