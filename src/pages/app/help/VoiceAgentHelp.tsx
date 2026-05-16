@@ -812,8 +812,9 @@ const SECTIONS: Section[] = [
             </p>
             <ul className="text-xs space-y-1.5 list-disc list-inside">
               <li>
-                <strong>find_reservation</strong> — bestaande reservering opzoeken op telefoon of
-                bevestigingscode (handig vóór cancel of update).{" "}
+                <strong>find_reservation</strong> — bestaande reservering opzoeken op telefoon, of
+                op voor-/achternaam + datum (+ optioneel tijd). <strong>Geen UUID nodig</strong>{" "}
+                — vraag nooit om een bevestigingsnummer.{" "}
                 <code className="break-all">{`${AGENT_API_BASE}/find_reservation`}</code>
               </li>
               <li>
