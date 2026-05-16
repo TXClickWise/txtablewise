@@ -358,7 +358,7 @@ const SECTIONS: Section[] = [
           <div className="mt-2">
             <CopyRow
               label="Greeting (eerste zin)"
-              value="Goedendag, u spreekt met de digitale gastvrouw van {{custom_values.tw_restaurant_name}}. Waarmee kan ik u van dienst zijn?"
+              value="Goedendag, u spreekt met de digitale gastvrouw van {{location.name}}. Waarmee kan ik u van dienst zijn?"
             />
           </div>
         </div>
