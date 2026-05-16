@@ -267,7 +267,7 @@ async function runCheckAvailability(input: DispatchInput): Promise<AIActionRespo
   const schema = z.object({
     date: dateSchema,
     party_size: z.number().int().min(1).max(50),
-    preferred_time: timeSchema.optional(),
+    preferred_time: timeSchema,
   });
   const r = v(schema, input.payload, "check_availability");
   if (!r.ok) return r.res;
@@ -293,7 +293,7 @@ async function runCheckAvailability(input: DispatchInput): Promise<AIActionRespo
       "check_availability",
       "Voor zo'n grote groep nemen we even contact op om de details door te nemen.",
       "Large group detected — falling back to large_group flow.",
-      { large_group: true, message: data?.message },
+      { large_group: true, message: data?.message, exact: null, alternatives: [] },
     );
   }
   if (data?.closed) {
@@ -304,30 +304,42 @@ async function runCheckAvailability(input: DispatchInput): Promise<AIActionRespo
       "outside_opening_hours",
     );
   }
+
+  const exact = available.find((s) => s.time.startsWith(preferred_time)) ?? null;
+  const [ph, pm] = preferred_time.split(":").map(Number);
+  const prefMin = ph * 60 + pm;
+  const alternatives = [...available]
+    .map((s) => {
+      const [h, m] = s.time.split(":").map(Number);
+      return { slot: s, dist: Math.abs(h * 60 + m - prefMin) };
+    })
+    .sort((a, b) => a.dist - b.dist)
+    .slice(0, 3)
+    .map((x) => x.slot);
+
   if (available.length === 0) {
     return ok(
       "check_availability",
       "Op dat moment is het helaas vol. Wil je dat ik je op de wachtlijst zet?",
       "No availability returned by engine.",
-      { available: false, slots, alternatives: [] },
+      { available: false, exact: null, alternatives: [], slots },
     );
   }
 
-  let chosen = available[0];
-  if (preferred_time) {
-    const exact = available.find((s) => s.time.startsWith(preferred_time));
-    if (exact) chosen = exact;
+  if (exact) {
+    return ok(
+      "check_availability",
+      `${preferred_time} is beschikbaar voor ${party_size} ${party_size === 1 ? "persoon" : "personen"}.`,
+      `Exact match for preferred_time ${preferred_time}.`,
+      { available: true, preferred_time, exact, alternatives, slots },
+    );
   }
 
   return ok(
     "check_availability",
-    `Er is plek om ${chosen.time.slice(0, 5)} voor ${party_size} ${party_size === 1 ? "persoon" : "personen"}.`,
-    `Available slots: ${available.length}`,
-    {
-      available: true,
-      chosen,
-      alternatives: available.slice(0, 6),
-    },
+    `${preferred_time} is helaas niet beschikbaar. Mogelijke alternatieven: ${alternatives.map((a) => a.time.slice(0, 5)).join(", ")}.`,
+    `No exact match for ${preferred_time}; ${alternatives.length} alternatives offered.`,
+    { available: true, preferred_time, exact: null, alternatives, slots },
   );
 }
 
