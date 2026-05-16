@@ -22,6 +22,7 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { PendingBadge } from "@/components/PendingBadge";
 import { usePendingLargeGroups } from "@/hooks/usePendingLargeGroups";
+import { usePendingGuestChanges } from "@/hooks/usePendingGuestChanges";
 
 type Role = "owner" | "manager" | "host" | "staff";
 type Item = { title: string; url: string; icon: typeof LayoutDashboard; end?: boolean; advanced?: boolean; roles?: Role[] };
