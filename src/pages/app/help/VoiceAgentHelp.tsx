@@ -826,38 +826,142 @@ const SECTIONS: Section[] = [
                 interne log-call.
               </>
             ),
+            sayBefore: "",
+            sayBeforeNote: (
+              <>
+                <strong>Leeg laten.</strong> log_call draait pas <em>nadat</em> je het gesprek hebt
+                afgesloten — er is niemand meer aan de lijn om een wachtzin tegen te zeggen.
+              </>
+            ),
           })}
 
-          {/* Optionele extra tools */}
-          <div className="space-y-2 pt-2 border-t">
+          {/* Optionele extra tools — volledig uitgewerkt zoals tool 1 t/m 5 */}
+          <div className="space-y-3 pt-4 border-t">
             <div className="font-medium">Optionele extra tools (geavanceerd)</div>
             <p className="text-xs text-muted-foreground">
-              Niet nodig voor een basis-koppeling. Voeg ze pas toe als je deze flows wilt
-              ondersteunen via de telefoon. Methode = <code>POST</code>, headers gelijk aan
-              hierboven. Parameter-details staan in <code>docs/PUBLIC_API.md</code> en de
-              <code> agent_api</code> edge function.
+              Niet nodig voor een basis-koppeling. Voeg ze toe in dezelfde stijl als tool 1 t/m 5 —
+              methode <code>POST</code>, headers gelijk aan hierboven, en bij ClickWise weer de
+              <strong> "What to say before performing the action"</strong>-tekst plakken.
             </p>
-            <ul className="text-xs space-y-1.5 list-disc list-inside">
-              <li>
-                <strong>find_reservation</strong> — bestaande reservering opzoeken op telefoon, of
-                op voor-/achternaam + datum (+ optioneel tijd). <strong>Geen UUID nodig</strong>{" "}
-                — vraag nooit om een bevestigingsnummer.{" "}
-                <code className="break-all">{`${AGENT_API_BASE}/find_reservation`}</code>
-              </li>
-              <li>
-                <strong>reconfirm_reservation</strong> — gast bevestigt of annuleert telefonisch
-                een eerdere herbevestigings-vraag.{" "}
-                <code className="break-all">{`${AGENT_API_BASE}/reconfirm_reservation`}</code>
-              </li>
-              <li>
-                <strong>create_waitlist_entry</strong> — als alles vol zit, gast op de wachtlijst
-                zetten.{" "}
-                <code className="break-all">{`${AGENT_API_BASE}/create_waitlist_entry`}</code>
-              </li>
-              <li>
-                <strong>get_opening_hours</strong> — agent kan info-vragen over openingstijden
-                beantwoorden zonder te raden.{" "}
-                <code className="break-all">{`${AGENT_API_BASE}/get_opening_hours`}</code>
+          </div>
+
+          {toolBlock({
+            n: 6,
+            name: "find_reservation",
+            optional: true,
+            url: `${AGENT_API_BASE}/find_reservation`,
+            description:
+              "Zoek een bestaande reservering op telefoon, of op voor-/achternaam + datum (+ optioneel tijd). Gebruik dit ALTIJD intern vóór cancel_reservation of update_reservation om het juiste reservation_id op te halen. Vraag NOOIT om een UUID of bevestigingsnummer aan de beller. Minimaal één van phone, last_name of first_name+date moet meekomen.",
+            params: [
+              { name: "phone", type: "String", required: false, description: "Telefoonnummer in E.164. Default {{contact.phone}} (nummer waarmee beller belt). Bij anonieme nummers leeg laten en op naam zoeken.", example: "+31612345678" },
+              { name: "first_name", type: "String", required: false, description: "Voornaam van de gast (alleen i.c.m. date verplicht).", example: "Jan" },
+              { name: "last_name", type: "String", required: false, description: "Achternaam van de gast. Vaak voldoende zonder voornaam.", example: "de Vries" },
+              { name: "date", type: "String", required: false, description: "Datum van de reservering YYYY-MM-DD.", example: "2026-05-20" },
+              { name: "time", type: "String", required: false, description: "Tijd HH:mm (24-uurs) voor extra filtering binnen ±15 min, alleen gebruiken als gast meerdere reserveringen op dezelfde dag heeft.", example: "19:30" },
+            ],
+            body: `{
+  "phone": "{{contact.phone}}",
+  "first_name": "{{first_name}}",
+  "last_name": "{{last_name}}",
+  "date": "{{date}}",
+  "time": "{{time}}"
+}`,
+            responseHint: (
+              <>
+                Response bevat <code>matches[]</code> met o.a. <code>reservation_id</code>,{" "}
+                <code>date</code>, <code>time</code> en <code>party_size</code>. Bij <strong>1
+                match</strong> → bevestig hardop datum/tijd/personen. Bij <strong>meerdere</strong>{" "}
+                → som ze kort op ("19:00 voor 2 of 20:30 voor 4 — welke bedoelt u?") en laat de
+                gast kiezen. Bij <strong>0 matches</strong> → vraag om achternaam + datum en
+                probeer opnieuw.
+              </>
+            ),
+            sayBefore: "Eén moment, ik zoek uw reservering even op.",
+          })}
+
+          {toolBlock({
+            n: 7,
+            name: "reconfirm_reservation",
+            optional: true,
+            url: `${AGENT_API_BASE}/reconfirm_reservation`,
+            description:
+              "Verwerk een telefonische herbevestiging van een eerder verstuurde herbevestigings-vraag (SMS/WhatsApp). Roep eerst find_reservation aan om het juiste id te krijgen.",
+            params: [
+              { name: "reservation_id", type: "String", required: true, description: "UUID, intern verkregen via find_reservation. Nooit aan de beller vragen.", example: "00000000-0000-0000-0000-000000000000" },
+              { name: "response", type: "String", required: true, description: "Exact 'confirmed' (gast komt) of 'cannot_come' (gast annuleert). Geen andere waardes.", example: "confirmed" },
+            ],
+            body: `{
+  "reservation_id": "{{reservation_id}}",
+  "response": "{{response}}"
+}`,
+            responseHint: (
+              <>
+                Bij <code>response=confirmed</code> → bevestig hardop dat de reservering staat. Bij{" "}
+                <code>response=cannot_come</code> → de reservering wordt geannuleerd; bedank de
+                gast voor het laten weten.
+              </>
+            ),
+            sayBefore: "Bedankt voor het laten weten, ik werk het nu bij.",
+          })}
+
+          {toolBlock({
+            n: 8,
+            name: "create_waitlist_entry",
+            optional: true,
+            url: `${AGENT_API_BASE}/create_waitlist_entry`,
+            description:
+              "Zet de gast op de wachtlijst als er geen tafel beschikbaar is. Gebruik dit alleen nadat check_availability heeft bevestigd dat de gewenste tijd vol zit én de gast expliciet op de wachtlijst wil.",
+            params: [
+              { name: "guest_name", type: "String", required: true, description: "Volledige naam (voor + achter). Combineer {{contact.first_name}} {{contact.last_name}}.", example: "Jan de Vries" },
+              { name: "guest_phone", type: "String", required: true, description: "Telefoonnummer in E.164. Default {{contact.phone}}.", example: "+31612345678" },
+              { name: "guest_email", type: "String", required: false, description: "Alleen invullen als de beller dit zelf opgeeft.", example: "gast@voorbeeld.nl" },
+              { name: "desired_date", type: "String", required: true, description: "Gewenste datum YYYY-MM-DD.", example: "2026-05-26" },
+              { name: "party_size", type: "Number", required: true, description: "Aantal personen, 1 t/m 8.", example: "4" },
+              { name: "desired_time_from", type: "String", required: false, description: "Vroegste acceptabele tijd HH:mm. Default 18:00.", example: "18:30" },
+              { name: "desired_time_to", type: "String", required: false, description: "Laatste acceptabele tijd HH:mm. Default 21:00.", example: "20:30" },
+              { name: "notes", type: "String", required: false, description: "Vrij veld voor wensen of context.", example: "Liever bij het raam" },
+            ],
+            body: `{
+  "guest_name": "{{contact.first_name}} {{contact.last_name}}",
+  "guest_phone": "{{contact.phone}}",
+  "guest_email": "{{contact.email}}",
+  "desired_date": "{{desired_date}}",
+  "party_size": {{party_size}},
+  "desired_time_from": "{{desired_time_from}}",
+  "desired_time_to": "{{desired_time_to}}",
+  "notes": "{{notes}}"
+}`,
+            responseHint: (
+              <>
+                Response bevat <code>waitlist_entry_id</code>. Bevestig hardop dat de gast op de
+                wachtlijst staat en dat het restaurant contact opneemt zodra er een plek vrijkomt.
+              </>
+            ),
+            sayBefore: "Ik zet u nu op de wachtlijst, één momentje.",
+          })}
+
+          {toolBlock({
+            n: 9,
+            name: "get_opening_hours",
+            optional: true,
+            url: `${AGENT_API_BASE}/get_opening_hours`,
+            description:
+              "Haal de openingstijden voor een specifieke datum op zodat de agent info-vragen kan beantwoorden zonder te raden of te hallucineren.",
+            params: [
+              { name: "date", type: "String", required: false, description: "Datum YYYY-MM-DD. Leeg = vandaag.", example: "2026-05-26" },
+            ],
+            body: `{
+  "date": "{{date}}"
+}`,
+            responseHint: (
+              <>
+                Response bevat <code>is_open</code>, <code>hours[]</code> en eventuele{" "}
+                <code>closures[]</code>. Lees <code>message_for_guest</code> hardop voor als korte
+                natuurlijke samenvatting.
+              </>
+            ),
+            sayBefore: "Eén moment, ik check even onze openingstijden.",
+          })}
               </li>
             </ul>
           </div>
