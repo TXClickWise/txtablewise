@@ -890,7 +890,7 @@ async function handleUpdateReservation(req: Request, keyRow: KeyRow, reservation
       phone: guest?.phone || null,
       email: guest?.email || null,
     },
-    links: buildLinks(req, current.id, refreshed?.manage_token),
+    links: buildLinks(req, current.id, refreshed?.manage_token, restaurant?.slug ?? null),
   });
 }
 
