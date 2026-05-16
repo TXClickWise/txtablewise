@@ -275,6 +275,8 @@ export function ReservationDetailDialog({ reservationId, open, onOpenChange }: P
                 partySize={data.party_size}
               />
 
+              <ReservationCallLogSection reservationId={data.id} />
+
               {(data.requires_manual_approval || data.large_group_status === "awaiting_approval") &&
                 !["cancelled", "no_show", "completed"].includes(data.status) && (
                 <div className="rounded-lg border border-warning/30 bg-warning/10 p-3 space-y-2">
