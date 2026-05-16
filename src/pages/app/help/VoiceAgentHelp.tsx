@@ -223,14 +223,15 @@ const SECTIONS: Section[] = [
           placeholders. Je hoeft per klant alleen de waarden in te vullen.
         </p>
         <ol className="list-decimal list-inside space-y-2">
-          <li>Maak in ClickWise een <strong>nieuwe sub-account vanuit de TableWise master snapshot</strong>.</li>
+          <li>
+            Maak in ClickWise een <strong>nieuwe sub-account vanuit de TableWise master snapshot</strong>.
+            <strong> Zet de sub-account naam exact gelijk aan de restaurantnaam in TableWise</strong> en kies
+            de juiste <strong>tijdzone</strong> — beide worden automatisch in de prompt, SMS en tools gebruikt
+            via <code>{`{{location.name}}`}</code> en <code>{`{{location.timezone}}`}</code>.
+          </li>
           <li>
             Ga naar <strong>Instellingen → Custom Values → Account</strong> en plak in
             <code className="mx-1">tw_agent_api_key</code> de sleutel uit TableWise (sectie 2, stap 4).
-          </li>
-          <li>
-            Vul <code>tw_restaurant_name</code> in met de naam van het restaurant zoals die in
-            TableWise staat (gebruikt in de greeting en SMS).
           </li>
           <li>
             Controleer dat <code>tw_agent_api_url</code> gelijk is aan de Base URL uit sectie 1.
@@ -298,25 +299,41 @@ const SECTIONS: Section[] = [
     id: "custom-values",
     title: "4. ClickWise — Custom Values",
     icon: Database,
-    keywords: "clickwise custom values account url key restaurant",
+    keywords: "clickwise custom values account url key restaurant location",
     render: () => (
       <div className="space-y-3">
         <p className="text-sm text-muted-foreground">
-          ClickWise → <strong>Instellingen → Custom Values → Account</strong>. Maak deze 6 waarden aan.
-          De waarden van <code>TW Restaurant Name</code> en <code>TW Agent API Key</code> vul je zelf in.
+          ClickWise → <strong>Instellingen → Custom Values → Account</strong>. Je hebt nog maar
+          twee waarden nodig per klant — alle restaurant-specifieke info (naam, tijdzone, max.
+          groepsgrootte) wordt automatisch opgehaald.
         </p>
         <CopyRow label="TW Agent API URL" value={AGENT_API_BASE} />
         <div className="rounded border bg-muted/30 px-3 py-2 text-sm">
           <div className="text-xs text-muted-foreground">TW Agent API Key</div>
           <div className="font-mono">tw_voice_… (plak hier de sleutel uit stap 2)</div>
         </div>
-        <div className="rounded border bg-muted/30 px-3 py-2 text-sm">
-          <div className="text-xs text-muted-foreground">TW Restaurant Name</div>
-          <div className="font-mono">(naam van je test-restaurant zoals in TableWise)</div>
-        </div>
-        <CopyRow label="TW Timezone" value="Europe/Amsterdam" />
-        <CopyRow label="TW Booking Horizon Days" value="90" />
-        <CopyRow label="TW Max Party Online" value="8" />
+        <Callout tone="success" title="Automatisch ingevuld — niet meer als custom value nodig">
+          <ul className="list-disc list-inside space-y-1">
+            <li>
+              <strong>Restaurantnaam</strong> → <code>{`{{location.name}}`}</code> (sub-account
+              naam in ClickWise). Zet die bij het aanmaken gelijk aan de naam in TableWise.
+            </li>
+            <li>
+              <strong>Tijdzone</strong> → <code>{`{{location.timezone}}`}</code> (sub-account
+              tijdzone). Standaard <code>Europe/Amsterdam</code>.
+            </li>
+            <li>
+              <strong>Max. groepsgrootte</strong> → komt rechtstreeks uit TableWise
+              (<code>max_party_size_online</code>). De engine weigert te grote groepen
+              automatisch met code <code>TW_409_PARTY_TOO_LARGE</code>; de agent leest die
+              terug en biedt een grote-groep-callback aan.
+            </li>
+            <li>
+              <strong>Booking horizon</strong> (max. dagen vooruit) → ook uit TableWise; engine
+              weigert te ver vooruit.
+            </li>
+          </ul>
+        </Callout>
       </div>
     ),
   },
@@ -341,7 +358,7 @@ const SECTIONS: Section[] = [
           <div className="mt-2">
             <CopyRow
               label="Greeting (eerste zin)"
-              value="Goedendag, u spreekt met de digitale gastvrouw van {{custom_values.tw_restaurant_name}}. Waarmee kan ik u van dienst zijn?"
+              value="Goedendag, u spreekt met de digitale gastvrouw van {{location.name}}. Waarmee kan ik u van dienst zijn?"
             />
           </div>
         </div>
@@ -425,7 +442,7 @@ const SECTIONS: Section[] = [
         <div>
           <div className="font-medium">Action 2 — Send SMS</div>
           <CodeBlock label="SMS naar {{contact.phone}}">
-{`Hallo {{contact.first_name}}, uw reservering bij {{custom_values.tw_restaurant_name}} op {{contact.tw_reservation_date}} om {{contact.tw_reservation_time}} voor {{contact.tw_party_size}} personen is bevestigd. Wijzigen of annuleren? Bel ons of antwoord op deze sms.`}
+{`Hallo {{contact.first_name}}, uw reservering bij {{location.name}} op {{contact.tw_reservation_date}} om {{contact.tw_reservation_time}} voor {{contact.tw_party_size}} personen is bevestigd. Wijzigen of annuleren? Bel ons of antwoord op deze sms.`}
           </CodeBlock>
         </div>
       </div>
@@ -439,15 +456,17 @@ const SECTIONS: Section[] = [
     render: () => (
       <div className="space-y-2">
         <p className="text-sm text-muted-foreground">
-          Plak in de Voice Agent → Prompt-tab. Vervang <code>[RESTAURANTNAAM]</code> door je restaurantnaam,
-          óf gebruik <code>{`{{custom_values.tw_restaurant_name}}`}</code> als ClickWise dat in de prompt rendert.
+          Plak in de Voice Agent → Prompt-tab. Vervang <code>[RESTAURANTNAAM]</code> door
+          <code>{` {{location.name}} `}</code> — ClickWise vult dan automatisch de sub-account
+          naam in. Vervang ook <code>Europe/Amsterdam</code> door <code>{`{{location.timezone}}`}</code>
+          als je meerdere tijdzones gebruikt.
         </p>
-        <Callout tone="info" title="Waarom max. 8 personen via telefoon?">
-          De grens van 1–8 personen komt overeen met de Custom Value{" "}
-          <code>tw_max_party_online</code>. Voor grotere groepen moet de gast een
-          grote-groep-aanvraag doen via de website-widget — de telefoon-agent zegt dat een
-          collega persoonlijk terugbelt en boekt zelf <strong>niet</strong>. Pas
-          <code> tw_max_party_online</code> én de prompt aan als je deze grens wilt verhogen.
+        <Callout tone="info" title="Max. groepsgrootte komt uit TableWise">
+          De grens komt automatisch uit TableWise (<code>max_party_size_online</code>) — je
+          hoeft hem niet als Custom Value te onderhouden. De engine weigert te grote groepen
+          met <code>TW_409_PARTY_TOO_LARGE</code>; de telefoon-agent zegt dan dat een collega
+          persoonlijk terugbelt en boekt zelf <strong>niet</strong>. Pas de grens aan in
+          TableWise → <strong>Instellingen → Reserveringsregels</strong>.
         </Callout>
         <CodeBlock label="System prompt — Nederlands">{SYSTEM_PROMPT}</CodeBlock>
       </div>
