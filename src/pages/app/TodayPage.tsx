@@ -157,17 +157,7 @@ const TodayPage = () => {
         />
       </div>
 
-      <div className="grid lg:grid-cols-2 gap-4">
-        {restaurantId && <LastMinuteFillPanel restaurantId={restaurantId} />}
-        {restaurantId && (
-          <PreOrderReadyList
-            restaurantId={restaurantId}
-            windowMinutes={180}
-            onOpenReservation={(id) => setSelectedId(id)}
-            compact
-          />
-        )}
-      </div>
+      {restaurantId && <LastMinuteFillPanel restaurantId={restaurantId} />}
 
       <SectionCard title="Reserveringen vandaag" icon={<CalendarDays />}>
         {isLoading ? (
