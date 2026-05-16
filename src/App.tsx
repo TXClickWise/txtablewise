@@ -102,7 +102,7 @@ const App = () => (
               <Route path="floor" element={<Navigate to="/app/vloer" replace />} />
               <Route path="grote-groepen" element={<Navigate to="/app/gasten?tab=grote-groepen" replace />} />
               <Route path="no-show" element={<Navigate to="/app/gastcommunicatie?tab=no-show" replace />} />
-              <Route path="drankjes" element={<Navigate to="/app/gastcommunicatie?tab=drankjes" replace />} />
+              <Route path="drankjes" element={<Navigate to="/app/instellingen/pre-orders" replace />} />
               <Route path="reviews" element={<Navigate to="/app/gastcommunicatie?tab=reviews" replace />} />
               <Route path="ai-host" element={<Navigate to="/app/ai-voice?tab=ai-host" replace />} />
               <Route path="voice-agent" element={<Navigate to="/app/ai-voice?tab=voice" replace />} />
