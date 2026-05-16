@@ -18,7 +18,7 @@ interface Props {
 }
 
 const ReservationReconfirm = ({
-  copy, dateLabel, timeLabel, partySize, confirmUrl, cancelUrl, locale = 'nl',
+  copy, dateLabel, timeLabel, partySize, confirmUrl, cancelUrl, manageUrl, locale = 'nl',
 }: Props) => (
   <Html lang={locale} dir="ltr">
     <Head />
