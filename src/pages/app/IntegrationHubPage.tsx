@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { useRestaurant } from "@/hooks/useRestaurant";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,9 +10,13 @@ import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { PageHeader } from "@/components/PageHeader";
 import { toast } from "sonner";
-import { Plug, Webhook, Bot, KeyRound, FlaskConical, Plus, Trash2, Send, Eye, EyeOff, Phone } from "lucide-react";
+import { Plug, Webhook, Bot, KeyRound, FlaskConical, Plus, Trash2, Send, Eye, EyeOff, Phone, AlertTriangle } from "lucide-react";
 import {
   WEBHOOK_EVENTS, listWebhookEndpoints, createWebhookEndpoint, updateWebhookEndpoint,
   deleteWebhookEndpoint, testWebhook, testAvailability, testBook,
