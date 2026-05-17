@@ -484,7 +484,7 @@ async function handle(
         // `reservation_request` zodat een parafraserende LLM nooit "geboekt"
         // kan zeggen terwijl de reservering nog op handmatige goedkeuring wacht.
         const { data: restRow2 } = await sb.from("restaurants")
-          .select("large_group_max_online_request, max_party_size_online")
+          .select("large_group_max_online_request, max_party_size_online, large_group_confirmation_text")
           .eq("id", keyRow.restaurant_id).maybeSingle();
         const onlineHardCap2: number = (restRow2?.large_group_max_online_request ?? restRow2?.max_party_size_online ?? 18) as number;
         const built2 = buildBookGuestResponse(r, {
@@ -492,6 +492,7 @@ async function handle(
           dateStr: String((payload as any).date ?? ""),
           timeStr: String((payload as any).time ?? ""),
           onlineHardCap: onlineHardCap2,
+          largeGroupConfirmationText: restRow2?.large_group_confirmation_text ?? null,
         });
         return json(built2.body, built2.status);
       }
