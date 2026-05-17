@@ -263,6 +263,24 @@ const LargeGroupSettings = () => {
               onChange={(e) => setForm({ ...form, large_group_cancellation_terms: e.target.value })}
               placeholder="Bijv. 'Annuleren of wijzigen kan kosteloos tot 48 uur voor aanvang.'" />
           </Field>
+
+          <div className="rounded-md border border-dashed p-3 space-y-3">
+            <div className="text-sm font-medium">Belofte aan de gast bij voorlopige aanvraag</div>
+            <p className="text-xs text-muted-foreground inline-flex items-start gap-1">
+              <Info className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+              Deze beloftes worden letterlijk gebruikt door de AI voice-agent en in pending-berichten. Laat leeg om geen termijn of kanaal te beloven. Zorg dat je ze ook waarmaakt.
+            </p>
+            <Field label="Beloofde reactietijd" hint="Bijv. 'binnen 4 uur' of 'binnen 1 werkdag'. Leeg = geen termijn beloven.">
+              <Input value={form.large_group_response_sla_label}
+                onChange={(e) => setForm({ ...form, large_group_response_sla_label: e.target.value })}
+                placeholder="bijv. binnen 4 uur" />
+            </Field>
+            <Field label="Kanaal voor terugkoppeling" hint="Bijv. 'per SMS of e-mail'. Leeg = geen kanaal noemen. Zorg dat dit kanaal actief is in ClickWise.">
+              <Input value={form.large_group_response_channel_label}
+                onChange={(e) => setForm({ ...form, large_group_response_channel_label: e.target.value })}
+                placeholder="bijv. per SMS of e-mail" />
+            </Field>
+          </div>
         </CardContent>
       </Card>
 
