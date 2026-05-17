@@ -966,7 +966,7 @@ const SECTIONS: Section[] = [
               { name: "confirmed_by_guest", type: "Boolean", required: true, description: "VERPLICHT op true zetten ZODRA de beller hardop heeft bevestigd. Zonder true blijft de reservering ongewijzigd en krijg je 'Wil je bevestigen dat je deze wijziging wilt doorvoeren?' terug.", example: "true" },
               { name: "new_date", type: "String", required: false, description: "Nieuwe datum YYYY-MM-DD. Laat leeg als de datum niet wijzigt.", example: "2026-05-27" },
               { name: "new_time", type: "String", required: false, description: "Nieuwe tijd HH:mm (24-uurs). Laat leeg als de tijd niet wijzigt.", example: "20:00" },
-              { name: "new_party_size", type: "Number", required: false, description: "Nieuw aantal personen, geheel getal ≥ 1. Laat leeg als het aantal niet wijzigt. Engine valideert zelf tegen max_party_size_online.", example: "6" },
+              { name: "new_party_size", type: "Number", required: false, description: "Nieuw aantal personen, geheel getal ≥ 1. Laat leeg als het aantal niet wijzigt. Engine valideert zelf tegen large_group_max_online_request.", example: "6" },
               { name: "special_requests", type: "String", required: false, description: "Bijgewerkte wensen (overschrijft bestaande wensen).", example: "Toch geen kinderstoel" },
             ],
             body: `{
