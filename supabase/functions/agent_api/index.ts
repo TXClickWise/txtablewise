@@ -67,6 +67,20 @@ function normalizeGuest(payload: Record<string, any>): Record<string, any> {
   return { ...payload, guest };
 }
 
+// Blokkeer placeholder-namen die voice-agents invullen als ze vergeten te vragen.
+// Dwingt de LLM om expliciet naar de naam te vragen i.p.v. "Gast" in te vullen.
+const PLACEHOLDER_NAMES = new Set([
+  "gast", "guest", "klant", "customer", "onbekend", "unknown",
+  "anoniem", "anonymous", "test", "naam", "name", "n.v.t.", "nvt",
+  "-", "x", "xx", "xxx", "?", "??", "geen", "none", "null", "undefined",
+]);
+function isPlaceholderName(s: unknown): boolean {
+  if (typeof s !== "string") return true;
+  const v = s.trim().toLowerCase();
+  if (v.length < 2) return true;
+  return PLACEHOLDER_NAMES.has(v);
+}
+
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
