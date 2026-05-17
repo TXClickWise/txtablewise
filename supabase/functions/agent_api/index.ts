@@ -138,14 +138,17 @@ function buildBookGuestResponse(
   } else if (requiresManual) {
     nextAction = "confirm_pending_approval";
     statusLabel = "voorlopig";
-    messageForGuest = `Let op — dit is nog geen definitieve reservering. Voor een groep van ${partySize} personen leg ik uw aanvraag voor aan een collega. Het team beoordeelt dit zo snel mogelijk en neemt alleen contact op als er iets aangepast moet worden — anders is uw aanvraag voor ${dateStr} om ${timeStr} genoteerd.`;
+    messageForGuest = `Ik heb uw aanvraag voor ${partySize} personen op ${dateStr} om ${timeStr} genoteerd. Dit is nog geen definitieve reservering — een collega bevestigt dit zo snel mogelijk per telefoon of WhatsApp.`;
   } else {
     messageForGuest = messageForGuest ?? `Top, jullie tafel staat genoteerd, tot ${dateStr} om ${timeStr}.`;
   }
 
+  const isConfirmed = responseOk && !requiresManual && r.status < 400;
+
   return {
     body: {
       ok: responseOk,
+      confirmed: isConfirmed,
       reservation_id: reservationObj?.id ?? rb.reservation_id ?? null,
       confirmation_code: reservationObj?.confirmation_code ?? rb.confirmation_code ?? null,
       requires_manual_approval: requiresManual,
@@ -155,8 +158,8 @@ function buildBookGuestResponse(
       transfer: rb.transfer ?? null,
       message_for_guest: messageForGuest,
       next_action: nextAction,
-      forbidden_phrases: requiresManual
-        ? ["geboekt", "bevestigd", "gelukt", "rond", "definitief"]
+      forbidden_phrases: !isConfirmed
+        ? ["geboekt", "bevestigd", "gelukt", "rond", "definitief", "akkoord", "goedgekeurd"]
         : [],
     },
     status: responseStatus,
