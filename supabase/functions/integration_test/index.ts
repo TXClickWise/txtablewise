@@ -113,6 +113,34 @@ Deno.serve(async (req) => {
       if (!guard.ok) return json({ error: guard.error }, guard.status);
 
       const sampleType = event_type || "reservation.created";
+
+      // Haal restaurant op voor URL-bouw (slug + public_base_url), spiegelt dispatch_webhooks enrichment.
+      const { data: restRow } = await sb
+        .from("restaurants")
+        .select("id, name, slug, timezone, public_base_url")
+        .eq("id", ep.restaurant_id)
+        .maybeSingle();
+      const SITE_URL = (Deno.env.get("SITE_URL") || "https://www.txtablewise.nl").replace(/\/+$/, "");
+      const base = ((restRow?.public_base_url as string | null) || SITE_URL).replace(/\/+$/, "");
+      const slugPart = restRow?.slug ? `/${restRow.slug}` : "";
+      const manageToken = "test-manage-token";
+      const cancelToken = "test-cancel-token";
+      const manageUrl = `${base}/r${slugPart}/manage/${manageToken}`;
+      const cancelUrl = `${manageUrl}?action=cancel`;
+      const confirmUrl = `${manageUrl}?action=confirm`;
+
+      const today = new Date();
+      const reservationDate = today.toISOString().slice(0, 10);
+      // 19:30 vandaag in ISO (best-effort, niet tz-correct maar prima voor test)
+      const startIso = new Date(`${reservationDate}T19:30:00`).toISOString();
+      const guest = {
+        first_name: "Test",
+        last_name: "Webhook",
+        phone: "+31600000000",
+        email: "test@example.com",
+        language: "nl",
+      };
+
       const samplePayload = {
         id: "test-" + crypto.randomUUID(),
         event_type: sampleType,
@@ -120,13 +148,43 @@ Deno.serve(async (req) => {
         created_at: new Date().toISOString(),
         test: true,
         payload: {
+          // Top-level enriched velden — zelfde shape als productie via dispatch_webhooks
+          reservation_id: "test-reservation-id",
+          reservation_date: reservationDate,
+          reservation_time: "19:30",
+          start_time: startIso,
+          end_time: null,
+          party_size: 2,
+          status: "confirmed",
+          confirmation_code: "TW-TEST",
+          manage_token: manageToken,
+          cancel_token: cancelToken,
+          manage_url: manageUrl,
+          cancel_url: cancelUrl,
+          confirm_url: confirmUrl,
+          special_requests: null,
+          occasion: null,
+          guest,
           reservation: {
             id: "test-reservation-id",
-            date: new Date().toISOString().slice(0, 10),
+            date: reservationDate,
             time: "19:30",
+            start_time: startIso,
             party_size: 2,
             status: "confirmed",
-            guest: { first_name: "Test", last_name: "Webhook", phone: "+31600000000", email: "test@example.com" },
+            confirmation_code: "TW-TEST",
+            manage_token: manageToken,
+            cancel_token: cancelToken,
+            manage_url: manageUrl,
+            cancel_url: cancelUrl,
+            confirm_url: confirmUrl,
+            guest,
+          },
+          restaurant: {
+            id: ep.restaurant_id,
+            name: restRow?.name ?? null,
+            slug: restRow?.slug ?? null,
+            timezone: restRow?.timezone ?? "Europe/Amsterdam",
           },
         },
       };
