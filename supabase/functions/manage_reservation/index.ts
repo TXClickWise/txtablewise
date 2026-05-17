@@ -516,7 +516,10 @@ async function doLargeGroupDecision(
     };
     const { data: updated, error } = await admin
       .from("reservations").update(patch).eq("id", current.id).select("*").single();
-    if (error) return json({ error: error.message }, 500);
+    if (error) {
+      console.error("approve_large_group failed", { reservation_id: current.id, patch, error });
+      return json({ error: error.message, reason_code: "unknown_error" }, 500);
+    }
     await logAudit(admin, current.restaurant_id, userId, "reservation.large_group_approved", current.id, current, updated);
     await emitEvent(admin, current.restaurant_id, "reservation.large_group_approved", {
       reservation_id: current.id, party_size: current.party_size, start_time: current.start_time,
