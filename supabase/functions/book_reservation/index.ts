@@ -230,9 +230,8 @@ Deno.serve(async (req) => {
       if (body.party_size >= largeGroupManualFrom) {
         requiresManualApproval = true;
         largeGroupStatus = "awaiting_approval";
-      } else {
-        largeGroupStatus = "approved";
       }
+      // Geen 'approved' meer voor groepen die geen interne goedkeuring nodig hebben — gewoon null laten.
     }
     if (manualApprovalSize !== null && body.party_size >= manualApprovalSize) {
       requiresManualApproval = true;

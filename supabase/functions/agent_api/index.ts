@@ -265,13 +265,26 @@ async function handle(
         const requiresManual = rb.requires_manual_approval ?? reservationObj?.requires_manual_approval ?? false;
         let messageForGuest: string | null = rb.message_for_guest ?? null;
         let nextAction: string = "confirm_booking";
+        // Lees de online limiet uit om dubbel zeker te zijn dat transfer alleen mag boven die limiet.
+        const { data: restRow } = await sb.from("restaurants")
+          .select("large_group_max_online_request, max_party_size_online")
+          .eq("id", keyRow.restaurant_id).maybeSingle();
+        const onlineHardCap: number = (restRow?.large_group_max_online_request ?? restRow?.max_party_size_online ?? 18) as number;
         if (r.status >= 400) {
           const ec = rb.error_code as string | undefined;
           if (ec === "large_group_required_manual") {
-            nextAction = (rb.transfer?.allowed === true) ? "transfer_call" : "promise_callback";
-            messageForGuest = rb.transfer?.allowed === true
+            // Extra guard: transfer alleen toestaan wanneer party_size daadwerkelijk
+            // boven de online limiet zit. Anders altijd callback/handmatige aanvraag.
+            const allowTransfer = partySize > onlineHardCap && rb.transfer?.allowed === true;
+            nextAction = allowTransfer ? "transfer_call" : "promise_callback";
+            messageForGuest = allowTransfer
               ? "Een moment, ik verbind u door met een collega."
-              : `Een collega belt u tijdens onze openingstijden${rb.transfer?.hours_label ? ` (${rb.transfer.hours_label})` : ""} persoonlijk terug op dit nummer.`;
+              : `Voor een groep van ${partySize} personen leg ik uw aanvraag voor aan een collega. Het team beoordeelt dit zo snel mogelijk en neemt alleen contact op als er iets aangepast moet worden — anders is de tafel voor u gereserveerd op ${dateStr} om ${timeStr}.`;
+            // Forceer transfer-veld op false als we hem niet mogen gebruiken zodat
+            // de voice-agent nooit zelf alsnog Call Transfer triggert.
+            if (!allowTransfer) {
+              rb.transfer = { ...(rb.transfer ?? {}), allowed: false };
+            }
           } else if (ec === "no_table_available" || ec === "slot_unavailable" || ec === "pacing_limit_reached") {
             nextAction = "offer_alternatives_or_waitlist";
             messageForGuest = "Helaas lukt dit specifieke tijdstip niet. Kunt u iets eerder of later? Anders zet ik u graag op onze wachtlijst.";

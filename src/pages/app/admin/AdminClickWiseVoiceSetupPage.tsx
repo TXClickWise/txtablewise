@@ -114,12 +114,14 @@ Je helpt bellers met drie dingen:
 - Sluit gastvrij af: "Geen probleem, fijn dat je het doorgaf. Tot een volgende keer."
 
 # Grote groepen — DE ENGINE BESLIST, JIJ NOOIT
-ABSOLUTE REGEL: roep NOOIT de action \`Call Transfer\` aan uit eigen initiatief. Ook niet bij 10, 12, 15 of 18 personen. Call Transfer mag ALLEEN als de engine je expliciet \`next_action: "transfer_call"\` teruggeeft.
+ABSOLUTE REGEL 1: roep NOOIT de action \`Call Transfer\` aan uit eigen initiatief. Niet bij 10, niet bij 12, niet bij 15, niet bij 18 personen. Call Transfer is GEEN tool die jij op basis van groepsgrootte mag kiezen.
+ABSOLUTE REGEL 2: voor ELKE groep t/m 18 personen roep je ALTIJD eerst \`reservation_request\` aan. De engine bepaalt zelf of doorverbinden überhaupt nodig is.
+ABSOLUTE REGEL 3: Call Transfer mag ALLEEN als de engine in haar response letterlijk \`next_action: "transfer_call"\` teruggeeft EN het veld \`transfer.allowed === true\` bevat. In alle andere gevallen: niet doorverbinden.
 
 Roep ALTIJD \`reservation_request\` aan, ongeacht groepsgrootte. De engine geeft één van vier mogelijkheden:
 - a) \`ok: true\`, \`requires_manual_approval: false\` → boeking is rond. Bevestig met \`message_for_guest\`.
 - b) \`ok: true\`, \`requires_manual_approval: true\` → reservering staat IN TableWise en wacht op interne goedkeuring. Bevestig LETTERLIJK met \`message_for_guest\`. NIET doorverbinden. Beloof GEEN SMS/WhatsApp/e-mail.
-- c) \`next_action: "transfer_call"\` (alleen bij groepen groter dan de online limiet, binnen openingstijden) → zeg \`message_for_guest\` en roep de action **Call Transfer** aan naar \`transfer.phone\`.
+- c) \`next_action: "transfer_call"\` (ALLEEN bij groepen groter dan de online limiet, binnen openingstijden) → zeg \`message_for_guest\` en roep de action **Call Transfer** aan naar \`transfer.phone\`.
 - d) \`next_action: "promise_callback"\` of \`"offer_alternatives_or_waitlist"\` of \`"apologize_and_callback"\` → zeg \`message_for_guest\` en roep \`log_call\` aan met de juiste outcome.
 
 # Toon
@@ -302,10 +304,12 @@ steps:
     type: ai_voice_agent
     prompt_ref: "TableWise Voice Host (system prompt)"
     tools:
-      - check_availability
-      - book_reservation
+      - reservation_request   # PRIMAIRE boekingstool — gebruik voor ELKE groepsgrootte
+      - check_availability    # optioneel — alleen voor "kan ik om X uur komen?"
       - cancel_reservation
       - log_call
+      # LET OP: GEEN 'Call Transfer' als autonome tool aan de agent koppelen.
+      # Transfer gebeurt alleen via workflow-conditie hieronder op response.next_action.
     on_intent_book:        goto: 2_book_done
     on_intent_cancel:      goto: 3_cancel_done
     on_intent_change:      goto: 4_change_done
@@ -571,7 +575,8 @@ X-Agent-Api-Key: ${apiKey}`;
             <p className="font-medium text-sm">Wat ga je opzetten?</p>
             <ul className="text-sm text-muted-foreground space-y-1 list-disc pl-4">
               <li>Eén Agent API key in TableWise per vestiging.</li>
-              <li>Vier tools (actions) in ClickWise: <code>check_availability</code>, <code>book_reservation</code>, <code>cancel_reservation</code>, <code>log_call</code>.</li>
+              <li>Vijf tools (actions) in ClickWise: <strong><code>reservation_request</code></strong> (primair), <code>check_availability</code> (optioneel), <code>book_reservation</code> (legacy), <code>cancel_reservation</code>, <code>log_call</code>.</li>
+              <li><strong>GEEN</strong> autonome <code>Call Transfer</code> action — alleen via workflow-conditie op <code>response.next_action == "transfer_call"</code>.</li>
               <li>Een set custom values + custom fields om gegevens vast te houden tijdens het gesprek.</li>
               <li>Eén AI voice agent met de TableWise system prompt.</li>
               <li>Eén workflow die het inkomende telefoongesprek routeert en SMS-bevestigingen stuurt.</li>
@@ -707,6 +712,14 @@ X-Agent-Api-Key: ${apiKey}`;
 
         {/* ACTIONS */}
         <TabsContent value="actions" className="space-y-4">
+          <Card className="p-3 border-destructive/40 bg-destructive/5">
+            <p className="text-sm">
+              <strong className="text-destructive">Belangrijk:</strong> koppel <strong>GEEN</strong>{" "}
+              <code>Call Transfer</code> als autonome tool aan deze voice agent. Als je dat doet, zal de LLM bij grote groepen (15, 18, ...)
+              zelf besluiten door te verbinden voordat TableWise überhaupt is aangeroepen. Plaats Call Transfer alleen in de workflow
+              achter een conditie op <code>response.next_action == "transfer_call"</code> én <code>response.transfer.allowed === true</code>.
+            </p>
+          </Card>
           <p className="text-sm text-muted-foreground">
             Vijf tools om aan de agent te koppelen. <strong><code>reservation_request</code> is de primaire boekingstool</strong> — die doet validatie + boeking in één call en levert <code>message_for_guest</code> + <code>next_action</code>. Alle 5 gebruiken dezelfde header <code>X-Agent-Api-Key</code> via <code>{`{{custom_values.tablewise_api_key}}`}</code>.
           </p>
