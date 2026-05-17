@@ -855,7 +855,7 @@ const SECTIONS: Section[] = [
                 name: "party_size",
                 type: "Number",
                 required: true,
-                description: "Aantal personen, geheel getal ≥ 1. De engine valideert zelf tegen max_party_size_online en large_group_max_online_request van het restaurant; bij overschrijding volgt TW_409_PARTY_TOO_LARGE (zie GROTE GROEPEN in de prompt).",
+                description: "Aantal personen, geheel getal ≥ 1. De engine valideert zelf tegen large_group_max_online_request; bij overschrijding volgt TW_409_PARTY_TOO_LARGE (zie GROTE GROEPEN in de prompt).",
                 example: "4",
               },
               {
