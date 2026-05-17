@@ -67,6 +67,20 @@ function normalizeGuest(payload: Record<string, any>): Record<string, any> {
   return { ...payload, guest };
 }
 
+// Blokkeer placeholder-namen die voice-agents invullen als ze vergeten te vragen.
+// Dwingt de LLM om expliciet naar de naam te vragen i.p.v. "Gast" in te vullen.
+const PLACEHOLDER_NAMES = new Set([
+  "gast", "guest", "klant", "customer", "onbekend", "unknown",
+  "anoniem", "anonymous", "test", "naam", "name", "n.v.t.", "nvt",
+  "-", "x", "xx", "xxx", "?", "??", "geen", "none", "null", "undefined",
+]);
+function isPlaceholderName(s: unknown): boolean {
+  if (typeof s !== "string") return true;
+  const v = s.trim().toLowerCase();
+  if (v.length < 2) return true;
+  return PLACEHOLDER_NAMES.has(v);
+}
+
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
@@ -124,14 +138,17 @@ function buildBookGuestResponse(
   } else if (requiresManual) {
     nextAction = "confirm_pending_approval";
     statusLabel = "voorlopig";
-    messageForGuest = `Let op — dit is nog geen definitieve reservering. Voor een groep van ${partySize} personen leg ik uw aanvraag voor aan een collega. Het team beoordeelt dit zo snel mogelijk en neemt alleen contact op als er iets aangepast moet worden — anders is uw aanvraag voor ${dateStr} om ${timeStr} genoteerd.`;
+    messageForGuest = `Ik heb uw aanvraag voor ${partySize} personen op ${dateStr} om ${timeStr} genoteerd. Dit is nog geen definitieve reservering — een collega bevestigt dit zo snel mogelijk per telefoon of WhatsApp.`;
   } else {
     messageForGuest = messageForGuest ?? `Top, jullie tafel staat genoteerd, tot ${dateStr} om ${timeStr}.`;
   }
 
+  const isConfirmed = responseOk && !requiresManual && r.status < 400;
+
   return {
     body: {
       ok: responseOk,
+      confirmed: isConfirmed,
       reservation_id: reservationObj?.id ?? rb.reservation_id ?? null,
       confirmation_code: reservationObj?.confirmation_code ?? rb.confirmation_code ?? null,
       requires_manual_approval: requiresManual,
@@ -141,8 +158,8 @@ function buildBookGuestResponse(
       transfer: rb.transfer ?? null,
       message_for_guest: messageForGuest,
       next_action: nextAction,
-      forbidden_phrases: requiresManual
-        ? ["geboekt", "bevestigd", "gelukt", "rond", "definitief"]
+      forbidden_phrases: !isConfirmed
+        ? ["geboekt", "bevestigd", "gelukt", "rond", "definitief", "akkoord", "goedgekeurd"]
         : [],
     },
     status: responseStatus,
@@ -322,7 +339,13 @@ async function handle(
           if (!(k in payload)) return json({ error: `Missing field: ${k}`, error_code: "missing_field", field: k }, 400);
         }
         const guest = payload.guest as Record<string, unknown> | undefined;
-        if (!guest?.first_name) return json({ error: "guest.first_name required", error_code: "missing_field", field: "guest.first_name" }, 400);
+        if (!guest?.first_name || isPlaceholderName(guest.first_name)) {
+          return json({
+            error: "Vraag altijd expliciet naar de voornaam van de gast. Vul nooit zelf 'Gast' of een andere placeholder in.",
+            error_code: "placeholder_name_blocked",
+            field: "guest.first_name",
+          }, 400);
+        }
         if (!guest.phone) return json({ error: "guest.phone required", error_code: "missing_field", field: "guest.phone" }, 400);
         if (!guest.email) guest.email = `voice-${Date.now()}@tablewise.local`;
         const bookBody = {
@@ -354,7 +377,13 @@ async function handle(
           if (!(k in payload)) return json({ error: `Missing field: ${k}`, error_code: "missing_field", field: k }, 400);
         }
         const guest = payload.guest as Record<string, unknown> | undefined;
-        if (!guest?.first_name) return json({ error: "guest.first_name required", error_code: "missing_field", field: "guest.first_name" }, 400);
+        if (!guest?.first_name || isPlaceholderName(guest.first_name)) {
+          return json({
+            error: "Vraag altijd expliciet naar de voornaam van de gast. Vul nooit zelf 'Gast' of een andere placeholder in.",
+            error_code: "placeholder_name_blocked",
+            field: "guest.first_name",
+          }, 400);
+        }
         if (!guest.email) guest.email = `voice-${Date.now()}@tablewise.local`;
         const bookBody = {
           ...payload,

@@ -1,49 +1,46 @@
-## Wat de screenshots bevestigen
+## Wat ik in de logs zie
 
-De ClickWise action `reservation_request` faalt met:
+Ik heb de laatste calls van vandaag uitgepluisd. Drie concrete dingen gaan mis:
 
-- `success: false`
-- `message: CAP action execution failed`
-- `status: 401`
-- `statusText: Unauthorized`
+1. **Geen naam gevraagd → fallback "Gast"**
+   - Call van 10:48 (16 personen, 19 mei) is opgeslagen met `first_name = "Gast"`. De voice agent vulde dat zelf in omdat hij niet om de naam vroeg. Onze `agent_api` accepteert elke niet-lege string als first_name, dus "Gast" / "Klant" / "Unknown" glipt erdoorheen.
+   - Resultaat: reservering aangemaakt zonder echte naam, en pas toen jij er zelf om vroeg vulde de agent het alsnog aan (10:48:43 update).
 
-Dit is geen fout in de reserveringsregels, groepsgrootte of handmatige goedkeuring. De action komt niet door de gateway heen en bereikt onze `agent_api` code niet. Daardoor zegt de agent daarna zelf “technisch probleem”.
+2. **Drempel "handmatige goedkeuring" staat te hoog**
+   - Restaurant heeft `max_party_size_online = 10`, maar `large_group_max_online_request = 18`. Onze code gebruikt nu de hoogste van die twee als grens. Dus 11–17 personen wordt automatisch bevestigd terwijl jij verwacht dat alles boven 10 een handmatige goedkeuring nodig heeft. Dit verklaart de 15-persoons reservering om 09:55 die "approved" werd.
+   - 16-persoons reservering van 10:48 ging wél naar `awaiting_approval` omdat hij boven 18 zou moeten zitten? Nee — die ging naar pending omdat `large_group_threshold = 8` en aparte flow. De logica is inconsistent tussen drempels.
 
-## Waarschijnlijke oorzaak
-
-De deployed `agent_api` endpoint verwacht nu een `Authorization` header voordat de functie mag starten. ClickWise stuurt alleen de custom header `X-Agent-Api-Key`, of stuurt die niet als echte HTTP-header door. Daardoor blokkeert de runtime de call met `UNAUTHORIZED_NO_AUTH_HEADER` vóórdat onze eigen API-key validatie kan draaien.
+3. **Agent zegt "reservering is gemaakt" bij pending**
+   - Onze `reservation_request` response geeft expliciet `"Let op — dit is nog geen definitieve reservering ..."` terug als `message_for_guest`. De ClickWise voice-prompt parafraseert dit en laat dat "nog geen definitieve" deel weg.
 
 ## Plan
 
-1. **`agent_api` opnieuw deployen met externe-tool toegang actief**
-   - Controleren dat `verify_jwt = false` voor `agent_api` daadwerkelijk actief is op de live deploy.
-   - Daarna `agent_api` opnieuw deployen.
-   - Dit blijft veilig: de functie valideert zelf server-side op `X-Agent-Api-Key` tegen de gehashte sleutel in de database.
+### 1. Naam echt verplicht maken (agent_api)
+- In `agent_api` bij `reservation_request` en `book_reservation`: reject lege of placeholder-namen (`gast`, `klant`, `unknown`, `anoniem`, `guest`, `customer`, `n.v.t.`, `-`, alleen 1 letter). Error code `missing_field` met `field: "guest.first_name"`, zodat de agent gedwongen wordt opnieuw te vragen.
+- Achternaam niet verplicht maken (voor telefonische context), maar wel doorvragen via prompt.
+- Idem voor `check_availability` — geen wijziging nodig; daar hoeft geen naam.
 
-2. **De live endpoint direct testen**
-   - Een echte `reservation_request` call uitvoeren op de gedeployde endpoint.
-   - Verwachte uitkomst: geen 401 meer; bij ontbrekende velden hooguit een normale function-response zoals `missing_field`, en bij volledige data een normale reserveringsresponse.
+### 2. Drempel handmatige goedkeuring uniform op `max_party_size_online`
+- In `agent_api` (en `book_reservation` waar nodig) `onlineHardCap` wijzigen naar: `max_party_size_online` als die gezet is, anders fallback naar `large_group_max_online_request`, anders 18.
+- Concreet effect: alles boven `max_party_size_online = 10` (dus 11+) krijgt `requires_manual_approval = true` en `large_group_status = awaiting_approval`. Geen automatische bevestiging meer voor groepen > online cap.
 
-3. **ClickWise setup-instructies harder maken**
-   - In de admin setup-pagina expliciet toevoegen dat elke action twee headers moet hebben:
-     - `X-Agent-Api-Key: {{custom_values.tablewise_api_key}}`
-     - `Content-Type: application/json`
-   - Als ClickWise/CAP alsnog een Authorization-header eist, toevoegen als fallback:
-     - `Authorization: Bearer {{custom_values.tablewise_api_key}}`
-   - Duidelijk markeren dat `tablewise_api_key` niet leeg mag zijn in de sub-account custom values.
+### 3. Response harder maken zodat agent niet "geboekt" kan zeggen
+- Bij pending/awaiting_approval response: `status` veld toevoegen (`"awaiting_approval"`), `confirmed: false`, en `message_for_guest` herschrijven naar één korte zin die de agent niet kán wegparafraseren: *"Ik heb uw aanvraag voor {date} om {time} voor {n} personen genoteerd. Een collega bevestigt dit zo snel mogelijk per telefoon of WhatsApp."*
+- Voice-prompt in ClickWise setup-pagina (`AdminClickWiseVoiceSetupPage` en `VoiceAgentHelp`) bijwerken: harde regel toevoegen "Lees ALTIJD letterlijk de `message_for_guest` voor. Zeg NOOIT 'reservering bevestigd' tenzij `confirmed: true`."
+- Voice-prompt: harde regel "Vraag ALTIJD eerst de voornaam (en zo mogelijk achternaam) voordat je een reservering aanmaakt. Vul NOOIT zelf 'Gast' of 'Klant' in."
 
-4. **Troubleshooting blok toevoegen voor exact deze fout**
-   - Bij `401 Unauthorized` / `CAP action execution failed`:
-     - controleer of `tablewise_api_key` gevuld is;
-     - controleer of de headers op de action staan, niet alleen in de body;
-     - controleer of `Authorization` fallback nodig is;
-     - daarna opnieuw testen met `reservation_request`.
+### 4. Logging & alert
+- In `agent_api`: bij geweigerde placeholder-naam log met action `reservation_request` en `error_code: "placeholder_name_blocked"` zodat we in `IntegrationLogsPage` precies kunnen zien hoe vaak de agent dit nog probeert.
 
-5. **Geen businesslogica wijzigen**
-   - Geen wijzigingen aan groepsdrempels.
-   - Geen wijzigingen aan handmatige goedkeuring.
-   - Geen wijzigingen aan tafellogica of beschikbaarheid.
+### 5. Quick scan rest van app
+- Voor de tweede vraag ("zelf auto-debuggen"): ik draai daarna de Supabase linter + database security scan en bekijk de recente fail/warning-logs in `integration_logs` van de afgelopen 7 dagen om andere issues te vinden (webhook-fouten, 5xx in book_reservation, etc.). Per gevonden issue korte beslissing: nu fixen of apart melden. Ik raak alleen écht foute dingen aan, geen refactors zonder reden.
+
+## Wat ik bewust NIET doe
+- Geen wijzigingen aan ClickWise CAP action-headers (die fix van vorige ronde laat ik staan).
+- Geen wijziging aan de algemene tafel-logica of pacing.
+- Geen wijziging aan businessregels die niet aantoonbaar fout zijn.
 
 ## Acceptatiecheck
-
-Na implementatie moet een ClickWise testcall niet meer eindigen op `401 Unauthorized`. Voor 16 personen moet de response daarna weer een normale `message_for_guest` teruggeven, met “nog geen definitieve reservering” wanneer handmatige goedkeuring nodig is.
+- Bel-test 16 personen op datum X → agent vraagt naam → response geeft `awaiting_approval` + duidelijke "nog niet bevestigd" zin → reservering staat in `Grote groepen` lijst, niet automatisch bevestigd.
+- Bel-test 6 personen → normaal proces, naam wordt gevraagd, response `confirmed: true`.
+- Integration logs: geen `first_name = "Gast"` entries meer voor nieuwe calls.
