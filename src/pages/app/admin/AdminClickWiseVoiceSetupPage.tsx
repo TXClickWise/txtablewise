@@ -145,7 +145,7 @@ Roep ALTIJD \`log_call\` aan met de samenvatting, outcome (booked/changed/cancel
 
   const checkAvailJson = `{
   "name": "check_availability",
-  "description": "Controleer of een tafel beschikbaar is op een datum/tijd voor een aantal personen. Roep dit aan VOORDAT je gaat boeken.",
+  "description": "Optioneel — alleen als de beller eerst wil weten of een tijdstip nog kan zonder direct te boeken. Voor een echte boeking gebruik je reservation_request.",
   "url": "${FN_BASE_VAR}/check_availability",
   "method": "POST",
   "headers": {
@@ -154,13 +154,41 @@ Roep ALTIJD \`log_call\` aan met de samenvatting, outcome (booked/changed/cancel
   },
   "body": {
     "date": "{{date}}",
-    "party_size": {{party_size}}
+    "party_size": {{party_size}},
+    "preferred_time": "{{time}}"
+  }
+}`;
+
+  const reservationRequestJson = `{
+  "name": "reservation_request",
+  "description": "DE PRIMAIRE TOOL VOOR ELKE NIEUWE BOEKING (1 tot 18 personen). Eén call: valideren + boeken. Roep dit aan NA mondelinge bevestiging. De engine geeft je 'message_for_guest' en 'next_action' — zeg LETTERLIJK message_for_guest en volg next_action.",
+  "url": "${FN_BASE_VAR}/reservation_request",
+  "method": "POST",
+  "headers": {
+    "Content-Type": "application/json",
+    "X-Agent-Api-Key": "{{custom_values.tablewise_api_key}}"
+  },
+  "body": {
+    "date": "{{date}}",
+    "time": "{{time}}",
+    "party_size": {{party_size}},
+    "guest": {
+      "first_name": "{{contact.first_name}}",
+      "last_name": "{{contact.last_name}}",
+      "phone": "{{contact.phone}}",
+      "email": "{{contact.email}}"
+    },
+    "special_requests": "{{special_requests}}",
+    "source_metadata": {
+      "agent_provider": "clickwise",
+      "external_call_id": "{{call.id}}"
+    }
   }
 }`;
 
   const bookJson = `{
   "name": "book_reservation",
-  "description": "Boek een reservering. Roep dit pas aan NA mondelinge bevestiging door de gast.",
+  "description": "LET OP: gebruik bij voorkeur reservation_request. Deze tool is alleen voor edge cases waarin je 100% zeker weet dat availability al klopt en je het book-only contract wil.",
   "url": "${FN_BASE_VAR}/book_reservation",
   "method": "POST",
   "headers": {
