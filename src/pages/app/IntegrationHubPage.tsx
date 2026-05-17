@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { useRestaurant } from "@/hooks/useRestaurant";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,9 +10,13 @@ import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { PageHeader } from "@/components/PageHeader";
 import { toast } from "sonner";
-import { Plug, Webhook, Bot, KeyRound, FlaskConical, Plus, Trash2, Send, Eye, EyeOff, Phone } from "lucide-react";
+import { Plug, Webhook, Bot, KeyRound, FlaskConical, Plus, Trash2, Send, Eye, EyeOff, Phone, AlertTriangle } from "lucide-react";
 import {
   WEBHOOK_EVENTS, listWebhookEndpoints, createWebhookEndpoint, updateWebhookEndpoint,
   deleteWebhookEndpoint, testWebhook, testAvailability, testBook,
@@ -85,13 +89,37 @@ export default function IntegrationHubPage() {
     }
   };
 
-  const handleTestWebhook = async (id: string) => {
+  // Rate-limit per endpoint: 30s tussen test-fires (om dubbele SMSes te voorkomen).
+  const lastFireRef = useRef<Record<string, number>>({});
+  const [confirmEndpointId, setConfirmEndpointId] = useState<string | null>(null);
+  const [previewPayload, setPreviewPayload] = useState<unknown>(null);
+
+  const fireTestWebhook = async (id: string) => {
+    const last = lastFireRef.current[id] ?? 0;
+    const secsLeft = Math.ceil((last + 30_000 - Date.now()) / 1000);
+    if (secsLeft > 0) {
+      toast.error(`Even wachten — nog ${secsLeft}s tot je opnieuw kan testen (voorkomt dubbele SMS/e-mail).`);
+      return;
+    }
+    lastFireRef.current[id] = Date.now();
     setBusy(true);
     const r = await testWebhook(id);
     setBusy(false);
-    if (r.ok) toast.success(`Webhook test geslaagd (HTTP ${r.status})`);
+    if (r.ok) toast.success(`Webhook test geslaagd (HTTP ${r.status}). ClickWise heeft het event ontvangen.`);
     else toast.error(`Webhook test mislukt: ${r.error ?? `HTTP ${r.status ?? "?"}`}`);
     load();
+  };
+
+  const handlePreviewPayload = async (id: string) => {
+    setBusy(true);
+    const r = await testWebhook(id, undefined, true);
+    setBusy(false);
+    if (!r.ok) {
+      toast.error(`Preview mislukt: ${r.error ?? "?"}`);
+      return;
+    }
+    setPreviewPayload(r.sent_payload ?? null);
+    toast.success("Preview opgehaald — er is niets verzonden naar ClickWise.");
   };
 
   const handleDelete = async (id: string) => {
@@ -273,8 +301,11 @@ export default function IntegrationHubPage() {
                           </Button>
                         </div>
                       </div>
-                      <div className="flex gap-1">
-                        <Button size="sm" variant="outline" disabled={busy} onClick={() => handleTestWebhook(ep.id)}>
+                      <div className="flex gap-1 flex-wrap">
+                        <Button size="sm" variant="outline" disabled={busy} onClick={() => handlePreviewPayload(ep.id)} title="Toont alleen de payload — verstuurt niets naar ClickWise">
+                          <Eye className="h-3 w-3 mr-1" />Preview
+                        </Button>
+                        <Button size="sm" variant="outline" disabled={busy} onClick={() => setConfirmEndpointId(ep.id)}>
                           <Send className="h-3 w-3 mr-1" />Test
                         </Button>
                         <Button size="sm" variant="ghost" onClick={() => setEditing(ep)}>Bewerken</Button>
@@ -383,6 +414,53 @@ export default function IntegrationHubPage() {
         onClose={() => { setEditing(null); setCreating(false); }}
         onSave={handleSaveEndpoint}
       />
+
+      <AlertDialog open={!!confirmEndpointId} onOpenChange={(o) => !o && setConfirmEndpointId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-4 w-4 text-amber-500" />
+              Echt test-event versturen?
+            </AlertDialogTitle>
+            <AlertDialogDescription className="space-y-2">
+              <span className="block">
+                Dit verstuurt een <strong>echt</strong> <code>reservation.created</code> webhook-event naar ClickWise.
+                Afhankelijk van je automation kan dit een <strong>echte SMS, WhatsApp of e-mail</strong> richting het
+                testtelefoonnummer veroorzaken.
+              </span>
+              <span className="block text-xs text-muted-foreground">
+                Wil je alleen de payload-structuur zien? Gebruik dan de <strong>Preview</strong>-knop — die verstuurt niets.
+              </span>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annuleren</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                const id = confirmEndpointId;
+                setConfirmEndpointId(null);
+                if (id) fireTestWebhook(id);
+              }}
+            >
+              Ja, verstuur test-event
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <Sheet open={!!previewPayload} onOpenChange={(o) => !o && setPreviewPayload(null)}>
+        <SheetContent className="w-full sm:max-w-2xl overflow-y-auto">
+          <SheetHeader>
+            <SheetTitle>Preview webhook-payload</SheetTitle>
+          </SheetHeader>
+          <p className="text-xs text-muted-foreground mt-2">
+            Dit is de exacte JSON die TableWise naar je webhook-URL zou sturen. Er is <strong>niets</strong> verzonden naar ClickWise.
+          </p>
+          <pre className="text-xs bg-muted/40 rounded p-3 mt-3 overflow-auto whitespace-pre-wrap">
+            {previewPayload ? JSON.stringify(previewPayload, null, 2) : ""}
+          </pre>
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }

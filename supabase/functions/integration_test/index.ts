@@ -100,7 +100,7 @@ Deno.serve(async (req) => {
   try {
     // ----- WEBHOOK TEST -----
     if (action === "webhook") {
-      const { endpoint_id, event_type } = payload as { endpoint_id?: string; event_type?: string };
+      const { endpoint_id, event_type, dry_run } = payload as { endpoint_id?: string; event_type?: string; dry_run?: boolean };
       if (!endpoint_id) return json({ error: "endpoint_id verplicht" }, 400);
       const { data: ep } = await sb
         .from("webhook_endpoints")
@@ -201,6 +201,25 @@ Deno.serve(async (req) => {
       let status = 0;
       let respBody = "";
       let errorMsg: string | null = null;
+
+      if (dry_run) {
+        // Dry-run: niets versturen, alleen de payload teruggeven en als preview opslaan.
+        respBody = "(dry-run, niet verzonden naar ClickWise)";
+        await sb.from("webhook_endpoints").update({
+          last_test_at: new Date().toISOString(),
+          last_test_status: "dry_run",
+          last_test_response_code: null,
+          last_test_response_body: respBody,
+        }).eq("id", ep.id);
+        return json({
+          ok: true,
+          dry_run: true,
+          status: 0,
+          response_body: respBody,
+          sent_payload: samplePayload,
+        });
+      }
+
       try {
         const resp = await fetch(ep.url, {
           method: "POST", headers, body, signal: AbortSignal.timeout(10_000),

@@ -585,6 +585,18 @@ const SECTIONS: Section[] = [
 {`Hallo {{contact.first_name}}, uw reservering bij {{location.name}} op {{contact.tw_reservation_date}} om {{contact.tw_reservation_time}} voor {{contact.tw_party_size}} personen is bevestigd. Wijzigen of annuleren? Bel ons of antwoord op deze sms.`}
           </CodeBlock>
         </div>
+        <Callout tone="warn" title="Filter test-events (anders gaan er echte SMSes uit bij elke 'Test'-klik)">
+          <p>
+            Elk test-event uit TableWise heeft <code>{`{{inboundWebhookRequest.payload.test}}`}</code> = <code>true</code>
+            en de header <code>X-TableWise-Test: true</code>. Voeg vóór de eerste verzendactie (SMS/WhatsApp/E-mail) een
+            <strong> If/Else</strong> toe met conditie <em>"Inbound Webhook Trigger → payload.test"</em>
+            <strong> Is Equal To</strong> <code>true</code> → tak <strong>End Workflow</strong>. In de
+            <em> Else</em>-tak hang je je gewone Send-acties.
+          </p>
+          <p className="mt-1 text-xs">
+            Zonder dit filter triggert elke klik op <strong>Test</strong> in TableWise een echte SMS naar het testtelefoonnummer.
+          </p>
+        </Callout>
       </div>
     ),
   },

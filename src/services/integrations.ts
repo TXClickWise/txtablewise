@@ -74,12 +74,12 @@ export async function deleteWebhookEndpoint(id: string) {
 
 type TestResult = { ok: boolean; status?: number; response?: unknown; response_body?: string; error?: string; sent_payload?: unknown };
 
-export async function testWebhook(endpointId: string, eventType?: WebhookEvent): Promise<TestResult> {
+export async function testWebhook(endpointId: string, eventType?: WebhookEvent, dryRun?: boolean): Promise<TestResult & { dry_run?: boolean }> {
   const { data, error } = await supabase.functions.invoke("integration_test/webhook", {
-    body: { endpoint_id: endpointId, event_type: eventType },
+    body: { endpoint_id: endpointId, event_type: eventType, dry_run: !!dryRun },
   });
   if (error) return { ok: false, error: error.message };
-  return data as TestResult;
+  return data as TestResult & { dry_run?: boolean };
 }
 
 export async function testAvailability(restaurantId: string, date: string, party_size: number): Promise<TestResult> {
