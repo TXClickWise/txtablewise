@@ -693,7 +693,7 @@ const SECTIONS: Section[] = [
             <li>Voeg een action toe van het type <strong>Call Transfer</strong> (of <em>Live Transfer</em>).</li>
             <li>Naam: <code>Call Transfer</code> (exact zoals in de prompt).</li>
             <li>Transfer Number: gebruik <strong>het veld <code>transfer.phone</code> uit de tool-response</strong>
-              van create_reservation (de agent geeft het door bij het aanroepen van de action). Hardcoderen of
+              van book_reservation (de agent geeft het door bij het aanroepen van de action). Hardcoderen of
               via een custom value pushen is niet langer nodig.</li>
           </ol>
         </div>
