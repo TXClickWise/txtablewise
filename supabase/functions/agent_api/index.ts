@@ -374,7 +374,13 @@ async function handle(
           if (!(k in payload)) return json({ error: `Missing field: ${k}`, error_code: "missing_field", field: k }, 400);
         }
         const guest = payload.guest as Record<string, unknown> | undefined;
-        if (!guest?.first_name) return json({ error: "guest.first_name required", error_code: "missing_field", field: "guest.first_name" }, 400);
+        if (!guest?.first_name || isPlaceholderName(guest.first_name)) {
+          return json({
+            error: "Vraag altijd expliciet naar de voornaam van de gast. Vul nooit zelf 'Gast' of een andere placeholder in.",
+            error_code: "placeholder_name_blocked",
+            field: "guest.first_name",
+          }, 400);
+        }
         if (!guest.email) guest.email = `voice-${Date.now()}@tablewise.local`;
         const bookBody = {
           ...payload,
