@@ -652,12 +652,16 @@ const SECTIONS: Section[] = [
           naam in. Vervang ook <code>Europe/Amsterdam</code> door <code>{`{{location.timezone}}`}</code>
           als je meerdere tijdzones gebruikt.
         </p>
-        <Callout tone="info" title="Max. groepsgrootte komt uit TableWise">
-          De grens komt automatisch uit TableWise (<code>max_party_size_online</code>) — je
-          hoeft hem niet als Custom Value te onderhouden. De engine weigert te grote groepen
-          met <code>TW_409_PARTY_TOO_LARGE</code>; de telefoon-agent zegt dan dat een collega
-          persoonlijk terugbelt en boekt zelf <strong>niet</strong>. Pas de grens aan in
-          TableWise → <strong>Instellingen → Reserveringsregels</strong>.
+        <Callout tone="info" title="Groepsgrootte — 3-traps logica (engine bepaalt)">
+          De agent probeert ALTIJD eerst te boeken. De TableWise-engine bepaalt het vervolg:
+          <ul className="list-disc list-inside mt-1 space-y-0.5">
+            <li>≤ <code>max_party_size_online</code> → direct bevestigd.</li>
+            <li>Tot <code>large_group_max_online_request</code> → boeking met
+              <code>requires_manual_approval=true</code> (verschijnt in app onder "Grote groepen — te beoordelen").</li>
+            <li>Daarboven → <code>TW_409_PARTY_TOO_LARGE</code>; de agent doet Call Transfer (binnen openingstijden) of belooft een callback.
+              Setup → zie sectie <strong>7b. Call Transfer instellen</strong>.</li>
+          </ul>
+          Pas de grenzen aan in TableWise → <strong>Instellingen → Reserveringsregels</strong>.
         </Callout>
         <Callout tone="info" title="Meertalig — language-parameter">
           De prompt stuurt bij elke tool-call <code>language</code> mee (<code>nl</code> /
