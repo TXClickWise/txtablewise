@@ -361,10 +361,11 @@ function ConfigChip({ label, value }: { label: string; value: string }) {
 }
 
 function GroupReservationRow({
-  r, depositFrom, actions, onOpen,
+  r, depositFrom, actions, onOpen, pendingPill,
 }: {
   r: GroupReservation; depositFrom: number;
   actions: React.ReactNode; onOpen: () => void;
+  pendingPill?: boolean;
 }) {
   const guest = r.guests;
   const tables = (r.reservation_tables ?? []).map((rt) => rt?.tables?.label).filter(Boolean).join(", ");
@@ -376,6 +377,11 @@ function GroupReservationRow({
           <span className="font-medium">
             {guest?.first_name ?? "Gast"} {guest?.last_name ?? ""}
           </span>
+          {pendingPill && (
+            <span className="inline-flex items-center rounded-md border bg-warning/15 text-warning border-warning/30 px-1.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide">
+              Voorlopig
+            </span>
+          )}
           <span className="inline-flex items-center gap-1 rounded-md border bg-warning/10 text-warning border-warning/25 px-1.5 py-0.5 text-[11px]">
             <Users className="h-3 w-3" /> {r.party_size}p
           </span>
