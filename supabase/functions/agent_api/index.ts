@@ -566,13 +566,47 @@ async function handle(
       }
       case "find_reservation": {
         if (!keyRow.scopes.includes("availability")) return json({ error: "Scope missing: availability", error_code: "auth_scope_missing", field: "availability" }, 403);
-        const { phone, date, first_name, last_name, time } = payload as {
-          phone?: string; date?: string; first_name?: string; last_name?: string; time?: string;
+        const { phone, date, first_name, last_name, time, confirmation_code } = payload as {
+          phone?: string; date?: string; first_name?: string; last_name?: string; time?: string; confirmation_code?: string;
         };
         const hasPhone = !!phone && phone.trim().length > 0;
         const hasLast = !!last_name && last_name.trim().length > 0;
         const hasFirstPlusDate = !!first_name && first_name.trim().length > 0 && !!date;
-        if (!hasPhone && !hasLast && !hasFirstPlusDate) {
+        const codeRaw = (confirmation_code ?? "").trim().toUpperCase();
+        const hasCode = /^[A-Z0-9]{3,12}$/.test(codeRaw);
+
+        if (hasCode) {
+          const { data: directMatch } = await sb.from("reservations")
+            .select("id, reservation_date, start_time, party_size, status, guest_id, confirmation_code")
+            .eq("restaurant_id", keyRow.restaurant_id)
+            .eq("confirmation_code", codeRaw)
+            .in("status", ["confirmed", "pending", "seated"])
+            .limit(1);
+          if (directMatch && directMatch.length > 0) {
+            const rr = directMatch[0];
+            const { data: guestRow } = await sb.from("guests")
+              .select("first_name").eq("id", rr.guest_id ?? "").maybeSingle();
+            return json(guestSafeResponse("find_reservation", true, {
+              matches: [{
+                reservation_id: rr.id,
+                date: rr.reservation_date,
+                time: rr.start_time,
+                party_size: rr.party_size,
+                status: rr.status,
+                guest_first_name: guestRow?.first_name ?? null,
+              }],
+              message_for_guest: `Ik heb je reservering gevonden voor ${rr.party_size} personen.`,
+            }));
+          }
+          if (!hasPhone && !hasLast && !hasFirstPlusDate) {
+            return json(guestSafeResponse("find_reservation", true, {
+              matches: [],
+              message_for_guest: "Ik kan geen reservering vinden met die code. Kunt u uw naam of telefoonnummer doorgeven?",
+            }));
+          }
+        }
+
+        if (!hasPhone && !hasLast && !hasFirstPlusDate && !hasCode) {
           return json({ error: "Geef telefoon, of achternaam, of voornaam + datum", error_code: "missing_field", field: "phone" }, 400);
         }
         // Find guests in this restaurant matching phone or name
