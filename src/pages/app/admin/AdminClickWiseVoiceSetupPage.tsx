@@ -708,29 +708,35 @@ X-Agent-Api-Key: ${apiKey}`;
         {/* ACTIONS */}
         <TabsContent value="actions" className="space-y-4">
           <p className="text-sm text-muted-foreground">
-            Vier tools om aan de agent te koppelen. Alle 4 gebruiken dezelfde header <code>X-Agent-Api-Key</code> via <code>{`{{custom_values.tablewise_api_key}}`}</code>.
+            Vijf tools om aan de agent te koppelen. <strong><code>reservation_request</code> is de primaire boekingstool</strong> — die doet validatie + boeking in één call en levert <code>message_for_guest</code> + <code>next_action</code>. Alle 5 gebruiken dezelfde header <code>X-Agent-Api-Key</code> via <code>{`{{custom_values.tablewise_api_key}}`}</code>.
           </p>
-          <Accordion type="multiple" defaultValue={["check"]}>
+          <Accordion type="multiple" defaultValue={["reqres"]}>
+            <AccordionItem value="reqres">
+              <AccordionTrigger>1. reservation_request <span className="ml-2 text-xs text-primary">aanbevolen voor boeken</span></AccordionTrigger>
+              <AccordionContent>
+                <CopyBlock label="Action JSON" value={reservationRequestJson} lang="json" />
+              </AccordionContent>
+            </AccordionItem>
             <AccordionItem value="check">
-              <AccordionTrigger>1. check_availability</AccordionTrigger>
+              <AccordionTrigger>2. check_availability <span className="ml-2 text-xs text-muted-foreground">optioneel</span></AccordionTrigger>
               <AccordionContent>
                 <CopyBlock label="Action JSON" value={checkAvailJson} lang="json" />
               </AccordionContent>
             </AccordionItem>
             <AccordionItem value="book">
-              <AccordionTrigger>2. book_reservation</AccordionTrigger>
+              <AccordionTrigger>3. book_reservation <span className="ml-2 text-xs text-muted-foreground">legacy</span></AccordionTrigger>
               <AccordionContent>
                 <CopyBlock label="Action JSON" value={bookJson} lang="json" />
               </AccordionContent>
             </AccordionItem>
             <AccordionItem value="cancel">
-              <AccordionTrigger>3. cancel_reservation</AccordionTrigger>
+              <AccordionTrigger>4. cancel_reservation</AccordionTrigger>
               <AccordionContent>
                 <CopyBlock label="Action JSON" value={cancelJson} lang="json" />
               </AccordionContent>
             </AccordionItem>
             <AccordionItem value="log">
-              <AccordionTrigger>4. log_call</AccordionTrigger>
+              <AccordionTrigger>5. log_call</AccordionTrigger>
               <AccordionContent>
                 <CopyBlock label="Action JSON" value={logCallJson} lang="json" />
               </AccordionContent>
