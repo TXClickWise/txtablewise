@@ -62,7 +62,14 @@ Deno.serve(async (req) => {
 
     const onlineHardCap: number = restaurant.large_group_max_online_request ?? restaurant.max_party_size_online;
     if (body.party_size > onlineHardCap && body.channel !== "manager" && body.channel !== "walk_in") {
-      return json({ error: "Party size exceeds online limit", error_code: "large_group_required_manual", field: "party_size", large_group: true }, 400);
+      const transferInfo = await computeTransferAvailability(supabase, restaurant);
+      return json({
+        error: "Party size exceeds online limit",
+        error_code: "large_group_required_manual",
+        field: "party_size",
+        large_group: true,
+        transfer: transferInfo,
+      }, 400);
     }
     const extraInfoFrom: number | null = restaurant.large_group_extra_info_from ?? null;
     if (extraInfoFrom !== null && body.party_size >= extraInfoFrom && body.channel !== "manager" && body.channel !== "walk_in") {
@@ -412,4 +419,64 @@ function generateCode(): string {
   let s = "";
   for (let i = 0; i < 8; i++) s += chars[Math.floor(Math.random() * chars.length)];
   return s;
+}
+
+const WEEKDAY_KEYS = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"] as const;
+
+/**
+ * Server-side beslissing of de voice agent NU mag doorverbinden bij een te grote groep.
+ * Voorkomt dat de LLM zelf "huidige tijd" en vrije-tekst venster moet interpreteren.
+ */
+async function computeTransferAvailability(
+  supabase: ReturnType<typeof createClient>,
+  restaurant: any,
+): Promise<{
+  allowed: boolean;
+  phone: string | null;
+  hours_label: string | null;
+  reason: "no_phone" | "no_hours" | "closed_day" | "outside_hours" | null;
+  current_time_local: string | null;
+}> {
+  const phone: string | null = restaurant.transfer_phone ?? null;
+  const start: string | null = restaurant.transfer_hours_start ?? null;
+  const end: string | null = restaurant.transfer_hours_end ?? null;
+  const tz: string = restaurant.timezone || "Europe/Amsterdam";
+
+  // Format current local time in restaurant tz
+  const fmt = new Intl.DateTimeFormat("nl-NL", {
+    timeZone: tz, hour: "2-digit", minute: "2-digit", weekday: "short", hour12: false,
+  });
+  const parts = fmt.formatToParts(new Date());
+  const hh = parts.find((p) => p.type === "hour")?.value ?? "00";
+  const mm = parts.find((p) => p.type === "minute")?.value ?? "00";
+  const currentLocal = `${hh}:${mm}`;
+
+  // Weekday index in tz (0=sun…6=sat)
+  const wdFmt = new Intl.DateTimeFormat("en-US", { timeZone: tz, weekday: "short" });
+  const wdShort = wdFmt.format(new Date()).toLowerCase().slice(0, 3); // mon, tue …
+  const weekdayKey = wdShort === "sun" ? "sun" : wdShort;
+
+  const hoursLabel = start && end ? `${start.slice(0, 5)}–${end.slice(0, 5)}` : null;
+
+  if (!phone) return { allowed: false, phone: null, hours_label: hoursLabel, reason: "no_phone", current_time_local: currentLocal };
+  if (!start || !end) return { allowed: false, phone, hours_label: null, reason: "no_hours", current_time_local: currentLocal };
+
+  // Opening hours check: if today explicitly is_closed → don't transfer
+  try {
+    const { data: oh } = await supabase
+      .from("opening_hours")
+      .select("weekday, is_closed")
+      .eq("restaurant_id", restaurant.id)
+      .eq("weekday", weekdayKey)
+      .maybeSingle();
+    if (oh?.is_closed) {
+      return { allowed: false, phone, hours_label: hoursLabel, reason: "closed_day", current_time_local: currentLocal };
+    }
+  } catch { /* opening_hours absent: don't block */ }
+
+  // Compare HH:MM strings
+  const inWindow = currentLocal >= start.slice(0, 5) && currentLocal <= end.slice(0, 5);
+  if (!inWindow) return { allowed: false, phone, hours_label: hoursLabel, reason: "outside_hours", current_time_local: currentLocal };
+
+  return { allowed: true, phone, hours_label: hoursLabel, reason: null, current_time_local: currentLocal };
 }

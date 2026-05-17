@@ -27,6 +27,9 @@ type Form = {
   large_group_confirmation_text: string;
   large_group_cancellation_terms: string;
   noshow_deposit_rules_prepared: boolean;
+  transfer_phone: string;
+  transfer_hours_start: string;
+  transfer_hours_end: string;
 };
 
 const defaults: Form = {
@@ -42,6 +45,9 @@ const defaults: Form = {
   large_group_confirmation_text: "",
   large_group_cancellation_terms: "",
   noshow_deposit_rules_prepared: false,
+  transfer_phone: "",
+  transfer_hours_start: "",
+  transfer_hours_end: "",
 };
 
 const LargeGroupSettings = () => {
@@ -60,7 +66,8 @@ const LargeGroupSettings = () => {
           large_group_threshold, large_group_extra_minutes, large_group_manual_approval_from,
           large_group_deposit_recommended_from, large_group_auto_book_max, large_group_default_status,
           large_group_confirmation_text, large_group_cancellation_terms, noshow_deposit_rules_prepared,
-          large_group_extra_info_from, large_group_max_online_request, extra_large_group_threshold
+          large_group_extra_info_from, large_group_max_online_request, extra_large_group_threshold,
+          transfer_phone, transfer_hours_start, transfer_hours_end
         `)
         .eq("id", restaurantId).maybeSingle();
       if (data) {
@@ -77,6 +84,9 @@ const LargeGroupSettings = () => {
           large_group_confirmation_text: data.large_group_confirmation_text ?? "",
           large_group_cancellation_terms: data.large_group_cancellation_terms ?? "",
           noshow_deposit_rules_prepared: data.noshow_deposit_rules_prepared ?? false,
+          transfer_phone: (data as any).transfer_phone ?? "",
+          transfer_hours_start: ((data as any).transfer_hours_start ?? "").slice(0, 5),
+          transfer_hours_end: ((data as any).transfer_hours_end ?? "").slice(0, 5),
         });
       }
       setLoading(false);
@@ -96,6 +106,9 @@ const LargeGroupSettings = () => {
       large_group_extra_info_from: form.large_group_extra_info_from === "" ? null : Number(form.large_group_extra_info_from),
       large_group_max_online_request: form.large_group_max_online_request === "" ? null : Number(form.large_group_max_online_request),
       extra_large_group_threshold: form.extra_large_group_threshold === "" ? null : Number(form.extra_large_group_threshold),
+      transfer_phone: form.transfer_phone.trim() === "" ? null : form.transfer_phone.trim(),
+      transfer_hours_start: form.transfer_hours_start === "" ? null : form.transfer_hours_start,
+      transfer_hours_end: form.transfer_hours_end === "" ? null : form.transfer_hours_end,
     };
     const { error } = await supabase.from("restaurants").update(payload as any).eq("id", restaurantId);
     setSaving(false);
@@ -204,6 +217,34 @@ const LargeGroupSettings = () => {
               onCheckedChange={(v) => setForm({ ...form, noshow_deposit_rules_prepared: v })}
             />
           </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardContent className="p-5 space-y-4">
+          <h3 className="font-medium">Call Transfer bij te grote groepen</h3>
+          <p className="text-xs text-muted-foreground inline-flex items-start gap-1">
+            <Info className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+            Wanneer een beller via de AI Voice Agent een groep aanvraagt die groter is dan "Maximale online groepsaanvraag", verbindt de agent door naar dit nummer — maar alléén binnen het venster hieronder. Buiten dit venster (of op gesloten dagen) belooft de agent een terugbelafspraak.
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <Field label="Doorverbind-nummer" hint="E.164 formaat, bv. +31612345678.">
+              <Input type="tel" placeholder="+31612345678"
+                value={form.transfer_phone}
+                onChange={(e) => setForm({ ...form, transfer_phone: e.target.value })} />
+            </Field>
+            <Field label="Venster start" hint="Vanaf deze tijd mag worden doorverbonden.">
+              <Input type="time" value={form.transfer_hours_start}
+                onChange={(e) => setForm({ ...form, transfer_hours_start: e.target.value })} />
+            </Field>
+            <Field label="Venster eind" hint="Tot deze tijd mag worden doorverbonden.">
+              <Input type="time" value={form.transfer_hours_end}
+                onChange={(e) => setForm({ ...form, transfer_hours_end: e.target.value })} />
+            </Field>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            De beslissing wordt server-side genomen in jouw tijdzone — de AI kan dus niet per ongeluk midden in de nacht doorverbinden.
+          </p>
         </CardContent>
       </Card>
 

@@ -1845,6 +1845,9 @@ export type Database = {
           slot_duration_minutes: number
           slug: string
           timezone: string
+          transfer_hours_end: string | null
+          transfer_hours_start: string | null
+          transfer_phone: string | null
           trial_ends_at: string | null
           updated_at: string
           waitlist_allow_preferred_times: boolean
@@ -1944,6 +1947,9 @@ export type Database = {
           slot_duration_minutes?: number
           slug: string
           timezone?: string
+          transfer_hours_end?: string | null
+          transfer_hours_start?: string | null
+          transfer_phone?: string | null
           trial_ends_at?: string | null
           updated_at?: string
           waitlist_allow_preferred_times?: boolean
@@ -2043,6 +2049,9 @@ export type Database = {
           slot_duration_minutes?: number
           slug?: string
           timezone?: string
+          transfer_hours_end?: string | null
+          transfer_hours_start?: string | null
+          transfer_phone?: string | null
           trial_ends_at?: string | null
           updated_at?: string
           waitlist_allow_preferred_times?: boolean

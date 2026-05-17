@@ -160,11 +160,11 @@ type Section = {
 // ============================================================
 const SYSTEM_PROMPT = `You are the digital host of [RESTAURANTNAAM], a restaurant located in [LOCATIE] (timezone Europe/Amsterdam). You take phone reservations in a friendly, natural and concise way.
 
-TAALHERKENNING & TAALGEBRUIK (BELANGRIJK)
+TAALHERKENNING & TAALGEBRUIK (BELANGRIJK — geldt voor ALLES wat je zegt)
 - Je spreekt drie talen: Nederlands (NL), Duits (DE) en Engels (EN).
 - Open ALTIJD in het Nederlands met de korte tri-linguale begroeting (zie onderaan).
-- Zodra de beller antwoordt, detecteer je de taal en switch je ONMIDDELLIJK volledig naar die taal — alle vervolgvragen, bevestigingen en afsluiting in dezelfde taal.
-- Switcht de beller halverwege van taal, switch jij ook mee. Wissel nooit binnen één zin.
+- Zodra de beller antwoordt, detecteer je de taal en LOCK je die taal voor de rest van het gesprek. Vanaf dat moment is élke uiting in de gelockte taal: vervolgvragen, bevestigingen, foutmeldingen, transfer-zinnen, callback-zinnen, en ook KORTE FILLER-ZINNEN die je tijdens een tool-call zegt ("een moment, ik controleer dat even" / "one moment, I'm checking that" / "einen Moment, ich prüfe das kurz").
+- GEEN FALLBACK NAAR NEDERLANDS na de lock. Ook niet voor één losse mededeling. Als de beller na de lock duidelijk naar een andere taal switcht → switch jij volledig mee (nooit binnen één zin).
 - In het Nederlands spreek je met "u" tenzij de beller duidelijk informeel is. In het Duits altijd "Sie". In het Engels gewoon "you".
 - Stuur de gedetecteerde taal mee in elke tool-call als parameter "language" met waarde "nl", "de" of "en". Bij twijfel → "nl".
 
@@ -203,16 +203,23 @@ WAT JE NIET DOET
 - E-mailadres is optioneel. Alleen noteren als de beller het zelf opgeeft of digitale bevestiging vraagt.
 - Boek nooit te ver vooruit. Bij engine-fout (boekingshorizon) → leg het uit en bied terugbel aan.
 
-GROTE GROEPEN (3-traps logica)
+GROTE GROEPEN (3-traps logica — alle antwoorden in de GELOCKTE taal)
 - Probeer ALTIJD eerst gewoon te boeken via create_reservation, ongeacht groepsgrootte. De engine bepaalt zelf wat er gebeurt:
   a) Direct geboekt (response ok, geen requires_manual_approval) → bevestig hardop als normale boeking.
-  b) response.requires_manual_approval = true → groep valt binnen het "ter beoordeling" venster. Zeg in de gespreks-taal:
-     · NL: "Voor een groep van [aantal] personen leg ik uw aanvraag voor aan een collega. U ontvangt zo snel mogelijk een persoonlijke bevestiging per SMS."
-     · DE: "Für eine Gruppe von [Anzahl] Personen lege ich Ihre Anfrage einem Kollegen vor. Sie erhalten schnellstmöglich eine persönliche Bestätigung per SMS."
-     · EN: "For a group of [number] people I'll forward your request to a colleague. You'll receive a personal confirmation by SMS as soon as possible."
-  c) Engine geeft TW_409_PARTY_TOO_LARGE terug → groep is te groot voor online aanvraag. Beslis dan op basis van het huidige tijdstip (Europe/Amsterdam) versus {{custom_values.tw_transfer_hours}}:
-     · BINNEN dat venster → zeg "Een moment, ik verbind u direct door met een collega" (NL) / "Einen Moment, ich verbinde Sie direkt mit einem Kollegen" (DE) / "One moment, I'll transfer you directly to a colleague" (EN), en roep daarna de action 'Call Transfer' aan naar {{custom_values.tw_transfer_phone}}. Roep GEEN log_call aan vóór de transfer.
-     · BUITEN dat venster → roep log_call aan met outcome="callback_needed" en summary met groepsgrootte + tijdstip. Zeg: "Een collega belt u tijdens openingstijden ({{custom_values.tw_transfer_hours}}) persoonlijk terug op dit nummer." (DE/EN-varianten analoog).
+  b) response.requires_manual_approval = true → groep valt binnen het "ter beoordeling" venster. Zeg ALLEEN de variant in de gelockte taal (niet alle drie!):
+     · gelockt op NL → "Voor een groep van [aantal] personen leg ik uw aanvraag voor aan een collega. U ontvangt zo snel mogelijk een persoonlijke bevestiging per SMS."
+     · gelockt op DE → "Für eine Gruppe von [Anzahl] Personen lege ich Ihre Anfrage einem Kollegen vor. Sie erhalten schnellstmöglich eine persönliche Bestätigung per SMS."
+     · gelockt op EN → "For a group of [number] people I'll forward your request to a colleague. You'll receive a personal confirmation by SMS as soon as possible."
+  c) Engine geeft error_code = "large_group_required_manual" (TW_409_PARTY_TOO_LARGE) terug. De response bevat dan een veld "transfer": { allowed, phone, hours_label, reason }. Bereken NOOIT zelf de tijd of het venster — kijk alléén naar transfer.allowed:
+     · transfer.allowed === true → zeg in de gelockte taal:
+        NL: "Een moment, ik verbind u direct door met een collega."
+        DE: "Einen Moment, ich verbinde Sie direkt mit einem Kollegen."
+        EN: "One moment, I'll transfer you directly to a colleague."
+       Roep daarna de action 'Call Transfer' aan naar transfer.phone. Roep GEEN log_call vóór de transfer.
+     · transfer.allowed === false → roep log_call aan met outcome="callback_needed" en summary (groepsgrootte + tijdstip + transfer.reason). Zeg in de gelockte taal:
+        NL: "Een collega belt u tijdens onze openingstijden ([transfer.hours_label]) persoonlijk terug op dit nummer."
+        DE: "Ein Kollege ruft Sie während unserer Öffnungszeiten ([transfer.hours_label]) persönlich auf dieser Nummer zurück."
+        EN: "A colleague will call you back personally on this number during our opening hours ([transfer.hours_label])."
 - Boek NOOIT zelf door na een TW_409_PARTY_TOO_LARGE.
 
 OPENINGSBEGROETING (verplicht, exact deze tri-linguale zin)
@@ -641,56 +648,43 @@ const SECTIONS: Section[] = [
   {
     id: "call-transfer",
     group: "manual",
-    title: "7b. ClickWise — Call Transfer voor zeer grote groepen",
+    title: "7b. Call Transfer voor zeer grote groepen (server-side venster)",
     icon: Phone,
     keywords: "call transfer doorverbinden grote groep party too large escalatie medewerker",
     render: () => (
       <div className="space-y-3 text-sm">
         <p className="text-muted-foreground">
           Wanneer een beller een groep aanvraagt die <em>boven</em> <code>large_group_max_online_request</code> uit
-          TableWise valt, geeft de engine <code>TW_409_PARTY_TOO_LARGE</code> terug. De agent verbindt dan
-          binnen openingstijden direct door naar een medewerker, of belooft buiten openingstijden een callback.
+          TableWise valt, geeft de engine <code>TW_409_PARTY_TOO_LARGE</code> terug, samen met een veld
+          <code>transfer: {`{ allowed, phone, hours_label, reason }`}</code>. De agent leest dit veld en verbindt
+          door of belooft een callback — <strong>zonder zelf de tijd te interpreteren</strong>.
         </p>
 
-        <div className="space-y-1">
-          <div className="font-medium">Stap 1 — Twee Custom Values aanmaken in ClickWise</div>
-          <p className="text-xs text-muted-foreground">
-            Settings → Custom Values → New Custom Value (sub-account scope):
-          </p>
-          <ul className="list-disc list-inside space-y-1">
-            <li>
-              <code>tw_transfer_phone</code> (Single line) → nummer waarnaar te grote groepen
-              worden doorverbonden. E.164-formaat, bijv. <code>+31612345678</code>. Mag de
-              hoofdlijn zijn, een mobiel van de manager, of een keuken-nummer.
-            </li>
-            <li>
-              <code>tw_transfer_hours</code> (Single line) → menselijk-leesbaar venster waarin
-              doorverbinden mag, bijv. <code>dagelijks 11:00–20:30</code> of
-              <code>di-zo 17:00–22:00</code>. De agent leest deze tekst letterlijk en gebruikt
-              hem zowel voor de beslissing (binnen/buiten venster) als in de zin tegen de gast.
-            </li>
-          </ul>
-        </div>
-
-        <Callout tone="info" title="Houd tw_transfer_hours simpel">
-          De agent interpreteert de tekst zelf. Eén tijdvenster per dag (bijv. <code>11:00–20:30</code>)
-          werkt het betrouwbaarst. Gebruik geen complexe regels als <em>"behalve op feestdagen"</em>;
-          die kan de AI niet zonder kalender afdwingen.
+        <Callout tone="info" title="Waarom server-side?">
+          De LLM kent de echte tijd niet betrouwbaar en kan vrije-tekst tijdvensters ("11:00–20:30")
+          niet veilig parsen. TableWise rekent het venster nu zelf uit in jouw tijdzone, inclusief
+          gesloten dagen uit Openingstijden.
         </Callout>
 
         <div className="space-y-1">
-          <div className="font-medium">Stap 2 — Call Transfer action in de Voice Agent workflow</div>
+          <div className="font-medium">Stap 1 — Configureer in TableWise</div>
           <p className="text-xs text-muted-foreground">
-            In ClickWise → Voice Agent → tab <strong>Actions</strong> (of in de inbound-call
-            workflow, afhankelijk van je provider):
+            Ga naar <strong>Instellingen → Grote groepen → Call Transfer bij te grote groepen</strong> en vul in:
           </p>
+          <ul className="list-disc list-inside space-y-1">
+            <li><strong>Doorverbind-nummer</strong> (E.164, bv. <code>+31612345678</code>)</li>
+            <li><strong>Venster start</strong> en <strong>Venster eind</strong> (bv. 11:00 en 20:30)</li>
+          </ul>
+        </div>
+
+        <div className="space-y-1">
+          <div className="font-medium">Stap 2 — Call Transfer action in ClickWise/Vapi</div>
           <ol className="list-decimal list-inside space-y-1">
-            <li>Voeg een action toe van het type <strong>Call Transfer</strong> (of
-              <em>Live Transfer</em>).</li>
+            <li>Voeg een action toe van het type <strong>Call Transfer</strong> (of <em>Live Transfer</em>).</li>
             <li>Naam: <code>Call Transfer</code> (exact zoals in de prompt).</li>
-            <li>Transfer Number: <code>{`{{custom_values.tw_transfer_phone}}`}</code></li>
-            <li>Trigger: wanneer de AI deze action zelf oproept (de prompt instrueert hem dat
-              te doen bij <code>TW_409_PARTY_TOO_LARGE</code> binnen <code>tw_transfer_hours</code>).</li>
+            <li>Transfer Number: gebruik <strong>het veld <code>transfer.phone</code> uit de tool-response</strong>
+              van create_reservation (de agent geeft het door bij het aanroepen van de action). Hardcoderen of
+              via een custom value pushen is niet langer nodig.</li>
           </ol>
         </div>
 
@@ -698,11 +692,11 @@ const SECTIONS: Section[] = [
           <div className="font-medium">Stap 3 — Test</div>
           <ol className="list-decimal list-inside space-y-1">
             <li>Bel de Voice Agent en vraag een tafel voor bijv. 25 personen.</li>
-            <li>Binnen <code>tw_transfer_hours</code>: agent zegt "ik verbind u direct door" en
-              je telefoon op het transfer-nummer gaat over.</li>
-            <li>Buiten dat venster (test bijv. door tijdelijk een verleden venster in te stellen):
-              agent doet <code>log_call</code> met <code>outcome=callback_needed</code> en zegt
-              dat een collega persoonlijk terugbelt.</li>
+            <li>Binnen het venster: response bevat <code>transfer.allowed=true</code> → agent zegt "ik verbind u
+              direct door" en je telefoon op het transfer-nummer gaat over.</li>
+            <li>Buiten het venster (of op een gesloten dag): response bevat <code>transfer.allowed=false</code> met
+              <code>reason="outside_hours"</code> of <code>"closed_day"</code> → agent doet
+              <code>log_call(outcome=callback_needed)</code> en belooft een terugbelafspraak.</li>
           </ol>
         </div>
 
