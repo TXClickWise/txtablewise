@@ -90,6 +90,8 @@ Deno.serve(async (req) => {
     apiKey: body.agent_api_key ?? null, tablewiseBaseUrl: TABLEWISE_BASE_URL,
     restaurantName: (r as any).name ?? null, timezone: (r as any).timezone ?? null,
     anonKey: SUPABASE_GATEWAY_JWT_ANON_KEY,
+    largeGroupSlaLabel: (r as any).large_group_response_sla_label ?? null,
+    largeGroupChannelLabel: (r as any).large_group_response_channel_label ?? null,
   });
 
   if (body.dry_run) {
