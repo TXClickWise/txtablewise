@@ -34,8 +34,6 @@ export default function GeneralSettings() {
       city: r.city ?? "",
       slot_duration_minutes: r.slot_duration_minutes ?? 15,
       default_reservation_minutes: r.default_reservation_minutes ?? 105,
-      max_party_size_online: r.max_party_size_online ?? 8,
-      large_group_threshold: r.large_group_threshold ?? 9,
       booking_lead_time_minutes: r.booking_lead_time_minutes ?? 60,
       hold_minutes: r.hold_minutes ?? 10,
       booking_horizon_days: r.booking_horizon_days ?? 90,
