@@ -706,7 +706,7 @@ const SECTIONS: Section[] = [
           </ol>
         </div>
 
-        <Callout tone="warning" title="Niet voor normale grote groepen">
+        <Callout tone="warn" title="Niet voor normale grote groepen">
           Boekingen tussen <code>max_party_size_online</code> en
           <code>large_group_max_online_request</code> worden gewoon geboekt met
           <code>requires_manual_approval=true</code> en verschijnen in de app onder
