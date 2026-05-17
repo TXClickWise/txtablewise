@@ -513,6 +513,8 @@ async function handle(
           timeStr: String((payload as any).time ?? ""),
           onlineHardCap: onlineHardCap2,
           largeGroupConfirmationText: restRow2?.large_group_confirmation_text ?? null,
+          largeGroupSlaLabel: restRow2?.large_group_response_sla_label ?? null,
+          largeGroupChannelLabel: restRow2?.large_group_response_channel_label ?? null,
         });
         return json(built2.body, built2.status);
       }
