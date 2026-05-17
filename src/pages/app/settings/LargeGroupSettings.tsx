@@ -72,6 +72,7 @@ const LargeGroupSettings = () => {
           large_group_threshold, large_group_minutes, large_group_extra_minutes, large_group_manual_approval_from,
           large_group_deposit_recommended_from, large_group_default_status,
           large_group_confirmation_text, large_group_cancellation_terms, noshow_deposit_rules_prepared,
+          large_group_response_sla_label, large_group_response_channel_label,
           large_group_extra_info_from, large_group_max_online_request, extra_large_group_threshold,
           transfer_phone, transfer_hours_start, transfer_hours_end, default_reservation_minutes
         `)
