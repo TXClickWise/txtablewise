@@ -1454,7 +1454,7 @@ function buildBundle() {
         tool_params: {
           check_availability: ["date (String, required)", "party_size (Number, required)", "preferred_time (String, required)"],
           book_reservation:   ["date (String, required)", "time (String, required)", "party_size (Number, required)", "first_name (String, required)", "last_name (String, optional)", "phone (String, required)", "email (String, optional)", "special_requests (String, optional)"],
-          book_reservation_note: "reservation_id/bevestigingscode NIET hardop voorlezen — gast krijgt deze automatisch per SMS/WhatsApp.",
+          book_reservation_note: "reservation_id/bevestigingscode NIET hardop voorlezen. Beloof GEEN SMS, WhatsApp of e-mailbevestiging — sluit gewoon mondeling af.",
           find_reservation:   ["phone (String, optional)", "first_name (String, optional)", "last_name (String, optional)", "date (String, optional, YYYY-MM-DD)", "time (String, optional, HH:mm)"],
           find_reservation_note: "Minimaal één van: phone, last_name, of first_name + date. Vraag NOOIT om UUID of bevestigingsnummer.",
           cancel_reservation: ["reservation_id (String, required)", "reason (String, optional)"],
