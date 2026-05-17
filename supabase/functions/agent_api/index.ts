@@ -107,7 +107,9 @@ function buildBookGuestResponse(
   const rb = (r.body ?? {}) as Record<string, any>;
   const reservationObj = rb.reservation ?? {};
   const requiresManual = rb.requires_manual_approval ?? reservationObj?.requires_manual_approval ?? false;
-  const { partySize, dateStr, timeStr, onlineHardCap } = ctx;
+  const requiresManual = rb.requires_manual_approval ?? reservationObj?.requires_manual_approval ?? false;
+  const { partySize, dateStr, timeStr, onlineHardCap, largeGroupConfirmationText } = ctx;
+  const tenantPendingCopy = (largeGroupConfirmationText ?? "").trim();
 
   let messageForGuest: string | null = rb.message_for_guest ?? null;
   let nextAction = "confirm_booking";
@@ -121,9 +123,11 @@ function buildBookGuestResponse(
       const allowTransfer = partySize > onlineHardCap && rb.transfer?.allowed === true;
       nextAction = allowTransfer ? "transfer_call" : "promise_callback";
       statusLabel = "voorlopig";
+      const fallbackTooLarge =
+        `Ik heb uw aanvraag genoteerd voor ${partySize} personen op ${dateStr} om ${timeStr}. Dit is voorlopig — het restaurant laat het u zo snel mogelijk weten zodra de beschikbaarheid bekeken is.`;
       messageForGuest = allowTransfer
         ? "Een moment, ik verbind u door met een collega."
-        : `Let op — dit is nog geen definitieve reservering. Voor een groep van ${partySize} personen leg ik uw aanvraag voor aan een collega. Het team beoordeelt dit zo snel mogelijk en neemt alleen contact op als er iets aangepast moet worden — anders is uw aanvraag voor ${dateStr} om ${timeStr} genoteerd.`;
+        : (tenantPendingCopy || fallbackTooLarge);
       if (!allowTransfer) rb.transfer = { ...(rb.transfer ?? {}), allowed: false };
     } else if (ec === "no_table_available" || ec === "slot_unavailable" || ec === "pacing_limit_reached") {
       nextAction = "offer_alternatives_or_waitlist";
@@ -137,14 +141,31 @@ function buildBookGuestResponse(
       responseStatus = 200;
       responseOk = true;
       rb.transfer = { ...(rb.transfer ?? {}), allowed: false };
+    } else if (ec === "slot_too_soon") {
+      nextAction = "ask_later_time";
+      messageForGuest = "Dat tijdstip is helaas te kort dag. Kunt u een iets later tijdstip kiezen?";
+      responseStatus = 200;
+      responseOk = true;
+      rb.transfer = { ...(rb.transfer ?? {}), allowed: false };
+    } else if (ec === "beyond_booking_horizon") {
+      const maxDateLabel = rb.max_booking_date
+        ? new Date(String(rb.max_booking_date) + "T00:00:00").toLocaleDateString("nl-NL", { day: "numeric", month: "long", year: "numeric" })
+        : "enkele maanden vooruit";
+      nextAction = "ask_closer_date";
+      messageForGuest = `Die datum valt helaas te ver in de toekomst. U kunt tot ${maxDateLabel} reserveren. Wilt u een eerdere datum proberen?`;
+      responseStatus = 200;
+      responseOk = true;
+      rb.transfer = { ...(rb.transfer ?? {}), allowed: false };
     } else {
       nextAction = "apologize_and_callback";
-      messageForGuest = "Sorry, er ging iets mis aan onze kant. Ik laat een collega u zo snel mogelijk terugbellen.";
+      messageForGuest = "Sorry, er ging iets mis aan onze kant. Probeert u het later nog eens, of reserveer via de website.";
     }
   } else if (requiresManual) {
     nextAction = "confirm_pending_approval";
     statusLabel = "voorlopig";
-    messageForGuest = `Ik heb uw aanvraag voor ${partySize} personen op ${dateStr} om ${timeStr} genoteerd. Dit is nog geen definitieve reservering — een collega bevestigt dit zo snel mogelijk per telefoon of WhatsApp.`;
+    const fallbackPending =
+      `Uw reservering voor ${partySize} personen op ${dateStr} om ${timeStr} is voorlopig genoteerd. Het restaurant laat het u zo snel mogelijk weten.`;
+    messageForGuest = tenantPendingCopy || fallbackPending;
   } else {
     messageForGuest = messageForGuest ?? `Top, jullie tafel staat genoteerd, tot ${dateStr} om ${timeStr}.`;
   }
