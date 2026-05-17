@@ -195,7 +195,6 @@ async function handle(
         if (!preferred_time) return json({ error: "preferred_time required (HH:mm)", error_code: "missing_field", field: "preferred_time" }, 400);
         if (!/^\d{2}:\d{2}$/.test(preferred_time)) return json({ error: "preferred_time must be HH:mm", error_code: "invalid_field", field: "preferred_time" }, 400);
         const r = await callInternalFn("availability", { restaurant_id: keyRow.restaurant_id, date, party_size });
-        // Post-process: build exact + alternatives based on preferred_time.
         const body = r.body as { slots?: Array<{ time: string; available: boolean; available_table_count?: number }>; closed?: boolean; large_group?: boolean; message?: string } | null;
         const slots = body?.slots ?? [];
         const available = slots.filter((s) => s.available);
@@ -209,13 +208,93 @@ async function handle(
           })
           .sort((a, b) => a.dist - b.dist)
           .slice(0, 3)
-          .map((x) => x.slot);
+          .map((x) => ({ time: x.slot.time }));
+        // Compact response — geen volledige slotlijst meer, voorkomt dat de LLM
+        // in de ruis verdwaalt en stopt vóór book_reservation.
+        const closed = body?.closed === true;
+        const largeGroup = body?.large_group === true;
+        const canBookExact = !!exact;
+        const nextAction = closed
+          ? "say_closed"
+          : largeGroup
+            ? "use_reservation_request_anyway"
+            : canBookExact
+              ? "book_now"
+              : alternatives.length > 0
+                ? "offer_alternatives"
+                : "offer_waitlist";
         return json({
-          ...body,
           preferred_time,
-          available: available.length > 0,
-          exact,
+          available: canBookExact,
+          can_book_exact: canBookExact,
+          exact: exact ? { time: exact.time } : null,
           alternatives,
+          closed,
+          large_group: largeGroup,
+          message: body?.message ?? null,
+          next_action: nextAction,
+        }, r.status);
+      }
+      case "reservation_request": {
+        // Eén-call-flow voor de voice agent: valideer → book_reservation.
+        // Bewuste keuze om GEEN losse availability-check te doen — book_reservation
+        // doet zelf alle checks (capaciteit, tafels, pacing) en geeft heldere errors.
+        // Dit voorkomt dat de LLM tussen availability en book_reservation stopt.
+        if (!keyRow.scopes.includes("book")) return json({ error: "Scope missing: book", error_code: "auth_scope_missing", field: "book" }, 403);
+        Object.assign(payload, normalizeGuest(payload as Record<string, any>));
+        const required = ["date", "time", "party_size", "guest"];
+        for (const k of required) {
+          if (!(k in payload)) return json({ error: `Missing field: ${k}`, error_code: "missing_field", field: k }, 400);
+        }
+        const guest = payload.guest as Record<string, unknown> | undefined;
+        if (!guest?.first_name) return json({ error: "guest.first_name required", error_code: "missing_field", field: "guest.first_name" }, 400);
+        if (!guest.phone) return json({ error: "guest.phone required", error_code: "missing_field", field: "guest.phone" }, 400);
+        if (!guest.email) guest.email = `voice-${Date.now()}@tablewise.local`;
+        const bookBody = {
+          ...payload,
+          channel: "ai_host",
+          source_metadata: { ...(payload.source_metadata as object | undefined), agent_provider: keyRow.provider, via: "agent_api/reservation_request" },
+        };
+        const r = await callInternalFn("book_reservation", bookBody);
+        const rb = (r.body ?? {}) as Record<string, any>;
+        const reservationObj = rb.reservation ?? {};
+        if (r.status >= 200 && r.status < 300 && reservationObj?.id) ctx.setReservationId(reservationObj.id);
+        const partySize = Number((payload as any).party_size) || 0;
+        const dateStr = String((payload as any).date ?? "");
+        const timeStr = String((payload as any).time ?? "");
+        const requiresManual = rb.requires_manual_approval ?? reservationObj?.requires_manual_approval ?? false;
+        let messageForGuest: string | null = rb.message_for_guest ?? null;
+        let nextAction: string = "confirm_booking";
+        if (r.status >= 400) {
+          const ec = rb.error_code as string | undefined;
+          if (ec === "large_group_required_manual") {
+            nextAction = (rb.transfer?.allowed === true) ? "transfer_call" : "promise_callback";
+            messageForGuest = rb.transfer?.allowed === true
+              ? "Een moment, ik verbind u door met een collega."
+              : `Een collega belt u tijdens onze openingstijden${rb.transfer?.hours_label ? ` (${rb.transfer.hours_label})` : ""} persoonlijk terug op dit nummer.`;
+          } else if (ec === "no_table_available" || ec === "slot_unavailable" || ec === "pacing_limit_reached") {
+            nextAction = "offer_alternatives_or_waitlist";
+            messageForGuest = "Helaas lukt dit specifieke tijdstip niet. Kunt u iets eerder of later? Anders zet ik u graag op onze wachtlijst.";
+          } else {
+            nextAction = "apologize_and_callback";
+            messageForGuest = "Sorry, er ging iets mis aan onze kant. Ik laat een collega u zo snel mogelijk terugbellen.";
+          }
+        } else if (requiresManual) {
+          nextAction = "confirm_pending_approval";
+          messageForGuest = messageForGuest ?? `Voor een groep van ${partySize} personen leg ik uw aanvraag voor aan een collega. Het team beoordeelt dit zo snel mogelijk en neemt alleen contact op als er iets aangepast moet worden — anders is de tafel voor u gereserveerd op ${dateStr} om ${timeStr}.`;
+        } else {
+          messageForGuest = messageForGuest ?? `Top, jullie tafel staat genoteerd, tot ${dateStr} om ${timeStr}.`;
+        }
+        return json({
+          ok: r.status >= 200 && r.status < 300,
+          reservation_id: reservationObj?.id ?? rb.reservation_id ?? null,
+          confirmation_code: reservationObj?.confirmation_code ?? rb.confirmation_code ?? null,
+          requires_manual_approval: requiresManual,
+          large_group_status: rb.large_group_status ?? reservationObj?.large_group_status ?? null,
+          error_code: rb.error_code ?? null,
+          transfer: rb.transfer ?? null,
+          message_for_guest: messageForGuest,
+          next_action: nextAction,
         }, r.status);
       }
       case "book_reservation": {
