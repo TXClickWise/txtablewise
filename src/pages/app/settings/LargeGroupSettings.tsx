@@ -213,7 +213,7 @@ const LargeGroupSettings = () => {
               <Input type="number" min={1} value={form.large_group_manual_approval_from}
                 onChange={(e) => setForm({ ...form, large_group_manual_approval_from: Number(e.target.value) || 1 })} />
             </Field>
-            <Field label="Maximale online groepsaanvraag (personen)" hint="Harde bovengrens voor widget én voice agent. Boven dit aantal kan de gast niet zelf boeken: widget toont groepsformulier, voice agent verbindt door (binnen call-transfer venster) of belooft een terugbelafspraak.">
+            <Field label="Maximale online groepsaanvraag (personen)" hint="Harde bovengrens voor widget én voice agent. Boven dit aantal kan de gast niet zelf boeken: widget toont groepsformulier, voice agent verbindt door (binnen call-transfer venster) of noteert de aanvraag als groepsverzoek.">
               <Input type="number" min={1} placeholder="bv. 18"
                 value={form.large_group_max_online_request}
                 onChange={(e) => setForm({ ...form, large_group_max_online_request: e.target.value === "" ? "" : (Number(e.target.value) || 1) })} />
