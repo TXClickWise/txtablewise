@@ -220,6 +220,7 @@ async function handle(
       }
       case "book_reservation": {
         if (!keyRow.scopes.includes("book")) return json({ error: "Scope missing: book", error_code: "auth_scope_missing", field: "book" }, 403);
+        Object.assign(payload, normalizeGuest(payload as Record<string, any>));
         const required = ["date", "time", "party_size", "guest"];
         for (const k of required) {
           if (!(k in payload)) return json({ error: `Missing field: ${k}`, error_code: "missing_field", field: k }, 400);
