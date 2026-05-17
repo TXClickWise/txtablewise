@@ -1,55 +1,45 @@
 ## Probleem
 
-De testpayload die je ontving komt **niet** uit `dispatch_webhooks` (waar ik de enrichment gebouwd heb), maar uit een aparte edge function `integration_test` — die wordt aangeroepen door de "Verstuur test"-knop in de Integratiehub. Die functie heeft een **hard-coded** sample payload die alleen `payload.reservation.{id,date,time,party_size,status,guest}` bevat. Geen `manage_token`, geen top-level `reservation_date`, geen top-level `party_size`, geen `manage_url`.
+Tijdens je testcall om 02:32 mislukte het boeken. In de logs zie ik twee pogingen van de voice agent naar `book_reservation` met:
 
-Daarom zie je in ClickWise wel `inboundWebhookRequest.payload.reservation.date` / `.time` / `.party_size`, maar niet de top-level varianten en niet `manage_token` / `manage_url`.
+```json
+{
+  "date": "2026-05-17",
+  "time": "19:00",
+  "party_size": 4,
+  "first_name": "Jeroen",
+  "last_name": "van Rossem",
+  "phone": "+316…66"
+}
+```
 
-In **productie** (echte reservering geboekt → `dispatch_webhooks` → ClickWise) krijgt ClickWise wél de volledige enriched payload. De test ≠ echt.
+→ beide kregen `400 Missing field: guest`.
+
+De agent stuurt de gastgegevens **plat** (`first_name`, `last_name`, `phone`, `email`), maar `agent_api/book_reservation` verwacht een **genest** `guest`-object:
+
+```json
+{ "guest": { "first_name": "...", "last_name": "...", "phone": "...", "email": "..." } }
+```
+
+Hetzelfde issue zal optreden bij `update_reservation` en `create_waitlist_entry` als de agent daar ook flat keys stuurt.
 
 ## Plan
 
-**1. `supabase/functions/integration_test/index.ts` — sample payload uitbreiden**
+**Backend (agent_api soepeler maken — voorkeur)**
 
-De hardcoded `samplePayload.payload` aanpassen zodat hij 1-op-1 dezelfde shape heeft als wat `dispatch_webhooks` nu naar ClickWise stuurt. Concreet toevoegen op top-level binnen `payload`:
+`supabase/functions/agent_api/index.ts`:
 
-- `reservation_id` (= `test-reservation-id`)
-- `reservation_date` (vandaag/ morgen, ISO date)
-- `reservation_time` (`"19:30"`)
-- `start_time` (ISO timestamp)
-- `party_size` (`2`)
-- `status` (`"confirmed"`)
-- `confirmation_code` (`"TW-TEST"`)
-- `manage_token` (`"test-manage-token"`)
-- `cancel_token` (`"test-cancel-token"`)
-- `manage_url` (`https://.../r/{slug}/manage/test-manage-token`)
-- `cancel_url` (`...?action=cancel`)
-- `confirm_url` (`...?action=confirm`)
-- `guest` (top-level kopie met `first_name/last_name/email/phone/language`)
-- `restaurant` (`{ id, name, slug, timezone }`)
+1. In `book_reservation` (regel ~197): vóór de "required"-check een normalisatiestap toevoegen. Als `payload.guest` ontbreekt maar er staan top-level `first_name` / `last_name` / `phone` / `email` / `name` / `full_name`, bouw daar dan `payload.guest` uit op (en split `full_name` op spatie als `first_name` ontbreekt).
+2. Zelfde normalisatie in `create_waitlist_entry` (regel ~394): `guest_name` / `guest_phone` mogen ook afgeleid worden van `name`+`phone` of `first_name`+`last_name`.
+3. In `update_reservation` (regel ~362): accepteer flat `phone`/`email`/`name` en map naar de bestaande veldnamen.
+4. Geen wijziging aan de strikte `Missing field`-respons als ook flat fields ontbreken — error blijft duidelijk.
 
-Het bestaande `reservation: { ... }` sub-object blijft staan voor backwards compatibility, maar wordt ook uitgebreid met `manage_token`, `cancel_token`, `manage_url`, `cancel_url`, `confirm_url`, `confirmation_code`.
+**Frontend (alleen documentatie)**
 
-Implementatie: voor de URL's haalt de test even het `restaurants`-record op (slug, public_base_url) — net zoals `dispatch_webhooks` dat doet — zodat de URL's klopt voor jouw restaurant. Als geen `public_base_url` is gezet → fallback naar `SITE_URL` env (`https://www.txtablewise.nl`).
+`src/pages/app/help/VoiceAgentHelp.tsx`: in de tool-schema-voorbeelden expliciet beide vormen tonen ("genest `guest`-object óf flat `first_name`/`last_name`/`phone`/`email`"), zodat klanten weten dat beide werken.
 
-**2. `supabase/functions/clickwise_process_event/index.ts` — controle**
+**Geen wijzigingen** aan `public_api` (externe partners houden contract), aan ClickWise-config of aan de agent-prompt zelf.
 
-Even nakijken of die ook gebruikt wordt voor test-events en of die ook enrichment nodig heeft, of dat alleen `dispatch_webhooks` het echte pad is voor ClickWise.
+## Resultaat
 
-**3. Deploy & jij test opnieuw**
-
-Na deploy klik je in /app/integraties opnieuw op "Verstuur test". Dan zie je in ClickWise (Inbound Webhook trigger → "View Sample Payload") alle nieuwe velden onder `inboundWebhookRequest.payload.*` en kun je je Find/Create Contact mapping afmaken met:
-
-```
-{{inboundWebhookRequest.payload.manage_token}}
-{{inboundWebhookRequest.payload.manage_url}}
-{{inboundWebhookRequest.payload.reservation_date}}
-{{inboundWebhookRequest.payload.party_size}}
-```
-
-## Wat ik **niet** ga doen
-
-- `dispatch_webhooks` aanpassen — daar zit de enrichment al goed in (vorige ronde).
-- De UI-instructies in `VoiceAgentHelp.tsx` aanpassen — die zijn al correct (`{{inboundWebhookRequest.payload.*}}`).
-- Logica van het echte webhook-pad veranderen.
-
-Akkoord? Dan voer ik het uit.
+Na deploy slaagt dezelfde voice-call payload zonder dat je iets in ClickWise/Retell hoeft aan te passen. De foutmelding "technisch probleem" verdwijnt en de reservering wordt aangemaakt.
