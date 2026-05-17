@@ -731,16 +731,20 @@ const SECTIONS: Section[] = [
           naam in. Vervang ook <code>Europe/Amsterdam</code> door <code>{`{{location.timezone}}`}</code>
           als je meerdere tijdzones gebruikt.
         </p>
-        <Callout tone="info" title="Groepsgrootte — 3-traps logica (engine bepaalt)">
-          De agent probeert ALTIJD eerst te boeken. De TableWise-engine bepaalt het vervolg:
+        <Callout tone="info" title="Groepsgrootte — 2-drempel logica (engine bepaalt)">
+          De agent probeert ALTIJD eerst te boeken. De TableWise-engine bepaalt het vervolg
+          op basis van twee drempels (grote groep vanaf X, extra-grote groep vanaf Y):
           <ul className="list-disc list-inside mt-1 space-y-0.5">
-            <li>≤ <code>max_party_size_online</code> → direct bevestigd.</li>
-            <li>Tot <code>large_group_max_online_request</code> → boeking met
+            <li><code>party_size &lt; large_group_threshold</code> → direct bevestigd.</li>
+            <li><code>party_size ≥ large_group_manual_approval_from</code> → boeking met
               <code>requires_manual_approval=true</code> (verschijnt in app onder "Grote groepen — te beoordelen").</li>
-            <li>Daarboven → <code>TW_409_PARTY_TOO_LARGE</code>; de agent doet Call Transfer (binnen openingstijden) of belooft een callback.
+            <li><code>party_size ≥ extra_large_group_threshold</code> → altijd
+              <code>requires_manual_approval=true</code>.</li>
+            <li><code>party_size &gt; large_group_max_online_request</code> →
+              <code>TW_409_PARTY_TOO_LARGE</code>; de agent doet Call Transfer (binnen openingstijden) of belooft een callback.
               Setup → zie sectie <strong>7b. Call Transfer instellen</strong>.</li>
           </ul>
-          Pas de grenzen aan in TableWise → <strong>Instellingen → Reserveringsregels</strong>.
+          Pas de drempels aan in TableWise → <strong>Instellingen → Reserveringen → Grote groepen</strong>.
         </Callout>
         <Callout tone="info" title="Meertalig — language-parameter">
           De prompt stuurt bij elke tool-call <code>language</code> mee (<code>nl</code> /
