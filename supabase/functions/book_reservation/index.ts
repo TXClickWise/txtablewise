@@ -62,7 +62,14 @@ Deno.serve(async (req) => {
 
     const onlineHardCap: number = restaurant.large_group_max_online_request ?? restaurant.max_party_size_online;
     if (body.party_size > onlineHardCap && body.channel !== "manager" && body.channel !== "walk_in") {
-      return json({ error: "Party size exceeds online limit", error_code: "large_group_required_manual", field: "party_size", large_group: true }, 400);
+      const transferInfo = await computeTransferAvailability(supabase, restaurant);
+      return json({
+        error: "Party size exceeds online limit",
+        error_code: "large_group_required_manual",
+        field: "party_size",
+        large_group: true,
+        transfer: transferInfo,
+      }, 400);
     }
     const extraInfoFrom: number | null = restaurant.large_group_extra_info_from ?? null;
     if (extraInfoFrom !== null && body.party_size >= extraInfoFrom && body.channel !== "manager" && body.channel !== "walk_in") {
