@@ -763,7 +763,7 @@ const SECTIONS: Section[] = [
                 name: "party_size",
                 type: "Number",
                 required: true,
-                description: "Aantal personen, geheel getal tussen 1 en 8.",
+                description: "Aantal personen, geheel getal ≥ 1. De engine valideert zelf tegen max_party_size_online en large_group_max_online_request van het restaurant; bij overschrijding volgt TW_409_PARTY_TOO_LARGE (zie GROTE GROEPEN in de prompt).",
                 example: "4",
               },
               {
@@ -802,7 +802,7 @@ const SECTIONS: Section[] = [
             params: [
               { name: "date", type: "String", required: true, description: "Reserveringsdatum YYYY-MM-DD.", example: "2026-05-26" },
               { name: "time", type: "String", required: true, description: "Reserveringstijd HH:mm (24-uurs).", example: "19:30" },
-              { name: "party_size", type: "Number", required: true, description: "Aantal personen, 1 t/m 8.", example: "4" },
+              { name: "party_size", type: "Number", required: true, description: "Aantal personen, geheel getal ≥ 1. De engine valideert zelf tegen max_party_size_online en large_group_max_online_request.", example: "4" },
               { name: "first_name", type: "String", required: true, description: "Voornaam van de gast.", example: "Jan" },
               { name: "last_name", type: "String", required: false, description: "Achternaam van de gast (optioneel).", example: "de Vries" },
               { name: "phone", type: "String", required: true, description: "VERPLICHT. Telefoonnummer in E.164. Default {{contact.phone}} (nummer waarmee beller belt). Alleen anders als beller expliciet ander nummer opgeeft.", example: "+31612345678" },
@@ -874,7 +874,7 @@ const SECTIONS: Section[] = [
               { name: "confirmed_by_guest", type: "Boolean", required: true, description: "VERPLICHT op true zetten ZODRA de beller hardop heeft bevestigd. Zonder true blijft de reservering ongewijzigd en krijg je 'Wil je bevestigen dat je deze wijziging wilt doorvoeren?' terug.", example: "true" },
               { name: "new_date", type: "String", required: false, description: "Nieuwe datum YYYY-MM-DD. Laat leeg als de datum niet wijzigt.", example: "2026-05-27" },
               { name: "new_time", type: "String", required: false, description: "Nieuwe tijd HH:mm (24-uurs). Laat leeg als de tijd niet wijzigt.", example: "20:00" },
-              { name: "new_party_size", type: "Number", required: false, description: "Nieuw aantal personen, 1 t/m 8. Laat leeg als het aantal niet wijzigt.", example: "6" },
+              { name: "new_party_size", type: "Number", required: false, description: "Nieuw aantal personen, geheel getal ≥ 1. Laat leeg als het aantal niet wijzigt. Engine valideert zelf tegen max_party_size_online.", example: "6" },
               { name: "special_requests", type: "String", required: false, description: "Bijgewerkte wensen (overschrijft bestaande wensen).", example: "Toch geen kinderstoel" },
             ],
             body: `{
@@ -1020,7 +1020,7 @@ const SECTIONS: Section[] = [
               { name: "guest_phone", type: "String", required: true, description: "Telefoonnummer in E.164. Default {{contact.phone}}.", example: "+31612345678" },
               { name: "guest_email", type: "String", required: false, description: "Alleen invullen als de beller dit zelf opgeeft.", example: "gast@voorbeeld.nl" },
               { name: "desired_date", type: "String", required: true, description: "Gewenste datum YYYY-MM-DD.", example: "2026-05-26" },
-              { name: "party_size", type: "Number", required: true, description: "Aantal personen, 1 t/m 8.", example: "4" },
+              { name: "party_size", type: "Number", required: true, description: "Aantal personen, geheel getal ≥ 1. De engine valideert zelf tegen max_party_size_online en large_group_max_online_request.", example: "4" },
               { name: "desired_time_from", type: "String", required: false, description: "Vroegste acceptabele tijd HH:mm. Default 18:00.", example: "18:30" },
               { name: "desired_time_to", type: "String", required: false, description: "Laatste acceptabele tijd HH:mm. Default 21:00.", example: "20:30" },
               { name: "notes", type: "String", required: false, description: "Vrij veld voor wensen of context.", example: "Liever bij het raam" },
