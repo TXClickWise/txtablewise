@@ -644,7 +644,14 @@ const SECTIONS: Section[] = [
           persoonlijk terugbelt en boekt zelf <strong>niet</strong>. Pas de grens aan in
           TableWise → <strong>Instellingen → Reserveringsregels</strong>.
         </Callout>
-        <CodeBlock label="System prompt — Nederlands">{SYSTEM_PROMPT}</CodeBlock>
+        <Callout tone="info" title="Meertalig — language-parameter">
+          De prompt stuurt bij elke tool-call <code>language</code> mee (<code>nl</code> /
+          <code>de</code> / <code>en</code>). TableWise gebruikt deze voor de juiste taal in
+          SMS-/e-mailbevestigingen. Voor ClickWise SMS-templates per taal: voeg in je workflow
+          een <strong>If/Else</strong> toe op <code>{` {{contact.tw_language}} `}</code> met
+          drie takken (NL/DE/EN), elk met een eigen SMS-tekst.
+        </Callout>
+        <CodeBlock label="System prompt — meertalig (NL / DE / EN)">{SYSTEM_PROMPT}</CodeBlock>
       </div>
     ),
   },
