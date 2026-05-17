@@ -100,7 +100,7 @@ Deno.serve(async (req) => {
   try {
     // ----- WEBHOOK TEST -----
     if (action === "webhook") {
-      const { endpoint_id, event_type } = payload as { endpoint_id?: string; event_type?: string };
+      const { endpoint_id, event_type, dry_run } = payload as { endpoint_id?: string; event_type?: string; dry_run?: boolean };
       if (!endpoint_id) return json({ error: "endpoint_id verplicht" }, 400);
       const { data: ep } = await sb
         .from("webhook_endpoints")
