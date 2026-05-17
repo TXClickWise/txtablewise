@@ -155,6 +155,7 @@ Roep ALTIJD \`log_call\` aan met de samenvatting, outcome (booked/changed/cancel
   "method": "POST",
   "headers": {
     "Content-Type": "application/json",
+    "Authorization": "Bearer {{custom_values.tablewise_anon_key}}",
     "X-Agent-Api-Key": "{{custom_values.tablewise_api_key}}"
   },
   "body": {
@@ -171,6 +172,7 @@ Roep ALTIJD \`log_call\` aan met de samenvatting, outcome (booked/changed/cancel
   "method": "POST",
   "headers": {
     "Content-Type": "application/json",
+    "Authorization": "Bearer {{custom_values.tablewise_anon_key}}",
     "X-Agent-Api-Key": "{{custom_values.tablewise_api_key}}"
   },
   "body": {
@@ -198,6 +200,7 @@ Roep ALTIJD \`log_call\` aan met de samenvatting, outcome (booked/changed/cancel
   "method": "POST",
   "headers": {
     "Content-Type": "application/json",
+    "Authorization": "Bearer {{custom_values.tablewise_anon_key}}",
     "X-Agent-Api-Key": "{{custom_values.tablewise_api_key}}"
   },
   "body": {
@@ -225,6 +228,7 @@ Roep ALTIJD \`log_call\` aan met de samenvatting, outcome (booked/changed/cancel
   "method": "POST",
   "headers": {
     "Content-Type": "application/json",
+    "Authorization": "Bearer {{custom_values.tablewise_anon_key}}",
     "X-Agent-Api-Key": "{{custom_values.tablewise_api_key}}"
   },
   "body": {
@@ -240,6 +244,7 @@ Roep ALTIJD \`log_call\` aan met de samenvatting, outcome (booked/changed/cancel
   "method": "POST",
   "headers": {
     "Content-Type": "application/json",
+    "Authorization": "Bearer {{custom_values.tablewise_anon_key}}",
     "X-Agent-Api-Key": "{{custom_values.tablewise_api_key}}"
   },
   "body": {
