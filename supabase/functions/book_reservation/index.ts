@@ -397,8 +397,18 @@ Deno.serve(async (req) => {
       }
     }
 
+    // Gastvriendelijke melding voor voice-agent bij grote-groep goedkeuring,
+    // zodat de LLM niet zelf hoeft te interpreteren wat hij tegen de beller moet zeggen.
+    const messageForGuest = requiresManualApproval
+      ? `Voor een groep van ${body.party_size} personen leg ik uw aanvraag voor aan een collega. Het team beoordeelt dit zo snel mogelijk en neemt alleen contact op als er iets aangepast moet worden — anders is de tafel voor u gereserveerd op ${body.date} om ${body.time}.`
+      : null;
+
     return json({
       ok: true,
+      // Top-level vlaggen — voice-agent/ClickWise hoeven niet door reservation.* te graven
+      requires_manual_approval: requiresManualApproval,
+      large_group_status: largeGroupStatus,
+      message_for_guest: messageForGuest,
       reservation: {
         id: reservation.id,
         confirmation_code: confirmationCode,
@@ -410,6 +420,8 @@ Deno.serve(async (req) => {
         table_ids: chosenTableIds,
         table_combination_id: chosenCombinationId,
         hold_expires_at: holdExpires,
+        requires_manual_approval: requiresManualApproval,
+        large_group_status: largeGroupStatus,
       },
     });
   } catch (e) {
