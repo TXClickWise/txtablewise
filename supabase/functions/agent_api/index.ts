@@ -192,14 +192,13 @@ async function handle(
         const { date, party_size, preferred_time } = payload as { date?: string; party_size?: number; preferred_time?: string };
         if (!date) return json({ error: "date required (YYYY-MM-DD)", error_code: "missing_field", field: "date" }, 400);
         if (!party_size) return json({ error: "party_size required", error_code: "missing_field", field: "party_size" }, 400);
-        if (!preferred_time) return json({ error: "preferred_time required (HH:mm)", error_code: "missing_field", field: "preferred_time" }, 400);
-        if (!/^\d{2}:\d{2}$/.test(preferred_time)) return json({ error: "preferred_time must be HH:mm", error_code: "invalid_field", field: "preferred_time" }, 400);
+        if (preferred_time && !/^\d{2}:\d{2}$/.test(preferred_time)) return json({ error: "preferred_time must be HH:mm", error_code: "invalid_field", field: "preferred_time" }, 400);
         const r = await callInternalFn("availability", { restaurant_id: keyRow.restaurant_id, date, party_size });
         const body = r.body as { slots?: Array<{ time: string; available: boolean; available_table_count?: number }>; closed?: boolean; large_group?: boolean; message?: string } | null;
         const slots = body?.slots ?? [];
         const available = slots.filter((s) => s.available);
-        const exact = available.find((s) => s.time.startsWith(preferred_time)) ?? null;
-        const [ph, pm] = preferred_time.split(":").map(Number);
+        const exact = preferred_time ? available.find((s) => s.time.startsWith(preferred_time)) ?? null : null;
+        const [ph, pm] = (preferred_time ?? "18:00").split(":").map(Number);
         const prefMin = ph * 60 + pm;
         const alternatives = [...available]
           .map((s) => {
@@ -224,15 +223,15 @@ async function handle(
                 ? "offer_alternatives"
                 : "offer_waitlist";
         return json({
-          preferred_time,
+          preferred_time: preferred_time ?? null,
           available: canBookExact,
           can_book_exact: canBookExact,
           exact: exact ? { time: exact.time } : null,
           alternatives,
           closed,
           large_group: largeGroup,
-          message: body?.message ?? null,
-          next_action: nextAction,
+          message: preferred_time ? (body?.message ?? null) : "Welke tijd heeft uw voorkeur?",
+          next_action: preferred_time ? nextAction : "ask_preferred_time",
         }, r.status);
       }
       case "reservation_request": {
@@ -270,6 +269,8 @@ async function handle(
           .select("large_group_max_online_request, max_party_size_online")
           .eq("id", keyRow.restaurant_id).maybeSingle();
         const onlineHardCap: number = (restRow?.large_group_max_online_request ?? restRow?.max_party_size_online ?? 18) as number;
+        let responseStatus = r.status;
+        let responseOk = r.status >= 200 && r.status < 300;
         if (r.status >= 400) {
           const ec = rb.error_code as string | undefined;
           if (ec === "large_group_required_manual") {
@@ -288,6 +289,15 @@ async function handle(
           } else if (ec === "no_table_available" || ec === "slot_unavailable" || ec === "pacing_limit_reached") {
             nextAction = "offer_alternatives_or_waitlist";
             messageForGuest = "Helaas lukt dit specifieke tijdstip niet. Kunt u iets eerder of later? Anders zet ik u graag op onze wachtlijst.";
+            responseStatus = 200;
+            responseOk = true;
+            rb.transfer = { ...(rb.transfer ?? {}), allowed: false };
+          } else if (ec === "message_required") {
+            nextAction = "ask_special_requests";
+            messageForGuest = "Voor deze groepsgrootte noteer ik graag nog een korte toelichting voor het team. Zijn er bijzonderheden waar we rekening mee mogen houden?";
+            responseStatus = 200;
+            responseOk = true;
+            rb.transfer = { ...(rb.transfer ?? {}), allowed: false };
           } else {
             nextAction = "apologize_and_callback";
             messageForGuest = "Sorry, er ging iets mis aan onze kant. Ik laat een collega u zo snel mogelijk terugbellen.";
@@ -299,7 +309,7 @@ async function handle(
           messageForGuest = messageForGuest ?? `Top, jullie tafel staat genoteerd, tot ${dateStr} om ${timeStr}.`;
         }
         return json({
-          ok: r.status >= 200 && r.status < 300,
+          ok: responseOk,
           reservation_id: reservationObj?.id ?? rb.reservation_id ?? null,
           confirmation_code: reservationObj?.confirmation_code ?? rb.confirmation_code ?? null,
           requires_manual_approval: requiresManual,
@@ -308,7 +318,7 @@ async function handle(
           transfer: rb.transfer ?? null,
           message_for_guest: messageForGuest,
           next_action: nextAction,
-        }, r.status);
+        }, responseStatus);
       }
       case "book_reservation": {
         if (!keyRow.scopes.includes("book")) return json({ error: "Scope missing: book", error_code: "auth_scope_missing", field: "book" }, 403);
