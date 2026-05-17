@@ -415,8 +415,8 @@ async function handle(
         const p = payload as Record<string, any>;
         const flat = normalizeGuest(p);
         const g = (flat.guest ?? {}) as Record<string, any>;
-        const fullName = p.guest_name ?? p.full_name ?? p.name
-          ?? [g.first_name, g.last_name].filter(Boolean).join(" ").trim() || null;
+        const joined = [g.first_name, g.last_name].filter(Boolean).join(" ").trim();
+        const fullName = p.guest_name ?? p.full_name ?? p.name ?? (joined || null);
         const guest_name: string | undefined = fullName || undefined;
         const guest_phone: string | undefined = p.guest_phone ?? g.phone ?? p.phone ?? undefined;
         const guest_email: string | undefined = p.guest_email ?? g.email ?? p.email ?? undefined;
