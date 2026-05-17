@@ -107,7 +107,6 @@ function buildBookGuestResponse(
   const rb = (r.body ?? {}) as Record<string, any>;
   const reservationObj = rb.reservation ?? {};
   const requiresManual = rb.requires_manual_approval ?? reservationObj?.requires_manual_approval ?? false;
-  const requiresManual = rb.requires_manual_approval ?? reservationObj?.requires_manual_approval ?? false;
   const { partySize, dateStr, timeStr, onlineHardCap, largeGroupConfirmationText } = ctx;
   const tenantPendingCopy = (largeGroupConfirmationText ?? "").trim();
 
