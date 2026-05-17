@@ -43,6 +43,30 @@ async function sha256Hex(input: string): Promise<string> {
     .join("");
 }
 
+// Sommige voice agents sturen gastvelden plat (first_name, phone, ...) i.p.v.
+// genest onder `guest`. We normaliseren beide vormen naar een `guest`-object.
+function normalizeGuest(payload: Record<string, any>): Record<string, any> {
+  if (payload.guest && typeof payload.guest === "object") return payload;
+  const flatKeys = ["first_name", "last_name", "phone", "email", "name", "full_name", "guest_name", "guest_phone", "guest_email"];
+  const hasFlat = flatKeys.some((k) => payload[k] != null);
+  if (!hasFlat) return payload;
+  const rawName = payload.full_name ?? payload.name ?? payload.guest_name ?? null;
+  let first = payload.first_name ?? null;
+  let last = payload.last_name ?? null;
+  if (!first && rawName) {
+    const parts = String(rawName).trim().split(/\s+/);
+    first = parts.shift() ?? null;
+    if (!last && parts.length) last = parts.join(" ");
+  }
+  const guest: Record<string, any> = {
+    first_name: first,
+    last_name: last,
+    phone: payload.phone ?? payload.guest_phone ?? null,
+    email: payload.email ?? payload.guest_email ?? null,
+  };
+  return { ...payload, guest };
+}
+
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
