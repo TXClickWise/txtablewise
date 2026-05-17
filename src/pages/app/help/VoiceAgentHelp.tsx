@@ -757,7 +757,7 @@ const SECTIONS: Section[] = [
               direct door" en je telefoon op het transfer-nummer gaat over.</li>
             <li>Buiten het venster (of op een gesloten dag): response bevat <code>transfer.allowed=false</code> met
               <code>reason="outside_hours"</code> of <code>"closed_day"</code> → agent doet
-              <code>log_call(outcome=callback_needed)</code> en belooft een terugbelafspraak.</li>
+              <code>log_call(outcome=large_group_request)</code> en noteert de aanvraag als groepsverzoek (zichtbaar in Grote groepen).</li>
           </ol>
         </div>
 
