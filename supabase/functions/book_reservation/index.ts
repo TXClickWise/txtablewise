@@ -231,7 +231,7 @@ Deno.serve(async (req) => {
         requiresManualApproval = true;
         largeGroupStatus = "awaiting_approval";
       } else {
-        largeGroupStatus = "auto_booked";
+        largeGroupStatus = "approved";
       }
     }
     if (manualApprovalSize !== null && body.party_size >= manualApprovalSize) {
