@@ -89,15 +89,11 @@ export default function CapacitySettings() {
             />
             <p className="text-xs text-muted-foreground">Vanaf dit niveau toont het systeem een drukte-indicator.</p>
           </div>
-          <div className="space-y-1">
-            <Label className="text-xs">Verblijfsduur grote groep (min)</Label>
-            <Input
-              type="number"
-              value={form.large_group_minutes}
-              onChange={(e) => setForm({ ...form, large_group_minutes: parseInt(e.target.value) || 150 })}
-            />
-            <p className="text-xs text-muted-foreground">Vaste verblijfsduur vanaf "grote groep"-drempel uit Algemeen. Voor extra-grote groepen kun je in de tab Grote groepen nog tijd bovenop zetten.</p>
+          <div className="space-y-1 sm:col-span-2 rounded-md border border-dashed border-border bg-muted/20 p-3 text-xs text-muted-foreground">
+            <Info className="inline h-3.5 w-3.5 mr-1 -mt-0.5" />
+            Verblijfsduur voor grote groepen staat nu onder <strong>Instellingen → Grote groepen</strong>.
           </div>
+
         </CardContent>
       </Card>
 
