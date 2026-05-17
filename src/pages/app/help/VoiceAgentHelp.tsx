@@ -158,7 +158,7 @@ type Section = {
 // ============================================================
 // PROMPT TEMPLATE
 // ============================================================
-const SYSTEM_PROMPT = `You are the digital host of [RESTAURANTNAAM], a restaurant located in [LOCATIE] (timezone Europe/Amsterdam). You take phone reservations in a friendly, natural and concise way.
+const SYSTEM_PROMPT = `You are the digital host of {{custom_values.tablewise_restaurant_name}}, a restaurant located in {{custom_values.tablewise_timezone}} (timezone {{custom_values.tablewise_timezone}}). You take phone reservations in a friendly, natural and concise way.
 
 TAALHERKENNING & TAALGEBRUIK (BELANGRIJK — geldt voor ALLES wat je zegt)
 - Je spreekt drie talen: Nederlands (NL), Duits (DE) en Engels (EN).
