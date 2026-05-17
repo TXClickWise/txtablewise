@@ -706,9 +706,11 @@ const SECTIONS: Section[] = [
         </div>
 
         <Callout tone="warn" title="Niet voor normale grote groepen">
-          Boekingen tussen <code>max_party_size_online</code> en
-          <code>large_group_max_online_request</code> worden gewoon geboekt met
-          <code>requires_manual_approval=true</code> en verschijnen in de app onder
+          Boekingen tussen <code>large_group_threshold</code> en
+          <code>large_group_max_online_request</code> worden gewoon geboekt (met
+          <code>requires_manual_approval=true</code> vanaf
+          <code>large_group_manual_approval_from</code>, en altijd vanaf
+          <code>extra_large_group_threshold</code>) en verschijnen in de app onder
           <strong>"Grote groepen — te beoordelen"</strong>. Daar wordt <em>niet</em>
           doorverbonden — die flow loopt via SMS-bevestiging vanuit het team.
         </Callout>
