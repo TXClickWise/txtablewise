@@ -70,7 +70,7 @@ export default function AdminClickWiseVoiceSetupPage() {
   const restaurantId = current?.restaurants?.id ?? "<RESTAURANT_ID>";
   const [apiKey, setApiKey] = useState("tw_live_PLAK_HIER_DE_AGENT_API_KEY");
 
-  const systemPrompt = useMemo(() => `Je bent de AI telefoonhost van {{location.name}}, een restaurant in tijdzone {{location.timezone}}.
+  const systemPrompt = useMemo(() => `Je bent de AI telefoonhost van {{custom_values.tablewise_restaurant_name}}, een restaurant in tijdzone {{custom_values.tablewise_timezone}}.
 Je spreekt Nederlands, bent gastvrij, kort en duidelijk. Geen lange uitweidingen.
 
 # Wat je doet
