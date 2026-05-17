@@ -302,10 +302,12 @@ steps:
     type: ai_voice_agent
     prompt_ref: "TableWise Voice Host (system prompt)"
     tools:
-      - check_availability
-      - book_reservation
+      - reservation_request   # PRIMAIRE boekingstool — gebruik voor ELKE groepsgrootte
+      - check_availability    # optioneel — alleen voor "kan ik om X uur komen?"
       - cancel_reservation
       - log_call
+      # LET OP: GEEN 'Call Transfer' als autonome tool aan de agent koppelen.
+      # Transfer gebeurt alleen via workflow-conditie hieronder op response.next_action.
     on_intent_book:        goto: 2_book_done
     on_intent_cancel:      goto: 3_cancel_done
     on_intent_change:      goto: 4_change_done
