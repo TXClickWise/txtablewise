@@ -98,6 +98,20 @@ Deno.serve(async (req) => {
       if (new Date(start_iso).getTime() < Date.now() + leadMin * 60_000) {
         return json({ error: "Slot too soon", error_code: "slot_too_soon", field: "time" }, 400);
       }
+      // Booking horizon: prevent bookings too far into the future.
+      const horizonDays: number | null = restaurant.booking_horizon_days ?? null;
+      if (horizonDays && horizonDays > 0) {
+        const maxDate = new Date(Date.now() + horizonDays * 24 * 60 * 60 * 1000);
+        if (new Date(start_iso) > maxDate) {
+          return json({
+            error: "Datum valt buiten de boekingshorizon",
+            error_code: "beyond_booking_horizon",
+            field: "date",
+            max_booking_date: maxDate.toISOString().slice(0, 10),
+            horizon_days: horizonDays,
+          }, 400);
+        }
+      }
     }
 
     // Find fitting individual tables
