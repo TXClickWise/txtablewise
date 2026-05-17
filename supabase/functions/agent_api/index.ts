@@ -74,6 +74,82 @@ function json(body: unknown, status = 200) {
   });
 }
 
+// Bouw een uniforme, gastvrije response voor zowel `reservation_request`
+// als de oudere `book_reservation`-tool. De LLM krijgt altijd een veld
+// `message_for_guest` om LETTERLIJK voor te lezen + een `next_action`
+// die de workflow uniek aanstuurt. Zo kan een parafraserende LLM nooit
+// "geboekt" zeggen terwijl een grote-groepsreservering nog op goedkeuring
+// wacht.
+function buildBookGuestResponse(
+  r: { status: number; body: Record<string, any> | null },
+  ctx: { partySize: number; dateStr: string; timeStr: string; onlineHardCap: number },
+) {
+  const rb = (r.body ?? {}) as Record<string, any>;
+  const reservationObj = rb.reservation ?? {};
+  const requiresManual = rb.requires_manual_approval ?? reservationObj?.requires_manual_approval ?? false;
+  const { partySize, dateStr, timeStr, onlineHardCap } = ctx;
+
+  let messageForGuest: string | null = rb.message_for_guest ?? null;
+  let nextAction = "confirm_booking";
+  let statusLabel: "definitief" | "voorlopig" = "definitief";
+  let responseStatus = r.status;
+  let responseOk = r.status >= 200 && r.status < 300;
+
+  if (r.status >= 400) {
+    const ec = rb.error_code as string | undefined;
+    if (ec === "large_group_required_manual") {
+      const allowTransfer = partySize > onlineHardCap && rb.transfer?.allowed === true;
+      nextAction = allowTransfer ? "transfer_call" : "promise_callback";
+      statusLabel = "voorlopig";
+      messageForGuest = allowTransfer
+        ? "Een moment, ik verbind u door met een collega."
+        : `Let op — dit is nog geen definitieve reservering. Voor een groep van ${partySize} personen leg ik uw aanvraag voor aan een collega. Het team beoordeelt dit zo snel mogelijk en neemt alleen contact op als er iets aangepast moet worden — anders is uw aanvraag voor ${dateStr} om ${timeStr} genoteerd.`;
+      if (!allowTransfer) rb.transfer = { ...(rb.transfer ?? {}), allowed: false };
+    } else if (ec === "no_table_available" || ec === "slot_unavailable" || ec === "pacing_limit_reached") {
+      nextAction = "offer_alternatives_or_waitlist";
+      messageForGuest = "Helaas lukt dit specifieke tijdstip niet. Kunt u iets eerder of later? Anders zet ik u graag op onze wachtlijst.";
+      responseStatus = 200;
+      responseOk = true;
+      rb.transfer = { ...(rb.transfer ?? {}), allowed: false };
+    } else if (ec === "message_required") {
+      nextAction = "ask_special_requests";
+      messageForGuest = "Voor deze groepsgrootte noteer ik graag nog een korte toelichting voor het team. Zijn er bijzonderheden waar we rekening mee mogen houden?";
+      responseStatus = 200;
+      responseOk = true;
+      rb.transfer = { ...(rb.transfer ?? {}), allowed: false };
+    } else {
+      nextAction = "apologize_and_callback";
+      messageForGuest = "Sorry, er ging iets mis aan onze kant. Ik laat een collega u zo snel mogelijk terugbellen.";
+    }
+  } else if (requiresManual) {
+    nextAction = "confirm_pending_approval";
+    statusLabel = "voorlopig";
+    messageForGuest = `Let op — dit is nog geen definitieve reservering. Voor een groep van ${partySize} personen leg ik uw aanvraag voor aan een collega. Het team beoordeelt dit zo snel mogelijk en neemt alleen contact op als er iets aangepast moet worden — anders is uw aanvraag voor ${dateStr} om ${timeStr} genoteerd.`;
+  } else {
+    messageForGuest = messageForGuest ?? `Top, jullie tafel staat genoteerd, tot ${dateStr} om ${timeStr}.`;
+  }
+
+  return {
+    body: {
+      ok: responseOk,
+      reservation_id: reservationObj?.id ?? rb.reservation_id ?? null,
+      confirmation_code: reservationObj?.confirmation_code ?? rb.confirmation_code ?? null,
+      requires_manual_approval: requiresManual,
+      large_group_status: rb.large_group_status ?? reservationObj?.large_group_status ?? null,
+      status_label: statusLabel,
+      error_code: rb.error_code ?? null,
+      transfer: rb.transfer ?? null,
+      message_for_guest: messageForGuest,
+      next_action: nextAction,
+      forbidden_phrases: requiresManual
+        ? ["geboekt", "bevestigd", "gelukt", "rond", "definitief"]
+        : [],
+    },
+    status: responseStatus,
+    reservationId: reservationObj?.id ?? rb.reservation_id ?? null,
+  };
+}
+
 async function authenticate(req: Request) {
   const key =
     req.headers.get("x-agent-api-key") ||
