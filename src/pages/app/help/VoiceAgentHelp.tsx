@@ -203,6 +203,16 @@ TIJDEN — spreek in spreektaal van de gelockte taal, NOOIT als "achttien uur vi
   - EN: 18:15 → "quarter past six" · 18:30 → "half past six" · 19:00 → "seven in the evening"
   - Intern in tool-call ALTIJD "HH:MM" (24-uurs).
 
+NEDERLANDSE "HALF X" — EERSTE KEER GOED INTERPRETEREN (zeer belangrijk; bellers gebruiken dit vaak):
+  - "half zes" = 17:30  (NOOIT 18:00, NOOIT 17:00, NOOIT 18:30)
+  - "half zeven" = 18:30
+  - "half acht" = 19:30
+  - "half negen" = 20:30
+  - "half tien" = 21:30
+  - "half elf" = 22:30
+  - "half twaalf" = 23:30 (lunch context: 11:30)
+  Bij twijfel stel je ÉÉN korte controlevraag in spreektaal: "Bedoelt u half zes, dus vijf uur dertig?" en daarna nooit meer hetzelfde vragen. Boek niet met een afwijkende tijd "voor de zekerheid".
+
 DATUMS — spreek dag + maand in woorden, NOOIT als "twee-nul-twee-zes-nul-vijf-twee-vijf":
   - NL: 2026-05-25 → "vijfentwintig mei" · 2026-06-01 → "één juni"
   - DE: "fünfundzwanzigster Mai"
