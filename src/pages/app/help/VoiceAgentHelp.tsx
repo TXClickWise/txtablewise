@@ -512,6 +512,16 @@ const SECTIONS: Section[] = [
               Pas de drempels aan in TableWise → <strong>Instellingen → Reserveringen → Grote groepen</strong>.
             </li>
             <li>
+              <strong>Grote-groep belofte</strong> → <code>{`{{custom_values.tablewise_large_group_sla_label}}`}</code> en
+              <code>{`{{custom_values.tablewise_large_group_channel_label}}`}</code> (gepusht uit
+              <em> Instellingen → Grote groepen → Belofte aan de gast</em>, bv. "binnen 4 uur" en
+              "per SMS of e-mail").
+              <em> Let op:</em> de Voice Agent gebruikt deze NIET als losse placeholders — de server
+              composeert de volledige zin al in <code>response.message_for_guest</code> en de agent
+              leest die letterlijk voor. De twee waarden zijn bedoeld voor ClickWise-templates
+              (WhatsApp-bevestiging, e-mail, follow-up) die dezelfde belofte moeten herhalen.
+            </li>
+            <li>
               <strong>Booking horizon</strong> (max. dagen vooruit) → uit TableWise
               (<code>booking_horizon_days</code>). De engine weigert te ver vooruit boeken
               automatisch. Pas aan in TableWise → <strong>Instellingen → Reserveringsregels →
