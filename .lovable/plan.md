@@ -1,33 +1,37 @@
-## Wat er gebeurde
+## Probleem
 
-In `integration_logs` zie ik 2 mislukte voice-agent reserveringen (12p om 18:00, 8p om 14:00). Beiden gaven dezelfde 401 terug, met `message_for_guest = "Sorry, er ging iets mis aan onze kant…"`.
+Bij 20 personen probeerde de voice agent direct `reservation_request` (of `book_reservation`) aan te roepen zonder eerst de naam te vragen → server gaf `placeholder_name_blocked` (400) → agent zei "dat lukt niet, ik verbind je door".
 
-```
-18:25:04  create_reservation  http_status=401  party_size=12
-18:27:48  create_reservation  http_status=401  party_size=8
-18:27:50  create_reservation  http_status=401  (retry)
-```
+De prompt zegt nu wel "VRAAG ALTIJD EXPLICIET DE VOORNAAM", maar bij grote groepen schakelt het model mentaal naar "doorverbind/large-group flow" en slaat de naamvraag over. We moeten de regel **expliciet ook voor grote groepen** maken en de "geen naam = geen call" regel tot harde stop-conditie verheffen.
 
-In de Supabase edge-gateway-logs zie ik dat die 401's bij `book_reservation` op **gateway-niveau** vallen — de function boot zelfs niet. De `check_availability`-stap ervoor werkte wel (200) en gebruikt exact dezelfde interne aanroep. Dus de auth-flow naar `book_reservation` is stuk, niet de logica zelf.
+## Wat ik aanpas
 
-## Root cause
+Eén bestand: `src/pages/app/admin/AdminClickWiseVoiceSetupPage.tsx`, alleen de `systemPrompt` string.
 
-`agent_api/index.ts → callInternalFn()` stuurt `SUPABASE_SERVICE_ROLE_KEY` mee als zowel `Authorization: Bearer …` als `apikey: …`. Sinds de overstap naar het nieuwe signing-keys-systeem accepteert de edge-gateway de legacy service-role JWT niet meer betrouwbaar in de `apikey`-header. Voor `availability` werkt het toevallig nog, voor `book_reservation` niet — wat per definitie fragiel is.
+### Wijziging 1 — Nieuwe harde stop-regel bovenaan "Hoe je een reservering maakt"
+Nieuwe **regel 0** vóór de huidige stap 1:
 
-## Fix
+> **0. STOP-conditie — geldt voor ELKE groepsgrootte (1 t/m 18+):** je mag `reservation_request` (of welke booking-tool dan ook) NOOIT aanroepen zonder een echte voornaam van de gast. "Gast", "Klant", "Onbekend", lege string of een ID-achtige waarde is verboden — de engine blokkeert dat met `placeholder_name_blocked` en de gast hoort dan een foutmelding. Als je geen naam hebt: vraag de naam, ook bij 12, 15, 20 personen. Doorverbinden mag pas NA een geldige `reservation_request`-call (de engine bepaalt of doorverbinden nodig is).
 
-1. **`supabase/functions/agent_api/index.ts` → `callInternalFn`**  
-   `apikey`-header zetten op `SUPABASE_ANON_KEY` (publieke key die door de gateway altijd wordt geaccepteerd) en `Authorization: Bearer ${SERVICE_ROLE}` behouden voor function-side logica. Dit is het door Supabase aanbevolen patroon voor interne function-to-function calls met `verify_jwt = false`.
+### Wijziging 2 — Extra zin in "Grote groepen" sectie
+Toevoegen na ABSOLUTE REGEL 3:
 
-2. **`supabase/config.toml`**  
-   Bevestig dat alle interne targets (`book_reservation`, `availability`, `manage_reservation`) `verify_jwt = false` hebben — `manage_reservation` ontbreekt nu in de config en valt daardoor op de Supabase default terug; expliciet toevoegen.
+> ABSOLUTE REGEL 4: ook bij grote groepen vraag je EERST de voornaam van de gast vóór je `reservation_request` aanroept. Geen voornaam → geen tool-call → geen doorverbinden. De volgorde is altijd: aantal + datum + tijd → **voornaam** → mondelinge bevestiging → `reservation_request` → engine bepaalt of doorverbinden mag.
 
-3. **Verificatie**  
-   - `curl_edge_functions` op `/agent_api/reservation_request` met test-payload (party_size 8) → verwacht 200/202 of een nette `large_group_required_manual`.  
-   - Daarna nieuwe rij in `integration_logs` controleren: `http_status` ≠ 401.
+### Wijziging 3 — Foutafhandeling uitbreiden
+Toevoegen onder "# Foutafhandeling":
+
+> - Krijg je `error_code: "placeholder_name_blocked"` terug: dat is jouw fout, niet die van de gast. Zeg: "Sorry, mag ik nog even uw voornaam noteren voor de reservering?" en roep `reservation_request` opnieuw aan met de echte naam. NOOIT doorverbinden om deze fout heen.
 
 ## Wat NIET verandert
 
-- Logica van `book_reservation`, large-group flow, ClickWise-prompt, `message_for_guest`-templates — allemaal ongewijzigd.  
-- Geen DB-migratie nodig.  
-- Voice-agent prompt in ClickWise hoeft niet opnieuw geplakt te worden.
+- Geen backend-wijzigingen — `book_reservation`/`reservation_request` blijven zoals ze zijn (de 400 `placeholder_name_blocked` is correct gedrag).
+- Geen wijzigingen aan tool-JSON's, custom values, of provisioning-flow.
+- De ondernemer hoeft alleen de nieuwe prompt opnieuw in ClickWise → Voice Agent te plakken (kopieerknop staat al op de pagina).
+
+## Verificatie
+
+Na implementatie:
+1. Pagina openen op `/app/admin/clickwise-voice-setup`, prompt kopiëren, in ClickWise plakken.
+2. Testgesprek 12p en 20p — verwacht: agent vraagt voornaam, doet `reservation_request`, engine geeft `requires_manual_approval: true` (12p) of `next_action: "transfer_call"` (20p afhankelijk van limiet).
+3. `integration_logs` checken op afwezigheid van `placeholder_name_blocked`.
