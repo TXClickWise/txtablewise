@@ -5,6 +5,8 @@ export function buildCustomValues(args: {
   webhookSecret: string | null;
   apiKey: string | null;
   tablewiseBaseUrl: string;
+  restaurantName?: string | null;
+  timezone?: string | null;
 }): Record<string, string> {
   const cv: Record<string, string> = {
     tablewise_base_url: args.tablewiseBaseUrl,
@@ -12,6 +14,10 @@ export function buildCustomValues(args: {
   };
   if (args.webhookSecret) cv.tablewise_webhook_secret = args.webhookSecret;
   if (args.apiKey) cv.tablewise_api_key = args.apiKey;
+  // Restaurantnaam en tijdzone moeten via custom_values omdat {{location.*}}
+  // niet rendert in Voice AI prompts en Custom Action bodies.
+  if (args.restaurantName) cv.tablewise_restaurant_name = args.restaurantName;
+  if (args.timezone) cv.tablewise_timezone = args.timezone;
   return cv;
 }
 
