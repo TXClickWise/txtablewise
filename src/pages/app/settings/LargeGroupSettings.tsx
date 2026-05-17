@@ -16,11 +16,11 @@ import { Users, Info } from "lucide-react";
 
 type Form = {
   large_group_threshold: number;
+  large_group_minutes: number;
   large_group_extra_minutes: number;
   extra_large_group_threshold: number | "";
   large_group_manual_approval_from: number;
   large_group_deposit_recommended_from: number;
-  large_group_auto_book_max: number;
   large_group_extra_info_from: number | "";
   large_group_max_online_request: number | "";
   large_group_default_status: string;
@@ -30,15 +30,16 @@ type Form = {
   transfer_phone: string;
   transfer_hours_start: string;
   transfer_hours_end: string;
+  default_reservation_minutes: number;
 };
 
 const defaults: Form = {
   large_group_threshold: 8,
+  large_group_minutes: 150,
   large_group_extra_minutes: 30,
   extra_large_group_threshold: "",
-  large_group_manual_approval_from: 10,
+  large_group_manual_approval_from: 11,
   large_group_deposit_recommended_from: 8,
-  large_group_auto_book_max: 12,
   large_group_extra_info_from: "",
   large_group_max_online_request: "",
   large_group_default_status: "pending",
@@ -48,6 +49,7 @@ const defaults: Form = {
   transfer_phone: "",
   transfer_hours_start: "",
   transfer_hours_end: "",
+  default_reservation_minutes: 105,
 };
 
 const LargeGroupSettings = () => {
@@ -63,21 +65,21 @@ const LargeGroupSettings = () => {
       setLoading(true);
       const { data } = await supabase.from("restaurants")
         .select(`
-          large_group_threshold, large_group_extra_minutes, large_group_manual_approval_from,
-          large_group_deposit_recommended_from, large_group_auto_book_max, large_group_default_status,
+          large_group_threshold, large_group_minutes, large_group_extra_minutes, large_group_manual_approval_from,
+          large_group_deposit_recommended_from, large_group_default_status,
           large_group_confirmation_text, large_group_cancellation_terms, noshow_deposit_rules_prepared,
           large_group_extra_info_from, large_group_max_online_request, extra_large_group_threshold,
-          transfer_phone, transfer_hours_start, transfer_hours_end
+          transfer_phone, transfer_hours_start, transfer_hours_end, default_reservation_minutes
         `)
         .eq("id", restaurantId).maybeSingle();
       if (data) {
         setForm({
           large_group_threshold: data.large_group_threshold ?? defaults.large_group_threshold,
+          large_group_minutes: (data as any).large_group_minutes ?? defaults.large_group_minutes,
           large_group_extra_minutes: data.large_group_extra_minutes ?? defaults.large_group_extra_minutes,
           extra_large_group_threshold: (data as any).extra_large_group_threshold ?? "",
           large_group_manual_approval_from: data.large_group_manual_approval_from ?? defaults.large_group_manual_approval_from,
           large_group_deposit_recommended_from: data.large_group_deposit_recommended_from ?? defaults.large_group_deposit_recommended_from,
-          large_group_auto_book_max: data.large_group_auto_book_max ?? defaults.large_group_auto_book_max,
           large_group_extra_info_from: (data as any).large_group_extra_info_from ?? "",
           large_group_max_online_request: (data as any).large_group_max_online_request ?? "",
           large_group_default_status: data.large_group_default_status ?? defaults.large_group_default_status,
@@ -87,6 +89,7 @@ const LargeGroupSettings = () => {
           transfer_phone: (data as any).transfer_phone ?? "",
           transfer_hours_start: ((data as any).transfer_hours_start ?? "").slice(0, 5),
           transfer_hours_end: ((data as any).transfer_hours_end ?? "").slice(0, 5),
+          default_reservation_minutes: (data as any).default_reservation_minutes ?? 105,
         });
       }
       setLoading(false);
@@ -95,17 +98,36 @@ const LargeGroupSettings = () => {
 
   const save = async () => {
     if (!restaurantId) return;
-    // Validatie: extra-grote-groep drempel moet groter zijn dan grote-groep drempel
-    if (form.extra_large_group_threshold !== "" && Number(form.extra_large_group_threshold) <= form.large_group_threshold) {
+    const xl = form.extra_large_group_threshold === "" ? null : Number(form.extra_large_group_threshold);
+    const maxOnline = form.large_group_max_online_request === "" ? null : Number(form.large_group_max_online_request);
+
+    if (xl !== null && xl <= form.large_group_threshold) {
       toast.error('"Extra-grote groep vanaf" moet groter zijn dan "Grote groep vanaf".');
       return;
     }
+    if (form.large_group_manual_approval_from < form.large_group_threshold) {
+      toast.error('"Handmatige goedkeuring vanaf" mag niet kleiner zijn dan "Grote groep vanaf".');
+      return;
+    }
+    if (maxOnline !== null && maxOnline < form.large_group_threshold) {
+      toast.error('"Maximale online groepsaanvraag" mag niet kleiner zijn dan "Grote groep vanaf".');
+      return;
+    }
+
     setSaving(true);
     const payload = {
-      ...form,
+      large_group_threshold: form.large_group_threshold,
+      large_group_minutes: Number(form.large_group_minutes) || 150,
+      large_group_extra_minutes: Number(form.large_group_extra_minutes) || 0,
+      extra_large_group_threshold: xl,
+      large_group_manual_approval_from: form.large_group_manual_approval_from,
+      large_group_deposit_recommended_from: form.large_group_deposit_recommended_from,
       large_group_extra_info_from: form.large_group_extra_info_from === "" ? null : Number(form.large_group_extra_info_from),
-      large_group_max_online_request: form.large_group_max_online_request === "" ? null : Number(form.large_group_max_online_request),
-      extra_large_group_threshold: form.extra_large_group_threshold === "" ? null : Number(form.extra_large_group_threshold),
+      large_group_max_online_request: maxOnline,
+      large_group_default_status: form.large_group_default_status,
+      large_group_confirmation_text: form.large_group_confirmation_text,
+      large_group_cancellation_terms: form.large_group_cancellation_terms,
+      noshow_deposit_rules_prepared: form.noshow_deposit_rules_prepared,
       transfer_phone: form.transfer_phone.trim() === "" ? null : form.transfer_phone.trim(),
       transfer_hours_start: form.transfer_hours_start === "" ? null : form.transfer_hours_start,
       transfer_hours_end: form.transfer_hours_end === "" ? null : form.transfer_hours_end,
