@@ -376,7 +376,7 @@ const SECTIONS: Section[] = [
             </tbody>
           </table>
         </div>
-        <Callout tone="warning" title="Belangrijk — kies geen Date Picker voor TW Reservation Date">
+        <Callout tone="warn" title="Belangrijk — kies geen Date Picker voor TW Reservation Date">
           <p>
             Gebruik <strong>Single Line</strong> (tekst), niet <em>Date Picker</em>. ClickWise toont
             Date Picker-velden niet in <strong>Find Contact → Match Field</strong> en vaak ook niet in
