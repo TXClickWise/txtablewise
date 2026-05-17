@@ -285,8 +285,11 @@ const ReserveWidget = () => {
     : 0;
   const extraInfoFrom = restaurant?.large_group_extra_info_from ?? null;
   const manualApprovalFrom = restaurant?.large_group_manual_approval_from ?? null;
+  const xlFrom = restaurant?.extra_large_group_threshold ?? null;
   const requiresMessage = !!extraInfoFrom && partySize >= extraInfoFrom;
-  const showsApprovalBanner = !!manualApprovalFrom && partySize >= manualApprovalFrom;
+  const showsApprovalBanner =
+    (!!manualApprovalFrom && partySize >= manualApprovalFrom) ||
+    (!!xlFrom && partySize >= xlFrom);
 
   const goToDetails = () => {
     if (!restaurant) return;
