@@ -717,6 +717,7 @@ const SECTIONS: Section[] = [
     ),
   },
   {
+    id: "system-prompt",
     group: "manual",
     title: "8. System Prompt (copy-paste)",
     icon: BookOpen,
