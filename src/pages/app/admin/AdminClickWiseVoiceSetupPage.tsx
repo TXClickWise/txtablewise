@@ -993,12 +993,12 @@ X-Agent-Api-Key: ${apiKey}`;
                   <li><code>tablewise_webhook_secret</code> — uit TableWise → Settings → API & Webhooks (per endpoint)</li>
                   <li><code>restaurant_phone</code>, <code>restaurant_address</code>, <code>opening_hours_short</code></li>
                   <li><code>tablewise_base_url</code> — laat staan, is globaal</li>
-                  <li className="text-success">Restaurantnaam + tijdzone hoef je <strong>niet</strong> meer als custom value te zetten — die komen automatisch uit <code>{`{{location.name}}`}</code> en <code>{`{{location.timezone}}`}</code>. Zorg alleen dat de sub-account zelf juist is benoemd.</li>
+                  <li className="text-success"><code>tablewise_restaurant_name</code> + <code>tablewise_timezone</code> hoef je <strong>niet</strong> handmatig te zetten — TableWise pusht die automatisch via de sync-knop in <em>Koppelingen → ClickWise</em>. (<code>{`{{location.*}}`}</code> rendert namelijk niet in Voice AI prompts.)</li>
                 </ul>
               </li>
               <li>
                 <strong>Voice AI Agent opnieuw aanmaken</strong> (Voice AI → Agents → New Agent). Plak de system prompt en first message uit tab <em>Prompt</em>.
-                Die teksten gebruiken al <code>{`{{location.name}}`}</code>, dus werken meteen voor élke klant.
+                Die teksten gebruiken <code>{`{{custom_values.tablewise_restaurant_name}}`}</code>, dus werken meteen voor élke klant zodra de sync is gedraaid.
               </li>
               <li>
                 <strong>Tools koppelen</strong> aan de nieuwe agent: selecteer de 4 Custom Actions die uit de snapshot komen
