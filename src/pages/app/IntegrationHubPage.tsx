@@ -89,13 +89,37 @@ export default function IntegrationHubPage() {
     }
   };
 
-  const handleTestWebhook = async (id: string) => {
+  // Rate-limit per endpoint: 30s tussen test-fires (om dubbele SMSes te voorkomen).
+  const lastFireRef = useRef<Record<string, number>>({});
+  const [confirmEndpointId, setConfirmEndpointId] = useState<string | null>(null);
+  const [previewPayload, setPreviewPayload] = useState<unknown>(null);
+
+  const fireTestWebhook = async (id: string) => {
+    const last = lastFireRef.current[id] ?? 0;
+    const secsLeft = Math.ceil((last + 30_000 - Date.now()) / 1000);
+    if (secsLeft > 0) {
+      toast.error(`Even wachten — nog ${secsLeft}s tot je opnieuw kan testen (voorkomt dubbele SMS/e-mail).`);
+      return;
+    }
+    lastFireRef.current[id] = Date.now();
     setBusy(true);
     const r = await testWebhook(id);
     setBusy(false);
-    if (r.ok) toast.success(`Webhook test geslaagd (HTTP ${r.status})`);
+    if (r.ok) toast.success(`Webhook test geslaagd (HTTP ${r.status}). ClickWise heeft het event ontvangen.`);
     else toast.error(`Webhook test mislukt: ${r.error ?? `HTTP ${r.status ?? "?"}`}`);
     load();
+  };
+
+  const handlePreviewPayload = async (id: string) => {
+    setBusy(true);
+    const r = await testWebhook(id, undefined, true);
+    setBusy(false);
+    if (!r.ok) {
+      toast.error(`Preview mislukt: ${r.error ?? "?"}`);
+      return;
+    }
+    setPreviewPayload(r.sent_payload ?? null);
+    toast.success("Preview opgehaald — er is niets verzonden naar ClickWise.");
   };
 
   const handleDelete = async (id: string) => {
