@@ -95,6 +95,123 @@ Deno.serve(async (req) => {
       return list;
     };
 
+    // Cache restaurant base info per restaurant_id for URL building
+    const restaurantCache = new Map<string, { slug: string | null; timezone: string | null; public_base_url: string | null; name: string | null }>();
+    const getRestaurant = async (id: string) => {
+      if (restaurantCache.has(id)) return restaurantCache.get(id)!;
+      const { data } = await supabase
+        .from("restaurants")
+        .select("slug, timezone, public_base_url, name")
+        .eq("id", id)
+        .maybeSingle();
+      const r = {
+        slug: (data?.slug as string | null) ?? null,
+        timezone: (data?.timezone as string | null) ?? "Europe/Amsterdam",
+        public_base_url: (data?.public_base_url as string | null) ?? null,
+        name: (data?.name as string | null) ?? null,
+      };
+      restaurantCache.set(id, r);
+      return r;
+    };
+
+    // Enrich payload with reservation_date / reservation_time / manage_token / manage_url / cancel_url
+    // so ClickWise workflows have everything in one place under inboundWebhookRequest.payload.*
+    const SITE_URL = (Deno.env.get("SITE_URL") || "https://www.txtablewise.nl").replace(/\/+$/, "");
+    const enrichPayload = async (
+      restaurantId: string,
+      payload: Record<string, unknown> | null,
+      entityType: string | null,
+      entityId: string | null,
+    ): Promise<Record<string, unknown>> => {
+      const out: Record<string, unknown> = { ...(payload ?? {}) };
+      const reservationId: string | undefined =
+        (typeof out.reservation_id === "string" ? out.reservation_id : undefined) ??
+        (entityType === "reservation" && entityId ? entityId : undefined);
+      if (!reservationId) return out;
+
+      const { data: res } = await supabase
+        .from("reservations")
+        .select("id, reservation_date, start_time, end_time, party_size, status, manage_token, cancel_token, confirmation_code, guest_first_name, guest_last_name, guest_email, guest_phone, special_requests, occasion, guests:guest_id(first_name,last_name,email,phone,language)")
+        .eq("id", reservationId)
+        .maybeSingle();
+      if (!res) return out;
+
+      const rest = await getRestaurant(restaurantId);
+      const tz = rest.timezone || "Europe/Amsterdam";
+      // HH:MM in restaurant timezone
+      let reservation_time: string | null = null;
+      try {
+        const fmt = new Intl.DateTimeFormat("nl-NL", {
+          hour: "2-digit", minute: "2-digit", hour12: false, timeZone: tz,
+        });
+        reservation_time = fmt.format(new Date(res.start_time as string));
+      } catch { /* ignore */ }
+
+      const base = (rest.public_base_url || SITE_URL).replace(/\/+$/, "");
+      const slugPart = rest.slug ? `/${rest.slug}` : "";
+      const manageUrl = res.manage_token
+        ? `${base}/r${slugPart}/manage/${res.manage_token}` : null;
+      const cancelUrl = res.cancel_token
+        ? `${base}/r${slugPart}/manage/${res.cancel_token}?action=cancel` : null;
+      const confirmUrl = res.manage_token
+        ? `${base}/r${slugPart}/manage/${res.manage_token}?action=confirm` : null;
+
+      const g = (res.guests as { first_name?: string; last_name?: string; email?: string; phone?: string; language?: string } | null) ?? null;
+      const guest = {
+        first_name: g?.first_name ?? res.guest_first_name ?? null,
+        last_name: g?.last_name ?? res.guest_last_name ?? null,
+        email: g?.email ?? res.guest_email ?? null,
+        phone: g?.phone ?? res.guest_phone ?? null,
+        language: g?.language ?? null,
+      };
+
+      // Top-level enriched fields — additive, never overwrite existing keys
+      const defaults: Record<string, unknown> = {
+        reservation_id: res.id,
+        reservation_date: res.reservation_date,
+        reservation_time,
+        start_time: res.start_time,
+        end_time: res.end_time,
+        party_size: res.party_size,
+        status: res.status,
+        manage_token: res.manage_token,
+        cancel_token: res.cancel_token,
+        confirmation_code: res.confirmation_code,
+        manage_url: manageUrl,
+        cancel_url: cancelUrl,
+        confirm_url: confirmUrl,
+        special_requests: res.special_requests,
+        occasion: res.occasion,
+        guest,
+        reservation: {
+          id: res.id,
+          date: res.reservation_date,
+          time: reservation_time,
+          start_time: res.start_time,
+          end_time: res.end_time,
+          party_size: res.party_size,
+          status: res.status,
+          manage_token: res.manage_token,
+          cancel_token: res.cancel_token,
+          confirmation_code: res.confirmation_code,
+          manage_url: manageUrl,
+          cancel_url: cancelUrl,
+          confirm_url: confirmUrl,
+          guest,
+        },
+        restaurant: {
+          id: restaurantId,
+          name: rest.name,
+          slug: rest.slug,
+          timezone: tz,
+        },
+      };
+      for (const [k, v] of Object.entries(defaults)) {
+        if (!(k in out) || out[k] == null) out[k] = v;
+      }
+      return out;
+    };
+
     let dispatched = 0;
     let failed = 0;
     let skipped = 0;
