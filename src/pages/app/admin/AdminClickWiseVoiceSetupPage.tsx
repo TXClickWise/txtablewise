@@ -639,8 +639,10 @@ X-Agent-Api-Key: ${apiKey}`;
             <h3 className="font-display text-lg mb-2">System prompt</h3>
             <p className="text-sm text-muted-foreground mb-3">
               Plak deze in het <em>System Prompt</em> veld van je ClickWise voice agent. De
-              prompt gebruikt <code>{`{{location.name}}`}</code> en <code>{`{{location.timezone}}`}</code>
-              — die vult ClickWise automatisch vanuit de sub-account.
+              prompt gebruikt <code>{`{{custom_values.tablewise_restaurant_name}}`}</code> en
+              <code>{` {{custom_values.tablewise_timezone}}`}</code> — die worden automatisch
+              gepusht door TableWise (sync-knop). <strong>Let op:</strong> <code>{`{{location.*}}`}</code>
+              rendert niet in Voice AI prompts; gebruik altijd <code>{`{{custom_values.*}}`}</code>.
             </p>
             <CopyBlock value={systemPrompt} lang="prompt" />
           </Card>
@@ -648,7 +650,7 @@ X-Agent-Api-Key: ${apiKey}`;
           <Card className="p-4 space-y-2">
             <h3 className="font-display text-base">Begroeting (first message)</h3>
             <CopyBlock
-              value={`Goedendag, je spreekt met de virtuele gastvrouw van {{location.name}}. Waar kan ik je mee helpen — een tafel reserveren, of een bestaande reservering wijzigen?`}
+              value={`Goedendag, je spreekt met de virtuele gastvrouw van {{custom_values.tablewise_restaurant_name}}. Waar kan ik je mee helpen — een tafel reserveren, of een bestaande reservering wijzigen?`}
               lang="text"
             />
           </Card>
