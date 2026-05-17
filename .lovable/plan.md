@@ -1,40 +1,28 @@
-## Wat er gebeurde
+## Wat er aan de hand is
 
-De twee SMSes om 02:35 en 02:38 zijn **niet** veroorzaakt door de mislukte testcall — er is in die periode geen reservering aangemaakt (database is leeg voor Eigeweis op 17 mei). Ze komen van twee aparte klikken op de **"Test"-knop** bij je webhook-endpoint in `/app/integraties/hub`:
+Dit is een ClickWise/HighLevel-eigenaardigheid, niet iets in TableWise:
 
-- elke klik op die knop laat de `integration_test` edge-function een **echt** `POST` doen naar de geconfigureerde ClickWise inbound-webhook URL met een sample `reservation.created` payload;
-- ClickWise voert de productie-automation gewoon uit en stuurt dus een echte SMS;
-- de tekst noemt **Texels Biercollectief / 16 mei / 17:00 / 6 personen** omdat dat de placeholder-`{{custom_values.*}}`-waardes zijn in de master ClickWise sub-account (zie memory _ClickWise snapshot-ready_) — niet jouw Eigeweis-data.
+- **Find Contact → Match Field** ondersteunt alleen een beperkte set veldtypes (Email, Phone, Single line text, Number). **Date Picker-velden worden niet getoond** als match-optie. Daarom mis je *TW Reservation Date* in de Find Contact-zoeklijst.
+- **Create / Update Contact** accepteert wél elk custom-field-type (inclusief Date Picker), want dat is een schrijfactie. Vandaar dat je het veld daar wél ziet.
+- Hetzelfde probleem ga je krijgen in **If/Else-condities**: Date Picker-velden zijn vaak niet selecteerbaar of accepteren geen `{{inboundWebhookRequest.payload.reservation.date}}`-string omdat HighLevel intern op een Date-object verwacht.
 
-De payload bevat al `test: true` en de header `X-TableWise-Test: true`, maar de ClickWise-automation kijkt daar niet naar, dus er gaat alsnog een SMS uit.
+## Aanbevolen oplossing — verander het veldtype
 
-## Plan — drie lagen, samen oplossen
+Verander in ClickWise (Settings → Custom Fields → Contact) **TW Reservation Date** van **Date Picker** naar **Single line**:
 
-### 1. UI: bevestigingsdialog vóór elke "Test"-klik
+1. Open het veld → klik op het veldtype → kies **Single line**.
+2. Bewaar. Bestaande waarden blijven staan (worden tekst, bv. `"2026-05-17"`).
+3. Doe daarna een nieuwe **"Check for new requests"** in je Inbound Webhook trigger zodat ClickWise de mapping ververst (anders blijft het veld in de cache als Date).
+4. In de **Find Contact** action verschijnt *TW Reservation Date* nu wel in de match-lijst, en in **If/Else** kun je er gewoon op vergelijken met `Is Equal To` / `Contains`.
 
-`src/pages/app/IntegrationHubPage.tsx` — `handleTestWebhook`:
-- vervang de directe call door een `AlertDialog` met copy:
-  > "Dit verstuurt een echt webhook-event naar ClickWise. Afhankelijk van je automation kan dit een echte SMS, WhatsApp of e-mail veroorzaken. Doorgaan?"
-- knoppen: **Annuleren** (default) / **Ja, verstuur test-event**.
-- voeg een 30s lokale rate-limit toe per endpoint (`useRef` of state-map) zodat een dubbelklik niet twee SMSes triggert.
+TableWise stuurt de datum al in ISO-formaat (`YYYY-MM-DD`) als string, dus Single line is functioneel identiek aan Date Picker — alleen flexibeler binnen ClickWise.
 
-### 2. Edge function: dry-run-optie
+## Tweede tip — je hoeft *TW Reservation Date* niet als match te gebruiken
 
-`supabase/functions/integration_test/index.ts` — webhook-actie:
-- accepteer extra body-param `dry_run: boolean` (default `false`).
-- bij `dry_run === true`: skip de `fetch(ep.url, …)` en sla de **payload** + "(dry-run, niet verzonden)" op in `last_test_response_body`. Geef hetzelfde response-shape terug zodat de UI een preview kan tonen.
+In je workflow match je Find Contact al op **Phone**, en dat is precies goed: één contact per gast, ongeacht hoeveel reserveringen die heeft. *TW Reservation Date* hoort alleen op het contact opgeslagen te worden (zodat de SMS-template `{{contact.tw_reservation_date}}` kan gebruiken), niet om contacten op te zoeken.
 
-`src/services/integrations.ts` en de UI: voeg naast de "Test"-knop een **"Preview payload"**-knop toe (`dry_run: true`). Daarmee kan iemand de exacte JSON inspecteren zonder ClickWise te triggeren.
+Als je dus alleen het veld in de **SMS-tekst** wilt gebruiken: doe niets — Single line is enkel nodig zodra je er in een If/Else of Find Contact-filter op wil vergelijken.
 
-### 3. Docs: ClickWise-zijde (handmatige stap voor klant)
+## Geen code-wijziging in TableWise nodig
 
-Update `src/pages/app/help/VoiceAgentHelp.tsx` (en het Integratiehub-helpblok) met een korte sectie:
-> **Test-events filteren in ClickWise** — voeg vóór elke verzendactie een If/Else toe die het pad afsluit als `{{inboundWebhookRequest.payload.test}}` gelijk is aan `true`. TableWise zet die vlag automatisch bij elk test-event.
-
-Geen code-wijziging in `dispatch_webhooks` of `agent_api`.
-
-## Resultaat
-
-- Dubbele/onbedoelde SMSes door knopdruk zijn niet meer mogelijk zonder expliciete bevestiging.
-- Wie alleen de payload-structuur wil zien kiest "Preview payload" en triggert niets in ClickWise.
-- Eén keer een If/Else toevoegen in ClickWise per automation maakt test-events permanent stil — ook als straks anderen op "Test" drukken.
+Dit los je volledig in ClickWise op. Wil je dat ik de help-pagina (`/app/voice-agent` → Stap 7: ClickWise-workflow) aanvul met deze waarschuwing — "kies Single line, geen Date Picker, voor TW Reservation Date" — zodat toekomstige klanten dit niet opnieuw tegenkomen?
