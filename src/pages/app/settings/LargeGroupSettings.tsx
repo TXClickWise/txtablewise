@@ -134,6 +134,8 @@ const LargeGroupSettings = () => {
       large_group_default_status: form.large_group_default_status,
       large_group_confirmation_text: form.large_group_confirmation_text,
       large_group_cancellation_terms: form.large_group_cancellation_terms,
+      large_group_response_sla_label: form.large_group_response_sla_label.trim() === "" ? null : form.large_group_response_sla_label.trim(),
+      large_group_response_channel_label: form.large_group_response_channel_label.trim() === "" ? null : form.large_group_response_channel_label.trim(),
       noshow_deposit_rules_prepared: form.noshow_deposit_rules_prepared,
       transfer_phone: form.transfer_phone.trim() === "" ? null : form.transfer_phone.trim(),
       transfer_hours_start: form.transfer_hours_start === "" ? null : form.transfer_hours_start,
