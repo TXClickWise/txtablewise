@@ -210,15 +210,24 @@ Deno.serve(async (req) => {
     // Determine status using onboarding rules.
     // Operator-driven walk-ins are seated immediately; manager flow auto-confirms.
     // For online/AI/phone bookings: respect auto_confirm and manual_approval_from_party_size.
+    //
+    // Two-threshold model (same for widget & voice agent):
+    //   party < largeFrom        → normal
+    //   party >= largeFrom       → large group  (manual only if ≥ manualFrom)
+    //   party >= xlFrom          → extra-large  (ALWAYS manual)
     const manualApprovalSize: number | null = restaurant.manual_approval_from_party_size ?? null;
-    const largeGroupManualFrom: number = restaurant.large_group_manual_approval_from ?? 10;
-    const largeGroupAutoBookMax: number = restaurant.large_group_auto_book_max ?? 12;
+    const largeFrom: number = restaurant.large_group_threshold ?? 9;
+    const xlFrom: number | null = restaurant.extra_large_group_threshold ?? null;
+    const largeGroupManualFrom: number = restaurant.large_group_manual_approval_from ?? largeFrom;
 
     let requiresManualApproval = false;
     let largeGroupStatus: string | null = null;
 
-    if (isLargeGroup) {
-      if (body.party_size >= largeGroupManualFrom || body.party_size > largeGroupAutoBookMax) {
+    if (xlFrom !== null && body.party_size >= xlFrom) {
+      requiresManualApproval = true;
+      largeGroupStatus = "awaiting_approval";
+    } else if (isLargeGroup) {
+      if (body.party_size >= largeGroupManualFrom) {
         requiresManualApproval = true;
         largeGroupStatus = "awaiting_approval";
       } else {

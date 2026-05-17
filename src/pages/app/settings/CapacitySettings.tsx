@@ -12,7 +12,6 @@ type Form = {
   max_covers_per_slot: number | "";
   max_new_reservations_per_15min: number | "";
   peak_warning_threshold_pct: number;
-  large_group_minutes: number;
 };
 
 export default function CapacitySettings() {
@@ -22,7 +21,6 @@ export default function CapacitySettings() {
     max_covers_per_slot: "",
     max_new_reservations_per_15min: "",
     peak_warning_threshold_pct: 85,
-    large_group_minutes: 150,
   });
   const [saving, setSaving] = useState(false);
 
@@ -32,7 +30,6 @@ export default function CapacitySettings() {
       max_covers_per_slot: (r as any).max_covers_per_slot ?? "",
       max_new_reservations_per_15min: (r as any).max_new_reservations_per_15min ?? "",
       peak_warning_threshold_pct: (r as any).peak_warning_threshold_pct ?? 85,
-      large_group_minutes: (r as any).large_group_minutes ?? 150,
     });
   }, [r]);
 
@@ -44,7 +41,6 @@ export default function CapacitySettings() {
       max_covers_per_slot: form.max_covers_per_slot === "" ? null : Number(form.max_covers_per_slot),
       max_new_reservations_per_15min: form.max_new_reservations_per_15min === "" ? null : Number(form.max_new_reservations_per_15min),
       peak_warning_threshold_pct: Number(form.peak_warning_threshold_pct) || 85,
-      large_group_minutes: Number(form.large_group_minutes) || 150,
     }).eq("id", r.id);
     setSaving(false);
     if (error) toast.error(error.message);
@@ -93,15 +89,11 @@ export default function CapacitySettings() {
             />
             <p className="text-xs text-muted-foreground">Vanaf dit niveau toont het systeem een drukte-indicator.</p>
           </div>
-          <div className="space-y-1">
-            <Label className="text-xs">Verblijfsduur grote groep (min)</Label>
-            <Input
-              type="number"
-              value={form.large_group_minutes}
-              onChange={(e) => setForm({ ...form, large_group_minutes: parseInt(e.target.value) || 150 })}
-            />
-            <p className="text-xs text-muted-foreground">Vaste verblijfsduur vanaf "grote groep"-drempel uit Algemeen. Voor extra-grote groepen kun je in de tab Grote groepen nog tijd bovenop zetten.</p>
+          <div className="space-y-1 sm:col-span-2 rounded-md border border-dashed border-border bg-muted/20 p-3 text-xs text-muted-foreground">
+            <Info className="inline h-3.5 w-3.5 mr-1 -mt-0.5" />
+            Verblijfsduur voor grote groepen staat nu onder <strong>Instellingen → Grote groepen</strong>.
           </div>
+
         </CardContent>
       </Card>
 

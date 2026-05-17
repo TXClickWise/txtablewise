@@ -61,6 +61,7 @@ type RestaurantInfo = {
   large_group_manual_approval_from: number | null;
   large_group_extra_info_from: number | null;
   large_group_max_online_request: number | null;
+  extra_large_group_threshold: number | null;
   large_group_confirmation_text: string | null;
   preorders_enabled: boolean;
   preorders_allow_free_text: boolean;
@@ -221,7 +222,7 @@ const ReserveWidget = () => {
     (async () => {
       const { data, error } = await supabase
         .from("restaurants")
-        .select("id, name, slug, timezone, max_party_size_online, large_group_threshold, large_group_manual_approval_from, large_group_extra_info_from, large_group_max_online_request, large_group_confirmation_text, preorders_enabled, preorders_allow_free_text, allow_zone_preference, brand_primary, logo_url, booking_horizon_days")
+        .select("id, name, slug, timezone, max_party_size_online, large_group_threshold, large_group_manual_approval_from, large_group_extra_info_from, large_group_max_online_request, extra_large_group_threshold, large_group_confirmation_text, preorders_enabled, preorders_allow_free_text, allow_zone_preference, brand_primary, logo_url, booking_horizon_days")
         .eq("slug", slug).maybeSingle();
       if (error || !data) {
         setRestaurantError(t("errors.unavailable"));
@@ -284,8 +285,11 @@ const ReserveWidget = () => {
     : 0;
   const extraInfoFrom = restaurant?.large_group_extra_info_from ?? null;
   const manualApprovalFrom = restaurant?.large_group_manual_approval_from ?? null;
+  const xlFrom = restaurant?.extra_large_group_threshold ?? null;
   const requiresMessage = !!extraInfoFrom && partySize >= extraInfoFrom;
-  const showsApprovalBanner = !!manualApprovalFrom && partySize >= manualApprovalFrom;
+  const showsApprovalBanner =
+    (!!manualApprovalFrom && partySize >= manualApprovalFrom) ||
+    (!!xlFrom && partySize >= xlFrom);
 
   const goToDetails = () => {
     if (!restaurant) return;

@@ -1,82 +1,135 @@
 ## Doel
 
-Drie aanpassingen aan de Voice Agent help-pagina (`src/pages/app/help/VoiceAgentHelp.tsx`) — puur copy/prompt-werk, geen engine-wijziging:
+De huidige Grote-groepen-instellingen zijn dubbel en verwarrend. We brengen het terug tot **één helder model met 2 drempels** dat zowel de widget als de AI Voice Agent gebruikt, en verplaatsen "Verblijfsduur grote groep" naar het juiste tabblad.
 
-1. **Grote-groepen logica corrigeren** (was nog niet doorgevoerd).
-2. **Telefoonnummers cijfer-voor-cijfer uitspreken** toevoegen.
-3. **Call Transfer-setup** documenteren met `tw_transfer_phone` custom value en dynamisch openingstijden-venster.
+## Het nieuwe model (voorbeeld Eigeweis)
 
-## 1. System prompt — grote groepen (3-traps logica)
-
-Vervang regel 206 ("De engine weigert te grote groepen automatisch met TW_409_PARTY_TOO_LARGE. Zeg dan dat een collega persoonlijk terugbelt en boek NIET.") door:
-
-```
-- Probeer ALTIJD eerst gewoon te boeken via create_reservation, ongeacht groepsgrootte.
-  De engine bepaalt zelf of de boeking direct doorgaat, ter goedkeuring naar het team
-  gaat, of geweigerd wordt:
-  • Direct geboekt (response ok) → bevestig hardop als normale boeking.
-  • requires_manual_approval = true in response → zeg: "Voor een groep van [aantal] personen
-    laat ik uw aanvraag persoonlijk beoordelen door een collega. U ontvangt binnen [X] uur
-    een bevestiging per SMS." (DE/EN-varianten in prompt).
-  • TW_409_PARTY_TOO_LARGE error → groep is te groot voor online aanvraag. Volg dan:
-    - Binnen openingstijden (= {{custom_values.tw_transfer_hours}}): zeg "Ik verbind u
-      direct door met een medewerker, één moment alstublieft" en roep action
-      'Call Transfer' aan naar {{custom_values.tw_transfer_phone}}.
-    - Buiten openingstijden: roep log_call met outcome="callback_needed" + summary met
-      groepsgrootte. Zeg: "Een collega belt u morgen tijdens openingstijden persoonlijk
-      terug op dit nummer."
+```text
+party_size
+  1 ─ 7   → Normale reservering    duur = standaard
+  8 ─ 18  → Grote groep            duur = standaard + extra_minuten_groot
+                                   auto-boeken (tenzij > "Handmatige goedkeuring vanaf")
+ 19 ─ ?   → Extra-grote groep      duur = standaard + extra_minuten_groot + extra_minuten_xl
+                                   ALTIJD handmatige goedkeuring
+ > max_online_request → niet via widget/agent → groepsformulier / call transfer
 ```
 
-## 2. System prompt — telefoonnummer uitspraak
+## Wijzigingen in de UI van **Settings → Grote groepen**
 
-Voeg na regel 183 (telefoonnummer-regel) een nieuwe regel toe:
+We reduceren de "Drempels"-sectie tot deze velden, in deze volgorde:
 
+1. **Grote groep vanaf (personen)** — `large_group_threshold` (bv. 8)
+2. **Extra verblijfsduur grote groep (min)** — *nieuw label voor* `large_group_minutes` (verplaatst vanuit Capaciteit). Wordt opgeteld bij standaardduur zodra ≥ drempel 1.
+3. **Extra-grote groep vanaf (personen)** — `extra_large_group_threshold` (optioneel, bv. 19). Leeg = uit.
+4. **Extra verblijfsduur extra-grote groep (min)** — `large_group_extra_minutes`. Wordt bovenop #2 opgeteld zodra ≥ drempel 2.
+5. **Handmatige goedkeuring vanaf (personen)** — één enkel veld (bv. 11). Boven dit aantal = altijd manueel.
+6. **Maximale online groepsaanvraag (personen)** — harde bovengrens voor widget + voice agent (bv. 18). Daarboven: widget toont groepsformulier; agent doet call-transfer (binnen venster) of belofte tot terugbel.
+7. **Toelichting verplicht vanaf (personen)** — optioneel, default = drempel 1.
+8. **Aanbetaling aanbevolen vanaf (personen)** — blijft.
+9. **Standaardstatus voor groepsaanvraag** — blijft (`pending` / `hold`).
+
+### Verwijderd / opgeschoond
+
+- Veld **"Automatisch boeken tot (personen)"** (`large_group_auto_book_max`) verdwijnt uit de UI. Het was inhoudelijk een spiegel van #5.
+- Veld **"Verblijfsduur grote groep (min)"** verdwijnt uit *Capaciteit → Pacing & capaciteit* en komt hier terug als #2 met het nieuwe label.
+- Hint-teksten worden herschreven met duidelijke voorbeelden ("Bij groep van 12 personen wordt standaardduur 105 + 30 = 135 minuten").
+
+### Visuele groepering
+
+Drie kaarten i.p.v. één lange:
+
+- **Kaart A — "Wanneer is het een grote groep?"** → velden 1 + 2.
+- **Kaart B — "Wanneer is het een extra-grote groep?"** → velden 3 + 4 (uitgegrijsd zolang drempel 2 leeg is).
+- **Kaart C — "Goedkeuring & online limieten"** → velden 5 + 6 + 7 + 8 + 9.
+- Bestaande kaart "Communicatie naar gast", "Reserveringsgarantie" en "Call Transfer" blijven ongewijzigd.
+
+Boven kaart A komt een korte uitleg-strip met live-preview van bv. *"Bij Eigeweis: 8–18 personen = grote groep, 19+ = extra-groot, handmatige goedkeuring vanaf 11, max 18 via widget."*
+
+## Wijzigingen in de **edge functions** (zelfde regels voor widget én voice agent)
+
+### `book_reservation/index.ts` (regels 213–227)
+
+Vervang het blok door één bron-van-waarheid:
+
+```ts
+const largeFrom    = restaurant.large_group_threshold ?? 9;
+const xlFrom       = restaurant.extra_large_group_threshold ?? null;
+const manualFrom   = restaurant.large_group_manual_approval_from ?? largeFrom;
+const onlineMax    = restaurant.large_group_max_online_request
+                   ?? restaurant.max_party_size_online;
+
+// 1. harde bovengrens — al afgehandeld vroeger met TW_409_PARTY_TOO_LARGE
+// 2. extra-grote groep → altijd manueel
+if (xlFrom !== null && body.party_size >= xlFrom) {
+  requiresManualApproval = true;
+  largeGroupStatus = "awaiting_approval";
+}
+// 3. grote groep → manueel alléén als boven manual-drempel
+else if (body.party_size >= largeFrom) {
+  if (body.party_size >= manualFrom) {
+    requiresManualApproval = true;
+    largeGroupStatus = "awaiting_approval";
+  } else {
+    largeGroupStatus = "auto_booked";
+  }
+}
 ```
-- Wanneer je een telefoonnummer hardop terugleest ter bevestiging, spreek dan
-  CIJFER VOOR CIJFER uit met een korte pauze tussen ieder cijfer en groepeer NIET
-  in tientallen of paren. Voorbeeld voor +31612345678: "plus drie één — zes — één —
-  twee — drie — vier — vijf — zes — zeven — acht". In het Duits: "plus drei eins —
-  sechs — eins — zwei — drei — vier — fünf — sechs — sieben — acht". In het Engels:
-  "plus three one — six — one — two — three — four — five — six — seven — eight".
-  Doe dit ook bij het uitspreken van het transfer-nummer en bij het herhalen wanneer
-  de beller een ander nummer dicteert.
+
+`large_group_auto_book_max` wordt nergens meer gelezen (kolom blijft staan, maar krijgt geen UI; later op te ruimen).
+
+### `_shared/duration.ts`
+
+Logica werkt al volgens dit model — geen wijziging nodig. Controle:
+
+```text
+duur = standaard
+       + (party ≥ largeFrom        ? large_group_minutes − standaard : 0)
+       + (party ≥ xlFrom           ? large_group_extra_minutes        : 0)
 ```
 
-Pas ook regel 179 lichtjes aan: "bevestig altijd hardop alle gegevens (naam, datum, tijd, aantal personen en het te noteren telefoonnummer **— cijfer-voor-cijfer**) vóór je definitief boekt."
+(De huidige implementatie vervangt `standaard` door `large` zodra ≥ largeFrom, en telt `extra_minutes` er bovenop bij ≥ xlFrom — semantisch identiek aan de nieuwe labels.)
 
-## 3. Tool-parameter descriptions opschonen
+### `availability/index.ts` + `manage_reservation/index.ts`
 
-Update de "1 t/m 8" beperking in tool-descriptions (regels ~756, 795, 867, 1013) naar:
+Geen functionele wijziging. Lezen al dezelfde kolommen.
 
-```
-"Aantal personen, geheel getal ≥ 1. De engine valideert zelf tegen
-max_party_size_online en large_group_max_online_request van het restaurant."
-```
+## Wijzigingen in de **widget** (`src/pages/ReserveWidget.tsx`)
 
-## 4. Callouts in de doc-pagina
+- Lees voortaan `extra_large_group_threshold` en gedraag je net als de agent: boven die drempel **altijd** banner "Aanvraag wordt na bevestiging door het restaurant goedgekeurd".
+- `manualApprovalFrom` blijft `large_group_manual_approval_from`; ongeleden velden verdwijnen.
+- Boven `large_group_max_online_request` zoals nu → doorsturen naar groepsformulier.
 
-- **Regels 423-432** (`max_party_size_online`-callout): herschrijf naar de 3-traps uitleg (direct → manueel goedkeuren → Call Transfer) zodat het matcht met de prompt.
-- **Regels 640-648** (ClickWise-sectie): zelfde 3-traps uitleg + verwijzing naar nieuwe Call Transfer-sectie.
+## Wijzigingen in **Capaciteit**
 
-## 5. Nieuwe sectie "Call Transfer instellen" (in ClickWise tab)
+- In `CapacitySettings.tsx` verwijderen we het veld "Verblijfsduur grote groep (min)" (regels rond 100). Bovenaan een kleine hint: *"Verblijfsduur voor grote groepen staat nu onder Instellingen → Grote groepen."*
 
-Nieuwe `<Card>` met instructies:
+## Wijzigingen in **DB**
 
-1. **Custom Value aanmaken** in ClickWise sub-account:
-   - `tw_transfer_phone` (Single line) → het nummer waarnaar grote-groep bellers worden doorverbonden (mobiel manager, hoofdlijn keuken, etc.). E.164 formaat, bv. `+31612345678`.
-   - `tw_transfer_hours` (Single line) → menselijk-leesbaar venster, bv. `dagelijks 11:00–20:30` of `di-zo 17:00–22:00`. De AI gebruikt dit letterlijk in zijn beslissing + tegen de gast.
-2. **Action in Voice Agent workflow**: voeg een **Call Transfer** action toe in de ClickWise inbound-call workflow, met `{{custom_values.tw_transfer_phone}}` als doelnummer. Trigger = wanneer de AI de `Call Transfer` tool-action aanroept (Vapi/Retell escalatie-action).
-3. **Test**: bel met groep van bv. 25 personen → krijg `TW_409_PARTY_TOO_LARGE` → check dat AI binnen `tw_transfer_hours` doorverbindt, en daarbuiten `log_call(outcome=callback_needed)` doet.
+Geen schema-wijziging vereist. Alle kolommen bestaan al:
 
-Callout: "Het venster in `tw_transfer_hours` is een vrije tekst die de AI letterlijk interpreteert. Houd het simpel ('11:00–20:30') zodat de detectie betrouwbaar is."
+- `large_group_threshold`, `large_group_minutes`, `extra_large_group_threshold`, `large_group_extra_minutes`, `large_group_manual_approval_from`, `large_group_max_online_request`, `large_group_extra_info_from`, `large_group_deposit_recommended_from`, `large_group_default_status`.
+- `large_group_auto_book_max` wordt niet meer gelezen door code — kolom laten staan voor backward-compatibility en in een latere opruimmigratie droppen.
 
-## Niet aangeraakt
+## Validatie bij opslaan
 
-- `agent_api` edge function — engine doet al het juiste werk (drie-traps party-size + `requires_manual_approval` response).
-- Geen datamodel-wijziging, geen migrations, geen UI-componenten buiten de help-pagina.
+In `LargeGroupSettings.save()`:
 
-## Test na implementatie
+- `extra_large_group_threshold` > `large_group_threshold` (al aanwezig).
+- `large_group_manual_approval_from` ≥ `large_group_threshold` (nieuw — anders is "grote groep" zinloos want alles is sowieso manueel).
+- `large_group_max_online_request` ≥ `large_group_threshold` (nieuw).
+- Toon waarschuwing als `extra_large_group_threshold` > `large_group_max_online_request` (dan kan extra-grote groep nooit via widget binnenkomen — bedoeld?).
 
-1. Diff-check op de drie wijzigingen in de prompt.
-2. Visueel check op de help-pagina: nieuwe "Call Transfer instellen" card zichtbaar onder ClickWise-tab.
-3. Geen TypeScript-fouten.
+## Bestanden die wijzigen
+
+- `src/pages/app/settings/LargeGroupSettings.tsx` — herstructureer UI (3 kaarten), nieuw veld voor `large_group_minutes`, verwijder `large_group_auto_book_max`, validaties.
+- `src/pages/app/settings/CapacitySettings.tsx` — verwijder veld "Verblijfsduur grote groep" + hint toevoegen.
+- `supabase/functions/book_reservation/index.ts` — vervang regels 213–227 met de bovenstaande logica.
+- `src/pages/ReserveWidget.tsx` — lees + respecteer `extra_large_group_threshold` voor "altijd manueel"-banner.
+- `src/services/aiHost/dispatcher.ts` — select-lijst aanvullen met `extra_large_group_threshold` als die ergens in beslislogica meedoet (controle).
+
+## Niet in scope (apart te bespreken)
+
+- Database-cleanup van ongebruikte kolom `large_group_auto_book_max` (later migratie).
+- Wijzigingen aan de voice-agent prompt zelf — de agent leest al `requires_manual_approval` uit het `book_reservation`-antwoord, dus correct gedrag volgt automatisch.
+
+Geef akkoord en ik bouw dit in één pass.
