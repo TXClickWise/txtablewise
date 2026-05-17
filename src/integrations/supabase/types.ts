@@ -1808,6 +1808,8 @@ export type Database = {
           large_group_manual_approval_from: number
           large_group_max_online_request: number | null
           large_group_minutes: number
+          large_group_response_channel_label: string | null
+          large_group_response_sla_label: string | null
           large_group_threshold: number
           legal_name: string | null
           locale: string
@@ -1910,6 +1912,8 @@ export type Database = {
           large_group_manual_approval_from?: number
           large_group_max_online_request?: number | null
           large_group_minutes?: number
+          large_group_response_channel_label?: string | null
+          large_group_response_sla_label?: string | null
           large_group_threshold?: number
           legal_name?: string | null
           locale?: string
@@ -2012,6 +2016,8 @@ export type Database = {
           large_group_manual_approval_from?: number
           large_group_max_online_request?: number | null
           large_group_minutes?: number
+          large_group_response_channel_label?: string | null
+          large_group_response_sla_label?: string | null
           large_group_threshold?: number
           legal_name?: string | null
           locale?: string

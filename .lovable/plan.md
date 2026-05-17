@@ -1,69 +1,110 @@
-# Analyse van de externe prompt FIX-010
+## Doel
 
-## 1. Inhoudelijk: kloppen de fixes?
+De SLA-belofte ("binnen 4 uur") en het terugkoppelkanaal ("per SMS of e-mail") moeten **per tenant** instelbaar zijn, en voor Eigeweis vooraf ingevuld worden. Vandaag verstopt FIX-010 die copy achter een neutrale fallback — de belofte verdwijnt daardoor uit zowel de voice-agent als de Voice-prompt.
 
-| # | Beoordeling |
-|---|---|
-| **1. Vangnet 19+ → `large_group_requests` insert** | **Juiste bug, juiste oplossing.** Vandaag schrijft de voice agent bij `large_group_required_manual` niets weg — alleen een mooi bericht. De widget doet dit wél. Fix gebruikt `keyRow.restaurant_id`, dus tenant-veilig. Voeg `metadata: { external_call_id: ctx.externalCallId }` toe als beschikbaar, voor traceability. |
-| **2. Berichten herschrijven** | **Richting klopt, copy bevat een risico** (zie §3). Vervangen van "een collega belt u terug" door "voorlopig genoteerd" is correct. |
-| **3. UI-labels in `LargeGroupSettings.tsx` en `VoiceAgentHelp.tsx`** | **Veilig en juist.** Pure tekstuele consistentie met nieuw beleid. |
-| **4a. `slot_too_soon` + `beyond_booking_horizon` in `buildBookGuestResponse`** | **Goed.** Verandert 400 → 200 met bruikbare message. `error_code` blijft in de body (regel 157), dus ClickWise kan nog steeds filteren. |
-| **4b. Horizon-check in `book_reservation`** | **Goed, maar zie §2 over de `?? 90` default.** Operator-kanalen (`manager`, `walk_in`) terecht uitgesloten via bestaande `operatorChannels` set. |
-| **5. `confirmation_code` zoekpad in `find_reservation`** | **Veilig.** Geen hardcoding. `.toUpperCase()` klopt met hoe codes elders worden gegenereerd. Wel: voeg een check toe dat de code uitsluitend uit `[A-Z0-9]` bestaat vóór de query om SQL/LIKE-misbruik en logspam te vermijden. |
+## Aanpak
 
-## 2. Hardcoded-waarden check (multi-tenant)
+**Tenant-driven, niet hardcoded.** Twee nieuwe optionele kolommen op `restaurants` voor de SLA en het kanaal, die zowel de edge function (agent_api / book_reservation) als de Voice-prompt via `custom_values` voeden. Zo blijft het multi-tenant en kan Eigeweis "binnen 4 uur" + "SMS of e-mail" behouden, terwijl een andere tenant bv. "binnen 1 werkdag" + "e-mail" kan zetten — of het leeg laten voor een neutrale fallback.
 
-De externe prompt noemt Eigeweis-specifieke getallen (8 / 11 / 18 / 19, +31627437488, 11:00–20:30) in de **uitleg**, maar de **fix-snippets zelf** bevatten gelukkig **géén** van die tenant-waarden. Alles komt al uit `restaurants.*`:
+## Wijzigingen
 
-- `large_group_threshold`, `large_group_manual_approval_from`, `extra_large_group_threshold`, `large_group_max_online_request`, `large_group_auto_book_max`, `large_group_minutes`, `large_group_extra_minutes`
-- `transfer_phone`, `transfer_hours_start`, `transfer_hours_end`
-- `booking_horizon_days`, `booking_lead_time_minutes`
+### 1. Database (migratie)
 
-Alle 22 relevante kolommen bestaan al op de `restaurants`-tabel — bevestigd via DB-introspectie. **Geen schema-wijzigingen nodig.**
+Twee nieuwe nullable kolommen op `restaurants`:
 
-### Echte hardcoding-risico's die de prompt introduceert
+- `large_group_response_sla_label text` — vrij tekstveld, bv. `"binnen 4 uur"`, `"binnen 1 werkdag"`, leeg = niets beloven
+- `large_group_response_channel_label text` — bv. `"per SMS of e-mail"`, `"per e-mail"`, leeg = niets beloven
 
-1. **"binnen 4 uur" + "per SMS of e-mail"** in messages 3 en 6.
-   - Dat is een **SLA-belofte** die TableWise vandaag nergens afdwingt: er is geen 4-uurs timer, en SMS/e-mail bij goedkeuring is afhankelijk van ClickWise-workflow van de tenant. Een tenant zonder SMS gaat de belofte niet waarmaken.
-   - **Aanbeveling:** gebruik bij voorkeur `restaurants.large_group_confirmation_text` als die niet leeg is, anders een neutrale fallback zonder concrete termijn én zonder kanaal-specificatie. Bv: *"voorlopig genoteerd. Het restaurant bevestigt zo snel mogelijk."*
-   - Alternatief: voeg twee nieuwe kolommen toe (`large_group_response_sla_label text`, `large_group_response_channel_label text`) zodat elke tenant zelf bepaalt wat er beloofd wordt.
+Standaardwaarde: `NULL`. Voor restaurant **Eigeweis** vullen we ze direct via dezelfde migratie:
+- `large_group_response_sla_label = 'binnen 4 uur'`
+- `large_group_response_channel_label = 'per SMS of e-mail'`
 
-2. **`?? 90` als horizon-fallback** in FIX 4b.
-   - Niet kritiek (de DB heeft een default), maar zorg dat de fallback consistent is met de DB-default en met `RestaurantSettings`. Liever `?? null` en bij `null` overslaan, of de DB-default ophalen.
+(En desgewenst meteen ook `large_group_confirmation_text` zetten voor Eigeweis als die nog leeg is.)
 
-3. **Alle berichten zijn hard Nederlands.**
-   - Bestaande code in `agent_api` doet dit al — niet veroorzaakt door deze PR — maar het is wel het noemen waard: `restaurants.locale` / `guest.language` wordt nergens gebruikt in `buildBookGuestResponse`. Buiten scope van FIX-010, maar kandidaat voor follow-up.
+### 2. `supabase/functions/agent_api/index.ts` — `buildBookGuestResponse`
 
-4. **`transfer_phone` validatie ontbreekt.**
-   - Niet in deze fix, maar relevant: de huidige `buildBookGuestResponse` vertrouwt blind op `rb.transfer.allowed`. Als `transfer_phone` leeg is moet de fallback altijd naar `promise_callback` / nu `large_group_request` gaan. Controleer dat `book_reservation` `transfer.allowed = false` zet als `transfer_phone` ontbreekt — anders kan de agent doorverbinden naar `null`.
+Vervang de neutrale fallback uit FIX-010 door een **dynamische zin** die de tenantvelden gebruikt:
 
-## 3. Aanbevolen aanpassingen op de prompt vóór implementatie
+```ts
+function composeLargeGroupPendingMessage(r, partySize, dateStr, timeStr) {
+  if (r.large_group_confirmation_text?.trim()) return r.large_group_confirmation_text.trim();
+  const sla = r.large_group_response_sla_label?.trim();
+  const channel = r.large_group_response_channel_label?.trim();
+  const tail =
+    sla && channel ? ` U ontvangt ${sla} een bericht ${channel}.`
+    : sla ? ` U ontvangt ${sla} een bericht.`
+    : channel ? ` U ontvangt een bericht ${channel}.`
+    : ` Het restaurant laat het u zo snel mogelijk weten.`;
+  return `Uw aanvraag voor ${partySize} personen op ${dateStr} om ${timeStr} is genoteerd.${tail}`;
+}
+```
 
-1. **Vervang in messages 3 en 6 de SLA-zin.** Gebruik:
-   ```
-   const fallback = `Uw reservering voor ${partySize} personen op ${dateStr} om ${timeStr} is voorlopig genoteerd. Het restaurant bevestigt dit zo snel mogelijk.`;
-   const messageForGuest = restaurant.large_group_confirmation_text?.trim() || fallback;
-   ```
-   Daarvoor moet `buildBookGuestResponse` óf `restaurant.large_group_confirmation_text` meegegeven krijgen, óf de caller bouwt de fallback. Zelfde voor bericht 6 in `book_reservation/index.ts` (waar `restaurant` al beschikbaar is — direct doen).
+Toepassen op zowel `large_group_required_manual` (groep 11–18) als de 19+ catch-all branch én de `pending`-tak van een normale boeking buiten transfer-venster.
 
-2. **Maak bericht 1 (19+ buiten transfer-venster) ook tenant-configureerbaar** met dezelfde fallback-logica.
+Belangrijk: deze twee nieuwe velden moeten ook in de `restaurants`-select binnen `agent_api` worden meegenomen.
 
-3. **Voeg `metadata` toe aan de `large_group_requests` insert** met `source_channel: "phone_ai"`, `provider`, en `external_call_id` zodat het rapport-per-kanaal (zie memory `channels`) klopt. `source_channel` is per memory verplicht — controleer of die tabel die kolom heeft; zo niet, dan in `metadata` zetten.
+### 3. `supabase/functions/book_reservation/index.ts`
 
-4. **Voeg confirmation_code-formaatvalidatie toe** (`/^[A-Z0-9]{3,12}$/`) vóór de query in FIX 5.
+Dezelfde compose-helper gebruiken voor `message_for_guest` op pending reservations. Velden zijn al beschikbaar in het gelezen `restaurant`-object — alleen toevoegen aan de select.
 
-5. **Documenteer in de UI** (`LargeGroupSettings.tsx` hint of `VoiceAgentHelp.tsx`) dat het "voorlopig genoteerd"-bericht uit `large_group_confirmation_text` komt zodra die ingevuld is — anders kan de tenant niet zien waarom de copy verandert.
+### 4. ClickWise custom values — `_shared/clickwise-hl.ts` + `buildCustomValues`
 
-## 4. Wat NIET in de prompt staat maar wel zou moeten
+Twee extra `custom_values` toevoegen zodat de Voice-prompt ze direct kan renderen:
+- `tablewise_large_group_sla_label`
+- `tablewise_large_group_channel_label`
 
-- **Test 9 toevoegen:** als `transfer_phone` leeg is en groep > online cap, moet de agent NOOIT `transfer_call` doen, ook niet binnen het venster.
-- **Audit log entry** bij de `large_group_requests` insert via voice-agent (parallel aan de widget-flow), zodat owner-dashboard de bron ziet.
-- **Geen wijziging aan `forbidden_phrases`** — die staan elders in de body; controleer dat de nieuwe message 3 niet per ongeluk een verboden woord ("bevestigd") herintroduceert. Concreet: *"U ontvangt binnen 4 uur een **bevestiging**"* gebruikt het stam-woord "bevestig" — dat moet de prompt of de `forbidden_phrases`-lijst niet meer blokkeren voor de "voorlopig"-flow. Check `agent_api/index.ts` op `forbidden_phrases` om collision te voorkomen.
+Doorgeven vanuit `clickwise_provision_subaccount` en `clickwise_sync_custom_values` (huidige selects uitbreiden met de twee nieuwe kolommen).
 
-## 5. Conclusie
+### 5. Voice-prompt v2.0 (in `AdminClickWiseVoiceSetupPage.tsx` + `VoiceAgentHelp.tsx`)
 
-De prompt vindt vijf echte issues en lost er vier correct op. **Probleemstuk 1, 3, 4 en 5 mogen 1-op-1 worden geïmplementeerd**, mits de kleine verbeteringen uit §3 punt 3 en 4 worden meegenomen.
+Vervang de hardcoded "binnen 4 uur"-zinnen door placeholders, bv.:
 
-**Probleemstuk 2 (messages) moet voorzichtig.** De voorgestelde copy is beter dan de huidige, maar bevat een SLA- en kanaalbelofte die per tenant niet waar hoeft te zijn. Of we maken het tenant-driven via `large_group_confirmation_text`, of we kiezen neutralere copy ("zo snel mogelijk", "het restaurant laat het u weten"). Mijn voorkeur: **tenant-driven met neutrale fallback**.
+> "Uw aanvraag is genoteerd. U ontvangt {{custom_values.tablewise_large_group_sla_label}} een bericht {{custom_values.tablewise_large_group_channel_label}}."
 
-Als je akkoord bent met deze nuance, schakel ik naar build mode en implementeer ik FIX-010 met deze aanpassingen.
+Met een natuurlijke fallback-formulering in de prompt-instructies: "Als één van deze velden leeg is, zeg dan 'zo snel mogelijk' in plaats van een termijn, en laat het kanaal weg."
+
+Ook de tekst in `large_group_required_manual` corrigeren — die moet uitleggen dat 19+ wél via voice-agent loopt (consistent met FIX-010 catch-all).
+
+### 6. UI — `LargeGroupSettings.tsx`
+
+Twee nieuwe invoervelden toevoegen onder de bestaande grote-groepen-instellingen:
+
+- **"Beloofde reactietijd"** — placeholder "bijv. binnen 4 uur", helptekst: "Laat leeg om geen termijn te beloven."
+- **"Kanaal voor terugkoppeling"** — placeholder "bijv. per SMS of e-mail", helptekst: "Wordt door de voice-agent en e-mail letterlijk uitgesproken/getoond. Laat leeg om geen kanaal te beloven. Zorg dat dit kanaal echt actief is in ClickWise."
+
+Plus waarschuwingsblok: "Deze beloftes worden gebruikt door de voice-agent, bevestigingsberichten en e-mail. Controleer dat je ze ook waarmaakt."
+
+### 7. Help-pagina + admin-pagina
+
+`VoiceAgentHelp.tsx` en `AdminClickWiseVoiceSetupPage.tsx`: documenteren dat deze twee velden uit Instellingen → Grote groepen komen, en hoe de prompt erop reageert.
+
+## Wat NIET verandert
+
+- Geen wijziging aan `forbidden_phrases` (eerdere ronde al opgeschoond).
+- Geen wijziging aan het `large_group_requests` vangnet of `confirmation_code`-pad — die blijven zoals in FIX-010.
+- Geen schema-wijziging op `large_group_requests`.
+
+## Tenant-veiligheidscheck
+
+| Veld | Bron | Hardcoded? |
+|---|---|---|
+| SLA-label | `restaurants.large_group_response_sla_label` | nee — per tenant |
+| Kanaal-label | `restaurants.large_group_response_channel_label` | nee — per tenant |
+| Restaurantnaam in prompt | `custom_values.tablewise_restaurant_name` | nee |
+| Transfer-nummer | `restaurants.transfer_phone` | nee |
+| Drempels (8/11/18/19) | bestaande `restaurants.large_group_*` kolommen | nee |
+| Eigeweis-waarden | gezet via seed-migratie, geen code | nee |
+
+## Te wijzigen bestanden
+
+- migratie: nieuwe kolommen + Eigeweis-seed
+- `supabase/functions/agent_api/index.ts`
+- `supabase/functions/book_reservation/index.ts`
+- `supabase/functions/_shared/clickwise-hl.ts`
+- `supabase/functions/clickwise_provision_subaccount/index.ts`
+- `supabase/functions/clickwise_sync_custom_values/index.ts`
+- `src/pages/app/settings/LargeGroupSettings.tsx`
+- `src/pages/app/admin/AdminClickWiseVoiceSetupPage.tsx`
+- `src/pages/app/help/VoiceAgentHelp.tsx`
+
+Akkoord = ik implementeer dit en deploy de twee edge functions plus de ClickWise-provisioners.

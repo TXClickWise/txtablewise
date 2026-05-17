@@ -94,6 +94,27 @@ function json(body: unknown, status = 200) {
 // die de workflow uniek aanstuurt. Zo kan een parafraserende LLM nooit
 // "geboekt" zeggen terwijl een grote-groepsreservering nog op goedkeuring
 // wacht.
+// Stel tenant-driven, gastvrije pending-zin samen. Volgorde:
+// 1) `large_group_confirmation_text` (vrije tekst van het restaurant)
+// 2) anders een neutrale zin + dynamische staart gebaseerd op
+//    `large_group_response_sla_label` en `large_group_response_channel_label`
+//    zodat tenants zelf bepalen óf en hoe ze een SLA + kanaal beloven.
+function composeLargeGroupPendingMessage(
+  partySize: number, dateStr: string, timeStr: string,
+  tenantCopy?: string | null, slaLabel?: string | null, channelLabel?: string | null,
+) {
+  const free = (tenantCopy ?? "").trim();
+  if (free) return free;
+  const sla = (slaLabel ?? "").trim();
+  const channel = (channelLabel ?? "").trim();
+  const tail =
+    sla && channel ? ` U ontvangt ${sla} een bericht ${channel}.`
+    : sla ? ` U ontvangt ${sla} een bericht.`
+    : channel ? ` U ontvangt een bericht ${channel}.`
+    : ` Het restaurant laat het u zo snel mogelijk weten.`;
+  return `Uw aanvraag voor ${partySize} personen op ${dateStr} om ${timeStr} is voorlopig genoteerd.${tail}`;
+}
+
 function buildBookGuestResponse(
   r: { status: number; body: Record<string, any> | null },
   ctx: {
@@ -102,13 +123,14 @@ function buildBookGuestResponse(
     timeStr: string;
     onlineHardCap: number;
     largeGroupConfirmationText?: string | null;
+    largeGroupSlaLabel?: string | null;
+    largeGroupChannelLabel?: string | null;
   },
 ) {
   const rb = (r.body ?? {}) as Record<string, any>;
   const reservationObj = rb.reservation ?? {};
   const requiresManual = rb.requires_manual_approval ?? reservationObj?.requires_manual_approval ?? false;
-  const { partySize, dateStr, timeStr, onlineHardCap, largeGroupConfirmationText } = ctx;
-  const tenantPendingCopy = (largeGroupConfirmationText ?? "").trim();
+  const { partySize, dateStr, timeStr, onlineHardCap, largeGroupConfirmationText, largeGroupSlaLabel, largeGroupChannelLabel } = ctx;
 
   let messageForGuest: string | null = rb.message_for_guest ?? null;
   let nextAction = "confirm_booking";
@@ -122,11 +144,9 @@ function buildBookGuestResponse(
       const allowTransfer = partySize > onlineHardCap && rb.transfer?.allowed === true;
       nextAction = allowTransfer ? "transfer_call" : "promise_callback";
       statusLabel = "voorlopig";
-      const fallbackTooLarge =
-        `Ik heb uw aanvraag genoteerd voor ${partySize} personen op ${dateStr} om ${timeStr}. Dit is voorlopig — het restaurant laat het u zo snel mogelijk weten zodra de beschikbaarheid bekeken is.`;
       messageForGuest = allowTransfer
         ? "Een moment, ik verbind u door met een collega."
-        : (tenantPendingCopy || fallbackTooLarge);
+        : composeLargeGroupPendingMessage(partySize, dateStr, timeStr, largeGroupConfirmationText, largeGroupSlaLabel, largeGroupChannelLabel);
       if (!allowTransfer) rb.transfer = { ...(rb.transfer ?? {}), allowed: false };
     } else if (ec === "no_table_available" || ec === "slot_unavailable" || ec === "pacing_limit_reached") {
       nextAction = "offer_alternatives_or_waitlist";
@@ -162,9 +182,7 @@ function buildBookGuestResponse(
   } else if (requiresManual) {
     nextAction = "confirm_pending_approval";
     statusLabel = "voorlopig";
-    const fallbackPending =
-      `Uw reservering voor ${partySize} personen op ${dateStr} om ${timeStr} is voorlopig genoteerd. Het restaurant laat het u zo snel mogelijk weten.`;
-    messageForGuest = tenantPendingCopy || fallbackPending;
+    messageForGuest = composeLargeGroupPendingMessage(partySize, dateStr, timeStr, largeGroupConfirmationText, largeGroupSlaLabel, largeGroupChannelLabel);
   } else {
     messageForGuest = messageForGuest ?? `Top, jullie tafel staat genoteerd, tot ${dateStr} om ${timeStr}.`;
   }
@@ -384,7 +402,7 @@ async function handle(
         const resObj0 = rb0.reservation ?? {};
         if (r.status >= 200 && r.status < 300 && resObj0?.id) ctx.setReservationId(resObj0.id);
         const { data: restRow } = await sb.from("restaurants")
-          .select("large_group_max_online_request, max_party_size_online, large_group_confirmation_text")
+          .select("large_group_max_online_request, max_party_size_online, large_group_confirmation_text, large_group_response_sla_label, large_group_response_channel_label")
           .eq("id", keyRow.restaurant_id).maybeSingle();
         const onlineHardCap: number = (restRow?.large_group_max_online_request ?? restRow?.max_party_size_online ?? 18) as number;
 
@@ -452,6 +470,8 @@ async function handle(
           timeStr: String((payload as any).time ?? ""),
           onlineHardCap,
           largeGroupConfirmationText: restRow?.large_group_confirmation_text ?? null,
+          largeGroupSlaLabel: restRow?.large_group_response_sla_label ?? null,
+          largeGroupChannelLabel: restRow?.large_group_response_channel_label ?? null,
         });
         return json(built.body, built.status);
       }
@@ -484,7 +504,7 @@ async function handle(
         // `reservation_request` zodat een parafraserende LLM nooit "geboekt"
         // kan zeggen terwijl de reservering nog op handmatige goedkeuring wacht.
         const { data: restRow2 } = await sb.from("restaurants")
-          .select("large_group_max_online_request, max_party_size_online, large_group_confirmation_text")
+          .select("large_group_max_online_request, max_party_size_online, large_group_confirmation_text, large_group_response_sla_label, large_group_response_channel_label")
           .eq("id", keyRow.restaurant_id).maybeSingle();
         const onlineHardCap2: number = (restRow2?.large_group_max_online_request ?? restRow2?.max_party_size_online ?? 18) as number;
         const built2 = buildBookGuestResponse(r, {
@@ -493,6 +513,8 @@ async function handle(
           timeStr: String((payload as any).time ?? ""),
           onlineHardCap: onlineHardCap2,
           largeGroupConfirmationText: restRow2?.large_group_confirmation_text ?? null,
+          largeGroupSlaLabel: restRow2?.large_group_response_sla_label ?? null,
+          largeGroupChannelLabel: restRow2?.large_group_response_channel_label ?? null,
         });
         return json(built2.body, built2.status);
       }

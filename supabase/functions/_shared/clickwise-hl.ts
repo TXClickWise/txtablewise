@@ -8,6 +8,8 @@ export function buildCustomValues(args: {
   restaurantName?: string | null;
   timezone?: string | null;
   anonKey?: string | null;
+  largeGroupSlaLabel?: string | null;
+  largeGroupChannelLabel?: string | null;
 }): Record<string, string> {
   const cv: Record<string, string> = {
     tablewise_base_url: args.tablewiseBaseUrl,
@@ -24,6 +26,10 @@ export function buildCustomValues(args: {
   // niet rendert in Voice AI prompts en Custom Action bodies.
   if (args.restaurantName) cv.tablewise_restaurant_name = args.restaurantName;
   if (args.timezone) cv.tablewise_timezone = args.timezone;
+  // Tenant-instelbare beloftes voor grote groepen — laat de Voice-prompt
+  // dynamisch een SLA + kanaal voorlezen. Lege string als de tenant niets wil beloven.
+  cv.tablewise_large_group_sla_label = (args.largeGroupSlaLabel ?? "").trim();
+  cv.tablewise_large_group_channel_label = (args.largeGroupChannelLabel ?? "").trim();
   return cv;
 }
 

@@ -26,6 +26,8 @@ type Form = {
   large_group_default_status: string;
   large_group_confirmation_text: string;
   large_group_cancellation_terms: string;
+  large_group_response_sla_label: string;
+  large_group_response_channel_label: string;
   noshow_deposit_rules_prepared: boolean;
   transfer_phone: string;
   transfer_hours_start: string;
@@ -45,6 +47,8 @@ const defaults: Form = {
   large_group_default_status: "pending",
   large_group_confirmation_text: "",
   large_group_cancellation_terms: "",
+  large_group_response_sla_label: "",
+  large_group_response_channel_label: "",
   noshow_deposit_rules_prepared: false,
   transfer_phone: "",
   transfer_hours_start: "",
@@ -68,6 +72,7 @@ const LargeGroupSettings = () => {
           large_group_threshold, large_group_minutes, large_group_extra_minutes, large_group_manual_approval_from,
           large_group_deposit_recommended_from, large_group_default_status,
           large_group_confirmation_text, large_group_cancellation_terms, noshow_deposit_rules_prepared,
+          large_group_response_sla_label, large_group_response_channel_label,
           large_group_extra_info_from, large_group_max_online_request, extra_large_group_threshold,
           transfer_phone, transfer_hours_start, transfer_hours_end, default_reservation_minutes
         `)
@@ -85,6 +90,8 @@ const LargeGroupSettings = () => {
           large_group_default_status: data.large_group_default_status ?? defaults.large_group_default_status,
           large_group_confirmation_text: data.large_group_confirmation_text ?? "",
           large_group_cancellation_terms: data.large_group_cancellation_terms ?? "",
+          large_group_response_sla_label: (data as any).large_group_response_sla_label ?? "",
+          large_group_response_channel_label: (data as any).large_group_response_channel_label ?? "",
           noshow_deposit_rules_prepared: data.noshow_deposit_rules_prepared ?? false,
           transfer_phone: (data as any).transfer_phone ?? "",
           transfer_hours_start: ((data as any).transfer_hours_start ?? "").slice(0, 5),
@@ -127,6 +134,8 @@ const LargeGroupSettings = () => {
       large_group_default_status: form.large_group_default_status,
       large_group_confirmation_text: form.large_group_confirmation_text,
       large_group_cancellation_terms: form.large_group_cancellation_terms,
+      large_group_response_sla_label: form.large_group_response_sla_label.trim() === "" ? null : form.large_group_response_sla_label.trim(),
+      large_group_response_channel_label: form.large_group_response_channel_label.trim() === "" ? null : form.large_group_response_channel_label.trim(),
       noshow_deposit_rules_prepared: form.noshow_deposit_rules_prepared,
       transfer_phone: form.transfer_phone.trim() === "" ? null : form.transfer_phone.trim(),
       transfer_hours_start: form.transfer_hours_start === "" ? null : form.transfer_hours_start,
@@ -254,6 +263,24 @@ const LargeGroupSettings = () => {
               onChange={(e) => setForm({ ...form, large_group_cancellation_terms: e.target.value })}
               placeholder="Bijv. 'Annuleren of wijzigen kan kosteloos tot 48 uur voor aanvang.'" />
           </Field>
+
+          <div className="rounded-md border border-dashed p-3 space-y-3">
+            <div className="text-sm font-medium">Belofte aan de gast bij voorlopige aanvraag</div>
+            <p className="text-xs text-muted-foreground inline-flex items-start gap-1">
+              <Info className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+              Deze beloftes worden letterlijk gebruikt door de AI voice-agent en in pending-berichten. Laat leeg om geen termijn of kanaal te beloven. Zorg dat je ze ook waarmaakt.
+            </p>
+            <Field label="Beloofde reactietijd" hint="Bijv. 'binnen 4 uur' of 'binnen 1 werkdag'. Leeg = geen termijn beloven.">
+              <Input value={form.large_group_response_sla_label}
+                onChange={(e) => setForm({ ...form, large_group_response_sla_label: e.target.value })}
+                placeholder="bijv. binnen 4 uur" />
+            </Field>
+            <Field label="Kanaal voor terugkoppeling" hint="Bijv. 'per SMS of e-mail'. Leeg = geen kanaal noemen. Zorg dat dit kanaal actief is in ClickWise.">
+              <Input value={form.large_group_response_channel_label}
+                onChange={(e) => setForm({ ...form, large_group_response_channel_label: e.target.value })}
+                placeholder="bijv. per SMS of e-mail" />
+            </Field>
+          </div>
         </CardContent>
       </Card>
 

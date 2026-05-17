@@ -411,9 +411,17 @@ Deno.serve(async (req) => {
     }
 
     // Gastvriendelijke melding voor voice-agent bij grote-groep goedkeuring.
-    // Tenant-driven copy heeft voorrang; anders neutrale fallback zonder SLA-belofte.
+    // Tenant-driven copy heeft voorrang; anders bouw een zin uit de tenant-specifieke
+    // SLA/kanaal-labels. Beide leeg => neutrale fallback zonder belofte.
     const tenantPendingCopy = (restaurant.large_group_confirmation_text ?? "").toString().trim();
-    const fallbackPending = `Uw reservering voor ${body.party_size} personen op ${body.date} om ${body.time} is voorlopig genoteerd. Het restaurant laat het u zo snel mogelijk weten.`;
+    const slaLabel = (restaurant.large_group_response_sla_label ?? "").toString().trim();
+    const channelLabel = (restaurant.large_group_response_channel_label ?? "").toString().trim();
+    const dynamicTail = slaLabel && channelLabel
+      ? ` U ontvangt ${slaLabel} een bericht ${channelLabel}.`
+      : slaLabel ? ` U ontvangt ${slaLabel} een bericht.`
+      : channelLabel ? ` U ontvangt een bericht ${channelLabel}.`
+      : ` Het restaurant laat het u zo snel mogelijk weten.`;
+    const fallbackPending = `Uw reservering voor ${body.party_size} personen op ${body.date} om ${body.time} is voorlopig genoteerd.${dynamicTail}`;
     const messageForGuest = requiresManualApproval
       ? (tenantPendingCopy || fallbackPending)
       : null;
