@@ -47,6 +47,8 @@ const defaults: Form = {
   large_group_default_status: "pending",
   large_group_confirmation_text: "",
   large_group_cancellation_terms: "",
+  large_group_response_sla_label: "",
+  large_group_response_channel_label: "",
   noshow_deposit_rules_prepared: false,
   transfer_phone: "",
   transfer_hours_start: "",
