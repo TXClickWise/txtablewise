@@ -376,6 +376,19 @@ const SECTIONS: Section[] = [
             </tbody>
           </table>
         </div>
+        <Callout tone="warning" title="Belangrijk — kies geen Date Picker voor TW Reservation Date">
+          <p>
+            Gebruik <strong>Single Line</strong> (tekst), niet <em>Date Picker</em>. ClickWise toont
+            Date Picker-velden niet in <strong>Find Contact → Match Field</strong> en vaak ook niet in
+            If/Else-condities. TableWise stuurt de datum als ISO-string (<code>YYYY-MM-DD</code>),
+            dus Single Line werkt overal — in SMS-templates, filters én contact-matching.
+          </p>
+          <p className="mt-2 text-xs text-muted-foreground">
+            Heb je het veld al als Date Picker aangemaakt? Open het, wissel het type naar Single Line,
+            sla op, en doe in je Inbound Webhook trigger opnieuw "Check for new requests" zodat de
+            mapping ververst.
+          </p>
+        </Callout>
       </div>
     ),
   },
