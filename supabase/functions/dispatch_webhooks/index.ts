@@ -231,12 +231,18 @@ Deno.serve(async (req) => {
         continue;
       }
 
+      const enrichedPayload = await enrichPayload(
+        ev.restaurant_id,
+        (ev.payload ?? {}) as Record<string, unknown>,
+        (ev.entity_type ?? null) as string | null,
+        (ev.entity_id ?? null) as string | null,
+      );
       const body = JSON.stringify({
         id: ev.id,
         event_type: ev.event_type,
         restaurant_id: ev.restaurant_id,
         created_at: ev.created_at,
-        payload: ev.payload,
+        payload: enrichedPayload,
       });
 
       // Try every matching endpoint; success if all-ok, fail if any fails (retried by attempts)
