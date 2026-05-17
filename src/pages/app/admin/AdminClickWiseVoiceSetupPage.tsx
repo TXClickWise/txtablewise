@@ -740,8 +740,14 @@ X-Agent-Api-Key: ${apiKey}`;
               </AccordionContent>
             </AccordionItem>
             <AccordionItem value="book">
-              <AccordionTrigger>3. book_reservation <span className="ml-2 text-xs text-muted-foreground">legacy</span></AccordionTrigger>
+              <AccordionTrigger>3. book_reservation <span className="ml-2 text-xs text-destructive font-semibold">VEROUDERD — verwijderen</span></AccordionTrigger>
               <AccordionContent>
+                <div className="rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm mb-3">
+                  <strong>Verwijder deze tool uit de voice agent.</strong> Gebruik UITSLUITEND <code>reservation_request</code> voor nieuwe boekingen.
+                  Als de agent <code>book_reservation</code> kiest in plaats van <code>reservation_request</code>, kan een grote-groepsreservering
+                  ten onrechte als "geboekt" klinken zonder de juiste "Voorlopig"-waarschuwing aan de gast.
+                  (De endpoint blijft als veiligheidsvangnet werken en geeft sinds kort dezelfde <code>message_for_guest</code>/<code>status_label</code> velden terug, maar dat ontslaat de LLM niet altijd van paraphrase-risico.)
+                </div>
                 <CopyBlock label="Action JSON" value={bookJson} lang="json" />
               </AccordionContent>
             </AccordionItem>
