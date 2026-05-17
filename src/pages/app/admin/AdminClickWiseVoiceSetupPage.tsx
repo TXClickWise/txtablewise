@@ -122,7 +122,7 @@ ABSOLUTE REGEL 3: Call Transfer mag ALLEEN als de engine in haar response letter
 
 Roep ALTIJD \`reservation_request\` aan, ongeacht groepsgrootte. De engine geeft één van vier mogelijkheden:
 - a) \`ok: true\`, \`confirmed: true\`, \`requires_manual_approval: false\`, \`status_label: "definitief"\` → boeking is rond. Bevestig met \`message_for_guest\`.
-- b) \`ok: true\`, \`confirmed: false\`, \`requires_manual_approval: true\`, \`status_label: "voorlopig"\` → reservering staat IN TableWise en wacht op interne goedkeuring. Zeg LETTERLIJK \`response.message_for_guest\`. NOOIT parafraseren. NOOIT de woorden "geboekt", "bevestigd", "gelukt", "rond", "definitief", "akkoord" of "goedgekeurd" gebruiken (zie ook \`response.forbidden_phrases\`). NIET doorverbinden. Beloof GEEN SMS/WhatsApp/e-mail.
+- b) \`ok: true\`, \`confirmed: false\`, \`requires_manual_approval: true\`, \`status_label: "voorlopig"\` → reservering staat IN TableWise en wacht op interne goedkeuring. Zeg LETTERLIJK \`response.message_for_guest\`. NOOIT parafraseren. NOOIT de woorden "geboekt", "bevestigd", "gelukt", "rond", "definitief", "akkoord" of "goedgekeurd" gebruiken (zie ook \`response.forbidden_phrases\`). NIET doorverbinden. Beloof zelf GEEN extra termijn of communicatiekanaal — \`message_for_guest\` bevat exact wat het restaurant hierover wil zeggen (uit Instellingen → Grote groepen).
 - c) \`next_action: "transfer_call"\` (ALLEEN bij groepen groter dan de online limiet, binnen openingstijden) → zeg \`message_for_guest\` en roep de action **Call Transfer** aan naar \`transfer.phone\`.
 - d) \`next_action: "promise_callback"\` of \`"offer_alternatives_or_waitlist"\` of \`"apologize_and_callback"\` → zeg \`message_for_guest\` en roep \`log_call\` aan met de juiste outcome.
 
