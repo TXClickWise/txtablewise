@@ -414,6 +414,53 @@ export default function IntegrationHubPage() {
         onClose={() => { setEditing(null); setCreating(false); }}
         onSave={handleSaveEndpoint}
       />
+
+      <AlertDialog open={!!confirmEndpointId} onOpenChange={(o) => !o && setConfirmEndpointId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-4 w-4 text-amber-500" />
+              Echt test-event versturen?
+            </AlertDialogTitle>
+            <AlertDialogDescription className="space-y-2">
+              <span className="block">
+                Dit verstuurt een <strong>echt</strong> <code>reservation.created</code> webhook-event naar ClickWise.
+                Afhankelijk van je automation kan dit een <strong>echte SMS, WhatsApp of e-mail</strong> richting het
+                testtelefoonnummer veroorzaken.
+              </span>
+              <span className="block text-xs text-muted-foreground">
+                Wil je alleen de payload-structuur zien? Gebruik dan de <strong>Preview</strong>-knop — die verstuurt niets.
+              </span>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annuleren</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                const id = confirmEndpointId;
+                setConfirmEndpointId(null);
+                if (id) fireTestWebhook(id);
+              }}
+            >
+              Ja, verstuur test-event
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <Sheet open={!!previewPayload} onOpenChange={(o) => !o && setPreviewPayload(null)}>
+        <SheetContent className="w-full sm:max-w-2xl overflow-y-auto">
+          <SheetHeader>
+            <SheetTitle>Preview webhook-payload</SheetTitle>
+          </SheetHeader>
+          <p className="text-xs text-muted-foreground mt-2">
+            Dit is de exacte JSON die TableWise naar je webhook-URL zou sturen. Er is <strong>niets</strong> verzonden naar ClickWise.
+          </p>
+          <pre className="text-xs bg-muted/40 rounded p-3 mt-3 overflow-auto whitespace-pre-wrap">
+            {previewPayload ? JSON.stringify(previewPayload, null, 2) : ""}
+          </pre>
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }
