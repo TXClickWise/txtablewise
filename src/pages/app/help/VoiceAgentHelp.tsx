@@ -1112,7 +1112,7 @@ const SECTIONS: Section[] = [
               { name: "guest_phone", type: "String", required: true, description: "Telefoonnummer in E.164. Default {{contact.phone}}.", example: "+31612345678" },
               { name: "guest_email", type: "String", required: false, description: "Alleen invullen als de beller dit zelf opgeeft.", example: "gast@voorbeeld.nl" },
               { name: "desired_date", type: "String", required: true, description: "Gewenste datum YYYY-MM-DD.", example: "2026-05-26" },
-              { name: "party_size", type: "Number", required: true, description: "Aantal personen, geheel getal ≥ 1. De engine valideert zelf tegen max_party_size_online en large_group_max_online_request.", example: "4" },
+              { name: "party_size", type: "Number", required: true, description: "Aantal personen, geheel getal ≥ 1. De engine valideert zelf tegen large_group_max_online_request.", example: "4" },
               { name: "desired_time_from", type: "String", required: false, description: "Vroegste acceptabele tijd HH:mm. Default 18:00.", example: "18:30" },
               { name: "desired_time_to", type: "String", required: false, description: "Laatste acceptabele tijd HH:mm. Default 21:00.", example: "20:30" },
               { name: "notes", type: "String", required: false, description: "Vrij veld voor wensen of context.", example: "Liever bij het raam" },
