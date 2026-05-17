@@ -43,6 +43,30 @@ async function sha256Hex(input: string): Promise<string> {
     .join("");
 }
 
+// Sommige voice agents sturen gastvelden plat (first_name, phone, ...) i.p.v.
+// genest onder `guest`. We normaliseren beide vormen naar een `guest`-object.
+function normalizeGuest(payload: Record<string, any>): Record<string, any> {
+  if (payload.guest && typeof payload.guest === "object") return payload;
+  const flatKeys = ["first_name", "last_name", "phone", "email", "name", "full_name", "guest_name", "guest_phone", "guest_email"];
+  const hasFlat = flatKeys.some((k) => payload[k] != null);
+  if (!hasFlat) return payload;
+  const rawName = payload.full_name ?? payload.name ?? payload.guest_name ?? null;
+  let first = payload.first_name ?? null;
+  let last = payload.last_name ?? null;
+  if (!first && rawName) {
+    const parts = String(rawName).trim().split(/\s+/);
+    first = parts.shift() ?? null;
+    if (!last && parts.length) last = parts.join(" ");
+  }
+  const guest: Record<string, any> = {
+    first_name: first,
+    last_name: last,
+    phone: payload.phone ?? payload.guest_phone ?? null,
+    email: payload.email ?? payload.guest_email ?? null,
+  };
+  return { ...payload, guest };
+}
+
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
@@ -196,6 +220,7 @@ async function handle(
       }
       case "book_reservation": {
         if (!keyRow.scopes.includes("book")) return json({ error: "Scope missing: book", error_code: "auth_scope_missing", field: "book" }, 403);
+        Object.assign(payload, normalizeGuest(payload as Record<string, any>));
         const required = ["date", "time", "party_size", "guest"];
         for (const k of required) {
           if (!(k in payload)) return json({ error: `Missing field: ${k}`, error_code: "missing_field", field: k }, 400);
@@ -386,8 +411,16 @@ async function handle(
       }
       case "create_waitlist_entry": {
         if (!keyRow.scopes.includes("book")) return json({ error: "Scope missing: book", error_code: "auth_scope_missing", field: "book" }, 403);
-        const { guest_name, guest_phone, guest_email, desired_date, party_size, desired_time_from, desired_time_to, notes } = payload as {
-          guest_name?: string; guest_phone?: string; guest_email?: string;
+        // Accepteer ook flat first_name/last_name/phone/email of guest-object i.p.v. guest_*-prefix.
+        const p = payload as Record<string, any>;
+        const flat = normalizeGuest(p);
+        const g = (flat.guest ?? {}) as Record<string, any>;
+        const joined = [g.first_name, g.last_name].filter(Boolean).join(" ").trim();
+        const fullName = p.guest_name ?? p.full_name ?? p.name ?? (joined || null);
+        const guest_name: string | undefined = fullName || undefined;
+        const guest_phone: string | undefined = p.guest_phone ?? g.phone ?? p.phone ?? undefined;
+        const guest_email: string | undefined = p.guest_email ?? g.email ?? p.email ?? undefined;
+        const { desired_date, party_size, desired_time_from, desired_time_to, notes } = p as {
           desired_date?: string; party_size?: number;
           desired_time_from?: string; desired_time_to?: string; notes?: string;
         };
