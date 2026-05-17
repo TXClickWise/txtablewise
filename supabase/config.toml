@@ -11,6 +11,8 @@ project_id = "lbhtztbpxmqlzhyephew"
     verify_jwt = false
   [functions.handle-email-suppression]
     verify_jwt = false
+  [functions.manage_reservation]
+    verify_jwt = false
   [functions.handle-email-unsubscribe]
     verify_jwt = false
   [functions.loyverse_oauth]
