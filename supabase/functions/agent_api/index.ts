@@ -411,8 +411,16 @@ async function handle(
       }
       case "create_waitlist_entry": {
         if (!keyRow.scopes.includes("book")) return json({ error: "Scope missing: book", error_code: "auth_scope_missing", field: "book" }, 403);
-        const { guest_name, guest_phone, guest_email, desired_date, party_size, desired_time_from, desired_time_to, notes } = payload as {
-          guest_name?: string; guest_phone?: string; guest_email?: string;
+        // Accepteer ook flat first_name/last_name/phone/email of guest-object i.p.v. guest_*-prefix.
+        const p = payload as Record<string, any>;
+        const flat = normalizeGuest(p);
+        const g = (flat.guest ?? {}) as Record<string, any>;
+        const fullName = p.guest_name ?? p.full_name ?? p.name
+          ?? [g.first_name, g.last_name].filter(Boolean).join(" ").trim() || null;
+        const guest_name: string | undefined = fullName || undefined;
+        const guest_phone: string | undefined = p.guest_phone ?? g.phone ?? p.phone ?? undefined;
+        const guest_email: string | undefined = p.guest_email ?? g.email ?? p.email ?? undefined;
+        const { desired_date, party_size, desired_time_from, desired_time_to, notes } = p as {
           desired_date?: string; party_size?: number;
           desired_time_from?: string; desired_time_to?: string; notes?: string;
         };
