@@ -5,6 +5,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { corsHeaders } from "../_shared/cors.ts";
 import { buildCustomValues, makeHlFetch, upsertCustomValues } from "../_shared/clickwise-hl.ts";
+import { SUPABASE_GATEWAY_JWT_ANON_KEY } from "../_shared/gateway-key.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -59,7 +60,7 @@ Deno.serve(async (req) => {
     tablewiseBaseUrl: TABLEWISE_BASE_URL,
     restaurantName: (r as any)?.name ?? null,
     timezone: (r as any)?.timezone ?? null,
-    anonKey: Deno.env.get("SUPABASE_ANON_KEY") ?? null,
+    anonKey: SUPABASE_GATEWAY_JWT_ANON_KEY,
   });
 
   if (body.dry_run) return ok({ ok: true, dry_run: true, values, location_id: locationId });
