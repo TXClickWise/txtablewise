@@ -250,7 +250,7 @@ async function callInternalFn(name: string, body: unknown, extraHeaders: Record<
     headers: {
       "Content-Type": "application/json",
       Authorization: `Bearer ${SERVICE_ROLE}`,
-      apikey: SERVICE_ROLE,
+      apikey: GATEWAY_API_KEY,
       ...extraHeaders,
     },
     body: JSON.stringify(body),
