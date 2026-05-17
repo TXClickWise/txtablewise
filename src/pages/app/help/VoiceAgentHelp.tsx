@@ -967,9 +967,11 @@ const SECTIONS: Section[] = [
 }`,
             responseHint: (
               <>
-                Response bevat <code>reservation_id</code> en <code>manage_token</code>. <strong>Niet
-                hardop voorlezen</strong> — de gast krijgt het bevestigingsnummer automatisch per
-                SMS en/of WhatsApp toegestuurd. Bevestig alleen hardop datum, tijd en aantal personen.
+                Response bevat <code>reservation_id</code>, <code>requires_manual_approval</code>{" "}
+                en <code>message_for_guest</code>. <strong>Reservation_id niet hardop voorlezen</strong>.
+                Bevestig hardop met de tekst uit <code>message_for_guest</code> (of bevestig zelf
+                datum, tijd en aantal personen). Beloof <strong>NOOIT</strong> een SMS, WhatsApp of
+                e-mail.
               </>
             ),
             endNote: (
