@@ -119,10 +119,13 @@ ABSOLUTE REGEL 2: voor ELKE groep t/m 18 personen roep je ALTIJD eerst \`reserva
 ABSOLUTE REGEL 3: Call Transfer mag ALLEEN als de engine in haar response letterlijk \`next_action: "transfer_call"\` teruggeeft EN het veld \`transfer.allowed === true\` bevat. In alle andere gevallen: niet doorverbinden.
 
 Roep ALTIJD \`reservation_request\` aan, ongeacht groepsgrootte. De engine geeft één van vier mogelijkheden:
-- a) \`ok: true\`, \`requires_manual_approval: false\` → boeking is rond. Bevestig met \`message_for_guest\`.
-- b) \`ok: true\`, \`requires_manual_approval: true\` → reservering staat IN TableWise en wacht op interne goedkeuring. Bevestig LETTERLIJK met \`message_for_guest\`. NIET doorverbinden. Beloof GEEN SMS/WhatsApp/e-mail.
+- a) \`ok: true\`, \`requires_manual_approval: false\`, \`status_label: "definitief"\` → boeking is rond. Bevestig met \`message_for_guest\`.
+- b) \`ok: true\`, \`requires_manual_approval: true\`, \`status_label: "voorlopig"\` → reservering staat IN TableWise en wacht op interne goedkeuring. Zeg LETTERLIJK \`response.message_for_guest\` (die begint met "Let op — dit is nog geen definitieve reservering"). NOOIT parafraseren. NOOIT de woorden "geboekt", "bevestigd", "gelukt", "rond" of "definitief" gebruiken (zie ook \`response.forbidden_phrases\`). NIET doorverbinden. Beloof GEEN SMS/WhatsApp/e-mail.
 - c) \`next_action: "transfer_call"\` (ALLEEN bij groepen groter dan de online limiet, binnen openingstijden) → zeg \`message_for_guest\` en roep de action **Call Transfer** aan naar \`transfer.phone\`.
 - d) \`next_action: "promise_callback"\` of \`"offer_alternatives_or_waitlist"\` of \`"apologize_and_callback"\` → zeg \`message_for_guest\` en roep \`log_call\` aan met de juiste outcome.
+
+# VEROUDERDE TOOL — book_reservation
+Als in je tool-lijst nog een aparte action \`book_reservation\` staat: VERWIJDER die. Gebruik UITSLUITEND \`reservation_request\` voor nieuwe boekingen. \`book_reservation\` is alleen nog actief als veiligheidsvangnet en kan onbedoeld een grote groep als "geboekt" laten klinken zonder de juiste "voorlopig"-waarschuwing.
 
 # Toon
 - Warm, kort, hospitality-first. NOOIT bestraffend.
@@ -737,8 +740,14 @@ X-Agent-Api-Key: ${apiKey}`;
               </AccordionContent>
             </AccordionItem>
             <AccordionItem value="book">
-              <AccordionTrigger>3. book_reservation <span className="ml-2 text-xs text-muted-foreground">legacy</span></AccordionTrigger>
+              <AccordionTrigger>3. book_reservation <span className="ml-2 text-xs text-destructive font-semibold">VEROUDERD — verwijderen</span></AccordionTrigger>
               <AccordionContent>
+                <div className="rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm mb-3">
+                  <strong>Verwijder deze tool uit de voice agent.</strong> Gebruik UITSLUITEND <code>reservation_request</code> voor nieuwe boekingen.
+                  Als de agent <code>book_reservation</code> kiest in plaats van <code>reservation_request</code>, kan een grote-groepsreservering
+                  ten onrechte als "geboekt" klinken zonder de juiste "Voorlopig"-waarschuwing aan de gast.
+                  (De endpoint blijft als veiligheidsvangnet werken en geeft sinds kort dezelfde <code>message_for_guest</code>/<code>status_label</code> velden terug, maar dat ontslaat de LLM niet altijd van paraphrase-risico.)
+                </div>
                 <CopyBlock label="Action JSON" value={bookJson} lang="json" />
               </AccordionContent>
             </AccordionItem>

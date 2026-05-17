@@ -74,6 +74,82 @@ function json(body: unknown, status = 200) {
   });
 }
 
+// Bouw een uniforme, gastvrije response voor zowel `reservation_request`
+// als de oudere `book_reservation`-tool. De LLM krijgt altijd een veld
+// `message_for_guest` om LETTERLIJK voor te lezen + een `next_action`
+// die de workflow uniek aanstuurt. Zo kan een parafraserende LLM nooit
+// "geboekt" zeggen terwijl een grote-groepsreservering nog op goedkeuring
+// wacht.
+function buildBookGuestResponse(
+  r: { status: number; body: Record<string, any> | null },
+  ctx: { partySize: number; dateStr: string; timeStr: string; onlineHardCap: number },
+) {
+  const rb = (r.body ?? {}) as Record<string, any>;
+  const reservationObj = rb.reservation ?? {};
+  const requiresManual = rb.requires_manual_approval ?? reservationObj?.requires_manual_approval ?? false;
+  const { partySize, dateStr, timeStr, onlineHardCap } = ctx;
+
+  let messageForGuest: string | null = rb.message_for_guest ?? null;
+  let nextAction = "confirm_booking";
+  let statusLabel: "definitief" | "voorlopig" = "definitief";
+  let responseStatus = r.status;
+  let responseOk = r.status >= 200 && r.status < 300;
+
+  if (r.status >= 400) {
+    const ec = rb.error_code as string | undefined;
+    if (ec === "large_group_required_manual") {
+      const allowTransfer = partySize > onlineHardCap && rb.transfer?.allowed === true;
+      nextAction = allowTransfer ? "transfer_call" : "promise_callback";
+      statusLabel = "voorlopig";
+      messageForGuest = allowTransfer
+        ? "Een moment, ik verbind u door met een collega."
+        : `Let op — dit is nog geen definitieve reservering. Voor een groep van ${partySize} personen leg ik uw aanvraag voor aan een collega. Het team beoordeelt dit zo snel mogelijk en neemt alleen contact op als er iets aangepast moet worden — anders is uw aanvraag voor ${dateStr} om ${timeStr} genoteerd.`;
+      if (!allowTransfer) rb.transfer = { ...(rb.transfer ?? {}), allowed: false };
+    } else if (ec === "no_table_available" || ec === "slot_unavailable" || ec === "pacing_limit_reached") {
+      nextAction = "offer_alternatives_or_waitlist";
+      messageForGuest = "Helaas lukt dit specifieke tijdstip niet. Kunt u iets eerder of later? Anders zet ik u graag op onze wachtlijst.";
+      responseStatus = 200;
+      responseOk = true;
+      rb.transfer = { ...(rb.transfer ?? {}), allowed: false };
+    } else if (ec === "message_required") {
+      nextAction = "ask_special_requests";
+      messageForGuest = "Voor deze groepsgrootte noteer ik graag nog een korte toelichting voor het team. Zijn er bijzonderheden waar we rekening mee mogen houden?";
+      responseStatus = 200;
+      responseOk = true;
+      rb.transfer = { ...(rb.transfer ?? {}), allowed: false };
+    } else {
+      nextAction = "apologize_and_callback";
+      messageForGuest = "Sorry, er ging iets mis aan onze kant. Ik laat een collega u zo snel mogelijk terugbellen.";
+    }
+  } else if (requiresManual) {
+    nextAction = "confirm_pending_approval";
+    statusLabel = "voorlopig";
+    messageForGuest = `Let op — dit is nog geen definitieve reservering. Voor een groep van ${partySize} personen leg ik uw aanvraag voor aan een collega. Het team beoordeelt dit zo snel mogelijk en neemt alleen contact op als er iets aangepast moet worden — anders is uw aanvraag voor ${dateStr} om ${timeStr} genoteerd.`;
+  } else {
+    messageForGuest = messageForGuest ?? `Top, jullie tafel staat genoteerd, tot ${dateStr} om ${timeStr}.`;
+  }
+
+  return {
+    body: {
+      ok: responseOk,
+      reservation_id: reservationObj?.id ?? rb.reservation_id ?? null,
+      confirmation_code: reservationObj?.confirmation_code ?? rb.confirmation_code ?? null,
+      requires_manual_approval: requiresManual,
+      large_group_status: rb.large_group_status ?? reservationObj?.large_group_status ?? null,
+      status_label: statusLabel,
+      error_code: rb.error_code ?? null,
+      transfer: rb.transfer ?? null,
+      message_for_guest: messageForGuest,
+      next_action: nextAction,
+      forbidden_phrases: requiresManual
+        ? ["geboekt", "bevestigd", "gelukt", "rond", "definitief"]
+        : [],
+    },
+    status: responseStatus,
+    reservationId: reservationObj?.id ?? rb.reservation_id ?? null,
+  };
+}
+
 async function authenticate(req: Request) {
   const key =
     req.headers.get("x-agent-api-key") ||
@@ -255,70 +331,20 @@ async function handle(
           source_metadata: { ...(payload.source_metadata as object | undefined), agent_provider: keyRow.provider, via: "agent_api/reservation_request" },
         };
         const r = await callInternalFn("book_reservation", bookBody);
-        const rb = (r.body ?? {}) as Record<string, any>;
-        const reservationObj = rb.reservation ?? {};
-        if (r.status >= 200 && r.status < 300 && reservationObj?.id) ctx.setReservationId(reservationObj.id);
-        const partySize = Number((payload as any).party_size) || 0;
-        const dateStr = String((payload as any).date ?? "");
-        const timeStr = String((payload as any).time ?? "");
-        const requiresManual = rb.requires_manual_approval ?? reservationObj?.requires_manual_approval ?? false;
-        let messageForGuest: string | null = rb.message_for_guest ?? null;
-        let nextAction: string = "confirm_booking";
-        // Lees de online limiet uit om dubbel zeker te zijn dat transfer alleen mag boven die limiet.
+        const rb0 = (r.body ?? {}) as Record<string, any>;
+        const resObj0 = rb0.reservation ?? {};
+        if (r.status >= 200 && r.status < 300 && resObj0?.id) ctx.setReservationId(resObj0.id);
         const { data: restRow } = await sb.from("restaurants")
           .select("large_group_max_online_request, max_party_size_online")
           .eq("id", keyRow.restaurant_id).maybeSingle();
         const onlineHardCap: number = (restRow?.large_group_max_online_request ?? restRow?.max_party_size_online ?? 18) as number;
-        let responseStatus = r.status;
-        let responseOk = r.status >= 200 && r.status < 300;
-        if (r.status >= 400) {
-          const ec = rb.error_code as string | undefined;
-          if (ec === "large_group_required_manual") {
-            // Extra guard: transfer alleen toestaan wanneer party_size daadwerkelijk
-            // boven de online limiet zit. Anders altijd callback/handmatige aanvraag.
-            const allowTransfer = partySize > onlineHardCap && rb.transfer?.allowed === true;
-            nextAction = allowTransfer ? "transfer_call" : "promise_callback";
-            messageForGuest = allowTransfer
-              ? "Een moment, ik verbind u door met een collega."
-              : `Voor een groep van ${partySize} personen leg ik uw aanvraag voor aan een collega. Het team beoordeelt dit zo snel mogelijk en neemt alleen contact op als er iets aangepast moet worden — anders is de tafel voor u gereserveerd op ${dateStr} om ${timeStr}.`;
-            // Forceer transfer-veld op false als we hem niet mogen gebruiken zodat
-            // de voice-agent nooit zelf alsnog Call Transfer triggert.
-            if (!allowTransfer) {
-              rb.transfer = { ...(rb.transfer ?? {}), allowed: false };
-            }
-          } else if (ec === "no_table_available" || ec === "slot_unavailable" || ec === "pacing_limit_reached") {
-            nextAction = "offer_alternatives_or_waitlist";
-            messageForGuest = "Helaas lukt dit specifieke tijdstip niet. Kunt u iets eerder of later? Anders zet ik u graag op onze wachtlijst.";
-            responseStatus = 200;
-            responseOk = true;
-            rb.transfer = { ...(rb.transfer ?? {}), allowed: false };
-          } else if (ec === "message_required") {
-            nextAction = "ask_special_requests";
-            messageForGuest = "Voor deze groepsgrootte noteer ik graag nog een korte toelichting voor het team. Zijn er bijzonderheden waar we rekening mee mogen houden?";
-            responseStatus = 200;
-            responseOk = true;
-            rb.transfer = { ...(rb.transfer ?? {}), allowed: false };
-          } else {
-            nextAction = "apologize_and_callback";
-            messageForGuest = "Sorry, er ging iets mis aan onze kant. Ik laat een collega u zo snel mogelijk terugbellen.";
-          }
-        } else if (requiresManual) {
-          nextAction = "confirm_pending_approval";
-          messageForGuest = messageForGuest ?? `Voor een groep van ${partySize} personen leg ik uw aanvraag voor aan een collega. Het team beoordeelt dit zo snel mogelijk en neemt alleen contact op als er iets aangepast moet worden — anders is de tafel voor u gereserveerd op ${dateStr} om ${timeStr}.`;
-        } else {
-          messageForGuest = messageForGuest ?? `Top, jullie tafel staat genoteerd, tot ${dateStr} om ${timeStr}.`;
-        }
-        return json({
-          ok: responseOk,
-          reservation_id: reservationObj?.id ?? rb.reservation_id ?? null,
-          confirmation_code: reservationObj?.confirmation_code ?? rb.confirmation_code ?? null,
-          requires_manual_approval: requiresManual,
-          large_group_status: rb.large_group_status ?? reservationObj?.large_group_status ?? null,
-          error_code: rb.error_code ?? null,
-          transfer: rb.transfer ?? null,
-          message_for_guest: messageForGuest,
-          next_action: nextAction,
-        }, responseStatus);
+        const built = buildBookGuestResponse(r, {
+          partySize: Number((payload as any).party_size) || 0,
+          dateStr: String((payload as any).date ?? ""),
+          timeStr: String((payload as any).time ?? ""),
+          onlineHardCap,
+        });
+        return json(built.body, built.status);
       }
       case "book_reservation": {
         if (!keyRow.scopes.includes("book")) return json({ error: "Scope missing: book", error_code: "auth_scope_missing", field: "book" }, 403);
@@ -336,20 +362,23 @@ async function handle(
           source_metadata: { ...(payload.source_metadata as object | undefined), agent_provider: keyRow.provider, via: "agent_api" },
         };
         const r = await callInternalFn("book_reservation", bookBody);
-        // Forward reservation_id en goedkeuringsvlag op top-level zodat de voice-agent
-        // niet zelf door reservation.* hoeft te graven.
-        const rb = (r.body ?? {}) as Record<string, any>;
-        const reservationObj = rb.reservation ?? {};
-        if (r.status >= 200 && r.status < 300 && reservationObj?.id) ctx.setReservationId(reservationObj.id);
-        const enriched = {
-          ...rb,
-          reservation_id: reservationObj?.id ?? rb.reservation_id ?? null,
-          confirmation_code: reservationObj?.confirmation_code ?? rb.confirmation_code ?? null,
-          requires_manual_approval: rb.requires_manual_approval ?? reservationObj?.requires_manual_approval ?? false,
-          large_group_status: rb.large_group_status ?? reservationObj?.large_group_status ?? null,
-          message_for_guest: rb.message_for_guest ?? null,
-        };
-        return json(enriched, r.status);
+        const rb0 = (r.body ?? {}) as Record<string, any>;
+        const resObj0 = rb0.reservation ?? {};
+        if (r.status >= 200 && r.status < 300 && resObj0?.id) ctx.setReservationId(resObj0.id);
+        // DEPRECATED tool: gebruik dezelfde gastvrije response-vorm als
+        // `reservation_request` zodat een parafraserende LLM nooit "geboekt"
+        // kan zeggen terwijl de reservering nog op handmatige goedkeuring wacht.
+        const { data: restRow2 } = await sb.from("restaurants")
+          .select("large_group_max_online_request, max_party_size_online")
+          .eq("id", keyRow.restaurant_id).maybeSingle();
+        const onlineHardCap2: number = (restRow2?.large_group_max_online_request ?? restRow2?.max_party_size_online ?? 18) as number;
+        const built2 = buildBookGuestResponse(r, {
+          partySize: Number((payload as any).party_size) || 0,
+          dateStr: String((payload as any).date ?? ""),
+          timeStr: String((payload as any).time ?? ""),
+          onlineHardCap: onlineHardCap2,
+        });
+        return json(built2.body, built2.status);
       }
       case "cancel_reservation": {
         if (!keyRow.scopes.includes("cancel")) return json({ error: "Scope missing: cancel", error_code: "auth_scope_missing", field: "cancel" }, 403);
