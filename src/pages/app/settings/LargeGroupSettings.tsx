@@ -220,6 +220,34 @@ const LargeGroupSettings = () => {
         </CardContent>
       </Card>
 
+      <Card>
+        <CardContent className="p-5 space-y-4">
+          <h3 className="font-medium">Call Transfer bij te grote groepen</h3>
+          <p className="text-xs text-muted-foreground inline-flex items-start gap-1">
+            <Info className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+            Wanneer een beller via de AI Voice Agent een groep aanvraagt die groter is dan "Maximale online groepsaanvraag", verbindt de agent door naar dit nummer — maar alléén binnen het venster hieronder. Buiten dit venster (of op gesloten dagen) belooft de agent een terugbelafspraak.
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <Field label="Doorverbind-nummer" hint="E.164 formaat, bv. +31612345678.">
+              <Input type="tel" placeholder="+31612345678"
+                value={form.transfer_phone}
+                onChange={(e) => setForm({ ...form, transfer_phone: e.target.value })} />
+            </Field>
+            <Field label="Venster start" hint="Vanaf deze tijd mag worden doorverbonden.">
+              <Input type="time" value={form.transfer_hours_start}
+                onChange={(e) => setForm({ ...form, transfer_hours_start: e.target.value })} />
+            </Field>
+            <Field label="Venster eind" hint="Tot deze tijd mag worden doorverbonden.">
+              <Input type="time" value={form.transfer_hours_end}
+                onChange={(e) => setForm({ ...form, transfer_hours_end: e.target.value })} />
+            </Field>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            De beslissing wordt server-side genomen in jouw tijdzone — de AI kan dus niet per ongeluk midden in de nacht doorverbinden.
+          </p>
+        </CardContent>
+      </Card>
+
       <div className="flex justify-end">
         <Button onClick={save} disabled={saving} className="h-11 min-w-32">
           {saving ? "Opslaan…" : "Opslaan"}
