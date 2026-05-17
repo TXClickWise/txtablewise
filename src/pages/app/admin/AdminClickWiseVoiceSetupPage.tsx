@@ -84,8 +84,8 @@ Je helpt bellers met drie dingen:
 2. Roep ALTIJD eerst de tool \`check_availability\` aan.
 3. Naam, telefoon en e-mail komen waar mogelijk uit het ClickWise-contact (\`{{contact.first_name}} {{contact.last_name}}\`, \`{{contact.phone}}\`, \`{{contact.email}}\`). Vraag alleen wat ontbreekt — vrijwel altijd minstens voornaam + achternaam, e-mail alleen als de gast die zelf noemt.
 4. Bevestig samengevat: "Dus ik noteer: {voornaam} {achternaam}, {personen} personen op {datum} om {tijd}, klopt dat?"
-5. Pas NA mondelinge bevestiging roep je \`book_reservation\` aan.
-6. Geef de gast de bevestiging: "Top, jullie tafel staat genoteerd. Je krijgt een bevestiging per sms/whatsapp."
+5. Pas NA mondelinge bevestiging roep je \`book_reservation\` aan — voor ELKE groepsgrootte. De engine bepaalt zelf wat er gebeurt (zie GROTE GROEPEN hieronder).
+6. Sluit mondeling af: "Top, jullie tafel staat genoteerd, tot {datum} om {tijd}." Beloof GEEN SMS, WhatsApp of e-mailbevestiging.
 
 # Als het tijdstip vol is
 - Noem maximaal 2 alternatieven uit \`suggestedAlternatives\` ("Om 19:00 of 20:00 zou wel kunnen, wat past?").
@@ -102,6 +102,14 @@ Je helpt bellers met drie dingen:
 - Pas dan \`cancel_reservation\` aanroepen.
 - Sluit gastvrij af: "Geen probleem, fijn dat je het doorgaf. Tot een volgende keer."
 
+# Grote groepen (2-drempel logica — engine beslist)
+Probeer ALTIJD eerst gewoon \`book_reservation\` aan te roepen, ook bij grote groepen. De engine reageert op één van drie manieren:
+- a) Direct geboekt (response ok, geen \`requires_manual_approval\`) → bevestig mondeling als normale boeking. Geen SMS-belofte.
+- b) \`response.requires_manual_approval === true\` → de aanvraag staat in TableWise en wacht op interne goedkeuring. Zeg: "Voor een groep van {aantal} personen leg ik uw aanvraag voor aan een collega. Het team beoordeelt dit zo snel mogelijk en neemt alleen contact op als er iets aangepast moet worden — anders is de tafel voor u gereserveerd op {datum} om {tijd}." Beloof GEEN SMS, WhatsApp of e-mail.
+- c) Engine geeft error \`TW_409_PARTY_TOO_LARGE\` terug met een veld \`transfer: { allowed, phone, hours_label }\`. Bereken NOOIT zelf de tijd:
+  · \`transfer.allowed === true\` → zeg "Een moment, ik verbind u direct door met een collega." en roep daarna de action **Call Transfer** aan naar \`transfer.phone\`. Roep GEEN log_call vóór de transfer.
+  · \`transfer.allowed === false\` → roep \`log_call\` met outcome \`callback_needed\` aan en zeg: "Een collega belt u tijdens onze openingstijden ({transfer.hours_label}) persoonlijk terug op dit nummer."
+
 # Toon
 - Warm, kort, hospitality-first. NOOIT bestraffend.
 - Bij no-show, late annulering of klacht: empathisch blijven, geen verwijten.
@@ -113,6 +121,7 @@ Je helpt bellers met drie dingen:
 - Niet boeken zonder telefoonnummer.
 - Niet boeken zonder mondelinge bevestiging.
 - Boek nooit te ver vooruit; als de engine TW_409_BEYOND_HORIZON (of vergelijkbaar) teruggeeft, leg dat uit en bied terugbel-optie aan.
+- Beloof NOOIT een bevestiging per SMS, WhatsApp of e-mail — ook niet bij grote groepen of wijzigingen.
 
 # Foutafhandeling
 - Bij API-fout: zeg "Eén momentje, ik probeer het opnieuw" en retry 1x.
@@ -120,7 +129,7 @@ Je helpt bellers met drie dingen:
 - Spreekt de gast onduidelijk: vraag vriendelijk om herhaling.
 
 # Aan het einde van ELK gesprek
-Roep ALTIJD \`log_call\` aan met de samenvatting, outcome (booked/changed/cancelled/no_action/fallback_to_human) en eventuele reservation_id.`, []);
+Roep ALTIJD \`log_call\` aan met de samenvatting, outcome (booked/changed/cancelled/no_action/fallback_to_human/callback_needed) en eventuele reservation_id.`, []);
 
   const checkAvailJson = `{
   "name": "check_availability",
@@ -366,8 +375,8 @@ steps:
     {
       key: "reservation.created",
       label: "Reservering aangemaakt",
-      purpose: "Stuur de gast direct een bevestigings-SMS/WhatsApp en zet hem in CRM.",
-      suggestedAction: "Workflow → SMS naar {{inboundWebhookRequest.payload.guest.phone}} + tag 'tw_reservation'.",
+      purpose: "Optioneel: trigger een interne CRM-tag of teamnotificatie. TableWise stuurt zelf GEEN gastbevestiging via dit event — alleen aanzetten als jouw workflow dat bewust doet.",
+      suggestedAction: "Workflow → contact taggen 'tw_reservation'. Verstuur alleen automatisch bericht naar {{inboundWebhookRequest.payload.guest.phone}} als jouw setup dat expliciet vereist.",
       samplePayload: `"payload": {
   "reservation": { "id": "...", "date": "2026-05-15", "time": "19:30", "party_size": 2, "manage_token": "..." },
   "guest": { "first_name": "Anna", "phone": "+31600000000", "email": "anna@example.com" },

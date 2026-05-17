@@ -188,8 +188,8 @@ GESPREKSREGELS (alle talen)
 VERPLICHTE TOOL-VOLGORDE
 1. Verzamel datum, aantal personen én gewenste tijd → roep check_availability aan met date, party_size, preferred_time én language.
 2. Als response.exact gevuld is → bevestig hardop "[tijd] is beschikbaar, zal ik die reserveren?" (in de gespreks-taal). Bij null → noem 2-3 alternatieven uit response.alternatives.
-3. Naam + geldig telefoonnummer + gekozen tijd → bevestig hardop alles → roep create_reservation aan met language meegestuurd.
-4. Bevestig hardop datum, tijd en aantal personen. Lees GEEN reservation_id voor — de gast krijgt SMS/WhatsApp in de juiste taal (TableWise gebruikt de meegegeven language voor de templates).
+3. Naam + geldig telefoonnummer + gekozen tijd → bevestig hardop alles → roep book_reservation aan met language meegestuurd.
+4. Bevestig hardop datum, tijd en aantal personen. Lees GEEN reservation_id of bevestigingscode voor. Beloof GEEN SMS, WhatsApp of e-mailbevestiging — sluit gewoon mondeling af.
 5. Aan het einde van élk gesprek: roep log_call aan met outcome én language.
 
 ANNULEREN / WIJZIGEN
@@ -204,12 +204,12 @@ WAT JE NIET DOET
 - Boek nooit te ver vooruit. Bij engine-fout (boekingshorizon) → leg het uit en bied terugbel aan.
 
 GROTE GROEPEN (2-drempel logica — alle antwoorden in de GELOCKTE taal)
-- Probeer ALTIJD eerst gewoon te boeken via create_reservation, ongeacht groepsgrootte. De engine bepaalt zelf op basis van twee drempels (grote groep vanaf X, extra-grote groep vanaf Y) wat er gebeurt:
-  a) Direct geboekt (response ok, geen requires_manual_approval) → bevestig hardop als normale boeking.
-  b) response.requires_manual_approval = true → groep valt binnen het "ter beoordeling" venster. Zeg ALLEEN de variant in de gelockte taal (niet alle drie!):
-     · gelockt op NL → "Voor een groep van [aantal] personen leg ik uw aanvraag voor aan een collega. U ontvangt zo snel mogelijk een persoonlijke bevestiging per SMS."
-     · gelockt op DE → "Für eine Gruppe von [Anzahl] Personen lege ich Ihre Anfrage einem Kollegen vor. Sie erhalten schnellstmöglich eine persönliche Bestätigung per SMS."
-     · gelockt op EN → "For a group of [number] people I'll forward your request to a colleague. You'll receive a personal confirmation by SMS as soon as possible."
+- Probeer ALTIJD eerst gewoon te boeken via book_reservation, ongeacht groepsgrootte. De engine bepaalt zelf op basis van twee drempels (grote groep vanaf X, extra-grote groep vanaf Y) wat er gebeurt:
+  a) Direct geboekt (response ok, geen requires_manual_approval) → bevestig hardop als normale boeking. Beloof GEEN SMS, WhatsApp of e-mail.
+  b) response.requires_manual_approval = true → de aanvraag is opgeslagen in TableWise en wacht op interne goedkeuring door het team. Zeg ALLEEN de variant in de gelockte taal (niet alle drie!) en beloof NOOIT een SMS, WhatsApp of e-mail:
+     · gelockt op NL → "Voor een groep van [aantal] personen leg ik uw aanvraag voor aan een collega. Het team beoordeelt dit zo snel mogelijk en neemt alleen contact met u op als er iets aangepast moet worden — anders is de tafel voor u gereserveerd op [datum] om [tijd]."
+     · gelockt op DE → "Für eine Gruppe von [Anzahl] Personen lege ich Ihre Anfrage einem Kollegen vor. Das Team prüft das schnellstmöglich und meldet sich nur, falls etwas angepasst werden muss — andernfalls ist der Tisch für Sie am [Datum] um [Uhrzeit] reserviert."
+     · gelockt op EN → "For a group of [number] people I'll forward your request to a colleague. The team will review it as soon as possible and will only contact you if anything needs to be adjusted — otherwise the table is reserved for you on [date] at [time]."
   c) Engine geeft error_code = "large_group_required_manual" (TW_409_PARTY_TOO_LARGE) terug. De response bevat dan een veld "transfer": { allowed, phone, hours_label, reason }. Bereken NOOIT zelf de tijd of het venster — kijk alléén naar transfer.allowed:
      · transfer.allowed === true → zeg in de gelockte taal:
         NL: "Een moment, ik verbind u direct door met een collega."
@@ -221,6 +221,7 @@ GROTE GROEPEN (2-drempel logica — alle antwoorden in de GELOCKTE taal)
         DE: "Ein Kollege ruft Sie während unserer Öffnungszeiten ([transfer.hours_label]) persönlich auf dieser Nummer zurück."
         EN: "A colleague will call you back personally on this number during our opening hours ([transfer.hours_label])."
 - Boek NOOIT zelf door na een TW_409_PARTY_TOO_LARGE.
+- Beloof in GEEN ENKEL grote-groep-scenario een bevestiging per SMS, WhatsApp of e-mail.
 
 OPENINGSBEGROETING (verplicht, exact deze tri-linguale zin)
 "Goedendag, u spreekt met de digitale gastvrouw van {{custom_values.tablewise_restaurant_name}}. Guten Tag — how may I help you?"
@@ -692,7 +693,7 @@ const SECTIONS: Section[] = [
             <li>Voeg een action toe van het type <strong>Call Transfer</strong> (of <em>Live Transfer</em>).</li>
             <li>Naam: <code>Call Transfer</code> (exact zoals in de prompt).</li>
             <li>Transfer Number: gebruik <strong>het veld <code>transfer.phone</code> uit de tool-response</strong>
-              van create_reservation (de agent geeft het door bij het aanroepen van de action). Hardcoderen of
+              van book_reservation (de agent geeft het door bij het aanroepen van de action). Hardcoderen of
               via een custom value pushen is niet langer nodig.</li>
           </ol>
         </div>
@@ -716,7 +717,8 @@ const SECTIONS: Section[] = [
           <code>large_group_manual_approval_from</code>, en altijd vanaf
           <code>extra_large_group_threshold</code>) en verschijnen in de app onder
           <strong>"Grote groepen — te beoordelen"</strong>. Daar wordt <em>niet</em>
-          doorverbonden — die flow loopt via SMS-bevestiging vanuit het team.
+          doorverbonden en de agent belooft de gast <em>geen</em> SMS, WhatsApp of e-mail —
+          het team beoordeelt intern en neemt alleen contact op als er iets aangepast moet worden.
         </Callout>
       </div>
     ),
@@ -1452,7 +1454,7 @@ function buildBundle() {
         tool_params: {
           check_availability: ["date (String, required)", "party_size (Number, required)", "preferred_time (String, required)"],
           book_reservation:   ["date (String, required)", "time (String, required)", "party_size (Number, required)", "first_name (String, required)", "last_name (String, optional)", "phone (String, required)", "email (String, optional)", "special_requests (String, optional)"],
-          book_reservation_note: "reservation_id/bevestigingscode NIET hardop voorlezen — gast krijgt deze automatisch per SMS/WhatsApp.",
+          book_reservation_note: "reservation_id/bevestigingscode NIET hardop voorlezen. Beloof GEEN SMS, WhatsApp of e-mailbevestiging — sluit gewoon mondeling af.",
           find_reservation:   ["phone (String, optional)", "first_name (String, optional)", "last_name (String, optional)", "date (String, optional, YYYY-MM-DD)", "time (String, optional, HH:mm)"],
           find_reservation_note: "Minimaal één van: phone, last_name, of first_name + date. Vraag NOOIT om UUID of bevestigingsnummer.",
           cancel_reservation: ["reservation_id (String, required)", "reason (String, optional)"],
