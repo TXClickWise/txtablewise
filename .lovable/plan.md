@@ -1,46 +1,43 @@
-## Wat ik in de logs zie
+# Probleem
 
-Ik heb de laatste calls van vandaag uitgepluisd. Drie concrete dingen gaan mis:
+Bij de testcall vroeg de agent de beller om het telefoonnummer cijfer-voor-cijfer te spellen — terwijl de caller-ID (`{{contact.phone}}`) gewoon beschikbaar was — en las het daarna onverstaanbaar terug ("aan elkaar geplakte" cijfers). De huidige prompt bevat al een DEFAULT-regel ("gebruik het nummer waarmee u nu belt, lees het nooit voor"), maar de agent past die niet betrouwbaar toe. Bovendien zegt de prompt voor het ALTERNATIEF-scenario alleen "cijfer voor cijfer", maar geeft de TTS-engine geen leestekens om écht pauze te maken — vandaar het onverstaanbare resultaat.
 
-1. **Geen naam gevraagd → fallback "Gast"**
-   - Call van 10:48 (16 personen, 19 mei) is opgeslagen met `first_name = "Gast"`. De voice agent vulde dat zelf in omdat hij niet om de naam vroeg. Onze `agent_api` accepteert elke niet-lege string als first_name, dus "Gast" / "Klant" / "Unknown" glipt erdoorheen.
-   - Resultaat: reservering aangemaakt zonder echte naam, en pas toen jij er zelf om vroeg vulde de agent het alsnog aan (10:48:43 update).
+# Oplossing (alleen prompt- en help-tekst, geen edge-function code)
 
-2. **Drempel "handmatige goedkeuring" staat te hoog**
-   - Restaurant heeft `max_party_size_online = 10`, maar `large_group_max_online_request = 18`. Onze code gebruikt nu de hoogste van die twee als grens. Dus 11–17 personen wordt automatisch bevestigd terwijl jij verwacht dat alles boven 10 een handmatige goedkeuring nodig heeft. Dit verklaart de 15-persoons reservering om 09:55 die "approved" werd.
-   - 16-persoons reservering van 10:48 ging wél naar `awaiting_approval` omdat hij boven 18 zou moeten zitten? Nee — die ging naar pending omdat `large_group_threshold = 8` en aparte flow. De logica is inconsistent tussen drempels.
+Twee bestanden updaten met scherpere telefoonnummer-regels:
 
-3. **Agent zegt "reservering is gemaakt" bij pending**
-   - Onze `reservation_request` response geeft expliciet `"Let op — dit is nog geen definitieve reservering ..."` terug als `message_for_guest`. De ClickWise voice-prompt parafraseert dit en laat dat "nog geen definitieve" deel weg.
+- `src/pages/app/admin/AdminClickWiseVoiceSetupPage.tsx` — systeemprompt in `systemPrompt`
+- `src/pages/app/help/VoiceAgentHelp.tsx` — `SYSTEM_PROMPT` + UITSPRAAKREGELS-sectie
 
-## Plan
+## Wijzigingen aan de telefoonnummer-regels
 
-### 1. Naam echt verplicht maken (agent_api)
-- In `agent_api` bij `reservation_request` en `book_reservation`: reject lege of placeholder-namen (`gast`, `klant`, `unknown`, `anoniem`, `guest`, `customer`, `n.v.t.`, `-`, alleen 1 letter). Error code `missing_field` met `field: "guest.first_name"`, zodat de agent gedwongen wordt opnieuw te vragen.
-- Achternaam niet verplicht maken (voor telefonische context), maar wel doorvragen via prompt.
-- Idem voor `check_availability` — geen wijziging nodig; daar hoeft geen naam.
+### 1. Hard gate vóór elke vraag
+Eerste regel in de TELEFOON-sectie:
 
-### 2. Drempel handmatige goedkeuring uniform op `max_party_size_online`
-- In `agent_api` (en `book_reservation` waar nodig) `onlineHardCap` wijzigen naar: `max_party_size_online` als die gezet is, anders fallback naar `large_group_max_online_request`, anders 18.
-- Concreet effect: alles boven `max_party_size_online = 10` (dus 11+) krijgt `requires_manual_approval = true` en `large_group_status = awaiting_approval`. Geen automatische bevestiging meer voor groepen > online cap.
+> **STAP 0 — CHECK EERST `{{contact.phone}}`.** Als die waarde bestaat en niet leeg/anoniem/"unknown" is: gebruik scenario DEFAULT. Vraag dan NOOIT om spelling, herhaling, of bevestiging van cijfers. Eén zin: "Ik gebruik het nummer waarmee u nu belt — is dat goed?" en klaar. Alleen bij expliciet "noteer een ander nummer" of bij ontbrekend/anoniem caller-ID ga je naar scenario ALTERNATIEF.
 
-### 3. Response harder maken zodat agent niet "geboekt" kan zeggen
-- Bij pending/awaiting_approval response: `status` veld toevoegen (`"awaiting_approval"`), `confirmed: false`, en `message_for_guest` herschrijven naar één korte zin die de agent niet kán wegparafraseren: *"Ik heb uw aanvraag voor {date} om {time} voor {n} personen genoteerd. Een collega bevestigt dit zo snel mogelijk per telefoon of WhatsApp."*
-- Voice-prompt in ClickWise setup-pagina (`AdminClickWiseVoiceSetupPage` en `VoiceAgentHelp`) bijwerken: harde regel toevoegen "Lees ALTIJD letterlijk de `message_for_guest` voor. Zeg NOOIT 'reservering bevestigd' tenzij `confirmed: true`."
-- Voice-prompt: harde regel "Vraag ALTIJD eerst de voornaam (en zo mogelijk achternaam) voordat je een reservering aanmaakt. Vul NOOIT zelf 'Gast' of 'Klant' in."
+### 2. Verbod versterken
+Toevoegen aan VERBODEN-lijst:
+- Het beller-ID-nummer cijfer-voor-cijfer laten spellen.
+- Een telefoonnummer in één adem oplezen ("zesnulachtnegen...").
+- Een nummer in paren/tientallen groeperen ("zes-nul, achtendertig, ...").
 
-### 4. Logging & alert
-- In `agent_api`: bij geweigerde placeholder-naam log met action `reservation_request` en `error_code: "placeholder_name_blocked"` zodat we in `IntegrationLogsPage` precies kunnen zien hoe vaak de agent dit nog probeert.
+### 3. ALTERNATIEF-scenario: TTS-vriendelijke uitspraak
+De huidige instructie "cijfer voor cijfer met korte pauze" is te abstract voor de TTS. Vervangen door een concreet formaat dat de stemengine dwingt te pauzeren:
 
-### 5. Quick scan rest van app
-- Voor de tweede vraag ("zelf auto-debuggen"): ik draai daarna de Supabase linter + database security scan en bekijk de recente fail/warning-logs in `integration_logs` van de afgelopen 7 dagen om andere issues te vinden (webhook-fouten, 5xx in book_reservation, etc.). Per gevonden issue korte beslissing: nu fixen of apart melden. Ik raak alleen écht foute dingen aan, geen refactors zonder reden.
+> Lees terug met komma's tussen elk cijfer en het woord "spatie" / extra punt na elke 3 cijfers. Format: `"plus drie één , spatie , zes , vijf , drie , spatie , vijf , twee , één , spatie , één , zes , zes . Klopt dat?"`. Gebruik nooit "zesenvijftig", "drieënvijftig" enz. Elk cijfer is een los woord: nul, één, twee, drie, vier, vijf, zes, zeven, acht, negen.
 
-## Wat ik bewust NIET doe
-- Geen wijzigingen aan ClickWise CAP action-headers (die fix van vorige ronde laat ik staan).
-- Geen wijziging aan de algemene tafel-logica of pacing.
-- Geen wijziging aan businessregels die niet aantoonbaar fout zijn.
+Plus expliciet voorbeeld in alle drie de talen (NL/DE/EN) met dezelfde komma-structuur.
 
-## Acceptatiecheck
-- Bel-test 16 personen op datum X → agent vraagt naam → response geeft `awaiting_approval` + duidelijke "nog niet bevestigd" zin → reservering staat in `Grote groepen` lijst, niet automatisch bevestigd.
-- Bel-test 6 personen → normaal proces, naam wordt gevraagd, response `confirmed: true`.
-- Integration logs: geen `first_name = "Gast"` entries meer voor nieuwe calls.
+### 4. Bevestigingsritme
+> Lees het hele nummer maar ÉÉN keer terug. Bij "ja/klopt" → direct boeken. Bij correctie van één cijfer → herhaal alleen dat blok van 3, niet het hele nummer opnieuw.
+
+## Wat we NIET doen
+
+- Geen edge-function wijzigingen — `agent_api` accepteert het caller-ID nummer al; het probleem zit volledig in agent-gedrag.
+- Geen ClickWise/Vapi voice-settings aanpassen (geen toegang vanuit code).
+- Geen "spell phonetic alphabet" voor cijfers — dat maakt het juist trager en is overkill voor cijfers.
+
+# Manual follow-up voor de gebruiker
+
+Na implementatie moet je de bijgewerkte system prompt opnieuw kopiëren vanuit `AdminClickWiseVoiceSetupPage` naar de ClickWise/Vapi agent-config, anders verandert er niets aan het belgedrag.
