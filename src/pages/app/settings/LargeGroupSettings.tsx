@@ -90,6 +90,8 @@ const LargeGroupSettings = () => {
           large_group_default_status: data.large_group_default_status ?? defaults.large_group_default_status,
           large_group_confirmation_text: data.large_group_confirmation_text ?? "",
           large_group_cancellation_terms: data.large_group_cancellation_terms ?? "",
+          large_group_response_sla_label: (data as any).large_group_response_sla_label ?? "",
+          large_group_response_channel_label: (data as any).large_group_response_channel_label ?? "",
           noshow_deposit_rules_prepared: data.noshow_deposit_rules_prepared ?? false,
           transfer_phone: (data as any).transfer_phone ?? "",
           transfer_hours_start: ((data as any).transfer_hours_start ?? "").slice(0, 5),
