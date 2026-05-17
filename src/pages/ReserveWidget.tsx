@@ -222,7 +222,7 @@ const ReserveWidget = () => {
     (async () => {
       const { data, error } = await supabase
         .from("restaurants")
-        .select("id, name, slug, timezone, max_party_size_online, large_group_threshold, large_group_manual_approval_from, large_group_extra_info_from, large_group_max_online_request, large_group_confirmation_text, preorders_enabled, preorders_allow_free_text, allow_zone_preference, brand_primary, logo_url, booking_horizon_days")
+        .select("id, name, slug, timezone, max_party_size_online, large_group_threshold, large_group_manual_approval_from, large_group_extra_info_from, large_group_max_online_request, extra_large_group_threshold, large_group_confirmation_text, preorders_enabled, preorders_allow_free_text, allow_zone_preference, brand_primary, logo_url, booking_horizon_days")
         .eq("slug", slug).maybeSingle();
       if (error || !data) {
         setRestaurantError(t("errors.unavailable"));
