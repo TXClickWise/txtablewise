@@ -212,12 +212,14 @@ const LargeGroupsPage = () => {
         title="Wacht op goedkeuring"
         count={pending.length}
         empty="Geen openstaande aanvragen — fijn rustig moment."
+        subtitle="De gast heeft te horen gekregen dat dit nog géén definitieve reservering is en dat het team alleen contact opneemt als er iets aangepast moet worden. Bel dus alleen terug bij een wijziging."
       >
         {pending.map((r) => (
           <GroupReservationRow
             key={r.id}
             r={r}
             depositFrom={depositFrom}
+            pendingPill
             actions={
               <div className="flex items-center gap-1.5 flex-wrap">
                 <Button
