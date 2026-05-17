@@ -87,6 +87,7 @@ Deno.serve(async (req) => {
   const cvPreview = buildCustomValues({
     restaurantId, webhookSecret: r.webhook_secret ?? null,
     apiKey: body.agent_api_key ?? null, tablewiseBaseUrl: TABLEWISE_BASE_URL,
+    restaurantName: (r as any).name ?? null, timezone: (r as any).timezone ?? null,
   });
 
   if (body.dry_run) {
