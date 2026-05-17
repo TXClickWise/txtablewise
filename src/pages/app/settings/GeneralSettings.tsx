@@ -19,7 +19,6 @@ export default function GeneralSettings() {
   const [form, setForm] = useState({
     name: "", phone: "", email: "", address_line1: "", postal_code: "", city: "",
     slot_duration_minutes: 15, default_reservation_minutes: 105,
-    max_party_size_online: 8, large_group_threshold: 9,
     booking_lead_time_minutes: 60, hold_minutes: 10, booking_horizon_days: 90,
   });
   const [saving, setSaving] = useState(false);
@@ -35,8 +34,6 @@ export default function GeneralSettings() {
       city: r.city ?? "",
       slot_duration_minutes: r.slot_duration_minutes ?? 15,
       default_reservation_minutes: r.default_reservation_minutes ?? 105,
-      max_party_size_online: r.max_party_size_online ?? 8,
-      large_group_threshold: r.large_group_threshold ?? 9,
       booking_lead_time_minutes: r.booking_lead_time_minutes ?? 60,
       hold_minutes: r.hold_minutes ?? 10,
       booking_horizon_days: r.booking_horizon_days ?? 90,
@@ -99,13 +96,17 @@ export default function GeneralSettings() {
       </Card>
 
       <Card>
-        <CardHeader><CardTitle className="font-display text-lg">Reserveringen</CardTitle></CardHeader>
+        <CardHeader>
+          <CardTitle className="font-display text-lg">Reserveringen</CardTitle>
+          <CardDescription>
+            Groepslimieten (grote groep vanaf, max online groep) staan onder{" "}
+            <strong>Instellingen → Reserveringen → Grote groepen</strong>.
+          </CardDescription>
+        </CardHeader>
         <CardContent className="grid sm:grid-cols-3 gap-4">
           {numField("slot_duration_minutes", "Slot lengte (min)", "Stappen voor tijdslots")}
           {numField("default_reservation_minutes", "Standaard duur (min)", "Tijd per reservering")}
           {numField("hold_minutes", "Hold (min)", "Voorlopige reservering")}
-          {numField("max_party_size_online", "Max online groep", "Tot dit aantal direct boeken")}
-          {numField("large_group_threshold", "Grote groep vanaf", "Stuurt naar aanvraag-formulier")}
           {numField("booking_lead_time_minutes", "Lead time (min)", "Min. tijd voor reservering")}
           {numField("booking_horizon_days", "Horizon (dagen)", "Hoe ver vooruit boeken")}
         </CardContent>
