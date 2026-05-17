@@ -26,6 +26,8 @@ type Form = {
   large_group_default_status: string;
   large_group_confirmation_text: string;
   large_group_cancellation_terms: string;
+  large_group_response_sla_label: string;
+  large_group_response_channel_label: string;
   noshow_deposit_rules_prepared: boolean;
   transfer_phone: string;
   transfer_hours_start: string;
