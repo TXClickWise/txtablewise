@@ -362,20 +362,23 @@ async function handle(
           source_metadata: { ...(payload.source_metadata as object | undefined), agent_provider: keyRow.provider, via: "agent_api" },
         };
         const r = await callInternalFn("book_reservation", bookBody);
-        // Forward reservation_id en goedkeuringsvlag op top-level zodat de voice-agent
-        // niet zelf door reservation.* hoeft te graven.
-        const rb = (r.body ?? {}) as Record<string, any>;
-        const reservationObj = rb.reservation ?? {};
-        if (r.status >= 200 && r.status < 300 && reservationObj?.id) ctx.setReservationId(reservationObj.id);
-        const enriched = {
-          ...rb,
-          reservation_id: reservationObj?.id ?? rb.reservation_id ?? null,
-          confirmation_code: reservationObj?.confirmation_code ?? rb.confirmation_code ?? null,
-          requires_manual_approval: rb.requires_manual_approval ?? reservationObj?.requires_manual_approval ?? false,
-          large_group_status: rb.large_group_status ?? reservationObj?.large_group_status ?? null,
-          message_for_guest: rb.message_for_guest ?? null,
-        };
-        return json(enriched, r.status);
+        const rb0 = (r.body ?? {}) as Record<string, any>;
+        const resObj0 = rb0.reservation ?? {};
+        if (r.status >= 200 && r.status < 300 && resObj0?.id) ctx.setReservationId(resObj0.id);
+        // DEPRECATED tool: gebruik dezelfde gastvrije response-vorm als
+        // `reservation_request` zodat een parafraserende LLM nooit "geboekt"
+        // kan zeggen terwijl de reservering nog op handmatige goedkeuring wacht.
+        const { data: restRow2 } = await sb.from("restaurants")
+          .select("large_group_max_online_request, max_party_size_online")
+          .eq("id", keyRow.restaurant_id).maybeSingle();
+        const onlineHardCap2: number = (restRow2?.large_group_max_online_request ?? restRow2?.max_party_size_online ?? 18) as number;
+        const built2 = buildBookGuestResponse(r, {
+          partySize: Number((payload as any).party_size) || 0,
+          dateStr: String((payload as any).date ?? ""),
+          timeStr: String((payload as any).time ?? ""),
+          onlineHardCap: onlineHardCap2,
+        });
+        return json(built2.body, built2.status);
       }
       case "cancel_reservation": {
         if (!keyRow.scopes.includes("cancel")) return json({ error: "Scope missing: cancel", error_code: "auth_scope_missing", field: "cancel" }, 403);
