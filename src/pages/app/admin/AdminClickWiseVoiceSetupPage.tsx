@@ -79,13 +79,13 @@ Je helpt bellers met drie dingen:
 2. Een bestaande reservering wijzigen (datum, tijd, aantal personen)
 3. Een bestaande reservering annuleren
 
-# Hoe je een reservering maakt
+# Hoe je een reservering maakt (NIEUWE FLOW — ALTIJD volgen)
 1. Vraag: aantal personen, gewenste datum, gewenste tijd.
-2. Roep ALTIJD eerst de tool \`check_availability\` aan.
-3. Naam, telefoon en e-mail komen waar mogelijk uit het ClickWise-contact (\`{{contact.first_name}} {{contact.last_name}}\`, \`{{contact.phone}}\`, \`{{contact.email}}\`). Vraag alleen wat ontbreekt — vrijwel altijd minstens voornaam + achternaam, e-mail alleen als de gast die zelf noemt.
+2. (Optioneel) Wil de gast eerst alleen weten of een tijdstip nog kan? Gebruik dan \`check_availability\`. Voor een echte boeking is dit NIET nodig — sla over.
+3. Naam, telefoon en e-mail komen waar mogelijk uit het ClickWise-contact (\`{{contact.first_name}} {{contact.last_name}}\`, \`{{contact.phone}}\`, \`{{contact.email}}\`). Vraag alleen wat ontbreekt — vrijwel altijd minstens voornaam + achternaam.
 4. Bevestig samengevat ZONDER het beller-ID-nummer terug te lezen: "Dus ik noteer: {voornaam} {achternaam}, {personen-in-woorden} personen op {datum-in-woorden} om {tijd-in-spreektaal}. Ik gebruik het nummer waarmee u nu belt — klopt dat?"
-5. Pas NA mondelinge bevestiging roep je \`book_reservation\` aan — voor ELKE groepsgrootte. De engine bepaalt zelf wat er gebeurt (zie GROTE GROEPEN hieronder).
-6. Sluit mondeling af: "Top, jullie tafel staat genoteerd, tot {datum-in-woorden} om {tijd-in-spreektaal}." Beloof GEEN SMS, WhatsApp of e-mailbevestiging.
+5. NA mondelinge bevestiging roep je in ÉÉN call \`reservation_request\` aan — voor ELKE groepsgrootte (1, 5, 8, 11, 14, 18). De engine valideert, controleert, boekt en geeft je de juiste mondelinge reactie terug.
+6. Gebruik LETTERLIJK het veld \`response.message_for_guest\` als je antwoord aan de beller. Beloof GEEN SMS, WhatsApp of e-mail.
 
 # Uitspraak (cruciaal — altijd toepassen)
 - TELEFOONNUMMER, twee scenario's:
@@ -99,12 +99,12 @@ Je helpt bellers met drie dingen:
 - VERBODEN: "achttien uur vijftien", letterlijke YYYY-MM-DD voorlezen, "+31"/"06"-prefix oplezen voor het beller-ID-nummer.
 
 # Als het tijdstip vol is
-- Noem maximaal 2 alternatieven uit \`suggestedAlternatives\` ("Om 19:00 of 20:00 zou wel kunnen, wat past?").
-- Boek niet zonder bevestiging van de gast.
+- Krijg je van \`reservation_request\` het veld \`next_action: "offer_alternatives_or_waitlist"\` → bied 2 alternatieven of de wachtlijst aan, en roep daarna opnieuw \`reservation_request\` aan met de nieuwe tijd.
+- Boek nooit zonder bevestiging van de gast.
 
 # Wijzigen
 - Vraag om naam + originele datum/tijd of reserveringscode.
-- Roep \`cancel_reservation\` + \`book_reservation\` als wijziging niet via update lukt, of gebruik \`book_reservation\` met external_reference.
+- Gebruik \`update_reservation\` voor datum/tijd/aantal-wijzigingen.
 - Bevestig altijd mondeling vóór je iets uitvoert.
 
 # Annuleren
@@ -113,15 +113,14 @@ Je helpt bellers met drie dingen:
 - Pas dan \`cancel_reservation\` aanroepen.
 - Sluit gastvrij af: "Geen probleem, fijn dat je het doorgaf. Tot een volgende keer."
 
-# Grote groepen (2-drempel logica — engine beslist, jij NOOIT zelf doorverbinden)
-ABSOLUTE REGEL: roep NOOIT de action \`Call Transfer\` aan vóór je \`book_reservation\` hebt geprobeerd. Geen enkele uitzondering, ook niet bij 10, 12, 15 of 18 personen. De engine beslist op basis van de drempels van dit restaurant.
+# Grote groepen — DE ENGINE BESLIST, JIJ NOOIT
+ABSOLUTE REGEL: roep NOOIT de action \`Call Transfer\` aan uit eigen initiatief. Ook niet bij 10, 12, 15 of 18 personen. Call Transfer mag ALLEEN als de engine je expliciet \`next_action: "transfer_call"\` teruggeeft.
 
-Probeer ALTIJD eerst gewoon \`book_reservation\` aan te roepen. De engine reageert op één van drie manieren:
-- a) Direct geboekt (response ok, \`requires_manual_approval\` is false of ontbreekt) → bevestig mondeling als normale boeking. Geen SMS-belofte.
-- b) \`response.requires_manual_approval === true\` → de aanvraag staat IN TableWise en wacht op interne goedkeuring. Gebruik bij voorkeur \`response.message_for_guest\` of zeg: "Voor een groep van {aantal} personen leg ik uw aanvraag voor aan een collega. Het team beoordeelt dit zo snel mogelijk en neemt alleen contact op als er iets aangepast moet worden — anders is de tafel voor u gereserveerd op {datum} om {tijd}." Beloof GEEN SMS, WhatsApp of e-mail. NIET doorverbinden.
-- c) Engine geeft error \`TW_409_PARTY_TOO_LARGE\` terug met een veld \`transfer: { allowed, phone, hours_label }\`. Bereken NOOIT zelf de tijd:
-  · \`transfer.allowed === true\` → zeg "Een moment, ik verbind u direct door met een collega." en roep daarna pas de action **Call Transfer** aan naar \`transfer.phone\`. Roep GEEN log_call vóór de transfer.
-  · \`transfer.allowed === false\` → roep \`log_call\` met outcome \`callback_needed\` aan en zeg: "Een collega belt u tijdens onze openingstijden ({transfer.hours_label}) persoonlijk terug op dit nummer."
+Roep ALTIJD \`reservation_request\` aan, ongeacht groepsgrootte. De engine geeft één van vier mogelijkheden:
+- a) \`ok: true\`, \`requires_manual_approval: false\` → boeking is rond. Bevestig met \`message_for_guest\`.
+- b) \`ok: true\`, \`requires_manual_approval: true\` → reservering staat IN TableWise en wacht op interne goedkeuring. Bevestig LETTERLIJK met \`message_for_guest\`. NIET doorverbinden. Beloof GEEN SMS/WhatsApp/e-mail.
+- c) \`next_action: "transfer_call"\` (alleen bij groepen groter dan de online limiet, binnen openingstijden) → zeg \`message_for_guest\` en roep de action **Call Transfer** aan naar \`transfer.phone\`.
+- d) \`next_action: "promise_callback"\` of \`"offer_alternatives_or_waitlist"\` of \`"apologize_and_callback"\` → zeg \`message_for_guest\` en roep \`log_call\` aan met de juiste outcome.
 
 # Toon
 - Warm, kort, hospitality-first. NOOIT bestraffend.
@@ -146,7 +145,7 @@ Roep ALTIJD \`log_call\` aan met de samenvatting, outcome (booked/changed/cancel
 
   const checkAvailJson = `{
   "name": "check_availability",
-  "description": "Controleer of een tafel beschikbaar is op een datum/tijd voor een aantal personen. Roep dit aan VOORDAT je gaat boeken.",
+  "description": "Optioneel — alleen als de beller eerst wil weten of een tijdstip nog kan zonder direct te boeken. Voor een echte boeking gebruik je reservation_request.",
   "url": "${FN_BASE_VAR}/check_availability",
   "method": "POST",
   "headers": {
@@ -155,13 +154,41 @@ Roep ALTIJD \`log_call\` aan met de samenvatting, outcome (booked/changed/cancel
   },
   "body": {
     "date": "{{date}}",
-    "party_size": {{party_size}}
+    "party_size": {{party_size}},
+    "preferred_time": "{{time}}"
+  }
+}`;
+
+  const reservationRequestJson = `{
+  "name": "reservation_request",
+  "description": "DE PRIMAIRE TOOL VOOR ELKE NIEUWE BOEKING (1 tot 18 personen). Eén call: valideren + boeken. Roep dit aan NA mondelinge bevestiging. De engine geeft je 'message_for_guest' en 'next_action' — zeg LETTERLIJK message_for_guest en volg next_action.",
+  "url": "${FN_BASE_VAR}/reservation_request",
+  "method": "POST",
+  "headers": {
+    "Content-Type": "application/json",
+    "X-Agent-Api-Key": "{{custom_values.tablewise_api_key}}"
+  },
+  "body": {
+    "date": "{{date}}",
+    "time": "{{time}}",
+    "party_size": {{party_size}},
+    "guest": {
+      "first_name": "{{contact.first_name}}",
+      "last_name": "{{contact.last_name}}",
+      "phone": "{{contact.phone}}",
+      "email": "{{contact.email}}"
+    },
+    "special_requests": "{{special_requests}}",
+    "source_metadata": {
+      "agent_provider": "clickwise",
+      "external_call_id": "{{call.id}}"
+    }
   }
 }`;
 
   const bookJson = `{
   "name": "book_reservation",
-  "description": "Boek een reservering. Roep dit pas aan NA mondelinge bevestiging door de gast.",
+  "description": "LET OP: gebruik bij voorkeur reservation_request. Deze tool is alleen voor edge cases waarin je 100% zeker weet dat availability al klopt en je het book-only contract wil.",
   "url": "${FN_BASE_VAR}/book_reservation",
   "method": "POST",
   "headers": {
@@ -681,29 +708,35 @@ X-Agent-Api-Key: ${apiKey}`;
         {/* ACTIONS */}
         <TabsContent value="actions" className="space-y-4">
           <p className="text-sm text-muted-foreground">
-            Vier tools om aan de agent te koppelen. Alle 4 gebruiken dezelfde header <code>X-Agent-Api-Key</code> via <code>{`{{custom_values.tablewise_api_key}}`}</code>.
+            Vijf tools om aan de agent te koppelen. <strong><code>reservation_request</code> is de primaire boekingstool</strong> — die doet validatie + boeking in één call en levert <code>message_for_guest</code> + <code>next_action</code>. Alle 5 gebruiken dezelfde header <code>X-Agent-Api-Key</code> via <code>{`{{custom_values.tablewise_api_key}}`}</code>.
           </p>
-          <Accordion type="multiple" defaultValue={["check"]}>
+          <Accordion type="multiple" defaultValue={["reqres"]}>
+            <AccordionItem value="reqres">
+              <AccordionTrigger>1. reservation_request <span className="ml-2 text-xs text-primary">aanbevolen voor boeken</span></AccordionTrigger>
+              <AccordionContent>
+                <CopyBlock label="Action JSON" value={reservationRequestJson} lang="json" />
+              </AccordionContent>
+            </AccordionItem>
             <AccordionItem value="check">
-              <AccordionTrigger>1. check_availability</AccordionTrigger>
+              <AccordionTrigger>2. check_availability <span className="ml-2 text-xs text-muted-foreground">optioneel</span></AccordionTrigger>
               <AccordionContent>
                 <CopyBlock label="Action JSON" value={checkAvailJson} lang="json" />
               </AccordionContent>
             </AccordionItem>
             <AccordionItem value="book">
-              <AccordionTrigger>2. book_reservation</AccordionTrigger>
+              <AccordionTrigger>3. book_reservation <span className="ml-2 text-xs text-muted-foreground">legacy</span></AccordionTrigger>
               <AccordionContent>
                 <CopyBlock label="Action JSON" value={bookJson} lang="json" />
               </AccordionContent>
             </AccordionItem>
             <AccordionItem value="cancel">
-              <AccordionTrigger>3. cancel_reservation</AccordionTrigger>
+              <AccordionTrigger>4. cancel_reservation</AccordionTrigger>
               <AccordionContent>
                 <CopyBlock label="Action JSON" value={cancelJson} lang="json" />
               </AccordionContent>
             </AccordionItem>
             <AccordionItem value="log">
-              <AccordionTrigger>4. log_call</AccordionTrigger>
+              <AccordionTrigger>5. log_call</AccordionTrigger>
               <AccordionContent>
                 <CopyBlock label="Action JSON" value={logCallJson} lang="json" />
               </AccordionContent>
