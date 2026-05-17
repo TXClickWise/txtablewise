@@ -375,8 +375,8 @@ steps:
     {
       key: "reservation.created",
       label: "Reservering aangemaakt",
-      purpose: "Stuur de gast direct een bevestigings-SMS/WhatsApp en zet hem in CRM.",
-      suggestedAction: "Workflow → SMS naar {{inboundWebhookRequest.payload.guest.phone}} + tag 'tw_reservation'.",
+      purpose: "Optioneel: trigger een interne CRM-tag of teamnotificatie. TableWise stuurt zelf GEEN gastbevestiging via dit event — alleen aanzetten als jouw workflow dat bewust doet.",
+      suggestedAction: "Workflow → contact taggen 'tw_reservation'. Verstuur alleen automatisch bericht naar {{inboundWebhookRequest.payload.guest.phone}} als jouw setup dat expliciet vereist.",
       samplePayload: `"payload": {
   "reservation": { "id": "...", "date": "2026-05-15", "time": "19:30", "party_size": 2, "manage_token": "..." },
   "guest": { "first_name": "Anna", "phone": "+31600000000", "email": "anna@example.com" },
