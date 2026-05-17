@@ -269,6 +269,8 @@ async function handle(
           .select("large_group_max_online_request, max_party_size_online")
           .eq("id", keyRow.restaurant_id).maybeSingle();
         const onlineHardCap: number = (restRow?.large_group_max_online_request ?? restRow?.max_party_size_online ?? 18) as number;
+        let responseStatus = r.status;
+        let responseOk = r.status >= 200 && r.status < 300;
         if (r.status >= 400) {
           const ec = rb.error_code as string | undefined;
           if (ec === "large_group_required_manual") {
@@ -287,6 +289,15 @@ async function handle(
           } else if (ec === "no_table_available" || ec === "slot_unavailable" || ec === "pacing_limit_reached") {
             nextAction = "offer_alternatives_or_waitlist";
             messageForGuest = "Helaas lukt dit specifieke tijdstip niet. Kunt u iets eerder of later? Anders zet ik u graag op onze wachtlijst.";
+            responseStatus = 200;
+            responseOk = true;
+            rb.transfer = { ...(rb.transfer ?? {}), allowed: false };
+          } else if (ec === "message_required") {
+            nextAction = "ask_special_requests";
+            messageForGuest = "Voor deze groepsgrootte noteer ik graag nog een korte toelichting voor het team. Zijn er bijzonderheden waar we rekening mee mogen houden?";
+            responseStatus = 200;
+            responseOk = true;
+            rb.transfer = { ...(rb.transfer ?? {}), allowed: false };
           } else {
             nextAction = "apologize_and_callback";
             messageForGuest = "Sorry, er ging iets mis aan onze kant. Ik laat een collega u zo snel mogelijk terugbellen.";
@@ -298,7 +309,7 @@ async function handle(
           messageForGuest = messageForGuest ?? `Top, jullie tafel staat genoteerd, tot ${dateStr} om ${timeStr}.`;
         }
         return json({
-          ok: r.status >= 200 && r.status < 300,
+          ok: responseOk,
           reservation_id: reservationObj?.id ?? rb.reservation_id ?? null,
           confirmation_code: reservationObj?.confirmation_code ?? rb.confirmation_code ?? null,
           requires_manual_approval: requiresManual,
@@ -307,7 +318,7 @@ async function handle(
           transfer: rb.transfer ?? null,
           message_for_guest: messageForGuest,
           next_action: nextAction,
-        }, r.status);
+        }, responseStatus);
       }
       case "book_reservation": {
         if (!keyRow.scopes.includes("book")) return json({ error: "Scope missing: book", error_code: "auth_scope_missing", field: "book" }, 403);
