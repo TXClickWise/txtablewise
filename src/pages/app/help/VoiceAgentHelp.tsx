@@ -176,11 +176,12 @@ DOEL VAN HET GESPREK
 
 GESPREKSREGELS (alle talen)
 - Stel altijd één vraag tegelijk. Wacht op antwoord.
-- Bevestig altijd hardop alle gegevens (naam, datum, tijd, aantal personen en het te noteren telefoonnummer) vóór je definitief boekt.
+- Bevestig altijd hardop alle gegevens (naam, datum, tijd, aantal personen en het te noteren telefoonnummer — cijfer-voor-cijfer) vóór je definitief boekt.
 - Spreek datums natuurlijk uit in de gespreks-taal (NL: "vrijdag 12 mei" · DE: "Freitag, der 12. Mai" · EN: "Friday May 12th"), maar geef ze aan de tools altijd in formaat YYYY-MM-DD.
 - Spreek tijden uit in de lokale conventie (NL: "half acht 's avonds" · DE: "halb acht abends" · EN: "seven thirty in the evening"), maar geef ze aan de tools in formaat HH:MM (24-uurs).
 - Gewenste tijd is VERPLICHT bij elke beschikbaarheidscheck. Bij open vragen zoals "hebben jullie vanavond plek voor 4?" → vraag eerst rond welk tijdstip.
 - Telefoonnummer is VERPLICHT. Het nummer waarmee de beller belt staat in {{contact.phone}}. Vraag NIET opnieuw als dat gevuld is — vraag kort: "Mag ik het nummer waarmee u nu belt noteren?" (NL) / "Darf ich die Nummer, von der Sie gerade anrufen, vermerken?" (DE) / "May I note the number you are calling from?" (EN). Bij nee of ander nummer → vraag uit en herhaal cijfer-voor-cijfer. Bij anoniem/withheld → vraag actief uit. Boek NIET zonder geldig telefoonnummer.
+- TELEFOONNUMMER UITSPREKEN: spreek ALTIJD cijfer-voor-cijfer uit met een korte pauze tussen elk cijfer. Groepeer NOOIT in tientallen of paren (dus niet "zes-twaalf-vierendertig"). Voorbeeld voor +31612345678 → NL: "plus drie één — zes — één — twee — drie — vier — vijf — zes — zeven — acht" · DE: "plus drei eins — sechs — eins — zwei — drei — vier — fünf — sechs — sieben — acht" · EN: "plus three one — six — one — two — three — four — five — six — seven — eight". Geldt ook bij het herhalen van een door de beller gedicteerd nummer en bij het uitspreken van het transfer-nummer.
 - Vraag altijd of er allergieën of dieetwensen zijn.
 - Bij ruis: zeg "Sorry, ik versta u niet helemaal" / "Entschuldigung, ich habe Sie nicht ganz verstanden" / "Sorry, I didn't quite catch that".
 
@@ -202,8 +203,17 @@ WAT JE NIET DOET
 - E-mailadres is optioneel. Alleen noteren als de beller het zelf opgeeft of digitale bevestiging vraagt.
 - Boek nooit te ver vooruit. Bij engine-fout (boekingshorizon) → leg het uit en bied terugbel aan.
 
-GROTE GROEPEN
-- De engine weigert te grote groepen automatisch met TW_409_PARTY_TOO_LARGE. Zeg dan dat een collega persoonlijk terugbelt en boek NIET.
+GROTE GROEPEN (3-traps logica)
+- Probeer ALTIJD eerst gewoon te boeken via create_reservation, ongeacht groepsgrootte. De engine bepaalt zelf wat er gebeurt:
+  a) Direct geboekt (response ok, geen requires_manual_approval) → bevestig hardop als normale boeking.
+  b) response.requires_manual_approval = true → groep valt binnen het "ter beoordeling" venster. Zeg in de gespreks-taal:
+     · NL: "Voor een groep van [aantal] personen leg ik uw aanvraag voor aan een collega. U ontvangt zo snel mogelijk een persoonlijke bevestiging per SMS."
+     · DE: "Für eine Gruppe von [Anzahl] Personen lege ich Ihre Anfrage einem Kollegen vor. Sie erhalten schnellstmöglich eine persönliche Bestätigung per SMS."
+     · EN: "For a group of [number] people I'll forward your request to a colleague. You'll receive a personal confirmation by SMS as soon as possible."
+  c) Engine geeft TW_409_PARTY_TOO_LARGE terug → groep is te groot voor online aanvraag. Beslis dan op basis van het huidige tijdstip (Europe/Amsterdam) versus {{custom_values.tw_transfer_hours}}:
+     · BINNEN dat venster → zeg "Een moment, ik verbind u direct door met een collega" (NL) / "Einen Moment, ich verbinde Sie direkt mit einem Kollegen" (DE) / "One moment, I'll transfer you directly to a colleague" (EN), en roep daarna de action 'Call Transfer' aan naar {{custom_values.tw_transfer_phone}}. Roep GEEN log_call aan vóór de transfer.
+     · BUITEN dat venster → roep log_call aan met outcome="callback_needed" en summary met groepsgrootte + tijdstip. Zeg: "Een collega belt u tijdens openingstijden ({{custom_values.tw_transfer_hours}}) persoonlijk terug op dit nummer." (DE/EN-varianten analoog).
+- Boek NOOIT zelf door na een TW_409_PARTY_TOO_LARGE.
 
 OPENINGSBEGROETING (verplicht, exact deze tri-linguale zin)
 "Goedendag, u spreekt met de digitale gastvrouw van {{location.name}}. Guten Tag — how may I help you?"
@@ -424,10 +434,15 @@ const SECTIONS: Section[] = [
               tijdzone). Standaard <code>Europe/Amsterdam</code>.
             </li>
             <li>
-              <strong>Max. groepsgrootte</strong> → komt rechtstreeks uit TableWise
-              (<code>max_party_size_online</code>). De engine weigert te grote groepen
-              automatisch met code <code>TW_409_PARTY_TOO_LARGE</code>; de agent leest die
-              terug en biedt een grote-groep-callback aan.
+              <strong>Groepsgrootte (3-traps)</strong> → komt rechtstreeks uit TableWise.
+              De agent probeert altijd direct te boeken; de engine bepaalt het vervolg:
+              <ul className="list-disc list-inside ml-4 mt-1 space-y-0.5">
+                <li>≤ <code>max_party_size_online</code> → direct bevestigd.</li>
+                <li>tussen <code>max_party_size_online</code> en <code>large_group_max_online_request</code> → boeking met
+                  <code>requires_manual_approval=true</code>; verschijnt in de app onder "Grote groepen — te beoordelen".</li>
+                <li>&gt; <code>large_group_max_online_request</code> → engine geeft <code>TW_409_PARTY_TOO_LARGE</code>; de
+                  agent verbindt door via Call Transfer (binnen openingstijden) of belooft een callback. Zie sectie 7b.</li>
+              </ul>
             </li>
             <li>
               <strong>Booking horizon</strong> (max. dagen vooruit) → uit TableWise
@@ -624,6 +639,84 @@ const SECTIONS: Section[] = [
     ),
   },
   {
+    id: "call-transfer",
+    group: "manual",
+    title: "7b. ClickWise — Call Transfer voor zeer grote groepen",
+    icon: Phone,
+    keywords: "call transfer doorverbinden grote groep party too large escalatie medewerker",
+    render: () => (
+      <div className="space-y-3 text-sm">
+        <p className="text-muted-foreground">
+          Wanneer een beller een groep aanvraagt die <em>boven</em> <code>large_group_max_online_request</code> uit
+          TableWise valt, geeft de engine <code>TW_409_PARTY_TOO_LARGE</code> terug. De agent verbindt dan
+          binnen openingstijden direct door naar een medewerker, of belooft buiten openingstijden een callback.
+        </p>
+
+        <div className="space-y-1">
+          <div className="font-medium">Stap 1 — Twee Custom Values aanmaken in ClickWise</div>
+          <p className="text-xs text-muted-foreground">
+            Settings → Custom Values → New Custom Value (sub-account scope):
+          </p>
+          <ul className="list-disc list-inside space-y-1">
+            <li>
+              <code>tw_transfer_phone</code> (Single line) → nummer waarnaar te grote groepen
+              worden doorverbonden. E.164-formaat, bijv. <code>+31612345678</code>. Mag de
+              hoofdlijn zijn, een mobiel van de manager, of een keuken-nummer.
+            </li>
+            <li>
+              <code>tw_transfer_hours</code> (Single line) → menselijk-leesbaar venster waarin
+              doorverbinden mag, bijv. <code>dagelijks 11:00–20:30</code> of
+              <code>di-zo 17:00–22:00</code>. De agent leest deze tekst letterlijk en gebruikt
+              hem zowel voor de beslissing (binnen/buiten venster) als in de zin tegen de gast.
+            </li>
+          </ul>
+        </div>
+
+        <Callout tone="info" title="Houd tw_transfer_hours simpel">
+          De agent interpreteert de tekst zelf. Eén tijdvenster per dag (bijv. <code>11:00–20:30</code>)
+          werkt het betrouwbaarst. Gebruik geen complexe regels als <em>"behalve op feestdagen"</em>;
+          die kan de AI niet zonder kalender afdwingen.
+        </Callout>
+
+        <div className="space-y-1">
+          <div className="font-medium">Stap 2 — Call Transfer action in de Voice Agent workflow</div>
+          <p className="text-xs text-muted-foreground">
+            In ClickWise → Voice Agent → tab <strong>Actions</strong> (of in de inbound-call
+            workflow, afhankelijk van je provider):
+          </p>
+          <ol className="list-decimal list-inside space-y-1">
+            <li>Voeg een action toe van het type <strong>Call Transfer</strong> (of
+              <em>Live Transfer</em>).</li>
+            <li>Naam: <code>Call Transfer</code> (exact zoals in de prompt).</li>
+            <li>Transfer Number: <code>{`{{custom_values.tw_transfer_phone}}`}</code></li>
+            <li>Trigger: wanneer de AI deze action zelf oproept (de prompt instrueert hem dat
+              te doen bij <code>TW_409_PARTY_TOO_LARGE</code> binnen <code>tw_transfer_hours</code>).</li>
+          </ol>
+        </div>
+
+        <div className="space-y-1">
+          <div className="font-medium">Stap 3 — Test</div>
+          <ol className="list-decimal list-inside space-y-1">
+            <li>Bel de Voice Agent en vraag een tafel voor bijv. 25 personen.</li>
+            <li>Binnen <code>tw_transfer_hours</code>: agent zegt "ik verbind u direct door" en
+              je telefoon op het transfer-nummer gaat over.</li>
+            <li>Buiten dat venster (test bijv. door tijdelijk een verleden venster in te stellen):
+              agent doet <code>log_call</code> met <code>outcome=callback_needed</code> en zegt
+              dat een collega persoonlijk terugbelt.</li>
+          </ol>
+        </div>
+
+        <Callout tone="warn" title="Niet voor normale grote groepen">
+          Boekingen tussen <code>max_party_size_online</code> en
+          <code>large_group_max_online_request</code> worden gewoon geboekt met
+          <code>requires_manual_approval=true</code> en verschijnen in de app onder
+          <strong>"Grote groepen — te beoordelen"</strong>. Daar wordt <em>niet</em>
+          doorverbonden — die flow loopt via SMS-bevestiging vanuit het team.
+        </Callout>
+      </div>
+    ),
+  },
+  {
     id: "system-prompt",
     group: "manual",
     title: "8. System Prompt (copy-paste)",
@@ -637,12 +730,16 @@ const SECTIONS: Section[] = [
           naam in. Vervang ook <code>Europe/Amsterdam</code> door <code>{`{{location.timezone}}`}</code>
           als je meerdere tijdzones gebruikt.
         </p>
-        <Callout tone="info" title="Max. groepsgrootte komt uit TableWise">
-          De grens komt automatisch uit TableWise (<code>max_party_size_online</code>) — je
-          hoeft hem niet als Custom Value te onderhouden. De engine weigert te grote groepen
-          met <code>TW_409_PARTY_TOO_LARGE</code>; de telefoon-agent zegt dan dat een collega
-          persoonlijk terugbelt en boekt zelf <strong>niet</strong>. Pas de grens aan in
-          TableWise → <strong>Instellingen → Reserveringsregels</strong>.
+        <Callout tone="info" title="Groepsgrootte — 3-traps logica (engine bepaalt)">
+          De agent probeert ALTIJD eerst te boeken. De TableWise-engine bepaalt het vervolg:
+          <ul className="list-disc list-inside mt-1 space-y-0.5">
+            <li>≤ <code>max_party_size_online</code> → direct bevestigd.</li>
+            <li>Tot <code>large_group_max_online_request</code> → boeking met
+              <code>requires_manual_approval=true</code> (verschijnt in app onder "Grote groepen — te beoordelen").</li>
+            <li>Daarboven → <code>TW_409_PARTY_TOO_LARGE</code>; de agent doet Call Transfer (binnen openingstijden) of belooft een callback.
+              Setup → zie sectie <strong>7b. Call Transfer instellen</strong>.</li>
+          </ul>
+          Pas de grenzen aan in TableWise → <strong>Instellingen → Reserveringsregels</strong>.
         </Callout>
         <Callout tone="info" title="Meertalig — language-parameter">
           De prompt stuurt bij elke tool-call <code>language</code> mee (<code>nl</code> /
@@ -753,7 +850,7 @@ const SECTIONS: Section[] = [
                 name: "party_size",
                 type: "Number",
                 required: true,
-                description: "Aantal personen, geheel getal tussen 1 en 8.",
+                description: "Aantal personen, geheel getal ≥ 1. De engine valideert zelf tegen max_party_size_online en large_group_max_online_request van het restaurant; bij overschrijding volgt TW_409_PARTY_TOO_LARGE (zie GROTE GROEPEN in de prompt).",
                 example: "4",
               },
               {
@@ -792,7 +889,7 @@ const SECTIONS: Section[] = [
             params: [
               { name: "date", type: "String", required: true, description: "Reserveringsdatum YYYY-MM-DD.", example: "2026-05-26" },
               { name: "time", type: "String", required: true, description: "Reserveringstijd HH:mm (24-uurs).", example: "19:30" },
-              { name: "party_size", type: "Number", required: true, description: "Aantal personen, 1 t/m 8.", example: "4" },
+              { name: "party_size", type: "Number", required: true, description: "Aantal personen, geheel getal ≥ 1. De engine valideert zelf tegen max_party_size_online en large_group_max_online_request.", example: "4" },
               { name: "first_name", type: "String", required: true, description: "Voornaam van de gast.", example: "Jan" },
               { name: "last_name", type: "String", required: false, description: "Achternaam van de gast (optioneel).", example: "de Vries" },
               { name: "phone", type: "String", required: true, description: "VERPLICHT. Telefoonnummer in E.164. Default {{contact.phone}} (nummer waarmee beller belt). Alleen anders als beller expliciet ander nummer opgeeft.", example: "+31612345678" },
@@ -864,7 +961,7 @@ const SECTIONS: Section[] = [
               { name: "confirmed_by_guest", type: "Boolean", required: true, description: "VERPLICHT op true zetten ZODRA de beller hardop heeft bevestigd. Zonder true blijft de reservering ongewijzigd en krijg je 'Wil je bevestigen dat je deze wijziging wilt doorvoeren?' terug.", example: "true" },
               { name: "new_date", type: "String", required: false, description: "Nieuwe datum YYYY-MM-DD. Laat leeg als de datum niet wijzigt.", example: "2026-05-27" },
               { name: "new_time", type: "String", required: false, description: "Nieuwe tijd HH:mm (24-uurs). Laat leeg als de tijd niet wijzigt.", example: "20:00" },
-              { name: "new_party_size", type: "Number", required: false, description: "Nieuw aantal personen, 1 t/m 8. Laat leeg als het aantal niet wijzigt.", example: "6" },
+              { name: "new_party_size", type: "Number", required: false, description: "Nieuw aantal personen, geheel getal ≥ 1. Laat leeg als het aantal niet wijzigt. Engine valideert zelf tegen max_party_size_online.", example: "6" },
               { name: "special_requests", type: "String", required: false, description: "Bijgewerkte wensen (overschrijft bestaande wensen).", example: "Toch geen kinderstoel" },
             ],
             body: `{
@@ -1010,7 +1107,7 @@ const SECTIONS: Section[] = [
               { name: "guest_phone", type: "String", required: true, description: "Telefoonnummer in E.164. Default {{contact.phone}}.", example: "+31612345678" },
               { name: "guest_email", type: "String", required: false, description: "Alleen invullen als de beller dit zelf opgeeft.", example: "gast@voorbeeld.nl" },
               { name: "desired_date", type: "String", required: true, description: "Gewenste datum YYYY-MM-DD.", example: "2026-05-26" },
-              { name: "party_size", type: "Number", required: true, description: "Aantal personen, 1 t/m 8.", example: "4" },
+              { name: "party_size", type: "Number", required: true, description: "Aantal personen, geheel getal ≥ 1. De engine valideert zelf tegen max_party_size_online en large_group_max_online_request.", example: "4" },
               { name: "desired_time_from", type: "String", required: false, description: "Vroegste acceptabele tijd HH:mm. Default 18:00.", example: "18:30" },
               { name: "desired_time_to", type: "String", required: false, description: "Laatste acceptabele tijd HH:mm. Default 21:00.", example: "20:30" },
               { name: "notes", type: "String", required: false, description: "Vrij veld voor wensen of context.", example: "Liever bij het raam" },
