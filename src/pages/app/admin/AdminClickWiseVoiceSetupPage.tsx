@@ -257,10 +257,15 @@ Roep ALTIJD \`log_call\` aan met de samenvatting, outcome (booked/changed/cancel
   }
 }`;
 
+  const ANON_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string;
+
   // Custom values voor de HUIDIGE klant — handig om direct in zijn sub-account te plakken.
   // Restaurantnaam + tijdzone worden door TableWise automatisch gepusht (sync-knop),
   // omdat {{location.*}} niet rendert in Voice AI prompts.
+  // tablewise_anon_key is een publishable Supabase key — vereist door de gateway als
+  // Authorization-header. Onze server valideert los daarvan op X-Agent-Api-Key.
   const customValues = `tablewise_api_key = ${apiKey}
+tablewise_anon_key = ${ANON_KEY}
 tablewise_restaurant_id = ${restaurantId}
 tablewise_base_url = ${FN_BASE}
 tablewise_restaurant_name = <auto, gepusht door TableWise>
@@ -272,6 +277,7 @@ opening_hours_short = di t/m za 17:00–22:00, zondag 17:00–21:00`;
   // Snapshot-template — gebruik DEZE waarden in de master sub-account waaruit je de
   // snapshot exporteert. Zo lekt er nooit een echte klant-API-key in de snapshot.
   const customValuesSnapshot = `tablewise_api_key = REPLACE_PER_CLIENT_tw_live_xxx
+tablewise_anon_key = ${ANON_KEY}
 tablewise_restaurant_id = REPLACE_PER_CLIENT_uuid
 tablewise_base_url = ${FN_BASE}
 tablewise_restaurant_name = REPLACE_PER_CLIENT
