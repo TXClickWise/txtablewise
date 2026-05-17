@@ -328,9 +328,11 @@ const SECTIONS: Section[] = [
         <ol className="list-decimal list-inside space-y-2">
           <li>
             Maak in ClickWise een <strong>nieuwe sub-account vanuit de TableWise master snapshot</strong>.
-            <strong> Zet de sub-account naam exact gelijk aan de restaurantnaam in TableWise</strong> en kies
-            de juiste <strong>tijdzone</strong> — beide worden automatisch in de prompt, SMS en tools gebruikt
-            via <code>{`{{location.name}}`}</code> en <code>{`{{location.timezone}}`}</code>.
+            Zet de sub-account naam en tijdzone correct — TableWise pusht ze automatisch óók als
+            custom values (<code>{`{{custom_values.tablewise_restaurant_name}}`}</code> en
+            <code>{` {{custom_values.tablewise_timezone}}`}</code>) via de sync-knop in
+            <em> Koppelingen → ClickWise</em>. <strong>Let op:</strong> <code>{`{{location.*}}`}</code>
+            rendert niet in Voice AI prompts; daarom werken alle prompts/SMS met de custom_values.
           </li>
           <li>
             Ga naar <strong>Instellingen → Custom Values → Account</strong> en plak in
