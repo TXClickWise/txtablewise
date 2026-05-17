@@ -88,6 +88,7 @@ Deno.serve(async (req) => {
     restaurantId, webhookSecret: r.webhook_secret ?? null,
     apiKey: body.agent_api_key ?? null, tablewiseBaseUrl: TABLEWISE_BASE_URL,
     restaurantName: (r as any).name ?? null, timezone: (r as any).timezone ?? null,
+    anonKey: Deno.env.get("SUPABASE_ANON_KEY") ?? null,
   });
 
   if (body.dry_run) {

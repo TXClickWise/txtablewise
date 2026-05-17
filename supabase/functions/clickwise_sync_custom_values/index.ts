@@ -59,6 +59,7 @@ Deno.serve(async (req) => {
     tablewiseBaseUrl: TABLEWISE_BASE_URL,
     restaurantName: (r as any)?.name ?? null,
     timezone: (r as any)?.timezone ?? null,
+    anonKey: Deno.env.get("SUPABASE_ANON_KEY") ?? null,
   });
 
   if (body.dry_run) return ok({ ok: true, dry_run: true, values, location_id: locationId });
