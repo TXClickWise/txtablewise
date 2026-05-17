@@ -360,7 +360,7 @@ const SECTIONS: Section[] = [
               {[
                 ["TW Reservation ID", "contact.tw_reservation_id", "Single Line"],
                 ["TW Manage Token", "contact.tw_manage_token", "Single Line"],
-                ["TW Reservation Date", "contact.tw_reservation_date", "Date"],
+                ["TW Reservation Date", "contact.tw_reservation_date", "Single Line"],
                 ["TW Reservation Time", "contact.tw_reservation_time", "Single Line"],
                 ["TW Party Size", "contact.tw_party_size", "Numeric"],
                 ["TW Special Requests", "contact.tw_special_requests", "Multi Line"],
