@@ -456,15 +456,22 @@ const SECTIONS: Section[] = [
           <div className="font-medium mb-2">Tab: General</div>
           <ul className="list-disc list-inside space-y-1 text-muted-foreground">
             <li>Agent Name: <code>TableWise Reservering Bot</code></li>
-            <li>Language: <code>Dutch (Netherlands)</code></li>
-            <li>Voice: kies een NL-vrouwenstem</li>
+            <li>Language: <code>Multi</code> (meertalig — NL / DE / EN automatisch herkend)</li>
+            <li>Voice Model: <code>Eleven Turbo V2.5</code> ($0.015/min — 3× goedkoper dan Multilingual V2 en ruim voldoende voor reserveringen)</li>
+            <li>Voice: kies een stem die in alle drie de talen natuurlijk klinkt (bv. <em>Dakota H</em> of vergelijkbaar — test even met een korte DE/EN-zin)</li>
           </ul>
           <div className="mt-2">
             <CopyRow
-              label="Greeting (eerste zin)"
-              value="Goedendag, u spreekt met de digitale gastvrouw van {{location.name}}. Waarmee kan ik u van dienst zijn?"
+              label="Greeting (tri-linguaal — open altijd in NL, switch daarna naar de taal van de beller)"
+              value="Goedendag, u spreekt met de digitale gastvrouw van {{location.name}}. Guten Tag — how may I help you?"
             />
           </div>
+          <Callout tone="info" title="Waarom één agent i.p.v. drie?">
+            Eén Multi-agent = één prompt, één toolset, één telefoonnummer. Geen extra IVR-keuzemenu
+            ("druk 1 voor Nederlands"), geen warm-transfer-latency, en alle ClickWise-workflow
+            blijft ongewijzigd. De agent detecteert automatisch in welke taal de beller antwoordt
+            en schakelt om binnen één gesprek.
+          </Callout>
         </div>
 
         <div>
