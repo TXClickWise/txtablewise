@@ -699,7 +699,7 @@ async function handle(
           ...(r.body as Record<string, unknown>),
           message_for_guest: r.status < 300
             ? "Je reservering is bijgewerkt."
-            : "Het lukte niet om je reservering bij te werken. Een medewerker neemt contact op.",
+            : "Het lukte helaas niet om je reservering bij te werken. Probeert u het later nog eens, of neem contact op met het restaurant.",
         }), r.status);
       }
       case "create_waitlist_entry": {
