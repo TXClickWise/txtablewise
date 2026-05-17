@@ -98,6 +98,20 @@ Deno.serve(async (req) => {
       if (new Date(start_iso).getTime() < Date.now() + leadMin * 60_000) {
         return json({ error: "Slot too soon", error_code: "slot_too_soon", field: "time" }, 400);
       }
+      // Booking horizon: prevent bookings too far into the future.
+      const horizonDays: number | null = restaurant.booking_horizon_days ?? null;
+      if (horizonDays && horizonDays > 0) {
+        const maxDate = new Date(Date.now() + horizonDays * 24 * 60 * 60 * 1000);
+        if (new Date(start_iso) > maxDate) {
+          return json({
+            error: "Datum valt buiten de boekingshorizon",
+            error_code: "beyond_booking_horizon",
+            field: "date",
+            max_booking_date: maxDate.toISOString().slice(0, 10),
+            horizon_days: horizonDays,
+          }, 400);
+        }
+      }
     }
 
     // Find fitting individual tables
@@ -396,10 +410,12 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Gastvriendelijke melding voor voice-agent bij grote-groep goedkeuring,
-    // zodat de LLM niet zelf hoeft te interpreteren wat hij tegen de beller moet zeggen.
+    // Gastvriendelijke melding voor voice-agent bij grote-groep goedkeuring.
+    // Tenant-driven copy heeft voorrang; anders neutrale fallback zonder SLA-belofte.
+    const tenantPendingCopy = (restaurant.large_group_confirmation_text ?? "").toString().trim();
+    const fallbackPending = `Uw reservering voor ${body.party_size} personen op ${body.date} om ${body.time} is voorlopig genoteerd. Het restaurant laat het u zo snel mogelijk weten.`;
     const messageForGuest = requiresManualApproval
-      ? `Voor een groep van ${body.party_size} personen leg ik uw aanvraag voor aan een collega. Het team beoordeelt dit zo snel mogelijk en neemt alleen contact op als er iets aangepast moet worden — anders is de tafel voor u gereserveerd op ${body.date} om ${body.time}.`
+      ? (tenantPendingCopy || fallbackPending)
       : null;
 
     return json({

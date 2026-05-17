@@ -96,12 +96,19 @@ function json(body: unknown, status = 200) {
 // wacht.
 function buildBookGuestResponse(
   r: { status: number; body: Record<string, any> | null },
-  ctx: { partySize: number; dateStr: string; timeStr: string; onlineHardCap: number },
+  ctx: {
+    partySize: number;
+    dateStr: string;
+    timeStr: string;
+    onlineHardCap: number;
+    largeGroupConfirmationText?: string | null;
+  },
 ) {
   const rb = (r.body ?? {}) as Record<string, any>;
   const reservationObj = rb.reservation ?? {};
   const requiresManual = rb.requires_manual_approval ?? reservationObj?.requires_manual_approval ?? false;
-  const { partySize, dateStr, timeStr, onlineHardCap } = ctx;
+  const { partySize, dateStr, timeStr, onlineHardCap, largeGroupConfirmationText } = ctx;
+  const tenantPendingCopy = (largeGroupConfirmationText ?? "").trim();
 
   let messageForGuest: string | null = rb.message_for_guest ?? null;
   let nextAction = "confirm_booking";
@@ -115,9 +122,11 @@ function buildBookGuestResponse(
       const allowTransfer = partySize > onlineHardCap && rb.transfer?.allowed === true;
       nextAction = allowTransfer ? "transfer_call" : "promise_callback";
       statusLabel = "voorlopig";
+      const fallbackTooLarge =
+        `Ik heb uw aanvraag genoteerd voor ${partySize} personen op ${dateStr} om ${timeStr}. Dit is voorlopig — het restaurant laat het u zo snel mogelijk weten zodra de beschikbaarheid bekeken is.`;
       messageForGuest = allowTransfer
         ? "Een moment, ik verbind u door met een collega."
-        : `Let op — dit is nog geen definitieve reservering. Voor een groep van ${partySize} personen leg ik uw aanvraag voor aan een collega. Het team beoordeelt dit zo snel mogelijk en neemt alleen contact op als er iets aangepast moet worden — anders is uw aanvraag voor ${dateStr} om ${timeStr} genoteerd.`;
+        : (tenantPendingCopy || fallbackTooLarge);
       if (!allowTransfer) rb.transfer = { ...(rb.transfer ?? {}), allowed: false };
     } else if (ec === "no_table_available" || ec === "slot_unavailable" || ec === "pacing_limit_reached") {
       nextAction = "offer_alternatives_or_waitlist";
@@ -131,14 +140,31 @@ function buildBookGuestResponse(
       responseStatus = 200;
       responseOk = true;
       rb.transfer = { ...(rb.transfer ?? {}), allowed: false };
+    } else if (ec === "slot_too_soon") {
+      nextAction = "ask_later_time";
+      messageForGuest = "Dat tijdstip is helaas te kort dag. Kunt u een iets later tijdstip kiezen?";
+      responseStatus = 200;
+      responseOk = true;
+      rb.transfer = { ...(rb.transfer ?? {}), allowed: false };
+    } else if (ec === "beyond_booking_horizon") {
+      const maxDateLabel = rb.max_booking_date
+        ? new Date(String(rb.max_booking_date) + "T00:00:00").toLocaleDateString("nl-NL", { day: "numeric", month: "long", year: "numeric" })
+        : "enkele maanden vooruit";
+      nextAction = "ask_closer_date";
+      messageForGuest = `Die datum valt helaas te ver in de toekomst. U kunt tot ${maxDateLabel} reserveren. Wilt u een eerdere datum proberen?`;
+      responseStatus = 200;
+      responseOk = true;
+      rb.transfer = { ...(rb.transfer ?? {}), allowed: false };
     } else {
       nextAction = "apologize_and_callback";
-      messageForGuest = "Sorry, er ging iets mis aan onze kant. Ik laat een collega u zo snel mogelijk terugbellen.";
+      messageForGuest = "Sorry, er ging iets mis aan onze kant. Probeert u het later nog eens, of reserveer via de website.";
     }
   } else if (requiresManual) {
     nextAction = "confirm_pending_approval";
     statusLabel = "voorlopig";
-    messageForGuest = `Ik heb uw aanvraag voor ${partySize} personen op ${dateStr} om ${timeStr} genoteerd. Dit is nog geen definitieve reservering — een collega bevestigt dit zo snel mogelijk per telefoon of WhatsApp.`;
+    const fallbackPending =
+      `Uw reservering voor ${partySize} personen op ${dateStr} om ${timeStr} is voorlopig genoteerd. Het restaurant laat het u zo snel mogelijk weten.`;
+    messageForGuest = tenantPendingCopy || fallbackPending;
   } else {
     messageForGuest = messageForGuest ?? `Top, jullie tafel staat genoteerd, tot ${dateStr} om ${timeStr}.`;
   }
@@ -358,14 +384,74 @@ async function handle(
         const resObj0 = rb0.reservation ?? {};
         if (r.status >= 200 && r.status < 300 && resObj0?.id) ctx.setReservationId(resObj0.id);
         const { data: restRow } = await sb.from("restaurants")
-          .select("large_group_max_online_request, max_party_size_online")
+          .select("large_group_max_online_request, max_party_size_online, large_group_confirmation_text")
           .eq("id", keyRow.restaurant_id).maybeSingle();
         const onlineHardCap: number = (restRow?.large_group_max_online_request ?? restRow?.max_party_size_online ?? 18) as number;
+
+        // --- GROTE GROEP VANGNET ---
+        // Wanneer book_reservation de groep weigert wegens overschrijding van de online cap,
+        // sla de aanvraag op in large_group_requests — net als de widget doet — zodat het
+        // restaurant de aanvraag écht in de UI ziet.
+        if (r.status >= 400 && rb0.error_code === "large_group_required_manual") {
+          const gAny = (payload.guest ?? {}) as Record<string, any>;
+          const contactName = [gAny.first_name, gAny.last_name].filter(Boolean).join(" ").trim() || "Onbekend";
+          const sourceLine = `[bron: voice-agent / ${keyRow.provider ?? "ai_host"}]`;
+          const lgInsert = await sb.from("large_group_requests").insert({
+            restaurant_id: keyRow.restaurant_id,
+            contact_name: contactName,
+            contact_phone: gAny.phone ?? null,
+            contact_email: gAny.email ?? null,
+            party_size: Number((payload as any).party_size) || 0,
+            preferred_date: ((payload as any).date ? String((payload as any).date) : null),
+            preferred_time: ((payload as any).time ? String((payload as any).time) : null),
+            message: [
+              (payload as any).special_requests ? String((payload as any).special_requests) : null,
+              sourceLine,
+            ].filter(Boolean).join("\n\n"),
+            status: "new",
+          }).select("id").maybeSingle();
+          const lgReq = lgInsert.data;
+          if (lgReq?.id) {
+            rb0.large_group_request_id = lgReq.id;
+            // Audit + integration event (fire-and-forget)
+            sb.from("audit_log").insert({
+              restaurant_id: keyRow.restaurant_id,
+              action: "large_group_request.created",
+              entity: "large_group_request",
+              entity_id: lgReq.id,
+              actor_label: `agent_api:${keyRow.provider ?? "voice"}`,
+              after_data: {
+                source: "agent_api",
+                party_size: Number((payload as any).party_size) || 0,
+                preferred_date: (payload as any).date ?? null,
+                preferred_time: (payload as any).time ?? null,
+              },
+            }).then(() => {}).catch(() => {});
+            sb.from("integration_events").insert({
+              restaurant_id: keyRow.restaurant_id,
+              event_type: "large_group_request.created",
+              entity_type: "large_group_request",
+              entity_id: lgReq.id,
+              payload: {
+                source: "agent_api",
+                source_channel: "phone_ai",
+                provider: keyRow.provider,
+                party_size: Number((payload as any).party_size) || 0,
+                preferred_date: (payload as any).date ?? null,
+                preferred_time: (payload as any).time ?? null,
+                contact_name: contactName,
+                contact_phone: gAny.phone ?? null,
+              },
+            }).then(() => {}).catch(() => {});
+          }
+        }
+
         const built = buildBookGuestResponse(r, {
           partySize: Number((payload as any).party_size) || 0,
           dateStr: String((payload as any).date ?? ""),
           timeStr: String((payload as any).time ?? ""),
           onlineHardCap,
+          largeGroupConfirmationText: restRow?.large_group_confirmation_text ?? null,
         });
         return json(built.body, built.status);
       }
@@ -398,7 +484,7 @@ async function handle(
         // `reservation_request` zodat een parafraserende LLM nooit "geboekt"
         // kan zeggen terwijl de reservering nog op handmatige goedkeuring wacht.
         const { data: restRow2 } = await sb.from("restaurants")
-          .select("large_group_max_online_request, max_party_size_online")
+          .select("large_group_max_online_request, max_party_size_online, large_group_confirmation_text")
           .eq("id", keyRow.restaurant_id).maybeSingle();
         const onlineHardCap2: number = (restRow2?.large_group_max_online_request ?? restRow2?.max_party_size_online ?? 18) as number;
         const built2 = buildBookGuestResponse(r, {
@@ -406,6 +492,7 @@ async function handle(
           dateStr: String((payload as any).date ?? ""),
           timeStr: String((payload as any).time ?? ""),
           onlineHardCap: onlineHardCap2,
+          largeGroupConfirmationText: restRow2?.large_group_confirmation_text ?? null,
         });
         return json(built2.body, built2.status);
       }
@@ -479,13 +566,47 @@ async function handle(
       }
       case "find_reservation": {
         if (!keyRow.scopes.includes("availability")) return json({ error: "Scope missing: availability", error_code: "auth_scope_missing", field: "availability" }, 403);
-        const { phone, date, first_name, last_name, time } = payload as {
-          phone?: string; date?: string; first_name?: string; last_name?: string; time?: string;
+        const { phone, date, first_name, last_name, time, confirmation_code } = payload as {
+          phone?: string; date?: string; first_name?: string; last_name?: string; time?: string; confirmation_code?: string;
         };
         const hasPhone = !!phone && phone.trim().length > 0;
         const hasLast = !!last_name && last_name.trim().length > 0;
         const hasFirstPlusDate = !!first_name && first_name.trim().length > 0 && !!date;
-        if (!hasPhone && !hasLast && !hasFirstPlusDate) {
+        const codeRaw = (confirmation_code ?? "").trim().toUpperCase();
+        const hasCode = /^[A-Z0-9]{3,12}$/.test(codeRaw);
+
+        if (hasCode) {
+          const { data: directMatch } = await sb.from("reservations")
+            .select("id, reservation_date, start_time, party_size, status, guest_id, confirmation_code")
+            .eq("restaurant_id", keyRow.restaurant_id)
+            .eq("confirmation_code", codeRaw)
+            .in("status", ["confirmed", "pending", "seated"])
+            .limit(1);
+          if (directMatch && directMatch.length > 0) {
+            const rr = directMatch[0];
+            const { data: guestRow } = await sb.from("guests")
+              .select("first_name").eq("id", rr.guest_id ?? "").maybeSingle();
+            return json(guestSafeResponse("find_reservation", true, {
+              matches: [{
+                reservation_id: rr.id,
+                date: rr.reservation_date,
+                time: rr.start_time,
+                party_size: rr.party_size,
+                status: rr.status,
+                guest_first_name: guestRow?.first_name ?? null,
+              }],
+              message_for_guest: `Ik heb je reservering gevonden voor ${rr.party_size} personen.`,
+            }));
+          }
+          if (!hasPhone && !hasLast && !hasFirstPlusDate) {
+            return json(guestSafeResponse("find_reservation", true, {
+              matches: [],
+              message_for_guest: "Ik kan geen reservering vinden met die code. Kunt u uw naam of telefoonnummer doorgeven?",
+            }));
+          }
+        }
+
+        if (!hasPhone && !hasLast && !hasFirstPlusDate && !hasCode) {
           return json({ error: "Geef telefoon, of achternaam, of voornaam + datum", error_code: "missing_field", field: "phone" }, 400);
         }
         // Find guests in this restaurant matching phone or name
@@ -578,7 +699,7 @@ async function handle(
           ...(r.body as Record<string, unknown>),
           message_for_guest: r.status < 300
             ? "Je reservering is bijgewerkt."
-            : "Het lukte niet om je reservering bij te werken. Een medewerker neemt contact op.",
+            : "Het lukte helaas niet om je reservering bij te werken. Probeert u het later nog eens, of neem contact op met het restaurant.",
         }), r.status);
       }
       case "create_waitlist_entry": {
@@ -625,7 +746,7 @@ async function handle(
         });
         return json(guestSafeResponse("create_waitlist_entry", true, {
           waitlist_entry_id: entry.id,
-          message_for_guest: "Je staat op de wachtlijst. Als er plek vrijkomt, neemt het restaurant contact op.",
+          message_for_guest: "Je staat op de wachtlijst. Als er plek vrijkomt, laat het restaurant het je weten.",
         }));
       }
       case "get_opening_hours": {

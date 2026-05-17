@@ -213,7 +213,7 @@ const LargeGroupSettings = () => {
               <Input type="number" min={1} value={form.large_group_manual_approval_from}
                 onChange={(e) => setForm({ ...form, large_group_manual_approval_from: Number(e.target.value) || 1 })} />
             </Field>
-            <Field label="Maximale online groepsaanvraag (personen)" hint="Harde bovengrens voor widget én voice agent. Boven dit aantal kan de gast niet zelf boeken: widget toont groepsformulier, voice agent verbindt door (binnen call-transfer venster) of belooft een terugbelafspraak.">
+            <Field label="Maximale online groepsaanvraag (personen)" hint="Harde bovengrens voor widget én voice agent. Boven dit aantal kan de gast niet zelf boeken: widget toont groepsformulier, voice agent verbindt door (binnen call-transfer venster) of noteert de aanvraag als groepsverzoek.">
               <Input type="number" min={1} placeholder="bv. 18"
                 value={form.large_group_max_online_request}
                 onChange={(e) => setForm({ ...form, large_group_max_online_request: e.target.value === "" ? "" : (Number(e.target.value) || 1) })} />
@@ -282,7 +282,7 @@ const LargeGroupSettings = () => {
           <h3 className="font-medium">Call Transfer bij te grote groepen</h3>
           <p className="text-xs text-muted-foreground inline-flex items-start gap-1">
             <Info className="h-3.5 w-3.5 mt-0.5 shrink-0" />
-            Wanneer een beller via de AI Voice Agent een groep aanvraagt die groter is dan "Maximale online groepsaanvraag", verbindt de agent door naar dit nummer — maar alléén binnen het venster hieronder. Buiten dit venster (of op gesloten dagen) belooft de agent een terugbelafspraak.
+            Wanneer een beller via de AI Voice Agent een groep aanvraagt die groter is dan "Maximale online groepsaanvraag", verbindt de agent door naar dit nummer — maar alléén binnen het venster hieronder. Buiten dit venster (of op gesloten dagen) noteert de agent de aanvraag als groepsverzoek (zichtbaar in Grote groepen).
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <Field label="Doorverbind-nummer" hint="E.164 formaat, bv. +31612345678.">
