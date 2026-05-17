@@ -223,7 +223,7 @@ GROTE GROEPEN (2-drempel logica — alle antwoorden in de GELOCKTE taal)
 - Boek NOOIT zelf door na een TW_409_PARTY_TOO_LARGE.
 
 OPENINGSBEGROETING (verplicht, exact deze tri-linguale zin)
-"Goedendag, u spreekt met de digitale gastvrouw van {{location.name}}. Guten Tag — how may I help you?"
+"Goedendag, u spreekt met de digitale gastvrouw van {{custom_values.tablewise_restaurant_name}}. Guten Tag — how may I help you?"
 
 AFSLUITING (in de gespreks-taal)
 - NL: "Hartelijk dank voor uw telefoontje, tot [datum en tijd]. Een fijne dag verder!"
@@ -328,9 +328,11 @@ const SECTIONS: Section[] = [
         <ol className="list-decimal list-inside space-y-2">
           <li>
             Maak in ClickWise een <strong>nieuwe sub-account vanuit de TableWise master snapshot</strong>.
-            <strong> Zet de sub-account naam exact gelijk aan de restaurantnaam in TableWise</strong> en kies
-            de juiste <strong>tijdzone</strong> — beide worden automatisch in de prompt, SMS en tools gebruikt
-            via <code>{`{{location.name}}`}</code> en <code>{`{{location.timezone}}`}</code>.
+            Zet de sub-account naam en tijdzone correct — TableWise pusht ze automatisch óók als
+            custom values (<code>{`{{custom_values.tablewise_restaurant_name}}`}</code> en
+            <code>{` {{custom_values.tablewise_timezone}}`}</code>) via de sync-knop in
+            <em> Koppelingen → ClickWise</em>. <strong>Let op:</strong> <code>{`{{location.*}}`}</code>
+            rendert niet in Voice AI prompts; daarom werken alle prompts/SMS met de custom_values.
           </li>
           <li>
             Ga naar <strong>Instellingen → Custom Values → Account</strong> en plak in
@@ -430,15 +432,17 @@ const SECTIONS: Section[] = [
           <div className="text-xs text-muted-foreground">TW Agent API Key</div>
           <div className="font-mono">tw_voice_… (plak hier de sleutel uit stap 2)</div>
         </div>
-        <Callout tone="success" title="Automatisch ingevuld — niet meer als custom value nodig">
+        <Callout tone="success" title="Automatisch gepusht door TableWise — niet handmatig invullen">
           <ul className="list-disc list-inside space-y-1">
             <li>
-              <strong>Restaurantnaam</strong> → <code>{`{{location.name}}`}</code> (sub-account
-              naam in ClickWise). Zet die bij het aanmaken gelijk aan de naam in TableWise.
+              <strong>Restaurantnaam</strong> → <code>{`{{custom_values.tablewise_restaurant_name}}`}</code>
+              (TableWise pusht <code>restaurants.name</code> automatisch via de sync-knop in
+              <em> Koppelingen → ClickWise</em>).
             </li>
             <li>
-              <strong>Tijdzone</strong> → <code>{`{{location.timezone}}`}</code> (sub-account
-              tijdzone). Standaard <code>Europe/Amsterdam</code>.
+              <strong>Tijdzone</strong> → <code>{`{{custom_values.tablewise_timezone}}`}</code>
+              (gepusht uit <code>restaurants.timezone</code>, bv. <code>Europe/Amsterdam</code>).
+              <em> Let op:</em> <code>{`{{location.timezone}}`}</code> werkt NIET in Voice AI prompts.
             </li>
             <li>
               <strong>Groepsgrootte (2-drempel)</strong> → komt rechtstreeks uit TableWise.
@@ -490,7 +494,7 @@ const SECTIONS: Section[] = [
           <div className="mt-2">
             <CopyRow
               label="Greeting (tri-linguaal — open altijd in NL, switch daarna naar de taal van de beller)"
-              value="Goedendag, u spreekt met de digitale gastvrouw van {{location.name}}. Guten Tag — how may I help you?"
+              value="Goedendag, u spreekt met de digitale gastvrouw van {{custom_values.tablewise_restaurant_name}}. Guten Tag — how may I help you?"
             />
           </div>
           <Callout tone="info" title="Waarom één agent i.p.v. drie?">
@@ -632,7 +636,7 @@ const SECTIONS: Section[] = [
         <div>
           <div className="font-medium">Action 2 — Send SMS</div>
           <CodeBlock label="SMS naar {{contact.phone}}">
-{`Hallo {{contact.first_name}}, uw reservering bij {{location.name}} op {{contact.tw_reservation_date}} om {{contact.tw_reservation_time}} voor {{contact.tw_party_size}} personen is bevestigd. Wijzigen of annuleren? Bel ons of antwoord op deze sms.`}
+{`Hallo {{contact.first_name}}, uw reservering bij {{custom_values.tablewise_restaurant_name}} op {{contact.tw_reservation_date}} om {{contact.tw_reservation_time}} voor {{contact.tw_party_size}} personen is bevestigd. Wijzigen of annuleren? Bel ons of antwoord op deze sms.`}
           </CodeBlock>
         </div>
         <Callout tone="warn" title="Filter test-events (anders gaan er echte SMSes uit bij elke 'Test'-klik)">
@@ -727,9 +731,11 @@ const SECTIONS: Section[] = [
       <div className="space-y-2">
         <p className="text-sm text-muted-foreground">
           Plak in de Voice Agent → Prompt-tab. Vervang <code>[RESTAURANTNAAM]</code> door
-          <code>{` {{location.name}} `}</code> — ClickWise vult dan automatisch de sub-account
-          naam in. Vervang ook <code>Europe/Amsterdam</code> door <code>{`{{location.timezone}}`}</code>
-          als je meerdere tijdzones gebruikt.
+          <code>{` {{custom_values.tablewise_restaurant_name}} `}</code> — die wordt automatisch
+          gepusht door TableWise (sync-knop in Koppelingen → ClickWise). Vervang
+          <code>Europe/Amsterdam</code> door <code>{`{{custom_values.tablewise_timezone}}`}</code>.
+          <strong> Let op:</strong> <code>{`{{location.*}}`}</code> rendert niet in Voice AI prompts —
+          gebruik altijd <code>{`{{custom_values.*}}`}</code>.
         </p>
         <Callout tone="info" title="Groepsgrootte — 2-drempel logica (engine bepaalt)">
           De agent probeert ALTIJD eerst te boeken. De TableWise-engine bepaalt het vervolg

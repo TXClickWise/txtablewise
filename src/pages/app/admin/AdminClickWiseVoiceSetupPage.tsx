@@ -70,7 +70,7 @@ export default function AdminClickWiseVoiceSetupPage() {
   const restaurantId = current?.restaurants?.id ?? "<RESTAURANT_ID>";
   const [apiKey, setApiKey] = useState("tw_live_PLAK_HIER_DE_AGENT_API_KEY");
 
-  const systemPrompt = useMemo(() => `Je bent de AI telefoonhost van {{location.name}}, een restaurant in tijdzone {{location.timezone}}.
+  const systemPrompt = useMemo(() => `Je bent de AI telefoonhost van {{custom_values.tablewise_restaurant_name}}, een restaurant in tijdzone {{custom_values.tablewise_timezone}}.
 Je spreekt Nederlands, bent gastvrij, kort en duidelijk. Geen lange uitweidingen.
 
 # Wat je doet
@@ -199,11 +199,13 @@ Roep ALTIJD \`log_call\` aan met de samenvatting, outcome (booked/changed/cancel
 }`;
 
   // Custom values voor de HUIDIGE klant — handig om direct in zijn sub-account te plakken.
-  // Restaurantnaam + tijdzone komen automatisch uit {{location.name}} / {{location.timezone}}
-  // en hoeven NIET als custom value ingevuld te worden.
+  // Restaurantnaam + tijdzone worden door TableWise automatisch gepusht (sync-knop),
+  // omdat {{location.*}} niet rendert in Voice AI prompts.
   const customValues = `tablewise_api_key = ${apiKey}
 tablewise_restaurant_id = ${restaurantId}
 tablewise_base_url = ${FN_BASE}
+tablewise_restaurant_name = <auto, gepusht door TableWise>
+tablewise_timezone = <auto, gepusht door TableWise>
 restaurant_phone = +31 20 000 0000
 restaurant_address = <adres>
 opening_hours_short = di t/m za 17:00–22:00, zondag 17:00–21:00`;
@@ -213,6 +215,8 @@ opening_hours_short = di t/m za 17:00–22:00, zondag 17:00–21:00`;
   const customValuesSnapshot = `tablewise_api_key = REPLACE_PER_CLIENT_tw_live_xxx
 tablewise_restaurant_id = REPLACE_PER_CLIENT_uuid
 tablewise_base_url = ${FN_BASE}
+tablewise_restaurant_name = REPLACE_PER_CLIENT
+tablewise_timezone = REPLACE_PER_CLIENT_Europe/Amsterdam
 restaurant_phone = REPLACE_PER_CLIENT
 restaurant_address = REPLACE_PER_CLIENT
 opening_hours_short = REPLACE_PER_CLIENT`;
@@ -264,14 +268,14 @@ steps:
     then:
       - send_sms:
           to: "{{contact.phone}}"
-          body: "Bedankt voor je reservering bij {{location.name}} op {{reservation_date}} om {{reservation_time}}. Tot dan!"
+          body: "Bedankt voor je reservering bij {{custom_values.tablewise_restaurant_name}} op {{reservation_date}} om {{reservation_time}}. Tot dan!"
       - add_tag: "tw_reservation_booked_via_voice"
     else: goto: 9_handoff
 
   3_cancel_done:
     type: send_sms
     to: "{{contact.phone}}"
-    body: "Je reservering bij {{location.name}} is geannuleerd. Welkom terug wanneer het uitkomt."
+    body: "Je reservering bij {{custom_values.tablewise_restaurant_name}} is geannuleerd. Welkom terug wanneer het uitkomt."
 
   4_change_done:
     type: send_sms
@@ -635,8 +639,10 @@ X-Agent-Api-Key: ${apiKey}`;
             <h3 className="font-display text-lg mb-2">System prompt</h3>
             <p className="text-sm text-muted-foreground mb-3">
               Plak deze in het <em>System Prompt</em> veld van je ClickWise voice agent. De
-              prompt gebruikt <code>{`{{location.name}}`}</code> en <code>{`{{location.timezone}}`}</code>
-              — die vult ClickWise automatisch vanuit de sub-account.
+              prompt gebruikt <code>{`{{custom_values.tablewise_restaurant_name}}`}</code> en
+              <code>{` {{custom_values.tablewise_timezone}}`}</code> — die worden automatisch
+              gepusht door TableWise (sync-knop). <strong>Let op:</strong> <code>{`{{location.*}}`}</code>
+              rendert niet in Voice AI prompts; gebruik altijd <code>{`{{custom_values.*}}`}</code>.
             </p>
             <CopyBlock value={systemPrompt} lang="prompt" />
           </Card>
@@ -644,7 +650,7 @@ X-Agent-Api-Key: ${apiKey}`;
           <Card className="p-4 space-y-2">
             <h3 className="font-display text-base">Begroeting (first message)</h3>
             <CopyBlock
-              value={`Goedendag, je spreekt met de virtuele gastvrouw van {{location.name}}. Waar kan ik je mee helpen — een tafel reserveren, of een bestaande reservering wijzigen?`}
+              value={`Goedendag, je spreekt met de virtuele gastvrouw van {{custom_values.tablewise_restaurant_name}}. Waar kan ik je mee helpen — een tafel reserveren, of een bestaande reservering wijzigen?`}
               lang="text"
             />
           </Card>
@@ -987,12 +993,12 @@ X-Agent-Api-Key: ${apiKey}`;
                   <li><code>tablewise_webhook_secret</code> — uit TableWise → Settings → API & Webhooks (per endpoint)</li>
                   <li><code>restaurant_phone</code>, <code>restaurant_address</code>, <code>opening_hours_short</code></li>
                   <li><code>tablewise_base_url</code> — laat staan, is globaal</li>
-                  <li className="text-success">Restaurantnaam + tijdzone hoef je <strong>niet</strong> meer als custom value te zetten — die komen automatisch uit <code>{`{{location.name}}`}</code> en <code>{`{{location.timezone}}`}</code>. Zorg alleen dat de sub-account zelf juist is benoemd.</li>
+                  <li className="text-success"><code>tablewise_restaurant_name</code> + <code>tablewise_timezone</code> hoef je <strong>niet</strong> handmatig te zetten — TableWise pusht die automatisch via de sync-knop in <em>Koppelingen → ClickWise</em>. (<code>{`{{location.*}}`}</code> rendert namelijk niet in Voice AI prompts.)</li>
                 </ul>
               </li>
               <li>
                 <strong>Voice AI Agent opnieuw aanmaken</strong> (Voice AI → Agents → New Agent). Plak de system prompt en first message uit tab <em>Prompt</em>.
-                Die teksten gebruiken al <code>{`{{location.name}}`}</code>, dus werken meteen voor élke klant.
+                Die teksten gebruiken <code>{`{{custom_values.tablewise_restaurant_name}}`}</code>, dus werken meteen voor élke klant zodra de sync is gedraaid.
               </li>
               <li>
                 <strong>Tools koppelen</strong> aan de nieuwe agent: selecteer de 4 Custom Actions die uit de snapshot komen
@@ -1022,8 +1028,8 @@ X-Agent-Api-Key: ${apiKey}`;
             <ul className="text-sm space-y-1.5 list-disc pl-4 text-muted-foreground">
               <li>Tool URLs gebruiken <code>{`{{custom_values.tablewise_base_url}}`}</code> i.p.v. een hardcoded URL — staging/prod-split mogelijk.</li>
               <li>Tool headers gebruiken <code>{`{{custom_values.tablewise_api_key}}`}</code> — geen sleutel in de Custom Action body.</li>
-              <li>System prompt + first message gebruiken <code>{`{{location.name}}`}</code> en <code>{`{{location.timezone}}`}</code> — automatisch per sub-account, geen custom value nodig.</li>
-              <li>SMS-bodies in workflow gebruiken <code>{`{{location.name}}`}</code>.</li>
+              <li>System prompt + first message gebruiken <code>{`{{custom_values.tablewise_restaurant_name}}`}</code> en <code>{`{{custom_values.tablewise_timezone}}`}</code> — automatisch gepusht door TableWise (sync-knop). <code>{`{{location.*}}`}</code> rendert niet in Voice AI prompts.</li>
+              <li>SMS-bodies in workflow gebruiken <code>{`{{custom_values.tablewise_restaurant_name}}`}</code> — consistent met de prompt.</li>
               <li>Identity-velden komen uit standaard ClickWise <code>{`{{contact.*}}`}</code> — bestaan automatisch in elke sub-account.</li>
               <li>Custom Fields zijn generiek (geen restaurantnaam in de field-naam) — herbruikbaar zonder rename.</li>
               <li>Inbound-webhook workflows hebben een vaste naam-conventie (<code>TW — &lt;event_label&gt;</code>) zodat ze in elke snapshot herkenbaar zijn.</li>
