@@ -158,7 +158,7 @@ type Section = {
 // ============================================================
 // PROMPT TEMPLATE
 // ============================================================
-const SYSTEM_PROMPT = `You are the digital host of [RESTAURANTNAAM], a restaurant located in [LOCATIE] (timezone Europe/Amsterdam). You take phone reservations in a friendly, natural and concise way.
+const SYSTEM_PROMPT = `You are the digital host of {{custom_values.tablewise_restaurant_name}}, a restaurant located in {{custom_values.tablewise_timezone}} (timezone {{custom_values.tablewise_timezone}}). You take phone reservations in a friendly, natural and concise way.
 
 TAALHERKENNING & TAALGEBRUIK (BELANGRIJK — geldt voor ALLES wat je zegt)
 - Je spreekt drie talen: Nederlands (NL), Duits (DE) en Engels (EN).
@@ -777,10 +777,9 @@ const SECTIONS: Section[] = [
     render: () => (
       <div className="space-y-2">
         <p className="text-sm text-muted-foreground">
-          Plak in de Voice Agent → Prompt-tab. Vervang <code>[RESTAURANTNAAM]</code> door
-          <code>{` {{custom_values.tablewise_restaurant_name}} `}</code> — die wordt automatisch
-          gepusht door TableWise (sync-knop in Koppelingen → ClickWise). Vervang
-          <code>Europe/Amsterdam</code> door <code>{`{{custom_values.tablewise_timezone}}`}</code>.
+          Plak in de Voice Agent → Prompt-tab. <code>{`{{custom_values.tablewise_restaurant_name}}`}</code> en
+          <code>{`{{custom_values.tablewise_timezone}}`}</code> zijn al ingevuld — die worden automatisch
+          gepusht door TableWise (sync-knop in Koppelingen → ClickWise).
           <strong> Let op:</strong> <code>{`{{location.*}}`}</code> rendert niet in Voice AI prompts —
           gebruik altijd <code>{`{{custom_values.*}}`}</code>.
         </p>

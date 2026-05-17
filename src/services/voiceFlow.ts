@@ -331,7 +331,7 @@ export const VOICE_FLOW_FIELDS: Array<{
   { key: "email",     label: "E-mail",          required: false, spokenExample: "—",                  payloadField: "contact.email",     notes: "Optioneel telefonisch" },
 ];
 
-export const VOICE_FLOW_PROMPT_TEMPLATE = `Je bent de gastvrouw van [restaurantnaam]. Spreek vriendelijk Nederlands.
+export const VOICE_FLOW_PROMPT_TEMPLATE = `Je bent de gastvrouw van {{custom_values.tablewise_restaurant_name}} (tijdzone {{custom_values.tablewise_timezone}}). Spreek vriendelijk Nederlands.
 
 VERPLICHTE FLOW — wijk hier nooit van af:
 
