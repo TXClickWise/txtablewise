@@ -1,65 +1,49 @@
-## Wat ik in de screenshot zie
+## Wat de screenshots bevestigen
 
-- De voice agent roept tool **`Book Reservation`** aan (de oude tool), niet `reservation_request`.
-- Output bevat alleen ruwe velden + `execution_message: "Ik zet je reservering in ons systeem."` en `synthetic: true`.
-- Daarna zegt de agent gewoon "Perfect, ik …" — geen "Let op, dit is nog geen definitieve reservering."
+De ClickWise action `reservation_request` faalt met:
 
-## Oorzaak
+- `success: false`
+- `message: CAP action execution failed`
+- `status: 401`
+- `statusText: Unauthorized`
 
-Twee onafhankelijke problemen werken tegen elkaar:
+Dit is geen fout in de reserveringsregels, groepsgrootte of handmatige goedkeuring. De action komt niet door de gateway heen en bereikt onze `agent_api` code niet. Daardoor zegt de agent daarna zelf “technisch probleem”.
 
-1. In `agent_api` heeft de `book_reservation`-branch (regels 323-353) géén logica voor `message_for_guest` / `next_action` / `requires_manual_approval` afhandeling. Het stuurt de raw `book_reservation`-respons terug. De LLM heeft dus geen letterlijk voor te lezen zin en parafraseert vrolijk "geboekt".
-2. In de admin-setup staat de tool `book_reservation` óók nog als beschikbare action. Onze "reservation_request" is bedoeld als enige boekings-tool, maar bij dit account is de oude `book_reservation`-tool nog aangesloten. Daarom gebruikt de agent die.
+## Waarschijnlijke oorzaak
+
+De deployed `agent_api` endpoint verwacht nu een `Authorization` header voordat de functie mag starten. ClickWise stuurt alleen de custom header `X-Agent-Api-Key`, of stuurt die niet als echte HTTP-header door. Daardoor blokkeert de runtime de call met `UNAUTHORIZED_NO_AUTH_HEADER` vóórdat onze eigen API-key validatie kan draaien.
 
 ## Plan
 
-### A. `agent_api` `book_reservation`-branch gelijktrekken met `reservation_request`
-Zelfde response-vorm leveren zodat ook deze oude tool veilig is:
-- `message_for_guest` zetten op exact dezelfde Nederlandse copy als bij `reservation_request`.
-- `next_action` zetten (`confirm_booking` / `confirm_pending_approval` / `offer_alternatives_or_waitlist` / `promise_callback` / `apologize_and_callback`).
-- `status_label` toevoegen: `"voorlopig"` als `requires_manual_approval=true`, anders `"definitief"`.
-- Bij `error_code` "no_table_available", "pacing_limit_reached", "message_required" hetzelfde 200-met-gastvrije-copy-pad als `reservation_request`.
+1. **`agent_api` opnieuw deployen met externe-tool toegang actief**
+   - Controleren dat `verify_jwt = false` voor `agent_api` daadwerkelijk actief is op de live deploy.
+   - Daarna `agent_api` opnieuw deployen.
+   - Dit blijft veilig: de functie valideert zelf server-side op `X-Agent-Api-Key` tegen de gehashte sleutel in de database.
 
-### B. `message_for_guest` voor "pending approval" harder maken
-In beide branches (`reservation_request` en `book_reservation`):
-- Tekst begint met: **"Let op — dit is nog geen definitieve reservering."** gevolgd door de bestaande "Ik leg uw aanvraag voor aan een collega…"-zin.
-- Zo kan zelfs een parafraserende LLM moeilijk "geboekt" zeggen zonder eerst "nog geen definitieve" voor te lezen.
+2. **De live endpoint direct testen**
+   - Een echte `reservation_request` call uitvoeren op de gedeployde endpoint.
+   - Verwachte uitkomst: geen 401 meer; bij ontbrekende velden hooguit een normale function-response zoals `missing_field`, en bij volledige data een normale reserveringsresponse.
 
-### C. Admin voice setup-pagina (`AdminClickWiseVoiceSetupPage.tsx`)
-- `reservation_request` blijven aanbevelen als enige boekings-tool.
-- `book_reservation` markeren als **DEPRECATED** met een rode banner: "Verwijder deze tool uit de voice agent. Gebruik alleen `reservation_request`."
-- In de system-prompt template een harde regel toevoegen:
-  > Gebruik UITSLUITEND `reservation_request` voor boekingen. De tool `book_reservation` is verouderd — als die nog in je agent staat, verwijder hem.
-- Aan case b (requires_manual_approval=true) een verbod toevoegen:
-  > Zeg NOOIT "geboekt", "bevestigd", "gelukt" of "rond". Zeg LETTERLIJK `response.message_for_guest`. Geen eigen parafrase.
+3. **ClickWise setup-instructies harder maken**
+   - In de admin setup-pagina expliciet toevoegen dat elke action twee headers moet hebben:
+     - `X-Agent-Api-Key: {{custom_values.tablewise_api_key}}`
+     - `Content-Type: application/json`
+   - Als ClickWise/CAP alsnog een Authorization-header eist, toevoegen als fallback:
+     - `Authorization: Bearer {{custom_values.tablewise_api_key}}`
+   - Duidelijk markeren dat `tablewise_api_key` niet leeg mag zijn in de sub-account custom values.
 
-### D. `VoiceAgentHelp.tsx`
-- Zelfde deprecation-melding voor `book_reservation`.
-- Voorbeeld van fout vs goed antwoord voor grote-groep-scenario.
+4. **Troubleshooting blok toevoegen voor exact deze fout**
+   - Bij `401 Unauthorized` / `CAP action execution failed`:
+     - controleer of `tablewise_api_key` gevuld is;
+     - controleer of de headers op de action staan, niet alleen in de body;
+     - controleer of `Authorization` fallback nodig is;
+     - daarna opnieuw testen met `reservation_request`.
 
-### E. UI consistency (klein)
-- `StatusBadge`: pending reserveringen met `requires_manual_approval=true` labelen als **"Voorlopig"** in plaats van "Verwacht", zodat operator en voice agent dezelfde taal spreken.
-- `LargeGroupsPage` "Wacht op goedkeuring"-sectie: 1 regeltje "De gast heeft te horen gekregen dat het nog beoordeeld wordt — bel alleen terug bij wijziging."
+5. **Geen businesslogica wijzigen**
+   - Geen wijzigingen aan groepsdrempels.
+   - Geen wijzigingen aan handmatige goedkeuring.
+   - Geen wijzigingen aan tafellogica of beschikbaarheid.
 
-## Wat ik NIET aanpas
+## Acceptatiecheck
 
-- `book_reservation` edge function zelf. Werkt correct.
-- `manage_reservation` approve_large_group. Werkt correct.
-- Drempels (`large_group_threshold`, `manual_approval_from`, etc.). Werken correct.
-
-## Bestanden
-
-- `supabase/functions/agent_api/index.ts` — `book_reservation`-case uitbreiden, `message_for_guest` text in beide cases aanscherpen, `status_label` veld toevoegen.
-- `src/pages/app/admin/AdminClickWiseVoiceSetupPage.tsx` — deprecation-banner + prompt-regels.
-- `src/pages/app/help/VoiceAgentHelp.tsx` — deprecation-banner + voorbeeld.
-- `src/components/StatusBadge.tsx` — variant "voorlopig" toevoegen (nieuwe prop of conditionele tekst).
-- `src/pages/app/LargeGroupsPage.tsx` — kort uitleg-regeltje.
-
-Geen DB-migratie, geen secrets, geen wijzigingen aan `book_reservation` of `manage_reservation`.
-
-## Test na implementatie
-
-1. **Bij voorkeur**: oude `book_reservation`-tool in de voice agent verwijderen (alleen `reservation_request` aanzetten).
-2. Test bel 12+ personen → agent moet letterlijk zeggen: "Let op — dit is nog geen definitieve reservering. Ik leg uw aanvraag voor 12 personen voor aan een collega…"
-3. In Grote-groepen-pagina staat reservering met badge "Voorlopig".
-4. **Fallback test**: als oude `book_reservation`-tool nog actief is, agent moet zich ook dán correct gedragen (dankzij fix A).
+Na implementatie moet een ClickWise testcall niet meer eindigen op `401 Unauthorized`. Voor 16 personen moet de response daarna weer een normale `message_for_guest` teruggeven, met “nog geen definitieve reservering” wanneer handmatige goedkeuring nodig is.
