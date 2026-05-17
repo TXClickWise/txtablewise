@@ -529,20 +529,30 @@ const SECTIONS: Section[] = [
               aanmaken, event <code>reservation.created</code> kiezen en op <strong>Test</strong> klikken.</li>
             <li>Ga terug naar de ClickWise trigger-popup → open de dropdown <strong>Mapping Reference</strong> →
               klik <strong>"Check for new requests"</strong>. De zojuist verzonden payload verschijnt — selecteer hem.</li>
-            <li>Klik <strong>Save Trigger</strong>. Vanaf nu zijn <code>{`{{trigger.phone}}`}</code>, <code>{`{{trigger.first_name}}`}</code> enz. beschikbaar in alle Actions.</li>
+            <li>Klik <strong>Save Trigger</strong>. Vanaf nu zijn alle velden beschikbaar als <code>{`{{inboundWebhookRequest.payload.<veld>}}`}</code> in Actions (bijv. <code>{`{{inboundWebhookRequest.payload.guest.phone}}`}</code>).</li>
           </ol>
           <CodeBlock label="cURL — vervang <WEBHOOK_URL>">
 {`curl -X POST '<WEBHOOK_URL>' \\
   -H 'Content-Type: application/json' \\
   -d '{
-    "phone": "+31612345678",
-    "first_name": "Test",
-    "email": "test@voorbeeld.nl",
-    "reservation_id": "00000000-0000-0000-0000-000000000000",
-    "reservation_date": "2026-05-10",
-    "reservation_time": "19:30",
-    "party_size": 4,
-    "manage_token": "demo-token"
+    "id": "evt_demo",
+    "event_type": "reservation.created",
+    "payload": {
+      "reservation_id": "00000000-0000-0000-0000-000000000000",
+      "reservation_date": "2026-05-10",
+      "reservation_time": "19:30",
+      "party_size": 4,
+      "manage_token": "demo-token",
+      "manage_url": "https://www.txtablewise.nl/r/demo/manage/demo-token",
+      "cancel_url": "https://www.txtablewise.nl/r/demo/manage/demo-token?action=cancel",
+      "confirmation_code": "ABC12345",
+      "guest": {
+        "phone": "+31612345678",
+        "first_name": "Test",
+        "last_name": "Gast",
+        "email": "test@voorbeeld.nl"
+      }
+    }
   }'`}
           </CodeBlock>
           <p className="text-xs mt-2">
@@ -551,17 +561,22 @@ const SECTIONS: Section[] = [
           </p>
         </Callout>
         <div>
-          <div className="font-medium">Action 1 — Find or Create Contact</div>
+          <div className="font-medium">Action 1 — Find Contact (met Create Contact in de "Not Found"-tak)</div>
+          <p className="text-xs text-muted-foreground mb-1">
+            Gebruik eerst <strong>Find Contact</strong> (matcht op telefoon → voorkomt dubbele contacten).
+            In de <em>Contact Not Found</em>-tak hang je daarna een <strong>Create Contact</strong> met exact dezelfde veldmappings.
+          </p>
           <ul className="list-disc list-inside text-muted-foreground space-y-0.5">
             <li>Match op <code>phone</code></li>
-            <li>Phone: <code>{`{{trigger.phone}}`}</code></li>
-            <li>First Name: <code>{`{{trigger.first_name}}`}</code></li>
-            <li>Email: <code>{`{{trigger.email}}`}</code></li>
-            <li>TW Reservation ID: <code>{`{{trigger.reservation_id}}`}</code></li>
-            <li>TW Reservation Date: <code>{`{{trigger.reservation_date}}`}</code></li>
-            <li>TW Reservation Time: <code>{`{{trigger.reservation_time}}`}</code></li>
-            <li>TW Party Size: <code>{`{{trigger.party_size}}`}</code></li>
-            <li>TW Manage Token: <code>{`{{trigger.manage_token}}`}</code></li>
+            <li>Phone: <code>{`{{inboundWebhookRequest.payload.guest.phone}}`}</code></li>
+            <li>First Name: <code>{`{{inboundWebhookRequest.payload.guest.first_name}}`}</code></li>
+            <li>Email: <code>{`{{inboundWebhookRequest.payload.guest.email}}`}</code></li>
+            <li>TW Reservation ID: <code>{`{{inboundWebhookRequest.payload.reservation_id}}`}</code></li>
+            <li>TW Reservation Date: <code>{`{{inboundWebhookRequest.payload.reservation_date}}`}</code></li>
+            <li>TW Reservation Time: <code>{`{{inboundWebhookRequest.payload.reservation_time}}`}</code></li>
+            <li>TW Party Size: <code>{`{{inboundWebhookRequest.payload.party_size}}`}</code></li>
+            <li>TW Manage Token: <code>{`{{inboundWebhookRequest.payload.manage_token}}`}</code></li>
+            <li>TW Manage URL: <code>{`{{inboundWebhookRequest.payload.manage_url}}`}</code></li>
           </ul>
         </div>
         <div>
