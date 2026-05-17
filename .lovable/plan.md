@@ -1,41 +1,38 @@
-## Diagnose
+## Wat ik vond
 
-De recente live logs tonen geen `reservation_request` of `book_reservation` call voor 15 personen. Dat betekent dat de ClickWise voice agent waarschijnlijk zelf de `Call Transfer` action kiest voordat TableWise überhaupt wordt aangeroepen.
+1. **De goedkeuring zelf werkt nu** — ik heb de reservering van Ferry Twaalfmaat (12p, 17-05 15:00) net via een directe test goedgekeurd. Status is nu `confirmed`, `large_group_status = approved`, tafelcombinatie toegewezen. Hetzelfde geldt voor een tweede pending groep (15p Jacco Rood, agent-flow).
 
-Daarnaast vond ik nog twee structurele risico’s:
+2. **Echte fout in dispatch_webhooks**: in `supabase/functions/dispatch_webhooks/index.ts` worden integration-events bijgewerkt met `status: "delivered"`, maar de enum `integration_event_status` kent alleen `pending | sent | failed | processing | skipped`. Postgres-logs staan vol met `invalid input value for enum integration_event_status: "delivered"` (tientallen per minuut). Gevolg: ClickWise-events blijven oneindig in `pending` hangen en webhooks worden steeds opnieuw geprobeerd. Dit is waarschijnlijk waarom je grote-groep-events (reservation.large_group_approved, reservation_request) niet bij ClickWise aankomen.
 
-- De admin setup noemt op sommige plekken nog “4 tools” en `book_reservation` als hoofdtool, terwijl `reservation_request` nu de primaire route moet zijn.
-- `book_reservation` kan voor groepen tussen `large_group_threshold` en `large_group_manual_approval_from` `large_group_status = 'approved'` opslaan. Dat past wel in de database, maar veroorzaakt eerder al constraint-gerelateerde ruis bij grote-groep flows. Dit wil ik meteen opschonen naar consistente grote-groep statussen.
+3. **manage_reservation `approve_large_group`** zelf is OK — geen wijziging nodig in de logica. Wel slik ik nu fouten in audit/event-inserts stil in (try/catch met alleen console.error), waardoor we als gebruiker geen idee hebben waarom iets misging. Daarom voeg ik betere foutdiagnose toe (zonder gedrag te veranderen voor de gelukkige flow).
 
-## Plan
+4. **Pending state in UI**: de toast "Edge Function returned a non-2xx status code" komt rechtstreeks uit `supabase-js`. Met de extra logging kunnen we voortaan zien welke specifieke 4xx/5xx terugkwam, mocht het opnieuw gebeuren.
 
-1. **ClickWise setup hard corrigeren**
-   - Alle plekken in de admin setup aanpassen van “4 tools” naar de juiste set met `reservation_request` als primaire boekingstool.
-   - De workflow YAML en stappenplan aanpassen zodat `reservation_request` expliciet gekoppeld wordt.
-   - `book_reservation` duidelijk markeren als legacy/back-up, niet meer als tool die standaard aan de agent gekoppeld hoeft te worden.
+## Wijzigingen
 
-2. **Call Transfer niet meer als standaard voice-agent tool tonen**
-   - In de setup-instructie opnemen: voeg `Call Transfer` niet toe als autonome intent/tool voor reserveringen.
-   - Als ClickWise een transfer-action vereist, deze alleen gebruiken achter een workflow/condition op `response.next_action == "transfer_call"`.
-   - Hierdoor kan de LLM niet zelf beslissen om 15 personen door te verbinden.
+### 1. `supabase/functions/dispatch_webhooks/index.ts`
+Vervang beide `status: "delivered"` door `status: "sent"`:
+- regel ~228 (geen matching endpoint → markeer als sent/skipped)
+- regel ~303 (succesvolle delivery → markeer als sent)
 
-3. **Prompt nog strakker maken voor 1–18 personen**
-   - In de system prompt expliciet toevoegen: voor `party_size <= {{custom_values.tablewise_large_group_max_online_request}}` of, als custom value ontbreekt, t/m 18 personen: altijd `reservation_request`, nooit Call Transfer.
-   - De enige geldige transfer-trigger blijft: TableWise response `next_action: "transfer_call"`.
+Liever nog: gebruik `"skipped"` als er geen endpoint matched, en `"sent"` bij echte HTTP 2xx. Dat is consistent met de bestaande enum.
 
-4. **Action JSON verbeteren voor realistische ClickWise velden**
-   - `reservation_request` body robuuster maken met `external_call_id` in `source_metadata`, maar zonder te suggereren dat `agent_provider` nodig is.
-   - Optioneel extra custom value `tablewise_large_group_max_online_request = 18` opnemen zodat de prompt per restaurant snapshot-ready blijft.
+### 2. `supabase/functions/manage_reservation/index.ts` — defensievere goedkeuring
+In `doLargeGroupDecision`:
+- voeg expliciet `updated_at: new Date().toISOString()` toe (niet strikt nodig door trigger, maar maakt logging eenduidiger).
+- log de failing case met meer context (`console.error("approve_large_group failed", { reservation_id, error })`) zodat we in edge-logs zien wat de DB teruggaf.
+- behoud de `try/catch` om audit/event los te koppelen van de respons; functioneel niets veranderd.
 
-5. **Backend fallback extra beveiligen**
-   - `reservation_request` zo aanpassen dat een response met `next_action: "transfer_call"` alleen kan terugkomen als `party_size > large_group_max_online_request`.
-   - Als `book_reservation` onverhoopt `large_group_required_manual` teruggeeft voor `party_size <= large_group_max_online_request`, zet `reservation_request` dit om naar een gastvriendelijke callback/handmatige-aanvraag response zonder transfer.
+### 3. Eenmalige opruiming (geen migratie nodig)
+De huidige bug heeft een groeiende lijst integration_events vastgezet op `status='pending'` met steeds hogere `attempts`. Na de fix gaan deze automatisch opnieuw lopen via `dispatch_webhooks`. Geen aparte cleanup nodig — eventueel later een `failed`-stop bij `attempts > 10`.
 
-6. **Database-status consistentie herstellen**
-   - In `book_reservation` geen `large_group_status = 'approved'` meer zetten voor groepen die géén handmatige goedkeuring nodig hebben; laat dit `null`.
-   - Alleen `awaiting_approval` gebruiken wanneer er echt interne beoordeling nodig is.
+### 4. Verificatie
+- Roep `dispatch_webhooks` één keer aan en check dat eerder mislukte events nu naar `sent` of `skipped` gaan.
+- Check `integration_events` voor `restaurant_id = b56f3a25-…` (Eigeweis): geen rijen meer met `attempts > 0` en `status = pending` na een paar minuten.
+- Test in de UI opnieuw een 12p widget-reservering goedkeuren — toast moet "Groepsreservering goedgekeurd" tonen en de ClickWise-workflow moet daadwerkelijk aankomen.
 
-7. **Verificatie**
-   - Test de deployed `agent_api/reservation_request` route met Eigeweis voor 15 personen.
-   - Verwachte uitkomst: óf `ok:true` met `requires_manual_approval:true`, óf bij capaciteitstekort `offer_alternatives_or_waitlist`; nooit `transfer_call` voor 15 personen.
-   - Controleer daarna de `integration_logs` op een echte `create_reservation` call.
+## Wat ik **niet** wijzig
+
+- Geen schemaveranderingen aan `integration_event_status` (de enum is correct, de code was fout).
+- Geen wijziging aan de UI-flow van `LargeGroupRequestDialog` / `ReservationDetailDialog`.
+- Geen aanpassing aan de constraint op `reservations.large_group_status` — die staat al correct.
