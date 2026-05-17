@@ -639,6 +639,7 @@ Deno.serve(async (req) => {
     const actionMap: Record<string, string> = {
       check_availability: "check_availability",
       book_reservation: "create_reservation",
+      reservation_request: "create_reservation",
       cancel_reservation: "cancel_reservation",
       find_reservation: "find_reservation",
       update_reservation: "update_reservation",
