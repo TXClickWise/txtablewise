@@ -571,7 +571,8 @@ X-Agent-Api-Key: ${apiKey}`;
             <p className="font-medium text-sm">Wat ga je opzetten?</p>
             <ul className="text-sm text-muted-foreground space-y-1 list-disc pl-4">
               <li>Eén Agent API key in TableWise per vestiging.</li>
-              <li>Vier tools (actions) in ClickWise: <code>check_availability</code>, <code>book_reservation</code>, <code>cancel_reservation</code>, <code>log_call</code>.</li>
+              <li>Vijf tools (actions) in ClickWise: <strong><code>reservation_request</code></strong> (primair), <code>check_availability</code> (optioneel), <code>book_reservation</code> (legacy), <code>cancel_reservation</code>, <code>log_call</code>.</li>
+              <li><strong>GEEN</strong> autonome <code>Call Transfer</code> action — alleen via workflow-conditie op <code>response.next_action == "transfer_call"</code>.</li>
               <li>Een set custom values + custom fields om gegevens vast te houden tijdens het gesprek.</li>
               <li>Eén AI voice agent met de TableWise system prompt.</li>
               <li>Eén workflow die het inkomende telefoongesprek routeert en SMS-bevestigingen stuurt.</li>
