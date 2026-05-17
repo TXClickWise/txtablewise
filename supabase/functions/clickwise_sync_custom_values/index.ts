@@ -50,13 +50,15 @@ Deno.serve(async (req) => {
   if (!locationId) return fail("location_id_not_configured", 400);
 
   const { data: r } = await admin
-    .from("restaurants").select("webhook_secret, name").eq("id", restaurantId).maybeSingle();
+    .from("restaurants").select("webhook_secret, name, timezone").eq("id", restaurantId).maybeSingle();
 
   const values = buildCustomValues({
     restaurantId,
     webhookSecret: (r as any)?.webhook_secret ?? null,
     apiKey: body.agent_api_key ?? null,
     tablewiseBaseUrl: TABLEWISE_BASE_URL,
+    restaurantName: (r as any)?.name ?? null,
+    timezone: (r as any)?.timezone ?? null,
   });
 
   if (body.dry_run) return ok({ ok: true, dry_run: true, values, location_id: locationId });
