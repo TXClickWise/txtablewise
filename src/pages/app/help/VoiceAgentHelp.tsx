@@ -717,7 +717,8 @@ const SECTIONS: Section[] = [
           <code>large_group_manual_approval_from</code>, en altijd vanaf
           <code>extra_large_group_threshold</code>) en verschijnen in de app onder
           <strong>"Grote groepen — te beoordelen"</strong>. Daar wordt <em>niet</em>
-          doorverbonden — die flow loopt via SMS-bevestiging vanuit het team.
+          doorverbonden en de agent belooft de gast <em>geen</em> SMS, WhatsApp of e-mail —
+          het team beoordeelt intern en neemt alleen contact op als er iets aangepast moet worden.
         </Callout>
       </div>
     ),
