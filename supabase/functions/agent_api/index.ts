@@ -746,7 +746,7 @@ async function handle(
         });
         return json(guestSafeResponse("create_waitlist_entry", true, {
           waitlist_entry_id: entry.id,
-          message_for_guest: "Je staat op de wachtlijst. Als er plek vrijkomt, neemt het restaurant contact op.",
+          message_for_guest: "Je staat op de wachtlijst. Als er plek vrijkomt, laat het restaurant het je weten.",
         }));
       }
       case "get_opening_hours": {
