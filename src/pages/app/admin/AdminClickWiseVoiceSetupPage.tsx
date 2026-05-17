@@ -155,6 +155,7 @@ Roep ALTIJD \`log_call\` aan met de samenvatting, outcome (booked/changed/cancel
   "method": "POST",
   "headers": {
     "Content-Type": "application/json",
+    "Authorization": "Bearer {{custom_values.tablewise_anon_key}}",
     "X-Agent-Api-Key": "{{custom_values.tablewise_api_key}}"
   },
   "body": {
@@ -171,6 +172,7 @@ Roep ALTIJD \`log_call\` aan met de samenvatting, outcome (booked/changed/cancel
   "method": "POST",
   "headers": {
     "Content-Type": "application/json",
+    "Authorization": "Bearer {{custom_values.tablewise_anon_key}}",
     "X-Agent-Api-Key": "{{custom_values.tablewise_api_key}}"
   },
   "body": {
@@ -198,6 +200,7 @@ Roep ALTIJD \`log_call\` aan met de samenvatting, outcome (booked/changed/cancel
   "method": "POST",
   "headers": {
     "Content-Type": "application/json",
+    "Authorization": "Bearer {{custom_values.tablewise_anon_key}}",
     "X-Agent-Api-Key": "{{custom_values.tablewise_api_key}}"
   },
   "body": {
@@ -225,6 +228,7 @@ Roep ALTIJD \`log_call\` aan met de samenvatting, outcome (booked/changed/cancel
   "method": "POST",
   "headers": {
     "Content-Type": "application/json",
+    "Authorization": "Bearer {{custom_values.tablewise_anon_key}}",
     "X-Agent-Api-Key": "{{custom_values.tablewise_api_key}}"
   },
   "body": {
@@ -240,6 +244,7 @@ Roep ALTIJD \`log_call\` aan met de samenvatting, outcome (booked/changed/cancel
   "method": "POST",
   "headers": {
     "Content-Type": "application/json",
+    "Authorization": "Bearer {{custom_values.tablewise_anon_key}}",
     "X-Agent-Api-Key": "{{custom_values.tablewise_api_key}}"
   },
   "body": {
@@ -252,10 +257,15 @@ Roep ALTIJD \`log_call\` aan met de samenvatting, outcome (booked/changed/cancel
   }
 }`;
 
+  const ANON_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string;
+
   // Custom values voor de HUIDIGE klant — handig om direct in zijn sub-account te plakken.
   // Restaurantnaam + tijdzone worden door TableWise automatisch gepusht (sync-knop),
   // omdat {{location.*}} niet rendert in Voice AI prompts.
+  // tablewise_anon_key is een publishable Supabase key — vereist door de gateway als
+  // Authorization-header. Onze server valideert los daarvan op X-Agent-Api-Key.
   const customValues = `tablewise_api_key = ${apiKey}
+tablewise_anon_key = ${ANON_KEY}
 tablewise_restaurant_id = ${restaurantId}
 tablewise_base_url = ${FN_BASE}
 tablewise_restaurant_name = <auto, gepusht door TableWise>
@@ -267,6 +277,7 @@ opening_hours_short = di t/m za 17:00–22:00, zondag 17:00–21:00`;
   // Snapshot-template — gebruik DEZE waarden in de master sub-account waaruit je de
   // snapshot exporteert. Zo lekt er nooit een echte klant-API-key in de snapshot.
   const customValuesSnapshot = `tablewise_api_key = REPLACE_PER_CLIENT_tw_live_xxx
+tablewise_anon_key = ${ANON_KEY}
 tablewise_restaurant_id = REPLACE_PER_CLIENT_uuid
 tablewise_base_url = ${FN_BASE}
 tablewise_restaurant_name = REPLACE_PER_CLIENT
@@ -346,6 +357,7 @@ steps:
 
   const testCurl = `curl -X POST ${FN_BASE}/check_availability \\
   -H "Content-Type: application/json" \\
+  -H "Authorization: Bearer ${ANON_KEY}" \\
   -H "X-Agent-Api-Key: ${apiKey}" \\
   -d '{"date":"2026-05-15","party_size":2}'`;
 
@@ -560,6 +572,7 @@ return { valid: true };`;
 
   const hoppscotchUrl = `${FN_BASE}/check_availability`;
   const hoppscotchHeaders = `Content-Type: application/json
+Authorization: Bearer ${ANON_KEY}
 X-Agent-Api-Key: ${apiKey}`;
   const hoppscotchBody = `{"date":"2026-05-15","party_size":2}`;
 
@@ -990,7 +1003,8 @@ X-Agent-Api-Key: ${apiKey}`;
           <Card className="p-4 space-y-2">
             <h3 className="font-display text-base">Veelvoorkomende fouten</h3>
             <ul className="text-sm space-y-2">
-              <li><strong>401 auth_invalid</strong> — sleutel staat verkeerd in custom value, of niet via <code>X-Agent-Api-Key</code> header verstuurd.</li>
+              <li><strong>401 UNAUTHORIZED_NO_AUTH_HEADER / "CAP action execution failed"</strong> — Authorization-header ontbreekt in de ClickWise action. Voeg <code>Authorization: Bearer {`{{custom_values.tablewise_anon_key}}`}</code> toe naast <code>X-Agent-Api-Key</code>. De Supabase gateway eist deze header voordat onze functie überhaupt mag draaien.</li>
+              <li><strong>401 auth_invalid / Missing X-Agent-Api-Key</strong> — onze server-side check faalt. Sleutel staat verkeerd in custom value, of header heet anders dan <code>X-Agent-Api-Key</code>.</li>
               <li><strong>403 auth_scope_missing</strong> — sleutel mist scope. Maak nieuwe sleutel met scopes <code>availability, book, cancel</code>.</li>
               <li><strong>409 timeslot_unavailable</strong> — verwacht gedrag bij vol; agent moet dan alternatieven voorstellen.</li>
               <li><strong>Agent boekt zonder bevestiging</strong> — versterk in prompt: "Pas NA mondelinge bevestiging".</li>
@@ -1066,6 +1080,7 @@ X-Agent-Api-Key: ${apiKey}`;
                 waarden om naar de echte data van deze klant.
                 <ul className="list-disc pl-5 mt-1 text-muted-foreground space-y-0.5">
                   <li><code>tablewise_api_key</code> — uit TableWise → Voice Agent → Sleutel genereren (per restaurant uniek)</li>
+                  <li className="text-success"><code>tablewise_anon_key</code> — hoef je <strong>niet</strong> per klant te zetten; staat al in de snapshot en is voor alle klanten gelijk (publishable Supabase key). Vereist als Authorization-header door de gateway.</li>
                   <li><code>tablewise_restaurant_id</code> — uit TableWise (<code>/app/instellingen</code> of admin)</li>
                   <li><code>tablewise_webhook_secret</code> — uit TableWise → Settings → API & Webhooks (per endpoint)</li>
                   <li><code>restaurant_phone</code>, <code>restaurant_address</code>, <code>opening_hours_short</code></li>

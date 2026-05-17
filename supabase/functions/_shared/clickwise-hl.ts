@@ -7,6 +7,7 @@ export function buildCustomValues(args: {
   tablewiseBaseUrl: string;
   restaurantName?: string | null;
   timezone?: string | null;
+  anonKey?: string | null;
 }): Record<string, string> {
   const cv: Record<string, string> = {
     tablewise_base_url: args.tablewiseBaseUrl,
@@ -14,6 +15,11 @@ export function buildCustomValues(args: {
   };
   if (args.webhookSecret) cv.tablewise_webhook_secret = args.webhookSecret;
   if (args.apiKey) cv.tablewise_api_key = args.apiKey;
+  // Supabase Edge Functions gateway eist een Authorization header, ook als
+  // verify_jwt=false. Anon key is publishable en wordt door agent_api zelf
+  // NIET als auth gebruikt — die valideert op X-Agent-Api-Key. We pushen
+  // de anon key zodat ClickWise tool-headers Authorization: Bearer kunnen sturen.
+  if (args.anonKey) cv.tablewise_anon_key = args.anonKey;
   // Restaurantnaam en tijdzone moeten via custom_values omdat {{location.*}}
   // niet rendert in Voice AI prompts en Custom Action bodies.
   if (args.restaurantName) cv.tablewise_restaurant_name = args.restaurantName;

@@ -816,7 +816,7 @@ const SECTIONS: Section[] = [
     icon: ListChecks,
     keywords: "tool action webhook check_availability book_reservation create_reservation cancel_reservation update_reservation wijzigen log_call find_reservation reconfirm_reservation create_waitlist_entry get_opening_hours query parameters data collection what to say before",
     render: () => {
-      const headers = `X-Agent-Api-Key: {{custom_values.tw_agent_api_key}}\nContent-Type: application/json`;
+      const headers = `Authorization: Bearer {{custom_values.tablewise_anon_key}}\nX-Agent-Api-Key: {{custom_values.tablewise_api_key}}\nContent-Type: application/json`;
 
       const toolBlock = (args: {
         n: number;
@@ -856,7 +856,7 @@ const SECTIONS: Section[] = [
             </div>
             <div className="rounded border bg-muted/30 px-3 py-2">
               <div className="text-muted-foreground">Auth</div>
-              <div className="font-mono">X-Agent-Api-Key</div>
+              <div className="font-mono text-[11px]">Authorization +<br/>X-Agent-Api-Key</div>
             </div>
           </div>
           <CodeBlock label="Headers">{headers}</CodeBlock>
@@ -1242,8 +1242,13 @@ const SECTIONS: Section[] = [
         <Callout tone="warn" title="Foutmeldingen oplossen">
           <ul className="list-disc list-inside space-y-1">
             <li>
+              <strong>401 UNAUTHORIZED_NO_AUTH_HEADER / "CAP action execution failed"</strong> — de Authorization-header
+              ontbreekt. Voeg in elke ClickWise Custom Action <code>Authorization: Bearer {`{{custom_values.tablewise_anon_key}}`}</code>
+              toe naast <code>X-Agent-Api-Key</code>. De Supabase gateway eist deze header voordat onze functie mag draaien.
+            </li>
+            <li>
               <strong>401 Missing X-Agent-Api-Key / Invalid key</strong> — sleutel niet juist gekopieerd in de
-              custom value <code>tw_agent_api_key</code> of in de tool-headers.
+              custom value <code>tablewise_api_key</code> of in de tool-headers.
             </li>
             <li>
               <strong>403 Scope missing</strong> — sleutel mist een scope (default:{" "}
@@ -1305,7 +1310,7 @@ const SECTIONS: Section[] = [
           <ol className="list-decimal list-inside text-xs space-y-1">
             <li>ClickWise → Assistant → <strong>Advanced Settings</strong> → <strong>Webhooks</strong>.</li>
             <li>Plak in <strong>Post-call webhook URL</strong> de URL hieronder.</li>
-            <li>Voeg header <code>X-Agent-Api-Key</code> toe met je API-sleutel.</li>
+            <li>Voeg headers <code>Authorization: Bearer {`{{custom_values.tablewise_anon_key}}`}</code> én <code>X-Agent-Api-Key: {`{{custom_values.tablewise_api_key}}`}</code> toe.</li>
             <li>Sla op — je kunt nu de <code>log_call</code> tool in tools-lijst behouden als fallback (geen kwaad).</li>
           </ol>
           <CopyRow label="Post-call webhook URL" value={`${AGENT_API_BASE}/log_call`} />
