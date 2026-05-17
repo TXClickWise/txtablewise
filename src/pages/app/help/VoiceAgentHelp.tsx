@@ -894,7 +894,7 @@ const SECTIONS: Section[] = [
             params: [
               { name: "date", type: "String", required: true, description: "Reserveringsdatum YYYY-MM-DD.", example: "2026-05-26" },
               { name: "time", type: "String", required: true, description: "Reserveringstijd HH:mm (24-uurs).", example: "19:30" },
-              { name: "party_size", type: "Number", required: true, description: "Aantal personen, geheel getal ≥ 1. De engine valideert zelf tegen max_party_size_online en large_group_max_online_request.", example: "4" },
+              { name: "party_size", type: "Number", required: true, description: "Aantal personen, geheel getal ≥ 1. De engine valideert zelf tegen large_group_max_online_request.", example: "4" },
               { name: "first_name", type: "String", required: true, description: "Voornaam van de gast.", example: "Jan" },
               { name: "last_name", type: "String", required: false, description: "Achternaam van de gast (optioneel).", example: "de Vries" },
               { name: "phone", type: "String", required: true, description: "VERPLICHT. Telefoonnummer in E.164. Default {{contact.phone}} (nummer waarmee beller belt). Alleen anders als beller expliciet ander nummer opgeeft.", example: "+31612345678" },
