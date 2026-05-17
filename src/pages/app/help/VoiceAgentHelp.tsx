@@ -494,7 +494,7 @@ const SECTIONS: Section[] = [
           <div className="mt-2">
             <CopyRow
               label="Greeting (tri-linguaal — open altijd in NL, switch daarna naar de taal van de beller)"
-              value="Goedendag, u spreekt met de digitale gastvrouw van {{location.name}}. Guten Tag — how may I help you?"
+              value="Goedendag, u spreekt met de digitale gastvrouw van {{custom_values.tablewise_restaurant_name}}. Guten Tag — how may I help you?"
             />
           </div>
           <Callout tone="info" title="Waarom één agent i.p.v. drie?">
