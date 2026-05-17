@@ -410,10 +410,12 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Gastvriendelijke melding voor voice-agent bij grote-groep goedkeuring,
-    // zodat de LLM niet zelf hoeft te interpreteren wat hij tegen de beller moet zeggen.
+    // Gastvriendelijke melding voor voice-agent bij grote-groep goedkeuring.
+    // Tenant-driven copy heeft voorrang; anders neutrale fallback zonder SLA-belofte.
+    const tenantPendingCopy = (restaurant.large_group_confirmation_text ?? "").toString().trim();
+    const fallbackPending = `Uw reservering voor ${body.party_size} personen op ${body.date} om ${body.time} is voorlopig genoteerd. Het restaurant laat het u zo snel mogelijk weten.`;
     const messageForGuest = requiresManualApproval
-      ? `Voor een groep van ${body.party_size} personen leg ik uw aanvraag voor aan een collega. Het team beoordeelt dit zo snel mogelijk en neemt alleen contact op als er iets aangepast moet worden — anders is de tafel voor u gereserveerd op ${body.date} om ${body.time}.`
+      ? (tenantPendingCopy || fallbackPending)
       : null;
 
     return json({
