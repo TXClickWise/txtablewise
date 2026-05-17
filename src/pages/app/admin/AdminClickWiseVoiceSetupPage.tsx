@@ -712,6 +712,14 @@ X-Agent-Api-Key: ${apiKey}`;
 
         {/* ACTIONS */}
         <TabsContent value="actions" className="space-y-4">
+          <Card className="p-3 border-destructive/40 bg-destructive/5">
+            <p className="text-sm">
+              <strong className="text-destructive">Belangrijk:</strong> koppel <strong>GEEN</strong>{" "}
+              <code>Call Transfer</code> als autonome tool aan deze voice agent. Als je dat doet, zal de LLM bij grote groepen (15, 18, ...)
+              zelf besluiten door te verbinden voordat TableWise überhaupt is aangeroepen. Plaats Call Transfer alleen in de workflow
+              achter een conditie op <code>response.next_action == "transfer_call"</code> én <code>response.transfer.allowed === true</code>.
+            </p>
+          </Card>
           <p className="text-sm text-muted-foreground">
             Vijf tools om aan de agent te koppelen. <strong><code>reservation_request</code> is de primaire boekingstool</strong> — die doet validatie + boeking in één call en levert <code>message_for_guest</code> + <code>next_action</code>. Alle 5 gebruiken dezelfde header <code>X-Agent-Api-Key</code> via <code>{`{{custom_values.tablewise_api_key}}`}</code>.
           </p>
