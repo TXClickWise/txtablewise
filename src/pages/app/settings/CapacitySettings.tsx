@@ -12,7 +12,6 @@ type Form = {
   max_covers_per_slot: number | "";
   max_new_reservations_per_15min: number | "";
   peak_warning_threshold_pct: number;
-  large_group_minutes: number;
 };
 
 export default function CapacitySettings() {
@@ -22,7 +21,6 @@ export default function CapacitySettings() {
     max_covers_per_slot: "",
     max_new_reservations_per_15min: "",
     peak_warning_threshold_pct: 85,
-    large_group_minutes: 150,
   });
   const [saving, setSaving] = useState(false);
 
@@ -32,7 +30,6 @@ export default function CapacitySettings() {
       max_covers_per_slot: (r as any).max_covers_per_slot ?? "",
       max_new_reservations_per_15min: (r as any).max_new_reservations_per_15min ?? "",
       peak_warning_threshold_pct: (r as any).peak_warning_threshold_pct ?? 85,
-      large_group_minutes: (r as any).large_group_minutes ?? 150,
     });
   }, [r]);
 
@@ -44,7 +41,6 @@ export default function CapacitySettings() {
       max_covers_per_slot: form.max_covers_per_slot === "" ? null : Number(form.max_covers_per_slot),
       max_new_reservations_per_15min: form.max_new_reservations_per_15min === "" ? null : Number(form.max_new_reservations_per_15min),
       peak_warning_threshold_pct: Number(form.peak_warning_threshold_pct) || 85,
-      large_group_minutes: Number(form.large_group_minutes) || 150,
     }).eq("id", r.id);
     setSaving(false);
     if (error) toast.error(error.message);
