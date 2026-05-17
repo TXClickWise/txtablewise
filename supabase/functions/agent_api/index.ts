@@ -402,7 +402,7 @@ async function handle(
         const resObj0 = rb0.reservation ?? {};
         if (r.status >= 200 && r.status < 300 && resObj0?.id) ctx.setReservationId(resObj0.id);
         const { data: restRow } = await sb.from("restaurants")
-          .select("large_group_max_online_request, max_party_size_online, large_group_confirmation_text")
+          .select("large_group_max_online_request, max_party_size_online, large_group_confirmation_text, large_group_response_sla_label, large_group_response_channel_label")
           .eq("id", keyRow.restaurant_id).maybeSingle();
         const onlineHardCap: number = (restRow?.large_group_max_online_request ?? restRow?.max_party_size_online ?? 18) as number;
 
