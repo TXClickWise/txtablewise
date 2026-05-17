@@ -1,52 +1,71 @@
-## Status van de Voice Agent — Koppelhandleiding
 
-Kort antwoord: **nee, nog niet helemaal.** De handleiding gebruikt op meerdere plekken nog het oude model waarin `max_party_size_online` de grens bepaalt tussen "direct boeken" en "ter beoordeling". Met de nieuwe 2-drempel-opzet klopt dat niet meer:
+## Antwoord op je vraag
 
-- **Grote groep** = vanaf `large_group_threshold` (bv. 8) — krijgt langere verblijfsduur en valt vanaf `large_group_manual_approval_from` op manual approval.
-- **Extra-grote groep** = vanaf `extra_large_group_threshold` (bv. 19) — altijd manual approval.
-- **Harde online bovengrens** = `large_group_max_online_request` — daarboven `TW_409_PARTY_TOO_LARGE` + call transfer.
-- `max_party_size_online` is geen drempel meer in dit verhaal en staat ook niet meer in *Algemeen*.
+**Ja, twee aanpassingen nodig in ClickWise** — en daarna update van de master-snapshot.
 
-## Wat moet bijgewerkt worden in `src/pages/app/help/VoiceAgentHelp.tsx`
+Reden: jij merkt terecht op dat `{{location.timezone}}` niet werkt in een Voice AI prompt. Datzelfde geldt in de praktijk ook voor `{{location.name}}` binnen prompts en — afhankelijk van de workflow-stap — soms in SMS-bodies. HighLevel exposeert `{{location.*}}` betrouwbaar alleen in beperkte contexten; in Voice AI prompts en Custom Action bodies moeten we op `{{custom_values.*}}` leunen.
 
-### 1. System prompt (regels 206–223) — sectie "GROTE GROEPEN"
-- Titel "3-traps logica" → "2-drempel logica (engine bepaalt)".
-- Tekst hoeft de drempels niet uit te leggen — de agent moet gewoon `requires_manual_approval` en `TW_409_PARTY_TOO_LARGE` volgen. Verwijder elke impliciete suggestie dat de agent zelf met `max_party_size_online` rekent. De huidige a/b/c-flow blijft inhoudelijk correct; alleen de openingszin en titel aanpassen.
+De huidige TableWise → ClickWise sync pusht alleen:
 
-### 2. Sectie 5 — "Mappen van TableWise → ClickWise sub-account" (regels 443–453)
-Vervang het "Groepsgrootte (3-traps)"-blok door:
+- `tablewise_base_url`
+- `tablewise_restaurant_id`
+- `tablewise_webhook_secret`
+- `tablewise_api_key`
 
-```text
-Groepsgrootte (2-drempel) — engine bepaalt, agent probeert altijd te boeken:
-  • party_size < large_group_threshold              → normale boeking, direct bevestigd
-  • party_size ≥ large_group_manual_approval_from   → requires_manual_approval=true
-  • party_size ≥ extra_large_group_threshold        → altijd requires_manual_approval=true
-  • party_size > large_group_max_online_request     → TW_409_PARTY_TOO_LARGE → Call Transfer / callback (sectie 7b)
-Pas aan in TableWise → Instellingen → Reserveringen → Grote groepen.
-```
+Die set is te smal: restaurantnaam en tijdzone ontbreken, en de prompts/SMS verwijzen nu naar `{{location.*}}` die in het Voice kanaal niet rendert.
 
-### 3. Sectie 7b — "Call Transfer" (regels 703–709)
-Callout "Niet voor normale grote groepen" — vervang `max_party_size_online` door `large_group_threshold` (of `large_group_manual_approval_from`) en `large_group_max_online_request` blijft de bovengrens.
+## Wat we toevoegen
 
-### 4. Sectie 8 — "System prompt — paste-ready" (regels 727–737)
-Callout "Groepsgrootte — 3-traps logica" → "2-drempel logica" met dezelfde herschreven uitleg als in punt 2. Pas de slotzin aan naar **Instellingen → Reserveringen → Grote groepen** (i.p.v. *Reserveringsregels*).
+**Twee nieuwe custom_values, automatisch gepusht door TableWise:**
 
-### 5. Tool-parametertabellen — `party_size` beschrijvingen (regels 847, 886, 958, 1104)
-Pas de description-tekst aan zodat ze niet meer suggereren dat `max_party_size_online` de bovengrens is. Voorstel:
+1. `tablewise_restaurant_name` — uit `restaurants.name`
+2. `tablewise_timezone` — uit `restaurants.timezone` (bv. `Europe/Amsterdam`)
 
-> "Aantal personen, geheel getal ≥ 1. De engine valideert zelf tegen `large_group_max_online_request`; bij overschrijding volgt `TW_409_PARTY_TOO_LARGE` (zie GROTE GROEPEN in de prompt)."
+Deze worden zowel bij `clickwise_provision_subaccount` (nieuwe sub-account) als bij `clickwise_sync_custom_values` (bestaande sub-account, knop "Custom Values syncen") gepusht. Bestaande sub-accounts krijgen ze er met één klik bij — geen handmatig werk per klant.
 
-Voor `update_reservation.new_party_size` analoog: verwijs alleen naar `large_group_max_online_request`.
+## Wijzigingen per laag
 
-## Niet wijzigen
+**Backend (sync/provision):**
 
-- De a/b/c-flow in de prompt zelf (requires_manual_approval → transfer.allowed) klopt — die leest gewoon de engine-response.
-- Endpoints, headers, auth, language-parameter, openings-/afsluitzinnen, transactionele mail/SMS-secties.
+- `supabase/functions/_shared/clickwise-hl.ts` → `buildCustomValues()` accepteert `restaurantName` + `timezone` en zet ze in de output.
+- `supabase/functions/clickwise_provision_subaccount/index.ts` → geeft `r.name` en `r.timezone` mee.
+- `supabase/functions/clickwise_sync_custom_values/index.ts` → laadt `name, timezone` extra uit `restaurants` en geeft ze mee.
 
-## Bestanden die wijzigen
+**Master-snapshot UI (`AdminClickWiseVoiceSetupPage.tsx`):**
 
-- `src/pages/app/help/VoiceAgentHelp.tsx` — alleen tekst/labels in de hierboven genoemde regels.
+- System prompt: `{{location.name}}` → `{{custom_values.tablewise_restaurant_name}}`, `{{location.timezone}}` → `{{custom_values.tablewise_timezone}}`.
+- First message: zelfde vervanging.
+- SMS-bodies in inbound-webhook workflows: `{{location.name}}` → `{{custom_values.tablewise_restaurant_name}}` (consistent + safe in alle stappen).
+- `customValuesSnapshot` placeholder-lijst uitbreiden met:
+  - `tablewise_restaurant_name = REPLACE_PER_CLIENT`
+  - `tablewise_timezone = REPLACE_PER_CLIENT` (bv. `Europe/Amsterdam`)
+- Stappen-tekst: regel "Restaurantnaam + tijdzone hoef je niet meer als custom value te zetten" wordt vervangen door: "Worden automatisch gepusht door TableWise — niets handmatig nodig."
 
-Geen edge function- of DB-wijziging nodig: dit is puur documentatie-bijwerking om de handleiding in lijn te brengen met het nieuwe Grote-groepen-model.
+**Voice Agent Help (`VoiceAgentHelp.tsx`):**
 
-Geef akkoord en ik werk de handleiding in één pass bij.
+- Alle prompt/first-message voorbeelden en de uitleg in Sectie 5/8 die nu `{{location.name}}` of `{{location.timezone}}` gebruiken → vervangen door de `{{custom_values.*}}` equivalenten, met korte noot dat `{{location.*}}` in Voice prompts niet rendert.
+
+**Memory:**
+
+- `mem://features/clickwise-snapshot` bijwerken: custom_values-set van 4 → 6 (naam + timezone erbij), opmerking dat snapshot prompts geen `{{location.*}}` meer gebruiken.
+
+## Handmatige actie van jou in ClickWise (master sub-account)
+
+Eénmalig in de master snapshot sub-account:
+
+1. **Settings → Custom Values** → voeg toe (als ze er nog niet zijn):
+   - `tablewise_restaurant_name` = `REPLACE_PER_CLIENT`
+   - `tablewise_timezone` = `REPLACE_PER_CLIENT` (bv. `Europe/Amsterdam`)
+2. **Voice AI Agent** → System Prompt + First Message: vervang `{{location.name}}` en `{{location.timezone}}` door de nieuwe `{{custom_values.*}}` referenties (de exacte teksten komen uit het bijgewerkte tabblad "Snapshot" in TableWise admin).
+3. **Workflows (SMS-stappen)** → idem: `{{location.name}}` vervangen door `{{custom_values.tablewise_restaurant_name}}`.
+4. **Snapshot opnieuw exporteren** zodat nieuwe klanten direct de juiste setup krijgen.
+
+Voor bestaande klanten waar al een sub-account staat: één keer op de knop "Custom Values syncen" in TableWise → naam + timezone zijn gevuld, prompts werken.
+
+## Custom Fields
+
+**Geen aanpassingen nodig** aan ClickWise Custom Fields voor deze fix — contactvelden (`tw_reservation_id`, `tw_party_size`, etc.) blijven zoals ze zijn en worden via de inbound-webhook payload gevuld.
+
+## Scope-bewaking
+
+Geen logica-wijzigingen aan de Voice agent of booking-engine. Alleen: 2 extra waarden in de Custom Values push + alle prompt/SMS-templates wisselen van `{{location.*}}` naar `{{custom_values.*}}` + docs/snapshot bijwerken.
