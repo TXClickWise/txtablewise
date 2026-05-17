@@ -432,15 +432,17 @@ const SECTIONS: Section[] = [
           <div className="text-xs text-muted-foreground">TW Agent API Key</div>
           <div className="font-mono">tw_voice_… (plak hier de sleutel uit stap 2)</div>
         </div>
-        <Callout tone="success" title="Automatisch ingevuld — niet meer als custom value nodig">
+        <Callout tone="success" title="Automatisch gepusht door TableWise — niet handmatig invullen">
           <ul className="list-disc list-inside space-y-1">
             <li>
-              <strong>Restaurantnaam</strong> → <code>{`{{location.name}}`}</code> (sub-account
-              naam in ClickWise). Zet die bij het aanmaken gelijk aan de naam in TableWise.
+              <strong>Restaurantnaam</strong> → <code>{`{{custom_values.tablewise_restaurant_name}}`}</code>
+              (TableWise pusht <code>restaurants.name</code> automatisch via de sync-knop in
+              <em> Koppelingen → ClickWise</em>).
             </li>
             <li>
-              <strong>Tijdzone</strong> → <code>{`{{location.timezone}}`}</code> (sub-account
-              tijdzone). Standaard <code>Europe/Amsterdam</code>.
+              <strong>Tijdzone</strong> → <code>{`{{custom_values.tablewise_timezone}}`}</code>
+              (gepusht uit <code>restaurants.timezone</code>, bv. <code>Europe/Amsterdam</code>).
+              <em> Let op:</em> <code>{`{{location.timezone}}`}</code> werkt NIET in Voice AI prompts.
             </li>
             <li>
               <strong>Groepsgrootte (2-drempel)</strong> → komt rechtstreeks uit TableWise.
