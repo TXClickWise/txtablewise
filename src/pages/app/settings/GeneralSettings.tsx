@@ -19,7 +19,6 @@ export default function GeneralSettings() {
   const [form, setForm] = useState({
     name: "", phone: "", email: "", address_line1: "", postal_code: "", city: "",
     slot_duration_minutes: 15, default_reservation_minutes: 105,
-    max_party_size_online: 8, large_group_threshold: 9,
     booking_lead_time_minutes: 60, hold_minutes: 10, booking_horizon_days: 90,
   });
   const [saving, setSaving] = useState(false);
