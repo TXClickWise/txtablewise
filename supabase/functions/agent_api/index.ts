@@ -144,11 +144,9 @@ function buildBookGuestResponse(
       const allowTransfer = partySize > onlineHardCap && rb.transfer?.allowed === true;
       nextAction = allowTransfer ? "transfer_call" : "promise_callback";
       statusLabel = "voorlopig";
-      const fallbackTooLarge =
-        `Ik heb uw aanvraag genoteerd voor ${partySize} personen op ${dateStr} om ${timeStr}. Dit is voorlopig — het restaurant laat het u zo snel mogelijk weten zodra de beschikbaarheid bekeken is.`;
       messageForGuest = allowTransfer
         ? "Een moment, ik verbind u door met een collega."
-        : (tenantPendingCopy || fallbackTooLarge);
+        : composeLargeGroupPendingMessage(partySize, dateStr, timeStr, largeGroupConfirmationText, largeGroupSlaLabel, largeGroupChannelLabel);
       if (!allowTransfer) rb.transfer = { ...(rb.transfer ?? {}), allowed: false };
     } else if (ec === "no_table_available" || ec === "slot_unavailable" || ec === "pacing_limit_reached") {
       nextAction = "offer_alternatives_or_waitlist";
@@ -184,9 +182,7 @@ function buildBookGuestResponse(
   } else if (requiresManual) {
     nextAction = "confirm_pending_approval";
     statusLabel = "voorlopig";
-    const fallbackPending =
-      `Uw reservering voor ${partySize} personen op ${dateStr} om ${timeStr} is voorlopig genoteerd. Het restaurant laat het u zo snel mogelijk weten.`;
-    messageForGuest = tenantPendingCopy || fallbackPending;
+    messageForGuest = composeLargeGroupPendingMessage(partySize, dateStr, timeStr, largeGroupConfirmationText, largeGroupSlaLabel, largeGroupChannelLabel);
   } else {
     messageForGuest = messageForGuest ?? `Top, jullie tafel staat genoteerd, tot ${dateStr} om ${timeStr}.`;
   }
