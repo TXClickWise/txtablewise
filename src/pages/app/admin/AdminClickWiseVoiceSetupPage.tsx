@@ -272,6 +272,11 @@ tablewise_restaurant_id = ${restaurantId}
 tablewise_base_url = ${FN_BASE}
 tablewise_restaurant_name = <auto, gepusht door TableWise>
 tablewise_timezone = <auto, gepusht door TableWise>
+# Onderstaande twee waarden komen uit Instellingen → Grote groepen en zijn bedoeld
+# voor ClickWise-templates (WhatsApp / e-mail). De Voice Agent gebruikt ze NIET als
+# losse placeholders — response.message_for_guest bevat al de volledige zin.
+tablewise_large_group_sla_label = <auto, gepusht door TableWise>
+tablewise_large_group_channel_label = <auto, gepusht door TableWise>
 restaurant_phone = +31 20 000 0000
 restaurant_address = <adres>
 opening_hours_short = di t/m za 17:00–22:00, zondag 17:00–21:00`;
@@ -284,6 +289,8 @@ tablewise_restaurant_id = REPLACE_PER_CLIENT_uuid
 tablewise_base_url = ${FN_BASE}
 tablewise_restaurant_name = REPLACE_PER_CLIENT
 tablewise_timezone = REPLACE_PER_CLIENT_Europe/Amsterdam
+tablewise_large_group_sla_label = REPLACE_PER_CLIENT
+tablewise_large_group_channel_label = REPLACE_PER_CLIENT
 restaurant_phone = REPLACE_PER_CLIENT
 restaurant_address = REPLACE_PER_CLIENT
 opening_hours_short = REPLACE_PER_CLIENT`;
