@@ -639,7 +639,84 @@ const SECTIONS: Section[] = [
     ),
   },
   {
-    id: "system-prompt",
+    id: "call-transfer",
+    group: "manual",
+    title: "7b. ClickWise — Call Transfer voor zeer grote groepen",
+    icon: Phone,
+    keywords: "call transfer doorverbinden grote groep party too large escalatie medewerker",
+    render: () => (
+      <div className="space-y-3 text-sm">
+        <p className="text-muted-foreground">
+          Wanneer een beller een groep aanvraagt die <em>boven</em> <code>large_group_max_online_request</code> uit
+          TableWise valt, geeft de engine <code>TW_409_PARTY_TOO_LARGE</code> terug. De agent verbindt dan
+          binnen openingstijden direct door naar een medewerker, of belooft buiten openingstijden een callback.
+        </p>
+
+        <div className="space-y-1">
+          <div className="font-medium">Stap 1 — Twee Custom Values aanmaken in ClickWise</div>
+          <p className="text-xs text-muted-foreground">
+            Settings → Custom Values → New Custom Value (sub-account scope):
+          </p>
+          <ul className="list-disc list-inside space-y-1">
+            <li>
+              <code>tw_transfer_phone</code> (Single line) → nummer waarnaar te grote groepen
+              worden doorverbonden. E.164-formaat, bijv. <code>+31612345678</code>. Mag de
+              hoofdlijn zijn, een mobiel van de manager, of een keuken-nummer.
+            </li>
+            <li>
+              <code>tw_transfer_hours</code> (Single line) → menselijk-leesbaar venster waarin
+              doorverbinden mag, bijv. <code>dagelijks 11:00–20:30</code> of
+              <code>di-zo 17:00–22:00</code>. De agent leest deze tekst letterlijk en gebruikt
+              hem zowel voor de beslissing (binnen/buiten venster) als in de zin tegen de gast.
+            </li>
+          </ul>
+        </div>
+
+        <Callout tone="info" title="Houd tw_transfer_hours simpel">
+          De agent interpreteert de tekst zelf. Eén tijdvenster per dag (bijv. <code>11:00–20:30</code>)
+          werkt het betrouwbaarst. Gebruik geen complexe regels als <em>"behalve op feestdagen"</em>;
+          die kan de AI niet zonder kalender afdwingen.
+        </Callout>
+
+        <div className="space-y-1">
+          <div className="font-medium">Stap 2 — Call Transfer action in de Voice Agent workflow</div>
+          <p className="text-xs text-muted-foreground">
+            In ClickWise → Voice Agent → tab <strong>Actions</strong> (of in de inbound-call
+            workflow, afhankelijk van je provider):
+          </p>
+          <ol className="list-decimal list-inside space-y-1">
+            <li>Voeg een action toe van het type <strong>Call Transfer</strong> (of
+              <em>Live Transfer</em>).</li>
+            <li>Naam: <code>Call Transfer</code> (exact zoals in de prompt).</li>
+            <li>Transfer Number: <code>{`{{custom_values.tw_transfer_phone}}`}</code></li>
+            <li>Trigger: wanneer de AI deze action zelf oproept (de prompt instrueert hem dat
+              te doen bij <code>TW_409_PARTY_TOO_LARGE</code> binnen <code>tw_transfer_hours</code>).</li>
+          </ol>
+        </div>
+
+        <div className="space-y-1">
+          <div className="font-medium">Stap 3 — Test</div>
+          <ol className="list-decimal list-inside space-y-1">
+            <li>Bel de Voice Agent en vraag een tafel voor bijv. 25 personen.</li>
+            <li>Binnen <code>tw_transfer_hours</code>: agent zegt "ik verbind u direct door" en
+              je telefoon op het transfer-nummer gaat over.</li>
+            <li>Buiten dat venster (test bijv. door tijdelijk een verleden venster in te stellen):
+              agent doet <code>log_call</code> met <code>outcome=callback_needed</code> en zegt
+              dat een collega persoonlijk terugbelt.</li>
+          </ol>
+        </div>
+
+        <Callout tone="warning" title="Niet voor normale grote groepen">
+          Boekingen tussen <code>max_party_size_online</code> en
+          <code>large_group_max_online_request</code> worden gewoon geboekt met
+          <code>requires_manual_approval=true</code> en verschijnen in de app onder
+          <strong>"Grote groepen — te beoordelen"</strong>. Daar wordt <em>niet</em>
+          doorverbonden — die flow loopt via SMS-bevestiging vanuit het team.
+        </Callout>
+      </div>
+    ),
+  },
+  {
     group: "manual",
     title: "8. System Prompt (copy-paste)",
     icon: BookOpen,
