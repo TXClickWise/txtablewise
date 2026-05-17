@@ -441,15 +441,20 @@ const SECTIONS: Section[] = [
               tijdzone). Standaard <code>Europe/Amsterdam</code>.
             </li>
             <li>
-              <strong>Groepsgrootte (3-traps)</strong> → komt rechtstreeks uit TableWise.
-              De agent probeert altijd direct te boeken; de engine bepaalt het vervolg:
+              <strong>Groepsgrootte (2-drempel)</strong> → komt rechtstreeks uit TableWise.
+              De agent probeert altijd direct te boeken; de engine bepaalt het vervolg op basis
+              van twee drempels (grote groep vanaf X, extra-grote groep vanaf Y):
               <ul className="list-disc list-inside ml-4 mt-1 space-y-0.5">
-                <li>≤ <code>max_party_size_online</code> → direct bevestigd.</li>
-                <li>tussen <code>max_party_size_online</code> en <code>large_group_max_online_request</code> → boeking met
+                <li><code>party_size &lt; large_group_threshold</code> → normale boeking, direct bevestigd.</li>
+                <li><code>party_size ≥ large_group_manual_approval_from</code> → boeking met
                   <code>requires_manual_approval=true</code>; verschijnt in de app onder "Grote groepen — te beoordelen".</li>
-                <li>&gt; <code>large_group_max_online_request</code> → engine geeft <code>TW_409_PARTY_TOO_LARGE</code>; de
-                  agent verbindt door via Call Transfer (binnen openingstijden) of belooft een callback. Zie sectie 7b.</li>
+                <li><code>party_size ≥ extra_large_group_threshold</code> → altijd
+                  <code>requires_manual_approval=true</code>.</li>
+                <li><code>party_size &gt; large_group_max_online_request</code> → engine geeft
+                  <code>TW_409_PARTY_TOO_LARGE</code>; de agent verbindt door via Call Transfer
+                  (binnen openingstijden) of belooft een callback. Zie sectie 7b.</li>
               </ul>
+              Pas de drempels aan in TableWise → <strong>Instellingen → Reserveringen → Grote groepen</strong>.
             </li>
             <li>
               <strong>Booking horizon</strong> (max. dagen vooruit) → uit TableWise
