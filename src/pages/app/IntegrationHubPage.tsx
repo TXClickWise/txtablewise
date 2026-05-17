@@ -301,8 +301,11 @@ export default function IntegrationHubPage() {
                           </Button>
                         </div>
                       </div>
-                      <div className="flex gap-1">
-                        <Button size="sm" variant="outline" disabled={busy} onClick={() => handleTestWebhook(ep.id)}>
+                      <div className="flex gap-1 flex-wrap">
+                        <Button size="sm" variant="outline" disabled={busy} onClick={() => handlePreviewPayload(ep.id)} title="Toont alleen de payload — verstuurt niets naar ClickWise">
+                          <Eye className="h-3 w-3 mr-1" />Preview
+                        </Button>
+                        <Button size="sm" variant="outline" disabled={busy} onClick={() => setConfirmEndpointId(ep.id)}>
                           <Send className="h-3 w-3 mr-1" />Test
                         </Button>
                         <Button size="sm" variant="ghost" onClick={() => setEditing(ep)}>Bewerken</Button>
