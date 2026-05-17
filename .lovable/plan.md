@@ -1,45 +1,40 @@
-## Probleem
+## Wat er gebeurde
 
-Tijdens je testcall om 02:32 mislukte het boeken. In de logs zie ik twee pogingen van de voice agent naar `book_reservation` met:
+De twee SMSes om 02:35 en 02:38 zijn **niet** veroorzaakt door de mislukte testcall — er is in die periode geen reservering aangemaakt (database is leeg voor Eigeweis op 17 mei). Ze komen van twee aparte klikken op de **"Test"-knop** bij je webhook-endpoint in `/app/integraties/hub`:
 
-```json
-{
-  "date": "2026-05-17",
-  "time": "19:00",
-  "party_size": 4,
-  "first_name": "Jeroen",
-  "last_name": "van Rossem",
-  "phone": "+316…66"
-}
-```
+- elke klik op die knop laat de `integration_test` edge-function een **echt** `POST` doen naar de geconfigureerde ClickWise inbound-webhook URL met een sample `reservation.created` payload;
+- ClickWise voert de productie-automation gewoon uit en stuurt dus een echte SMS;
+- de tekst noemt **Texels Biercollectief / 16 mei / 17:00 / 6 personen** omdat dat de placeholder-`{{custom_values.*}}`-waardes zijn in de master ClickWise sub-account (zie memory _ClickWise snapshot-ready_) — niet jouw Eigeweis-data.
 
-→ beide kregen `400 Missing field: guest`.
+De payload bevat al `test: true` en de header `X-TableWise-Test: true`, maar de ClickWise-automation kijkt daar niet naar, dus er gaat alsnog een SMS uit.
 
-De agent stuurt de gastgegevens **plat** (`first_name`, `last_name`, `phone`, `email`), maar `agent_api/book_reservation` verwacht een **genest** `guest`-object:
+## Plan — drie lagen, samen oplossen
 
-```json
-{ "guest": { "first_name": "...", "last_name": "...", "phone": "...", "email": "..." } }
-```
+### 1. UI: bevestigingsdialog vóór elke "Test"-klik
 
-Hetzelfde issue zal optreden bij `update_reservation` en `create_waitlist_entry` als de agent daar ook flat keys stuurt.
+`src/pages/app/IntegrationHubPage.tsx` — `handleTestWebhook`:
+- vervang de directe call door een `AlertDialog` met copy:
+  > "Dit verstuurt een echt webhook-event naar ClickWise. Afhankelijk van je automation kan dit een echte SMS, WhatsApp of e-mail veroorzaken. Doorgaan?"
+- knoppen: **Annuleren** (default) / **Ja, verstuur test-event**.
+- voeg een 30s lokale rate-limit toe per endpoint (`useRef` of state-map) zodat een dubbelklik niet twee SMSes triggert.
 
-## Plan
+### 2. Edge function: dry-run-optie
 
-**Backend (agent_api soepeler maken — voorkeur)**
+`supabase/functions/integration_test/index.ts` — webhook-actie:
+- accepteer extra body-param `dry_run: boolean` (default `false`).
+- bij `dry_run === true`: skip de `fetch(ep.url, …)` en sla de **payload** + "(dry-run, niet verzonden)" op in `last_test_response_body`. Geef hetzelfde response-shape terug zodat de UI een preview kan tonen.
 
-`supabase/functions/agent_api/index.ts`:
+`src/services/integrations.ts` en de UI: voeg naast de "Test"-knop een **"Preview payload"**-knop toe (`dry_run: true`). Daarmee kan iemand de exacte JSON inspecteren zonder ClickWise te triggeren.
 
-1. In `book_reservation` (regel ~197): vóór de "required"-check een normalisatiestap toevoegen. Als `payload.guest` ontbreekt maar er staan top-level `first_name` / `last_name` / `phone` / `email` / `name` / `full_name`, bouw daar dan `payload.guest` uit op (en split `full_name` op spatie als `first_name` ontbreekt).
-2. Zelfde normalisatie in `create_waitlist_entry` (regel ~394): `guest_name` / `guest_phone` mogen ook afgeleid worden van `name`+`phone` of `first_name`+`last_name`.
-3. In `update_reservation` (regel ~362): accepteer flat `phone`/`email`/`name` en map naar de bestaande veldnamen.
-4. Geen wijziging aan de strikte `Missing field`-respons als ook flat fields ontbreken — error blijft duidelijk.
+### 3. Docs: ClickWise-zijde (handmatige stap voor klant)
 
-**Frontend (alleen documentatie)**
+Update `src/pages/app/help/VoiceAgentHelp.tsx` (en het Integratiehub-helpblok) met een korte sectie:
+> **Test-events filteren in ClickWise** — voeg vóór elke verzendactie een If/Else toe die het pad afsluit als `{{inboundWebhookRequest.payload.test}}` gelijk is aan `true`. TableWise zet die vlag automatisch bij elk test-event.
 
-`src/pages/app/help/VoiceAgentHelp.tsx`: in de tool-schema-voorbeelden expliciet beide vormen tonen ("genest `guest`-object óf flat `first_name`/`last_name`/`phone`/`email`"), zodat klanten weten dat beide werken.
-
-**Geen wijzigingen** aan `public_api` (externe partners houden contract), aan ClickWise-config of aan de agent-prompt zelf.
+Geen code-wijziging in `dispatch_webhooks` of `agent_api`.
 
 ## Resultaat
 
-Na deploy slaagt dezelfde voice-call payload zonder dat je iets in ClickWise/Retell hoeft aan te passen. De foutmelding "technisch probleem" verdwijnt en de reservering wordt aangemaakt.
+- Dubbele/onbedoelde SMSes door knopdruk zijn niet meer mogelijk zonder expliciete bevestiging.
+- Wie alleen de payload-structuur wil zien kiest "Preview payload" en triggert niets in ClickWise.
+- Eén keer een If/Else toevoegen in ClickWise per automation maakt test-events permanent stil — ook als straks anderen op "Test" drukken.
