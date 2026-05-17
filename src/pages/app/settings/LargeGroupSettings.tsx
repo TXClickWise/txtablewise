@@ -153,36 +153,81 @@ const LargeGroupSettings = () => {
         Grotere groepen vragen vaak meer voorbereiding. Stel hier in vanaf wanneer je extra tijd, goedkeuring of een reserveringsgarantie wilt gebruiken.
       </p>
 
+      {(() => {
+        const base = form.default_reservation_minutes;
+        const largeDur = Math.max(form.large_group_minutes, base);
+        const xlOn = form.extra_large_group_threshold !== "" && Number(form.extra_large_group_threshold) > form.large_group_threshold;
+        const xlDur = largeDur + (xlOn ? Number(form.large_group_extra_minutes) : 0);
+        const xlFrom = xlOn ? Number(form.extra_large_group_threshold) : null;
+        const maxOnline = form.large_group_max_online_request === "" ? null : Number(form.large_group_max_online_request);
+        return (
+          <div className="rounded-md border border-primary/30 bg-primary/5 p-3 text-xs text-foreground/80 space-y-1">
+            <div><strong>Live preview</strong> (standaardduur: {base} min)</div>
+            <div>• 1 – {form.large_group_threshold - 1} pers.: normale reservering ({base} min)</div>
+            <div>• {form.large_group_threshold}{xlFrom ? ` – ${xlFrom - 1}` : "+"} pers.: grote groep ({largeDur} min){form.large_group_manual_approval_from > form.large_group_threshold ? `, handmatige goedkeuring vanaf ${form.large_group_manual_approval_from}` : ", altijd handmatige goedkeuring"}</div>
+            {xlFrom && <div>• {xlFrom}+ pers.: extra-grote groep ({xlDur} min), altijd handmatige goedkeuring</div>}
+            {maxOnline && <div>• Boven {maxOnline} pers.: niet via widget/voice agent — losse aanvraag of doorverbinden</div>}
+          </div>
+        );
+      })()}
+
       <Card>
-        <CardContent className="p-5 space-y-5">
-          <h3 className="font-medium">Drempels</h3>
+        <CardContent className="p-5 space-y-4">
+          <h3 className="font-medium">A. Wanneer is het een grote groep?</h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Field label="Grote groep vanaf (personen)" hint="Vanaf dit aantal wordt een reservering als grote groep gemarkeerd.">
+            <Field label="Grote groep vanaf (personen)" hint="Vanaf dit aantal wordt een reservering als grote groep behandeld (langere verblijfsduur, eventueel handmatige goedkeuring).">
               <Input type="number" min={1} value={form.large_group_threshold}
                 onChange={(e) => setForm({ ...form, large_group_threshold: Number(e.target.value) || 1 })} />
             </Field>
-            <Field label="Extra verblijfsduur (minuten)" hint="Wordt alleen opgeteld voor groepen vanaf de extra-grote-groep drempel hieronder. Laat die leeg om dit uit te schakelen.">
-              <Input type="number" min={0} step={5} value={form.large_group_extra_minutes}
-                onChange={(e) => setForm({ ...form, large_group_extra_minutes: Number(e.target.value) || 0 })} />
+            <Field label="Verblijfsduur grote groep (min)" hint={`Totale verblijfsduur die geldt zodra de drempel hierboven wordt bereikt. Standaardduur is ${form.default_reservation_minutes} min — kies hier de tijd voor grote groepen (bv. 150).`}>
+              <Input type="number" min={form.default_reservation_minutes} step={5} value={form.large_group_minutes}
+                onChange={(e) => setForm({ ...form, large_group_minutes: Number(e.target.value) || form.default_reservation_minutes })} />
             </Field>
-            <Field label="Extra-grote groep vanaf (personen)" hint='Optionele tweede drempel. Vanaf dit aantal wordt "Extra verblijfsduur" bovenop de grote-groep duur opgeteld. Laat leeg om uit te schakelen.'>
-              <Input type="number" min={1} placeholder="bv. 16"
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardContent className="p-5 space-y-4">
+          <h3 className="font-medium">B. Wanneer is het een extra-grote groep? <span className="text-xs font-normal text-muted-foreground">(optioneel)</span></h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <Field label="Extra-grote groep vanaf (personen)" hint='Optionele tweede drempel. Boven dit aantal wordt nóg meer verblijfsduur toegekend en is goedkeuring altijd verplicht. Laat leeg om uit te schakelen.'>
+              <Input type="number" min={1} placeholder="bv. 19"
                 value={form.extra_large_group_threshold}
                 onChange={(e) => setForm({ ...form, extra_large_group_threshold: e.target.value === "" ? "" : (Number(e.target.value) || 1) })} />
             </Field>
-            <Field label="Handmatige goedkeuring vanaf" hint="Vanaf dit aantal vraagt de reservering om jouw goedkeuring vóór bevestiging.">
+            <Field label="Extra verblijfsduur extra-grote groep (min)" hint="Wordt bovenop de verblijfsduur grote groep opgeteld zodra de tweede drempel wordt bereikt.">
+              <Input type="number" min={0} step={5} value={form.large_group_extra_minutes}
+                disabled={form.extra_large_group_threshold === ""}
+                onChange={(e) => setForm({ ...form, large_group_extra_minutes: Number(e.target.value) || 0 })} />
+            </Field>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardContent className="p-5 space-y-4">
+          <h3 className="font-medium">C. Goedkeuring & online limieten</h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <Field label="Handmatige goedkeuring vanaf (personen)" hint="Vanaf dit aantal moet jij de reservering eerst goedkeuren. Onder dit aantal (maar boven 'grote groep vanaf') wordt automatisch geboekt met de langere verblijfsduur. Extra-grote groepen zijn áltijd handmatig, ongeacht deze waarde.">
               <Input type="number" min={1} value={form.large_group_manual_approval_from}
                 onChange={(e) => setForm({ ...form, large_group_manual_approval_from: Number(e.target.value) || 1 })} />
             </Field>
-            <Field label="Aanbetaling aanbevolen vanaf" hint="Bij dit aantal toont TableWise een suggestie om een aanbetaling te vragen.">
+            <Field label="Maximale online groepsaanvraag (personen)" hint="Harde bovengrens voor widget én voice agent. Boven dit aantal kan de gast niet zelf boeken: widget toont groepsformulier, voice agent verbindt door (binnen call-transfer venster) of belooft een terugbelafspraak.">
+              <Input type="number" min={1} placeholder="bv. 18"
+                value={form.large_group_max_online_request}
+                onChange={(e) => setForm({ ...form, large_group_max_online_request: e.target.value === "" ? "" : (Number(e.target.value) || 1) })} />
+            </Field>
+            <Field label="Toelichting verplicht vanaf (personen)" hint="Vanaf dit aantal moet de gast in de widget een korte toelichting meesturen (gelegenheid, menuwens, etc.). Laat leeg om nooit te verplichten.">
+              <Input type="number" min={1} placeholder={`bv. ${form.large_group_threshold}`}
+                value={form.large_group_extra_info_from}
+                onChange={(e) => setForm({ ...form, large_group_extra_info_from: e.target.value === "" ? "" : (Number(e.target.value) || 1) })} />
+            </Field>
+            <Field label="Aanbetaling aanbevolen vanaf (personen)" hint="Bij dit aantal toont TableWise een suggestie om een aanbetaling te vragen.">
               <Input type="number" min={1} value={form.large_group_deposit_recommended_from}
                 onChange={(e) => setForm({ ...form, large_group_deposit_recommended_from: Number(e.target.value) || 1 })} />
             </Field>
-            <Field label="Automatisch boeken tot (personen)" hint="Boven dit aantal worden aanvragen altijd handmatig beoordeeld.">
-              <Input type="number" min={1} value={form.large_group_auto_book_max}
-                onChange={(e) => setForm({ ...form, large_group_auto_book_max: Number(e.target.value) || 1 })} />
-            </Field>
-            <Field label="Standaardstatus voor groepsaanvraag" hint="Welke status krijgt een grote-groepsreservering die handmatige goedkeuring nodig heeft.">
+            <Field label="Standaardstatus voor groepsaanvraag" hint="Welke status krijgt een grote-groepsreservering die op goedkeuring wacht.">
               <select
                 className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
                 value={form.large_group_default_status}
@@ -191,16 +236,6 @@ const LargeGroupSettings = () => {
                 <option value="pending">In afwachting</option>
                 <option value="hold">Voorlopig</option>
               </select>
-            </Field>
-            <Field label="Maximale online groepsaanvraag (personen)" hint='Bovengrens voor aanvragen via de widget. Boven dit aantal wijst de widget de gast door naar het losse groepsformulier. Laat leeg om gelijk te trekken met "Max online groepsgrootte".'>
-              <Input type="number" min={1} placeholder="bv. 18"
-                value={form.large_group_max_online_request}
-                onChange={(e) => setForm({ ...form, large_group_max_online_request: e.target.value === "" ? "" : (Number(e.target.value) || 1) })} />
-            </Field>
-            <Field label="Toelichting verplicht vanaf (personen)" hint="Vanaf dit aantal moet de gast in de widget een korte toelichting meesturen (gelegenheid, menuwens, etc.). Laat leeg om nooit te verplichten.">
-              <Input type="number" min={1} placeholder="bv. 12"
-                value={form.large_group_extra_info_from}
-                onChange={(e) => setForm({ ...form, large_group_extra_info_from: e.target.value === "" ? "" : (Number(e.target.value) || 1) })} />
             </Field>
           </div>
         </CardContent>
