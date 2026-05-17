@@ -106,6 +106,9 @@ const LargeGroupSettings = () => {
       large_group_extra_info_from: form.large_group_extra_info_from === "" ? null : Number(form.large_group_extra_info_from),
       large_group_max_online_request: form.large_group_max_online_request === "" ? null : Number(form.large_group_max_online_request),
       extra_large_group_threshold: form.extra_large_group_threshold === "" ? null : Number(form.extra_large_group_threshold),
+      transfer_phone: form.transfer_phone.trim() === "" ? null : form.transfer_phone.trim(),
+      transfer_hours_start: form.transfer_hours_start === "" ? null : form.transfer_hours_start,
+      transfer_hours_end: form.transfer_hours_end === "" ? null : form.transfer_hours_end,
     };
     const { error } = await supabase.from("restaurants").update(payload as any).eq("id", restaurantId);
     setSaving(false);
