@@ -39,8 +39,8 @@ export function buildBadges(f: ReservationFlags): Badge[] {
   if (f.partySize && f.largeGroupThreshold && f.partySize >= f.largeGroupThreshold) {
     out.push({ label: "Grote groep", tone: "warn", icon: Users });
   }
-  if (f.requiresManualApproval) out.push({ label: "Goedkeuring nodig", tone: "warn", icon: ShieldAlert });
-  if (f.largeGroupStatus === "awaiting_approval") {
+  // Eén duidelijke badge — voorkom "Goedkeuring nodig" + "Wacht op goedkeuring" dubbel
+  if (f.largeGroupStatus === "awaiting_approval" || f.requiresManualApproval) {
     out.push({ label: "Wacht op goedkeuring", tone: "warn", icon: ShieldAlert });
   }
   if (f.isVip) out.push({ label: "VIP", tone: "success", icon: Crown });

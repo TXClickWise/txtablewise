@@ -1,76 +1,106 @@
-## Doel
+## Probleem dat ik heb gevonden
 
-Voeg duidelijke uitspraakregels toe aan alle Voice Agent prompts, met expliciete voorbeelden voor telefoonnummers, tijden, datums, aantallen en codes. Verbied het hardop oplezen van het beller-ID-nummer, maar sta nummer-voor-nummer terugleen wél toe wanneer de gast bewust een ander nummer doorgeeft. Alleen prompt/help-bestanden wijzigen, geen backend.
+Er zitten twee echte oorzaken in de huidige setup:
 
-## Aanpassingen
+1. **De voice-agent/API krijgt bij grote groepen niet dezelfde duidelijke uitkomst als de widget.**
+   - De widget boekt 12 personen correct als reservering met `status=pending` en `large_group_status=awaiting_approval`.
+   - De voice-agent moet dit ook doen, maar de prompt/API-response maakt het te makkelijk om bij grote groepen toch naar call transfer te gaan.
+   - Call transfer hoort pas te gebeuren wanneer de groep **boven `large_group_max_online_request`** valt. Voor Eigeweis staat die nu op **18**, dus **12 personen moet gewoon worden geboekt met goedkeuring nodig**.
 
-### 1. `src/pages/app/help/VoiceAgentHelp.tsx` (volledige System Prompt)
+2. **Er is/was een backend-status mismatch voor grote groepen.**
+   - Een recente voice-test met 10 personen faalde met: `reservations_large_group_status_check`.
+   - Dat betekent dat een statuswaarde niet door de database werd geaccepteerd. Dit veroorzaakt precies de vicieuze cirkel: prompt lijkt goed, maar de boeking kan alsnog falen.
 
-Nieuwe sectie **"Uitspraakregels"** met expliciete voorbeelden:
+Daarnaast is er een promptprobleem rond tijd:
+- De agent checkte bij “half zes” uiteindelijk `18:00`, terwijl de geboekte reservering pas na “17 uur 30” goed ging.
+- De prompt moet daarom expliciet zeggen: **“half zes” = 17:30**, **niet 18:00**, en bij twijfel moet de agent vragen “bedoelt u half zes, dus vijf uur dertig?”
 
-**Telefoonnummer — twee scenario's:**
+## Plan
 
-- **Default = beller-ID gebruiken (caller ID van het inkomende gesprek):**
-  - NOOIT hardop oplezen.
-  - NOOIT aan de gast vragen om het te herhalen of te bevestigen.
-  - Bij bevestiging zeg je: *"Ik gebruik het nummer waarmee je nu belt, is dat goed?"* — zonder cijfers te noemen.
-  - Intern wordt het in E.164 opgeslagen (bv. `+31653521166`).
+### 1. Backend: één definitieve grote-groepen-reserveringsroute
+Ik pas de engine zo aan dat `book_reservation` voor voice en widget exact dezelfde beslisboom afdwingt:
 
-- **Alternatief nummer (gast zegt expliciet: "neem een ander nummer" / "bel mijn vrouw op…"):**
-  - Vraag de gast het nummer **nummer-voor-nummer te spellen**: *"Kun je het nummer cijfer voor cijfer doorgeven?"*
-  - Lees het daarna ter bevestiging **nummer-voor-nummer terug** in spreektaal, voorbeeld:
-    - `+31653521166` → *"plus eenendertig, nul zes, vijf drie, vijf twee, één één, zes zes — klopt dat?"*
-  - Bij correctie: opnieuw nummer-voor-nummer terug.
-  - Nooit als "zes-honderd-drieënvijftig-…" of "+31 6 53 52 11 66" als losse groepen — altijd cijfer voor cijfer.
+- `party_size < large_group_threshold` → normale reservering.
+- `large_group_threshold <= party_size < large_group_manual_approval_from` → grote groep, direct geboekt, `large_group_status=approved`.
+- `party_size >= large_group_manual_approval_from` én `party_size <= large_group_max_online_request` → reservering wordt **altijd aangemaakt** met:
+  - `status=pending`
+  - `requires_manual_approval=true`
+  - `large_group_status=awaiting_approval`
+- `party_size > large_group_max_online_request` → pas dan géén reservering, maar `TW_409_PARTY_TOO_LARGE` + transfer-info.
 
-**Tijden — uitspreken in spreektaal, niet als cijfers:**
-- `18:15` → "kwart over zes"
-- `18:30` → "half zeven"
-- `18:45` → "kwart voor zeven"
-- `19:00` → "zeven uur 's avonds"
-- `20:10` → "tien over acht"
-- Intern in tool-call altijd `HH:MM` (24u).
+Voor Eigeweis betekent dit concreet:
+- 8 personen → grote groep, direct geboekt of volgens ingestelde drempel.
+- 12 personen → **reservering aanmaken, wacht op goedkeuring**.
+- 19+ personen → pas dan call transfer/callback.
 
-**Datums — uitspreken als dag + maand in woorden:**
-- `2026-05-25` → "vijfentwintig mei"
-- `2026-06-01` → "één juni"
-- "morgen" / "vandaag" / "overmorgen" → letterlijk zo uitspreken.
-- Intern in tool-call altijd `YYYY-MM-DD`.
+### 2. Backend: response uitbreiden zodat de voice-agent niet hoeft te gokken
+Ik zorg dat `book_reservation` én `agent_api/book_reservation` expliciet teruggeven:
 
-**Aantal personen — voluit in woorden:**
-- `2` → "twee personen", `10` → "tien personen", `17` → "zeventien personen".
+```json
+{
+  "ok": true,
+  "reservation": { ... },
+  "requires_manual_approval": true,
+  "large_group_status": "awaiting_approval",
+  "message_for_guest": "Voor een groep van twaalf personen leg ik uw aanvraag voor aan een collega..."
+}
+```
 
-**Reserveringscode — letter voor letter, cijfer voor cijfer, NAVO-alfabet bij verwarring:**
-- `R7K2` → "R van Romeo, zeven, K van Kilo, twee".
+Daardoor hoeft de AI-agent niet zelf te interpreteren of hij moet boeken, goedkeuring noemen of doorverbinden.
 
-**Algemene verboden:** geen "achttien uur vijftien", geen letterlijke YYYY-MM-DD, geen technische codes hardop, geen +31-prefix oplezen als beller-ID wordt gebruikt.
+### 3. Backend: status-mismatch oplossen
+Ik herstel de mismatch die de constraint-fout veroorzaakt:
 
-Bevestigingszin (default beller-ID-scenario) wordt:
-> "Ik noteer: vijfentwintig mei, kwart over zes, voor vier personen, op naam van [voornaam]. Ik gebruik het nummer waarmee je nu belt — klopt dat?"
+- Alleen toegestane waarden opslaan: `awaiting_approval`, `approved`, `declined`, etc.
+- Geen verouderde of afwijkende statuswaarde meer vanuit code.
+- Als er toch een fout komt, wordt die netjes gelogd met een duidelijke code in plaats van een onduidelijke 500.
 
-### 2. `src/pages/app/admin/AdminClickWiseVoiceSetupPage.tsx` (korte admin-prompt + setup-bundles)
+### 4. Agent API: call transfer onmogelijk maken voor boekbare grote groepen
+Ik pas `agent_api` aan zodat de voice-agent bij `book_reservation` nooit zelf op basis van groepsgrootte kan kiezen voor transfer zolang de engine een boekbare aanvraag accepteert.
 
-- Compacte uitspraakregels toevoegen: *"Uitspraak: tijden in spreektaal · datum in woorden · personen in woorden · beller-ID-nummer NOOIT oplezen of laten herhalen · alleen alternatief nummer cijfer-voor-cijfer spellen én terugleen."*
-- Alle bestaande bevestigingszinnen die "telefoon [nummer]" bevatten vervangen door de twee-scenario-variant.
+- Transfer-info wordt alleen teruggegeven bij `party_size > large_group_max_online_request`.
+- Bij 12 personen krijgt de agent dus geen transfer-route maar een succesvolle `pending` reservering.
 
-### 3. `src/services/voiceFlow.ts` — `VOICE_FLOW_PROMPT_TEMPLATE`
+### 5. Prompt: tijdherkenning “half zes” expliciet corrigeren
+Ik scherp de system prompt en admin setup aan:
 
-- Stap 1 (VERZAMEL): default = beller-ID, alleen vragen om ander nummer als gast dat zelf aangeeft.
-- Stap 2 (BEVESTIG): default-zin zonder nummer; alternatief-pad met cijfer-voor-cijfer terugleen.
-- Stap 5 (BEVESTIG aan beller): uitspraakregels toepassen, code spellen.
-- Nieuwe sectie **UITSPRAAK** met dezelfde voorbeelden (telefoon/tijd/datum/personen/code) en de twee telefoon-scenario's.
+- Nederlands:
+  - `half zes` = `17:30`
+  - `half zeven` = `18:30`
+  - `half acht` = `19:30`
+- Niet interpreteren als “zes uur” of `18:00`.
+- Bij twijfel: één korte controlevraag stellen:
+  - “Bedoelt u half zes, dus vijf uur dertig?”
+- Tool-call blijft altijd `HH:MM`.
 
-### 4. Verificatie
+### 6. Prompt: grote-groepen-flow onmiskenbaar maken
+Ik vervang de huidige tekst “probeer altijd eerst te boeken” door een hardere instructie:
 
-- `rg "telefoon|nummer" src/pages/app/help/VoiceAgentHelp.tsx src/pages/app/admin/AdminClickWiseVoiceSetupPage.tsx src/services/voiceFlow.ts` — geen plek meer waar het beller-ID-nummer wordt voorgelezen of door gast bevestigd moet worden.
-- `rg "HH:MM|YYYY-MM-DD"` — alleen binnen tool-call voorbeelden toegestaan, niet in spreekzinnen.
-- Visueel op `/app/help/voice-agent#voice-agent` controleren dat nieuwe sectie "Uitspraakregels" zichtbaar is met beide telefoonscenario's.
+- **Nooit doorverbinden vóór `book_reservation` is geprobeerd.**
+- Als `book_reservation` succesvol is met `requires_manual_approval=true`, dan:
+  - gastvriendelijk melden dat de aanvraag in TableWise staat;
+  - geen SMS/WhatsApp/e-mail beloven;
+  - niet alsnog doorverbinden.
+- Alleen bij `TW_409_PARTY_TOO_LARGE` mag call transfer.
 
-### 5. Handmatige stap voor gebruiker
+### 7. UI/settings: dubbele labels “Goedkeuring nodig” + “Wacht op goedkeuring” opruimen
+In de screenshot is zichtbaar dat één reservering twee bijna identieke badges krijgt:
+- “Goedkeuring nodig”
+- “Wacht op goedkeuring”
 
-Nadat dit live is: prompt opnieuw kopiëren naar ClickWise Eigeweis sub-account én master snapshot, anders blijft de live agent het beller-ID-nummer oplezen.
+Ik maak dit eenduidig:
+- Eén duidelijke badge: **“Wacht op goedkeuring”**.
+- De andere technische/duplicerende badge verdwijnt voor operators.
 
-## Buiten scope
+### 8. Verificatie
+Na implementatie controleer ik dit met echte backend-tests:
 
-- Backend / edge functions blijven ongewijzigd.
-- E.164-validatie en opslag van telefoonnummers blijft zoals nu.
+- `party_size=8`, `time=17:30` → boeking lukt.
+- `party_size=12`, `time=17:30` → reservering wordt aangemaakt met `pending` + `awaiting_approval`, géén transfer.
+- `party_size=19` → géén reservering, wel `TW_409_PARTY_TOO_LARGE` + transfer-info.
+- Logs laten geen constraint-fout meer zien.
+- Prompt bevat nergens meer belofte van persoonlijke bevestiging via SMS/WhatsApp/e-mail in de voice-afsluiting.
+
+## Handmatige stap na livegang
+
+Na de codefix moet de bijgewerkte prompt opnieuw naar de ClickWise voice-agent/master snapshot worden gekopieerd. Anders blijft de live voice-agent met de oude prompt werken, ook al is TableWise zelf gefixt.

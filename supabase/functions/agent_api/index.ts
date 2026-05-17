@@ -234,8 +234,20 @@ async function handle(
           source_metadata: { ...(payload.source_metadata as object | undefined), agent_provider: keyRow.provider, via: "agent_api" },
         };
         const r = await callInternalFn("book_reservation", bookBody);
-        if (r.status >= 200 && r.status < 300 && (r.body as any)?.reservation_id) ctx.setReservationId((r.body as any).reservation_id);
-        return json(r.body, r.status);
+        // Forward reservation_id en goedkeuringsvlag op top-level zodat de voice-agent
+        // niet zelf door reservation.* hoeft te graven.
+        const rb = (r.body ?? {}) as Record<string, any>;
+        const reservationObj = rb.reservation ?? {};
+        if (r.status >= 200 && r.status < 300 && reservationObj?.id) ctx.setReservationId(reservationObj.id);
+        const enriched = {
+          ...rb,
+          reservation_id: reservationObj?.id ?? rb.reservation_id ?? null,
+          confirmation_code: reservationObj?.confirmation_code ?? rb.confirmation_code ?? null,
+          requires_manual_approval: rb.requires_manual_approval ?? reservationObj?.requires_manual_approval ?? false,
+          large_group_status: rb.large_group_status ?? reservationObj?.large_group_status ?? null,
+          message_for_guest: rb.message_for_guest ?? null,
+        };
+        return json(enriched, r.status);
       }
       case "cancel_reservation": {
         if (!keyRow.scopes.includes("cancel")) return json({ error: "Scope missing: cancel", error_code: "auth_scope_missing", field: "cancel" }, 403);
