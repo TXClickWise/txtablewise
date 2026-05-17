@@ -28,6 +28,15 @@ const corsHeaders = {
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+// Gateway-niveau apikey: gebruik de publieke anon key (niet de service role JWT).
+// Met het nieuwe signing-keys systeem wordt de legacy service-role JWT door de
+// edge-gateway niet altijd geaccepteerd in de `apikey`-header, wat tot
+// 401's leidt voordat de doel-function überhaupt boot. De service role blijft
+// in de Authorization header voor function-side privileges.
+const GATEWAY_API_KEY =
+  Deno.env.get("SUPABASE_ANON_KEY") ??
+  Deno.env.get("SUPABASE_PUBLISHABLE_KEY") ??
+  SERVICE_ROLE;
 
 function admin() {
   return createClient(SUPABASE_URL, SERVICE_ROLE, {

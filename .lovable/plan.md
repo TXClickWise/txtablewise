@@ -1,25 +1,33 @@
-## Plan: Documenteer `large_group_sla_label` + `channel_label` in Voice-helpbestanden
+## Wat er gebeurde
 
-### Context
-De server composeert bij grote-groep-reserveringen het volledige belofte-bericht (bijv. "U ontvangt binnen 4 uur een bericht per SMS of e-mail.") in `response.message_for_guest`. De afzonderlijke waarden `tablewise_large_group_sla_label` en `tablewise_large_group_channel_label` worden WEL naar ClickWise gesynchroniseerd, maar zijn niet nodig als aparte placeholders in de Voice-prompt — de agent leest gewoon `message_for_guest` letterlijk. Deze waarden zijn wel handig voor ClickWise-templates (WhatsApp, e-mail, etc.).
+In `integration_logs` zie ik 2 mislukte voice-agent reserveringen (12p om 18:00, 8p om 14:00). Beiden gaven dezelfde 401 terug, met `message_for_guest = "Sorry, er ging iets mis aan onze kant…"`.
 
-### Wijzigingen
+```
+18:25:04  create_reservation  http_status=401  party_size=12
+18:27:48  create_reservation  http_status=401  party_size=8
+18:27:50  create_reservation  http_status=401  (retry)
+```
 
-#### 1. `src/pages/app/help/VoiceAgentHelp.tsx`
-- In **sectie 4 (Custom Values)**, onder het bestaande `<Callout tone="success">` blok met automatisch gepushte waarden, een nieuw lijstitem toevoegen:
-  - Vermeld dat `tablewise_large_group_sla_label` en `tablewise_large_group_channel_label` ook automatisch worden gepusht uit **Instellingen → Grote groepen**.
-  - Leg uit dat de Voice Agent deze NIET als aparte placeholders nodig heeft — `message_for_guest` bevat al de volledige zin.
-  - Vermeld dat ze WEL bruikbaar zijn in ClickWise-templates (WhatsApp/e-mail) via `{{custom_values.tablewise_large_group_sla_label}}` en `{{custom_values.tablewise_large_group_channel_label}}`.
+In de Supabase edge-gateway-logs zie ik dat die 401's bij `book_reservation` op **gateway-niveau** vallen — de function boot zelfs niet. De `check_availability`-stap ervoor werkte wel (200) en gebruikt exact dezelfde interne aanroep. Dus de auth-flow naar `book_reservation` is stuk, niet de logica zelf.
 
-#### 2. `src/pages/app/admin/AdminClickWiseVoiceSetupPage.tsx`
-- In de `customValues` string (regels 269-277): toevoegen:
-  ```
-  tablewise_large_group_sla_label = <auto, gepusht door TableWise>
-  tablewise_large_group_channel_label = <auto, gepusht door TableWise>
-  ```
-  met een comment dat deze voor ClickWise-templates zijn, niet voor de voice-prompt.
-- In de `customValuesSnapshot` string (regels 281-289): dezelfde twee velden toevoegen met `REPLACE_PER_CLIENT` placeholders.
+## Root cause
 
-### Wat blijft ongewijzigd
-- Edge functions, database, migraties, ClickWise-sync logica.
-- De voice-prompt zelf (die al `message_for_guest` letterlijk laat voorlezen).
+`agent_api/index.ts → callInternalFn()` stuurt `SUPABASE_SERVICE_ROLE_KEY` mee als zowel `Authorization: Bearer …` als `apikey: …`. Sinds de overstap naar het nieuwe signing-keys-systeem accepteert de edge-gateway de legacy service-role JWT niet meer betrouwbaar in de `apikey`-header. Voor `availability` werkt het toevallig nog, voor `book_reservation` niet — wat per definitie fragiel is.
+
+## Fix
+
+1. **`supabase/functions/agent_api/index.ts` → `callInternalFn`**  
+   `apikey`-header zetten op `SUPABASE_ANON_KEY` (publieke key die door de gateway altijd wordt geaccepteerd) en `Authorization: Bearer ${SERVICE_ROLE}` behouden voor function-side logica. Dit is het door Supabase aanbevolen patroon voor interne function-to-function calls met `verify_jwt = false`.
+
+2. **`supabase/config.toml`**  
+   Bevestig dat alle interne targets (`book_reservation`, `availability`, `manage_reservation`) `verify_jwt = false` hebben — `manage_reservation` ontbreekt nu in de config en valt daardoor op de Supabase default terug; expliciet toevoegen.
+
+3. **Verificatie**  
+   - `curl_edge_functions` op `/agent_api/reservation_request` met test-payload (party_size 8) → verwacht 200/202 of een nette `large_group_required_manual`.  
+   - Daarna nieuwe rij in `integration_logs` controleren: `http_status` ≠ 401.
+
+## Wat NIET verandert
+
+- Logica van `book_reservation`, large-group flow, ClickWise-prompt, `message_for_guest`-templates — allemaal ongewijzigd.  
+- Geen DB-migratie nodig.  
+- Voice-agent prompt in ClickWise hoeft niet opnieuw geplakt te worden.
