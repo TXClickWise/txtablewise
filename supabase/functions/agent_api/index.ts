@@ -96,7 +96,13 @@ function json(body: unknown, status = 200) {
 // wacht.
 function buildBookGuestResponse(
   r: { status: number; body: Record<string, any> | null },
-  ctx: { partySize: number; dateStr: string; timeStr: string; onlineHardCap: number },
+  ctx: {
+    partySize: number;
+    dateStr: string;
+    timeStr: string;
+    onlineHardCap: number;
+    largeGroupConfirmationText?: string | null;
+  },
 ) {
   const rb = (r.body ?? {}) as Record<string, any>;
   const reservationObj = rb.reservation ?? {};
