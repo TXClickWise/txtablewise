@@ -384,14 +384,74 @@ async function handle(
         const resObj0 = rb0.reservation ?? {};
         if (r.status >= 200 && r.status < 300 && resObj0?.id) ctx.setReservationId(resObj0.id);
         const { data: restRow } = await sb.from("restaurants")
-          .select("large_group_max_online_request, max_party_size_online")
+          .select("large_group_max_online_request, max_party_size_online, large_group_confirmation_text")
           .eq("id", keyRow.restaurant_id).maybeSingle();
         const onlineHardCap: number = (restRow?.large_group_max_online_request ?? restRow?.max_party_size_online ?? 18) as number;
+
+        // --- GROTE GROEP VANGNET ---
+        // Wanneer book_reservation de groep weigert wegens overschrijding van de online cap,
+        // sla de aanvraag op in large_group_requests — net als de widget doet — zodat het
+        // restaurant de aanvraag écht in de UI ziet.
+        if (r.status >= 400 && rb0.error_code === "large_group_required_manual") {
+          const gAny = (payload.guest ?? {}) as Record<string, any>;
+          const contactName = [gAny.first_name, gAny.last_name].filter(Boolean).join(" ").trim() || "Onbekend";
+          const sourceLine = `[bron: voice-agent / ${keyRow.provider ?? "ai_host"}]`;
+          const lgInsert = await sb.from("large_group_requests").insert({
+            restaurant_id: keyRow.restaurant_id,
+            contact_name: contactName,
+            contact_phone: gAny.phone ?? null,
+            contact_email: gAny.email ?? null,
+            party_size: Number((payload as any).party_size) || 0,
+            preferred_date: ((payload as any).date ? String((payload as any).date) : null),
+            preferred_time: ((payload as any).time ? String((payload as any).time) : null),
+            message: [
+              (payload as any).special_requests ? String((payload as any).special_requests) : null,
+              sourceLine,
+            ].filter(Boolean).join("\n\n"),
+            status: "new",
+          }).select("id").maybeSingle();
+          const lgReq = lgInsert.data;
+          if (lgReq?.id) {
+            rb0.large_group_request_id = lgReq.id;
+            // Audit + integration event (fire-and-forget)
+            sb.from("audit_log").insert({
+              restaurant_id: keyRow.restaurant_id,
+              action: "large_group_request.created",
+              entity: "large_group_request",
+              entity_id: lgReq.id,
+              actor_label: `agent_api:${keyRow.provider ?? "voice"}`,
+              after_data: {
+                source: "agent_api",
+                party_size: Number((payload as any).party_size) || 0,
+                preferred_date: (payload as any).date ?? null,
+                preferred_time: (payload as any).time ?? null,
+              },
+            }).then(() => {}).catch(() => {});
+            sb.from("integration_events").insert({
+              restaurant_id: keyRow.restaurant_id,
+              event_type: "large_group_request.created",
+              entity_type: "large_group_request",
+              entity_id: lgReq.id,
+              payload: {
+                source: "agent_api",
+                source_channel: "phone_ai",
+                provider: keyRow.provider,
+                party_size: Number((payload as any).party_size) || 0,
+                preferred_date: (payload as any).date ?? null,
+                preferred_time: (payload as any).time ?? null,
+                contact_name: contactName,
+                contact_phone: gAny.phone ?? null,
+              },
+            }).then(() => {}).catch(() => {});
+          }
+        }
+
         const built = buildBookGuestResponse(r, {
           partySize: Number((payload as any).party_size) || 0,
           dateStr: String((payload as any).date ?? ""),
           timeStr: String((payload as any).time ?? ""),
           onlineHardCap,
+          largeGroupConfirmationText: restRow?.large_group_confirmation_text ?? null,
         });
         return json(built.body, built.status);
       }
