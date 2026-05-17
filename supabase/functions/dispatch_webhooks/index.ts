@@ -225,7 +225,7 @@ Deno.serve(async (req) => {
 
       if (matching.length === 0) {
         await supabase.from("integration_events")
-          .update({ status: "delivered", last_error: "no matching webhook endpoint" })
+          .update({ status: "skipped", last_error: "no matching webhook endpoint", processed_at: new Date().toISOString() })
           .eq("id", ev.id);
         skipped++;
         continue;
