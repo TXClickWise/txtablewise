@@ -66,7 +66,8 @@ const LargeGroupSettings = () => {
           large_group_threshold, large_group_extra_minutes, large_group_manual_approval_from,
           large_group_deposit_recommended_from, large_group_auto_book_max, large_group_default_status,
           large_group_confirmation_text, large_group_cancellation_terms, noshow_deposit_rules_prepared,
-          large_group_extra_info_from, large_group_max_online_request, extra_large_group_threshold
+          large_group_extra_info_from, large_group_max_online_request, extra_large_group_threshold,
+          transfer_phone, transfer_hours_start, transfer_hours_end
         `)
         .eq("id", restaurantId).maybeSingle();
       if (data) {
@@ -83,6 +84,9 @@ const LargeGroupSettings = () => {
           large_group_confirmation_text: data.large_group_confirmation_text ?? "",
           large_group_cancellation_terms: data.large_group_cancellation_terms ?? "",
           noshow_deposit_rules_prepared: data.noshow_deposit_rules_prepared ?? false,
+          transfer_phone: (data as any).transfer_phone ?? "",
+          transfer_hours_start: ((data as any).transfer_hours_start ?? "").slice(0, 5),
+          transfer_hours_end: ((data as any).transfer_hours_end ?? "").slice(0, 5),
         });
       }
       setLoading(false);
