@@ -27,6 +27,9 @@ type Form = {
   large_group_confirmation_text: string;
   large_group_cancellation_terms: string;
   noshow_deposit_rules_prepared: boolean;
+  transfer_phone: string;
+  transfer_hours_start: string;
+  transfer_hours_end: string;
 };
 
 const defaults: Form = {
@@ -42,6 +45,9 @@ const defaults: Form = {
   large_group_confirmation_text: "",
   large_group_cancellation_terms: "",
   noshow_deposit_rules_prepared: false,
+  transfer_phone: "",
+  transfer_hours_start: "",
+  transfer_hours_end: "",
 };
 
 const LargeGroupSettings = () => {
