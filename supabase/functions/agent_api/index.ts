@@ -94,6 +94,27 @@ function json(body: unknown, status = 200) {
 // die de workflow uniek aanstuurt. Zo kan een parafraserende LLM nooit
 // "geboekt" zeggen terwijl een grote-groepsreservering nog op goedkeuring
 // wacht.
+// Stel tenant-driven, gastvrije pending-zin samen. Volgorde:
+// 1) `large_group_confirmation_text` (vrije tekst van het restaurant)
+// 2) anders een neutrale zin + dynamische staart gebaseerd op
+//    `large_group_response_sla_label` en `large_group_response_channel_label`
+//    zodat tenants zelf bepalen óf en hoe ze een SLA + kanaal beloven.
+function composeLargeGroupPendingMessage(
+  partySize: number, dateStr: string, timeStr: string,
+  tenantCopy?: string | null, slaLabel?: string | null, channelLabel?: string | null,
+) {
+  const free = (tenantCopy ?? "").trim();
+  if (free) return free;
+  const sla = (slaLabel ?? "").trim();
+  const channel = (channelLabel ?? "").trim();
+  const tail =
+    sla && channel ? ` U ontvangt ${sla} een bericht ${channel}.`
+    : sla ? ` U ontvangt ${sla} een bericht.`
+    : channel ? ` U ontvangt een bericht ${channel}.`
+    : ` Het restaurant laat het u zo snel mogelijk weten.`;
+  return `Uw aanvraag voor ${partySize} personen op ${dateStr} om ${timeStr} is voorlopig genoteerd.${tail}`;
+}
+
 function buildBookGuestResponse(
   r: { status: number; body: Record<string, any> | null },
   ctx: {
@@ -102,13 +123,14 @@ function buildBookGuestResponse(
     timeStr: string;
     onlineHardCap: number;
     largeGroupConfirmationText?: string | null;
+    largeGroupSlaLabel?: string | null;
+    largeGroupChannelLabel?: string | null;
   },
 ) {
   const rb = (r.body ?? {}) as Record<string, any>;
   const reservationObj = rb.reservation ?? {};
   const requiresManual = rb.requires_manual_approval ?? reservationObj?.requires_manual_approval ?? false;
-  const { partySize, dateStr, timeStr, onlineHardCap, largeGroupConfirmationText } = ctx;
-  const tenantPendingCopy = (largeGroupConfirmationText ?? "").trim();
+  const { partySize, dateStr, timeStr, onlineHardCap, largeGroupConfirmationText, largeGroupSlaLabel, largeGroupChannelLabel } = ctx;
 
   let messageForGuest: string | null = rb.message_for_guest ?? null;
   let nextAction = "confirm_booking";
