@@ -731,9 +731,11 @@ const SECTIONS: Section[] = [
       <div className="space-y-2">
         <p className="text-sm text-muted-foreground">
           Plak in de Voice Agent → Prompt-tab. Vervang <code>[RESTAURANTNAAM]</code> door
-          <code>{` {{location.name}} `}</code> — ClickWise vult dan automatisch de sub-account
-          naam in. Vervang ook <code>Europe/Amsterdam</code> door <code>{`{{location.timezone}}`}</code>
-          als je meerdere tijdzones gebruikt.
+          <code>{` {{custom_values.tablewise_restaurant_name}} `}</code> — die wordt automatisch
+          gepusht door TableWise (sync-knop in Koppelingen → ClickWise). Vervang
+          <code>Europe/Amsterdam</code> door <code>{`{{custom_values.tablewise_timezone}}`}</code>.
+          <strong> Let op:</strong> <code>{`{{location.*}}`}</code> rendert niet in Voice AI prompts —
+          gebruik altijd <code>{`{{custom_values.*}}`}</code>.
         </p>
         <Callout tone="info" title="Groepsgrootte — 2-drempel logica (engine bepaalt)">
           De agent probeert ALTIJD eerst te boeken. De TableWise-engine bepaalt het vervolg
