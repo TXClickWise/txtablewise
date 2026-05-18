@@ -171,12 +171,15 @@ function buildBookGuestResponse(
     largeGroupConfirmationText?: string | null;
     largeGroupSlaLabel?: string | null;
     largeGroupChannelLabel?: string | null;
+    language?: AgentLanguage;
   },
 ) {
   const rb = (r.body ?? {}) as Record<string, any>;
   const reservationObj = rb.reservation ?? {};
   const requiresManual = rb.requires_manual_approval ?? reservationObj?.requires_manual_approval ?? false;
   const { partySize, dateStr, timeStr, onlineHardCap, largeGroupConfirmationText, largeGroupSlaLabel, largeGroupChannelLabel } = ctx;
+  const lang = ctx.language ?? "nl";
+  const t = agentCopy(lang);
 
   let messageForGuest: string | null = rb.message_for_guest ?? null;
   let nextAction = "confirm_booking";
@@ -191,39 +194,44 @@ function buildBookGuestResponse(
       nextAction = allowTransfer ? "transfer_call" : "promise_callback";
       statusLabel = "voorlopig";
       messageForGuest = allowTransfer
-        ? "Een moment, ik verbind u door met een collega."
+        ? t.transfer
         : composeLargeGroupPendingMessage(partySize, dateStr, timeStr, largeGroupConfirmationText, largeGroupSlaLabel, largeGroupChannelLabel);
       if (!allowTransfer) rb.transfer = { ...(rb.transfer ?? {}), allowed: false };
     } else if (ec === "no_table_available" || ec === "slot_unavailable" || ec === "pacing_limit_reached") {
       nextAction = "offer_alternatives_or_waitlist";
-      messageForGuest = "Helaas lukt dit specifieke tijdstip niet. Kunt u iets eerder of later? Anders zet ik u graag op onze wachtlijst.";
+      messageForGuest = t.unavailable;
       responseStatus = 200;
       responseOk = true;
       rb.transfer = { ...(rb.transfer ?? {}), allowed: false };
     } else if (ec === "message_required") {
       nextAction = "ask_special_requests";
-      messageForGuest = "Voor deze groepsgrootte noteer ik graag nog een korte toelichting voor het team. Zijn er bijzonderheden waar we rekening mee mogen houden?";
+      messageForGuest = t.specialRequests;
       responseStatus = 200;
       responseOk = true;
       rb.transfer = { ...(rb.transfer ?? {}), allowed: false };
     } else if (ec === "slot_too_soon") {
       nextAction = "ask_later_time";
-      messageForGuest = "Dat tijdstip is helaas te kort dag. Kunt u een iets later tijdstip kiezen?";
+      messageForGuest = t.laterTime;
       responseStatus = 200;
       responseOk = true;
       rb.transfer = { ...(rb.transfer ?? {}), allowed: false };
     } else if (ec === "beyond_booking_horizon") {
+      const localeTag = lang === "de" ? "de-DE" : lang === "en" ? "en-GB" : "nl-NL";
       const maxDateLabel = rb.max_booking_date
-        ? new Date(String(rb.max_booking_date) + "T00:00:00").toLocaleDateString("nl-NL", { day: "numeric", month: "long", year: "numeric" })
-        : "enkele maanden vooruit";
+        ? new Date(String(rb.max_booking_date) + "T00:00:00").toLocaleDateString(localeTag, { day: "numeric", month: "long", year: "numeric" })
+        : lang === "de" ? "einige Monate im Voraus" : lang === "en" ? "a few months ahead" : "enkele maanden vooruit";
       nextAction = "ask_closer_date";
-      messageForGuest = `Die datum valt helaas te ver in de toekomst. U kunt tot ${maxDateLabel} reserveren. Wilt u een eerdere datum proberen?`;
+      messageForGuest = lang === "de"
+        ? `Dieses Datum liegt leider zu weit in der Zukunft. Sie können bis ${maxDateLabel} reservieren. Möchten Sie ein früheres Datum versuchen?`
+        : lang === "en"
+        ? `That date is unfortunately too far in the future. You can book up to ${maxDateLabel}. Would you like to try an earlier date?`
+        : `Die datum valt helaas te ver in de toekomst. U kunt tot ${maxDateLabel} reserveren. Wilt u een eerdere datum proberen?`;
       responseStatus = 200;
       responseOk = true;
       rb.transfer = { ...(rb.transfer ?? {}), allowed: false };
     } else {
       nextAction = "apologize_and_callback";
-      messageForGuest = "Sorry, er ging iets mis aan onze kant. Probeert u het later nog eens, of reserveer via de website.";
+      messageForGuest = t.fallback;
     }
   } else if (requiresManual) {
     nextAction = "confirm_pending_approval";
