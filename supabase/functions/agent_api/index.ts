@@ -717,7 +717,7 @@ async function handle(
         }
         const updates: Record<string, unknown> = {};
         if (new_date) updates.reservation_date = new_date;
-        if (new_time) updates.start_time = new_time;
+        if (new_time) updates.start_time_local = new_time;
         if (new_party_size) updates.party_size = new_party_size;
         if (notes) updates.special_requests = notes;
         const r = await callInternalFn("manage_reservation", {
