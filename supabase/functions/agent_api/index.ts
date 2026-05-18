@@ -108,6 +108,43 @@ function json(body: unknown, status = 200) {
 // 2) anders een neutrale zin + dynamische staart gebaseerd op
 //    `large_group_response_sla_label` en `large_group_response_channel_label`
 //    zodat tenants zelf bepalen óf en hoe ze een SLA + kanaal beloven.
+type AgentLanguage = "nl" | "de" | "en";
+
+function normalizeAgentLanguage(raw: unknown): AgentLanguage {
+  const v = String(raw ?? "nl").toLowerCase().slice(0, 2);
+  return v === "de" || v === "en" ? v : "nl";
+}
+
+function agentCopy(lang: AgentLanguage) {
+  return {
+    transfer: {
+      nl: "Een moment, ik verbind u door met een collega.",
+      de: "Einen Moment bitte, ich verbinde Sie mit einem Kollegen.",
+      en: "One moment please, I will transfer you to a colleague.",
+    }[lang],
+    unavailable: {
+      nl: "Helaas lukt dit specifieke tijdstip niet. Kunt u iets eerder of later? Anders zet ik u graag op onze wachtlijst.",
+      de: "Leider ist dieser Zeitpunkt nicht verfügbar. Ginge es etwas früher oder später? Sonst setze ich Sie gerne auf unsere Warteliste.",
+      en: "Unfortunately that exact time is not available. Would a little earlier or later work? Otherwise I can add you to the waitlist.",
+    }[lang],
+    specialRequests: {
+      nl: "Voor deze groepsgrootte noteer ik graag nog een korte toelichting voor het team. Zijn er bijzonderheden waar we rekening mee mogen houden?",
+      de: "Für diese Gruppengröße notiere ich gerne noch eine kurze Information für das Team. Gibt es Besonderheiten, die wir berücksichtigen sollen?",
+      en: "For this group size I need to add a short note for the team. Are there any special requests we should take into account?",
+    }[lang],
+    laterTime: {
+      nl: "Dat tijdstip is helaas te kort dag. Kunt u een iets later tijdstip kiezen?",
+      de: "Dieser Zeitpunkt ist leider zu kurzfristig. Können Sie eine etwas spätere Uhrzeit wählen?",
+      en: "That time is unfortunately too soon. Could you choose a slightly later time?",
+    }[lang],
+    fallback: {
+      nl: "Sorry, er ging iets mis aan onze kant. Probeert u het later nog eens, of reserveer via de website.",
+      de: "Entschuldigung, auf unserer Seite ist etwas schiefgelaufen. Bitte versuchen Sie es später noch einmal oder reservieren Sie über die Website.",
+      en: "Sorry, something went wrong on our side. Please try again later or book through the website.",
+    }[lang],
+  };
+}
+
 function composeLargeGroupPendingMessage(
   partySize: number, dateStr: string, timeStr: string,
   tenantCopy?: string | null, slaLabel?: string | null, channelLabel?: string | null,
