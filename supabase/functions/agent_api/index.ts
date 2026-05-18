@@ -108,6 +108,43 @@ function json(body: unknown, status = 200) {
 // 2) anders een neutrale zin + dynamische staart gebaseerd op
 //    `large_group_response_sla_label` en `large_group_response_channel_label`
 //    zodat tenants zelf bepalen óf en hoe ze een SLA + kanaal beloven.
+type AgentLanguage = "nl" | "de" | "en";
+
+function normalizeAgentLanguage(raw: unknown): AgentLanguage {
+  const v = String(raw ?? "nl").toLowerCase().slice(0, 2);
+  return v === "de" || v === "en" ? v : "nl";
+}
+
+function agentCopy(lang: AgentLanguage) {
+  return {
+    transfer: {
+      nl: "Een moment, ik verbind u door met een collega.",
+      de: "Einen Moment bitte, ich verbinde Sie mit einem Kollegen.",
+      en: "One moment please, I will transfer you to a colleague.",
+    }[lang],
+    unavailable: {
+      nl: "Helaas lukt dit specifieke tijdstip niet. Kunt u iets eerder of later? Anders zet ik u graag op onze wachtlijst.",
+      de: "Leider ist dieser Zeitpunkt nicht verfügbar. Ginge es etwas früher oder später? Sonst setze ich Sie gerne auf unsere Warteliste.",
+      en: "Unfortunately that exact time is not available. Would a little earlier or later work? Otherwise I can add you to the waitlist.",
+    }[lang],
+    specialRequests: {
+      nl: "Voor deze groepsgrootte noteer ik graag nog een korte toelichting voor het team. Zijn er bijzonderheden waar we rekening mee mogen houden?",
+      de: "Für diese Gruppengröße notiere ich gerne noch eine kurze Information für das Team. Gibt es Besonderheiten, die wir berücksichtigen sollen?",
+      en: "For this group size I need to add a short note for the team. Are there any special requests we should take into account?",
+    }[lang],
+    laterTime: {
+      nl: "Dat tijdstip is helaas te kort dag. Kunt u een iets later tijdstip kiezen?",
+      de: "Dieser Zeitpunkt ist leider zu kurzfristig. Können Sie eine etwas spätere Uhrzeit wählen?",
+      en: "That time is unfortunately too soon. Could you choose a slightly later time?",
+    }[lang],
+    fallback: {
+      nl: "Sorry, er ging iets mis aan onze kant. Probeert u het later nog eens, of reserveer via de website.",
+      de: "Entschuldigung, auf unserer Seite ist etwas schiefgelaufen. Bitte versuchen Sie es später noch einmal oder reservieren Sie über die Website.",
+      en: "Sorry, something went wrong on our side. Please try again later or book through the website.",
+    }[lang],
+  };
+}
+
 function composeLargeGroupPendingMessage(
   partySize: number, dateStr: string, timeStr: string,
   tenantCopy?: string | null, slaLabel?: string | null, channelLabel?: string | null,
@@ -134,12 +171,15 @@ function buildBookGuestResponse(
     largeGroupConfirmationText?: string | null;
     largeGroupSlaLabel?: string | null;
     largeGroupChannelLabel?: string | null;
+    language?: AgentLanguage;
   },
 ) {
   const rb = (r.body ?? {}) as Record<string, any>;
   const reservationObj = rb.reservation ?? {};
   const requiresManual = rb.requires_manual_approval ?? reservationObj?.requires_manual_approval ?? false;
   const { partySize, dateStr, timeStr, onlineHardCap, largeGroupConfirmationText, largeGroupSlaLabel, largeGroupChannelLabel } = ctx;
+  const lang = ctx.language ?? "nl";
+  const t = agentCopy(lang);
 
   let messageForGuest: string | null = rb.message_for_guest ?? null;
   let nextAction = "confirm_booking";
@@ -154,39 +194,44 @@ function buildBookGuestResponse(
       nextAction = allowTransfer ? "transfer_call" : "promise_callback";
       statusLabel = "voorlopig";
       messageForGuest = allowTransfer
-        ? "Een moment, ik verbind u door met een collega."
+        ? t.transfer
         : composeLargeGroupPendingMessage(partySize, dateStr, timeStr, largeGroupConfirmationText, largeGroupSlaLabel, largeGroupChannelLabel);
       if (!allowTransfer) rb.transfer = { ...(rb.transfer ?? {}), allowed: false };
     } else if (ec === "no_table_available" || ec === "slot_unavailable" || ec === "pacing_limit_reached") {
       nextAction = "offer_alternatives_or_waitlist";
-      messageForGuest = "Helaas lukt dit specifieke tijdstip niet. Kunt u iets eerder of later? Anders zet ik u graag op onze wachtlijst.";
+      messageForGuest = t.unavailable;
       responseStatus = 200;
       responseOk = true;
       rb.transfer = { ...(rb.transfer ?? {}), allowed: false };
     } else if (ec === "message_required") {
       nextAction = "ask_special_requests";
-      messageForGuest = "Voor deze groepsgrootte noteer ik graag nog een korte toelichting voor het team. Zijn er bijzonderheden waar we rekening mee mogen houden?";
+      messageForGuest = t.specialRequests;
       responseStatus = 200;
       responseOk = true;
       rb.transfer = { ...(rb.transfer ?? {}), allowed: false };
     } else if (ec === "slot_too_soon") {
       nextAction = "ask_later_time";
-      messageForGuest = "Dat tijdstip is helaas te kort dag. Kunt u een iets later tijdstip kiezen?";
+      messageForGuest = t.laterTime;
       responseStatus = 200;
       responseOk = true;
       rb.transfer = { ...(rb.transfer ?? {}), allowed: false };
     } else if (ec === "beyond_booking_horizon") {
+      const localeTag = lang === "de" ? "de-DE" : lang === "en" ? "en-GB" : "nl-NL";
       const maxDateLabel = rb.max_booking_date
-        ? new Date(String(rb.max_booking_date) + "T00:00:00").toLocaleDateString("nl-NL", { day: "numeric", month: "long", year: "numeric" })
-        : "enkele maanden vooruit";
+        ? new Date(String(rb.max_booking_date) + "T00:00:00").toLocaleDateString(localeTag, { day: "numeric", month: "long", year: "numeric" })
+        : lang === "de" ? "einige Monate im Voraus" : lang === "en" ? "a few months ahead" : "enkele maanden vooruit";
       nextAction = "ask_closer_date";
-      messageForGuest = `Die datum valt helaas te ver in de toekomst. U kunt tot ${maxDateLabel} reserveren. Wilt u een eerdere datum proberen?`;
+      messageForGuest = lang === "de"
+        ? `Dieses Datum liegt leider zu weit in der Zukunft. Sie können bis ${maxDateLabel} reservieren. Möchten Sie ein früheres Datum versuchen?`
+        : lang === "en"
+        ? `That date is unfortunately too far in the future. You can book up to ${maxDateLabel}. Would you like to try an earlier date?`
+        : `Die datum valt helaas te ver in de toekomst. U kunt tot ${maxDateLabel} reserveren. Wilt u een eerdere datum proberen?`;
       responseStatus = 200;
       responseOk = true;
       rb.transfer = { ...(rb.transfer ?? {}), allowed: false };
     } else {
       nextAction = "apologize_and_callback";
-      messageForGuest = "Sorry, er ging iets mis aan onze kant. Probeert u het later nog eens, of reserveer via de website.";
+      messageForGuest = t.fallback;
     }
   } else if (requiresManual) {
     nextAction = "confirm_pending_approval";
@@ -481,6 +526,7 @@ async function handle(
           largeGroupConfirmationText: restRow?.large_group_confirmation_text ?? null,
           largeGroupSlaLabel: restRow?.large_group_response_sla_label ?? null,
           largeGroupChannelLabel: restRow?.large_group_response_channel_label ?? null,
+          language: normalizeAgentLanguage((payload as any).language ?? (payload as any).guest?.language),
         });
         return json(built.body, built.status);
       }
@@ -524,6 +570,7 @@ async function handle(
           largeGroupConfirmationText: restRow2?.large_group_confirmation_text ?? null,
           largeGroupSlaLabel: restRow2?.large_group_response_sla_label ?? null,
           largeGroupChannelLabel: restRow2?.large_group_response_channel_label ?? null,
+          language: normalizeAgentLanguage((payload as any).language ?? (payload as any).guest?.language),
         });
         return json(built2.body, built2.status);
       }
@@ -717,7 +764,7 @@ async function handle(
         }
         const updates: Record<string, unknown> = {};
         if (new_date) updates.reservation_date = new_date;
-        if (new_time) updates.start_time = new_time;
+        if (new_time) updates.start_time_local = new_time;
         if (new_party_size) updates.party_size = new_party_size;
         if (notes) updates.special_requests = notes;
         const r = await callInternalFn("manage_reservation", {
