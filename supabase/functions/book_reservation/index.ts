@@ -369,41 +369,45 @@ Deno.serve(async (req) => {
         // Direct fetch met expliciete anon-key auth — supabase.functions.invoke()
         // van binnenuit een edge function stuurt de Authorization header soms niet
         // mee, en SUPABASE_SERVICE_ROLE_KEY is in de nieuwe key-formaat geen geldige
-        // JWT meer voor de gateway. De anon key (klassieke JWT) is wél geldig en
-        // bypasst verify_jwt=true op send-transactional-email.
-        // Legacy anon JWT — publieke key, alleen nodig om gateway-verify_jwt te
-        // passeren omdat de nieuwe sb_publishable_... keys niet als JWT herkend worden.
-        const LEGACY_ANON_JWT = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxiaHR6dGJweG1xbHpoeWVwaGV3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzcwNjE3OTAsImV4cCI6MjA5MjYzNzc5MH0.rbPfp5VdOkgPysCU57BpQoLikGyyZ-UYn9cKSaSPxvA";
-        const anonKey = LEGACY_ANON_JWT;
+        // JWT meer voor de gateway. We gebruiken de publieke anon/publishable key
+        // (klassieke JWT) via environment-variabelen — geen hardcoded token.
+        const anonKey =
+          Deno.env.get("SUPABASE_GATEWAY_JWT_ANON_KEY") ??
+          Deno.env.get("SUPABASE_ANON_KEY") ??
+          Deno.env.get("SUPABASE_PUBLISHABLE_KEY");
         const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-        const mailRes = await fetch(`${supabaseUrl}/functions/v1/send-transactional-email`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${anonKey}`,
-            apikey: anonKey,
-          },
-          body: JSON.stringify({
-            templateName: "reservation-confirmation",
-            recipientEmail: body.guest.email,
-            idempotencyKey: `reservation-confirmation-${reservation.id}`,
-            fromName: restaurant.name,
-            replyTo: restaurant.guest_reply_to_email || undefined,
-            restaurantId: restaurant.id,
-            locale: guestLocale,
-            templateData: {
-              guestName: body.guest.first_name || undefined,
-              dateLabel,
-              timeLabel,
-              partySize: body.party_size,
-              manageUrl,
-              cancelUrl,
+        if (!anonKey) {
+          console.error("guest confirmation email skipped: missing anon gateway key");
+        } else {
+          const mailRes = await fetch(`${supabaseUrl}/functions/v1/send-transactional-email`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${anonKey}`,
+              apikey: anonKey,
             },
-          }),
-        });
-        if (!mailRes.ok) {
-          const errText = await mailRes.text().catch(() => "");
-          console.error("guest confirmation email failed (non-fatal)", mailRes.status, errText);
+            body: JSON.stringify({
+              templateName: "reservation-confirmation",
+              recipientEmail: body.guest.email,
+              idempotencyKey: `reservation-confirmation-${reservation.id}`,
+              fromName: restaurant.name,
+              replyTo: restaurant.guest_reply_to_email || undefined,
+              restaurantId: restaurant.id,
+              locale: guestLocale,
+              templateData: {
+                guestName: body.guest.first_name || undefined,
+                dateLabel,
+                timeLabel,
+                partySize: body.party_size,
+                manageUrl,
+                cancelUrl,
+              },
+            }),
+          });
+          if (!mailRes.ok) {
+            const errText = await mailRes.text().catch(() => "");
+            console.error("guest confirmation email failed (non-fatal)", mailRes.status, errText);
+          }
         }
       } catch (mailErr) {
         console.error("guest confirmation email failed (non-fatal)", mailErr);
