@@ -208,3 +208,146 @@ function sortByFit(tables: TableRow[], partySize: number): TableRow[] {
     return (a.label ?? "").localeCompare(b.label ?? "");
   });
 }
+
+// ---------- Combinaties ----------
+
+export type CombinationRow = {
+  id: string;
+  name: string;
+  table_ids: string[];
+  capacity_min: number;
+  capacity_max: number;
+  fill_priority: number;
+  is_active: boolean;
+};
+
+export type PickCombinationResult = {
+  combinationId: string;
+  tableIds: string[];
+  name: string;
+  reason: string;
+  terrace_preference_unmet: boolean;
+};
+
+/**
+ * Kies een tafelcombinatie volgens dezelfde vul-strategie als losse tafels.
+ * - single-zone combinaties krijgen voorrang op cross-zone combinaties
+ * - combinaties met tafels in nu-niet-actieve zones zijn laatste fallback
+ * - terras-voorkeur: combinaties die volledig in een actieve terras-zone vallen winnen
+ */
+export function pickCombinationWithFillStrategy(input: {
+  combinations: CombinationRow[];
+  tablesById: Map<string, TableRow>;
+  occupiedTableIds: Set<string>;
+  zoneActivity: ZoneActivity[];
+  prefersTerrace: boolean;
+  partySize: number;
+}): PickCombinationResult | null {
+  const { combinations, tablesById, occupiedTableIds, zoneActivity, prefersTerrace, partySize } = input;
+  if (combinations.length === 0) return null;
+
+  const zoneById = new Map(zoneActivity.map((za) => [za.zone.id, za]));
+  const activeZonesSorted = [...zoneActivity]
+    .filter((za) => za.active)
+    .map((za) => za.zone)
+    .sort((a, b) => a.fill_priority - b.fill_priority);
+  const zoneRank = new Map<string, number>();
+  activeZonesSorted.forEach((z, i) => zoneRank.set(z.id, i));
+
+  type Scored = {
+    combo: CombinationRow;
+    capacityWaste: number;
+    crossZone: boolean;
+    containsInactiveZone: boolean;
+    terraceOnly: boolean;
+    effectivePriority: number;
+  };
+
+  const scored: Scored[] = [];
+  for (const c of combinations) {
+    if (!c.is_active) continue;
+    if (partySize < c.capacity_min || partySize > c.capacity_max) continue;
+    const tableIds = c.table_ids ?? [];
+    if (tableIds.length === 0) continue;
+    if (tableIds.some((id) => occupiedTableIds.has(id))) continue;
+
+    const tablesInCombo = tableIds.map((id) => tablesById.get(id)).filter(Boolean) as TableRow[];
+    if (tablesInCombo.length !== tableIds.length) continue; // metadata mismatch
+
+    const zoneIds = new Set(tablesInCombo.map((t) => t.zone_id).filter(Boolean) as string[]);
+    const crossZone = zoneIds.size > 1;
+    const containsInactiveZone = tablesInCombo.some((t) => {
+      if (!t.zone_id) return false;
+      const za = zoneById.get(t.zone_id);
+      return za ? !za.active : false;
+    });
+    const terraceOnly = tablesInCombo.length > 0 && tablesInCombo.every((t) => {
+      if (!t.zone_id) return false;
+      const za = zoneById.get(t.zone_id);
+      return !!za?.active && za.zone.is_terrace;
+    });
+
+    // Effectieve prio: combinatie-override als die afwijkt van default (100),
+    // anders minimum van zone-prio's van de bevatte tafels (lagere = hoger).
+    let effectivePriority: number;
+    if (c.fill_priority !== 100) {
+      effectivePriority = c.fill_priority;
+    } else {
+      const ranks = tablesInCombo
+        .map((t) => (t.zone_id ? zoneRank.get(t.zone_id) : undefined))
+        .filter((r): r is number => r !== undefined);
+      effectivePriority = ranks.length > 0 ? Math.min(...ranks) : 9999;
+    }
+
+    scored.push({
+      combo: c,
+      capacityWaste: c.capacity_max - partySize,
+      crossZone,
+      containsInactiveZone,
+      terraceOnly,
+      effectivePriority,
+    });
+  }
+
+  if (scored.length === 0) return null;
+
+  // Terras-voorkeur: probeer eerst terraceOnly + niet inactief
+  if (prefersTerrace) {
+    const terraceCands = scored.filter((s) => s.terraceOnly && !s.containsInactiveZone);
+    if (terraceCands.length > 0) {
+      terraceCands.sort(cmp);
+      const w = terraceCands[0];
+      return {
+        combinationId: w.combo.id,
+        tableIds: w.combo.table_ids,
+        name: w.combo.name,
+        reason: "Terras-combinatie (gast-voorkeur)",
+        terrace_preference_unmet: false,
+      };
+    }
+  }
+
+  scored.sort(cmp);
+  const winner = scored[0];
+  const reason = winner.containsInactiveZone
+    ? `Combinatie ${winner.combo.name} (bevat tafel in inactieve zone — laatste fallback)`
+    : winner.crossZone
+      ? `Cross-zone combinatie ${winner.combo.name}`
+      : `Combinatie ${winner.combo.name}`;
+  return {
+    combinationId: winner.combo.id,
+    tableIds: winner.combo.table_ids,
+    name: winner.combo.name,
+    reason,
+    terrace_preference_unmet: prefersTerrace,
+  };
+
+  function cmp(a: Scored, b: Scored) {
+    if (a.containsInactiveZone !== b.containsInactiveZone) return a.containsInactiveZone ? 1 : -1;
+    if (a.crossZone !== b.crossZone) return a.crossZone ? 1 : -1;
+    if (a.effectivePriority !== b.effectivePriority) return a.effectivePriority - b.effectivePriority;
+    if (a.capacityWaste !== b.capacityWaste) return a.capacityWaste - b.capacityWaste;
+    return a.combo.name.localeCompare(b.combo.name);
+  }
+}
+
