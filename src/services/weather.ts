@@ -159,14 +159,14 @@ export function beaufort(kmh: number | null | undefined): Beaufort {
     return { bft: 0, name: "Onbekend", textClass: "text-muted-foreground", bgClass: "bg-muted", borderClass: "border-muted" };
   }
   const k = Math.round(kmh);
-  if (k < 1)   return { bft: 0,  name: "Windstil",          textClass: "text-muted-foreground", bgClass: "bg-muted",       borderClass: "border-muted" };
-  if (k <= 5)  return { bft: 1,  name: "Zwakke wind",       textClass: "text-muted-foreground", bgClass: "bg-muted",       borderClass: "border-muted" };
-  if (k <= 11) return { bft: 2,  name: "Zwakke wind",       textClass: "text-muted-foreground", bgClass: "bg-muted",       borderClass: "border-muted" };
-  if (k <= 19) return { bft: 3,  name: "Matige wind",       textClass: "text-sky-600 dark:text-sky-400",   bgClass: "bg-sky-100 dark:bg-sky-950 text-sky-700 dark:text-sky-300",     borderClass: "border-sky-500" };
-  if (k <= 28) return { bft: 4,  name: "Matige wind",       textClass: "text-sky-700 dark:text-sky-300",   bgClass: "bg-sky-200 dark:bg-sky-900 text-sky-800 dark:text-sky-200",    borderClass: "border-sky-600" };
-  if (k <= 38) return { bft: 5,  name: "Vrij krachtige wind", textClass: "text-amber-600 dark:text-amber-400", bgClass: "bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300", borderClass: "border-amber-500" };
-  if (k <= 49) return { bft: 6,  name: "Krachtige wind",    textClass: "text-amber-700 dark:text-amber-300", bgClass: "bg-amber-200 dark:bg-amber-900 text-amber-800 dark:text-amber-200", borderClass: "border-amber-600" };
-  if (k <= 61) return { bft: 7,  name: "Harde wind",        textClass: "text-orange-600 dark:text-orange-400", bgClass: "bg-orange-200 dark:bg-orange-900 text-orange-800 dark:text-orange-200", borderClass: "border-orange-600" };
+  if (k < 1)   return { bft: 0,  name: "Windstil",        textClass: "text-muted-foreground", bgClass: "bg-muted",       borderClass: "border-muted" };
+  if (k <= 5)  return { bft: 1,  name: "Zwak",            textClass: "text-muted-foreground", bgClass: "bg-muted",       borderClass: "border-muted" };
+  if (k <= 11) return { bft: 2,  name: "Zwak",            textClass: "text-muted-foreground", bgClass: "bg-muted",       borderClass: "border-muted" };
+  if (k <= 19) return { bft: 3,  name: "Matig",           textClass: "text-sky-600 dark:text-sky-400",   bgClass: "bg-sky-100 dark:bg-sky-950 text-sky-700 dark:text-sky-300",     borderClass: "border-sky-500" };
+  if (k <= 28) return { bft: 4,  name: "Matig",           textClass: "text-sky-700 dark:text-sky-300",   bgClass: "bg-sky-200 dark:bg-sky-900 text-sky-800 dark:text-sky-200",    borderClass: "border-sky-600" };
+  if (k <= 38) return { bft: 5,  name: "Vrij krachtig",   textClass: "text-amber-600 dark:text-amber-400", bgClass: "bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300", borderClass: "border-amber-500" };
+  if (k <= 49) return { bft: 6,  name: "Krachtig",        textClass: "text-amber-700 dark:text-amber-300", bgClass: "bg-amber-200 dark:bg-amber-900 text-amber-800 dark:text-amber-200", borderClass: "border-amber-600" };
+  if (k <= 61) return { bft: 7,  name: "Hard",            textClass: "text-orange-600 dark:text-orange-400", bgClass: "bg-orange-200 dark:bg-orange-900 text-orange-800 dark:text-orange-200", borderClass: "border-orange-600" };
   if (k <= 74) return { bft: 8,  name: "Stormachtig",       textClass: "text-destructive",                  bgClass: "bg-destructive/15 text-destructive",                          borderClass: "border-destructive" };
   if (k <= 88) return { bft: 9,  name: "Storm",             textClass: "text-destructive",                  bgClass: "bg-destructive/20 text-destructive",                          borderClass: "border-destructive" };
   if (k <= 102)return { bft: 10, name: "Zware storm",       textClass: "text-destructive font-semibold",    bgClass: "bg-destructive/25 text-destructive",                          borderClass: "border-destructive" };

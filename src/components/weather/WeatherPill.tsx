@@ -48,7 +48,7 @@ export function WeatherPill({ restaurantId }: Props) {
   const windNow = now?.wind_kmh ?? daily[0]?.wind_kmh_max ?? null;
   const windDirCompact = degToCompass(now?.wind_direction_deg ?? daily[0]?.wind_direction_deg);
   const bftNow = beaufort(windNow);
-  const showWind = bftNow.bft >= 3;
+  const hasWind = windNow !== null && windNow !== undefined;
 
   const todayDaily = daily[0];
   const todayWindMax = todayDaily?.wind_kmh_max ?? null;
@@ -73,10 +73,10 @@ export function WeatherPill({ restaurantId }: Props) {
           <span className="font-medium">
             {temp !== null && temp !== undefined ? `${Math.round(temp)}°` : "—"}
           </span>
-          {showWind && (
+          {hasWind && (
             <span className={`text-xs inline-flex items-center gap-1 ${bftNow.textClass}`}>
               <WindArrow deg={now?.wind_direction_deg ?? todayDaily?.wind_direction_deg} className="h-3.5 w-3.5" />
-              {windDirCompact ?? ""} · {bftNow.name}
+              Wind: {windDirCompact ?? "—"} · {bftNow.name}
             </span>
           )}
           {rain && (
@@ -193,7 +193,7 @@ export function WeatherPill({ restaurantId }: Props) {
                                 </span>
                                 <span className="inline-flex items-center gap-0.5 text-[10px] leading-none text-muted-foreground">
                                   <WindArrow deg={h.wind_direction_deg} className="h-2.5 w-2.5" />
-                                  {dir ?? ""}
+                                  {dir ?? "—"}
                                 </span>
                               </span>
                             </td>
@@ -218,11 +218,12 @@ export function WeatherPill({ restaurantId }: Props) {
 
             <div className="rounded-md border bg-card divide-y">
               {/* Header */}
-              <div className="grid grid-cols-[5rem_2rem_minmax(0,1fr)_3.5rem_7rem] items-center gap-2 px-3 py-2 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+              <div className="grid grid-cols-[5rem_2rem_minmax(0,1fr)_3.5rem_4rem_6.5rem] items-center gap-2 px-3 py-2 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
                 <span>Dag</span>
                 <span className="text-center" aria-label="Weer">Weer</span>
                 <span className="text-right">Min / Max</span>
                 <span className="text-right">Regen</span>
+                <span className="text-center">Richting</span>
                 <span className="text-right">Wind</span>
               </div>
 
@@ -233,7 +234,7 @@ export function WeatherPill({ restaurantId }: Props) {
                 return (
                   <div
                     key={d.id}
-                    className={`grid grid-cols-[5rem_2rem_minmax(0,1fr)_3.5rem_7rem] items-center gap-2 px-3 h-11 text-sm ${
+                    className={`grid grid-cols-[5rem_2rem_minmax(0,1fr)_3.5rem_4rem_6.5rem] items-center gap-2 px-3 h-11 text-sm ${
                       i === 0 ? "bg-muted/40" : ""
                     }`}
                   >
@@ -247,20 +248,24 @@ export function WeatherPill({ restaurantId }: Props) {
                     <span className={`text-right text-xs tabular-nums ${(d.precipitation_mm ?? 0) >= 0.5 ? "text-primary" : "text-muted-foreground"}`}>
                       {(d.precipitation_mm ?? 0) >= 0.5 ? `${d.precipitation_mm!.toFixed(1)}mm` : "—"}
                     </span>
-                    <span className="text-right text-xs inline-flex items-center justify-end gap-1.5">
-                      {d.wind_kmh_max !== null && d.wind_kmh_max !== undefined ? (
+                    <span className="text-xs inline-flex items-center justify-center gap-1 text-muted-foreground">
+                      {d.wind_direction_deg !== null && d.wind_direction_deg !== undefined ? (
                         <>
-                          <span className="inline-flex items-center gap-0.5 text-muted-foreground">
-                            <WindArrow deg={d.wind_direction_deg} className="h-3 w-3" />
-                            {dir ?? ""}
-                          </span>
-                          <span
-                            className={`inline-flex items-center px-1.5 h-5 rounded text-[11px] font-medium ${bft.bgClass}`}
-                            title={`Bft ${bft.bft} — tot ${Math.round(d.wind_kmh_max)} km/u`}
-                          >
-                            {bft.name}
-                          </span>
+                          <WindArrow deg={d.wind_direction_deg} className="h-3 w-3" />
+                          <span className="font-medium tabular-nums">{dir ?? "—"}</span>
                         </>
+                      ) : (
+                        "—"
+                      )}
+                    </span>
+                    <span className="text-right text-xs inline-flex items-center justify-end">
+                      {d.wind_kmh_max !== null && d.wind_kmh_max !== undefined ? (
+                        <span
+                          className={`inline-flex items-center justify-center w-full max-w-[6.5rem] h-5 rounded px-1.5 text-[11px] font-medium whitespace-nowrap ${bft.bgClass}`}
+                          title={`Bft ${bft.bft} — tot ${Math.round(d.wind_kmh_max)} km/u uit ${dir ?? "onbekende richting"}`}
+                        >
+                          {bft.name}
+                        </span>
                       ) : (
                         <span className="text-muted-foreground">—</span>
                       )}
