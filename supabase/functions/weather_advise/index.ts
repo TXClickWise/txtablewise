@@ -229,6 +229,11 @@ function formatDateNl(ymd: string): string {
   const d = new Date(ymd + "T12:00:00Z");
   return new Intl.DateTimeFormat("nl-NL", { weekday: "short", day: "numeric", month: "short" }).format(d);
 }
+function degToCompassNl(deg: number | null | undefined): string | null {
+  if (deg === null || deg === undefined) return null;
+  const dirs = ["N", "NO", "O", "ZO", "Z", "ZW", "W", "NW"];
+  return dirs[Math.round(((deg % 360) / 45)) % 8];
+}
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
