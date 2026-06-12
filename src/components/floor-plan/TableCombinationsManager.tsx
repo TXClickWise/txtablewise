@@ -279,11 +279,28 @@ export function TableCombinationsManager({ restaurantId }: { restaurantId: strin
           </p>
         ) : (
           <div className="space-y-2">
-            {combos.map((c) => (
+            {combos.map((c, idx) => {
+              const zIds = zoneIdsForCombo(c);
+              const crossZone = zIds.length > 1;
+              const zoneLabel = zIds.length === 0
+                ? "Geen zone"
+                : zIds.map((id) => zones.find((z) => z.id === id)?.name ?? "?").join(" + ");
+              return (
               <div key={c.id} className="flex items-start justify-between gap-3 rounded-md border border-border p-3">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
                     <p className="font-medium text-sm">{c.name}</p>
+                    <span
+                      className={
+                        "text-[10px] uppercase tracking-wide rounded px-1.5 py-0.5 border " +
+                        (crossZone
+                          ? "border-amber-500/40 text-amber-700 dark:text-amber-400 bg-amber-500/5"
+                          : "border-border text-muted-foreground")
+                      }
+                      title={crossZone ? "Combinatie loopt over meerdere zones — laatste keuze in vul-strategie" : "Eén zone"}
+                    >
+                      {crossZone ? "Cross-zone" : "Eén zone"}: {zoneLabel}
+                    </span>
                     {!c.is_active && (
                       <span className="text-[10px] uppercase tracking-wide text-muted-foreground border border-border rounded px-1.5 py-0.5">
                         inactief
@@ -295,6 +312,24 @@ export function TableCombinationsManager({ restaurantId }: { restaurantId: strin
                   </p>
                 </div>
                 <div className="flex items-center gap-1">
+                  <div className="flex flex-col -space-y-1 mr-1">
+                    <Button
+                      variant="ghost" size="icon" className="h-5 w-5"
+                      onClick={() => movePriority(c, -1)}
+                      disabled={idx === 0}
+                      aria-label="Hogere prioriteit"
+                    >
+                      <ArrowUp className="h-3 w-3" />
+                    </Button>
+                    <Button
+                      variant="ghost" size="icon" className="h-5 w-5"
+                      onClick={() => movePriority(c, 1)}
+                      disabled={idx === combos.length - 1}
+                      aria-label="Lagere prioriteit"
+                    >
+                      <ArrowDown className="h-3 w-3" />
+                    </Button>
+                  </div>
                   <Switch checked={c.is_active} onCheckedChange={() => toggleActive(c)} />
                   <Button variant="ghost" size="icon" onClick={() => startEdit(c)}>
                     <Pencil className="h-4 w-4" />
@@ -304,7 +339,8 @@ export function TableCombinationsManager({ restaurantId }: { restaurantId: strin
                   </Button>
                 </div>
               </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </CardContent>
