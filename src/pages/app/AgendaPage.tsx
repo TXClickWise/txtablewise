@@ -513,7 +513,7 @@ const AgendaPage = () => {
                   size="sm"
                   variant="outline"
                   className="h-8 shrink-0"
-                  onClick={() => jumpToZone(z.firstTableId)}
+                  onClick={() => jumpToZone(z.key)}
                 >
                   {z.name}
                 </Button>
