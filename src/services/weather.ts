@@ -9,6 +9,7 @@ export type WeatherDaily = {
   precipitation_mm: number | null;
   condition_code: number | null;
   wind_kmh_max: number | null;
+  wind_direction_deg: number | null;
   uv_index_max: number | null;
   sunrise: string | null;
   sunset: string | null;
@@ -23,6 +24,7 @@ export type WeatherHourly = {
   precipitation_prob_pct: number | null;
   condition_code: number | null;
   wind_kmh: number | null;
+  wind_direction_deg: number | null;
 };
 
 export type WeatherAdvisory = {
