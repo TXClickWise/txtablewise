@@ -38,23 +38,51 @@ Deno.serve(async (req) => {
       .maybeSingle();
     if (restErr || !rest) return json({ error: "restaurant not found" }, 404);
 
-    const query = manualQuery
-      ? manualQuery
-      : [rest.address_line1, rest.postal_code, rest.city].filter(Boolean).join(", ");
+    // Open-Meteo geocoding works on place names, not street addresses.
+    // Build a list of progressively broader queries and use the first match.
+    const candidates: string[] = [];
+    if (manualQuery) {
+      candidates.push(manualQuery);
+      // If a postal code is included, also try just the postal code
+      const pcMatch = manualQuery.match(/\b\d{4}\s?[A-Za-z]{2}\b|\b\d{4,5}\b/);
+      if (pcMatch) candidates.push(pcMatch[0].replace(/\s+/g, ""));
+    } else {
+      if (rest.city) candidates.push(rest.city);
+      if (rest.postal_code) candidates.push(rest.postal_code.replace(/\s+/g, ""));
+      if (rest.address_line1 && rest.city) {
+        candidates.push(`${rest.address_line1}, ${rest.city}`);
+      }
+    }
 
-    if (!query) return json({ error: "no address available to geocode" }, 400);
+    const uniqueCandidates = Array.from(new Set(candidates.map((c) => c.trim()).filter(Boolean)));
+    if (uniqueCandidates.length === 0) {
+      return json({ error: "no address available to geocode" }, 400);
+    }
 
-    const geoUrl = new URL("https://geocoding-api.open-meteo.com/v1/search");
-    geoUrl.searchParams.set("name", query);
-    geoUrl.searchParams.set("count", "1");
-    geoUrl.searchParams.set("language", "nl");
-    geoUrl.searchParams.set("format", "json");
-
-    const geoRes = await fetch(geoUrl.toString());
-    if (!geoRes.ok) return json({ error: "geocoding failed", status: geoRes.status }, 502);
-    const geo = await geoRes.json();
-    const hit = geo?.results?.[0];
-    if (!hit) return json({ error: "no_match", query }, 404);
+    let hit: any = null;
+    let usedQuery = "";
+    for (const q of uniqueCandidates) {
+      const geoUrl = new URL("https://geocoding-api.open-meteo.com/v1/search");
+      geoUrl.searchParams.set("name", q);
+      geoUrl.searchParams.set("count", "1");
+      geoUrl.searchParams.set("language", "nl");
+      geoUrl.searchParams.set("format", "json");
+      const geoRes = await fetch(geoUrl.toString());
+      if (!geoRes.ok) continue;
+      const geo = await geoRes.json();
+      if (geo?.results?.[0]) {
+        hit = geo.results[0];
+        usedQuery = q;
+        break;
+      }
+    }
+    if (!hit) {
+      return json({
+        error: "no_match",
+        tried: uniqueCandidates,
+        hint: "Geef alleen stad of postcode op (bv. 'De Koog' of '1796CG').",
+      }, 404);
+    }
 
     const label = manualQuery
       ? `${hit.name}${hit.country_code ? " (" + hit.country_code + ")" : ""}`
