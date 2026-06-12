@@ -3,12 +3,26 @@ import { format } from "date-fns";
 import { nl } from "date-fns/locale";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
-import { CloudOff } from "lucide-react";
+import { CloudOff, Navigation } from "lucide-react";
 import {
   fetchDaily, fetchHourly, currentHour, nextRainAt, interpretCode,
+  degToCompass, windLabel,
 } from "@/services/weather";
 
 type Props = { restaurantId: string };
+
+/** Tiny arrow rotated to wind direction. Meteorological deg = wind comes FROM that direction,
+ *  so the arrow (pointing TO) is rotated by deg + 180. */
+function WindArrow({ deg, className = "" }: { deg: number | null; className?: string }) {
+  if (deg === null || deg === undefined) return null;
+  return (
+    <Navigation
+      className={`h-3 w-3 ${className}`}
+      style={{ transform: `rotate(${(deg + 180) % 360}deg)` }}
+      aria-hidden
+    />
+  );
+}
 
 export function WeatherPill({ restaurantId }: Props) {
   const { data: hourly = [] } = useQuery({
@@ -32,6 +46,9 @@ export function WeatherPill({ restaurantId }: Props) {
   const rain = nextRainAt(hourly, 3);
   const interp = interpretCode(now?.condition_code ?? daily[0]?.condition_code);
   const temp = now?.temp_c ?? daily[0]?.max_temp_c;
+  const windNow = now?.wind_kmh ?? daily[0]?.wind_kmh_max ?? null;
+  const windDir = degToCompass(now?.wind_direction_deg ?? daily[0]?.wind_direction_deg);
+  const showWind = (windNow ?? 0) >= 20;
 
   return (
     <Sheet>
@@ -41,6 +58,12 @@ export function WeatherPill({ restaurantId }: Props) {
           <span className="font-medium">
             {temp !== null && temp !== undefined ? `${Math.round(temp)}°` : "—"}
           </span>
+          {showWind && (
+            <span className="text-xs text-muted-foreground inline-flex items-center gap-1">
+              <WindArrow deg={now?.wind_direction_deg ?? daily[0]?.wind_direction_deg ?? null} />
+              {Math.round(windNow!)} km/u{windDir ? ` ${windDir}` : ""}
+            </span>
+          )}
           {rain && (
             <span className="text-xs text-muted-foreground">
               · regen {format(new Date(rain.hour_ts), "HH:mm")}
@@ -64,8 +87,9 @@ export function WeatherPill({ restaurantId }: Props) {
               <div className="flex gap-2 overflow-x-auto pb-2">
                 {hourly.slice(0, 24).map((h) => {
                   const ip = interpretCode(h.condition_code);
+                  const dir = degToCompass(h.wind_direction_deg);
                   return (
-                    <div key={h.id} className="flex flex-col items-center min-w-[56px] rounded-md border bg-card p-2">
+                    <div key={h.id} className="flex flex-col items-center min-w-[60px] rounded-md border bg-card p-2">
                       <span className="text-xs text-muted-foreground">
                         {format(new Date(h.hour_ts), "HH")}u
                       </span>
@@ -76,6 +100,12 @@ export function WeatherPill({ restaurantId }: Props) {
                       {(h.precipitation_prob_pct ?? 0) > 20 && (
                         <span className="text-[10px] text-primary mt-0.5">
                           {h.precipitation_prob_pct}%
+                        </span>
+                      )}
+                      {(h.wind_kmh ?? 0) >= 10 && (
+                        <span className="text-[10px] text-muted-foreground mt-0.5 inline-flex items-center gap-0.5">
+                          <WindArrow deg={h.wind_direction_deg} />
+                          {Math.round(h.wind_kmh!)}{dir ? ` ${dir}` : ""}
                         </span>
                       )}
                     </div>
@@ -90,6 +120,7 @@ export function WeatherPill({ restaurantId }: Props) {
             <div className="space-y-1">
               {daily.map((d) => {
                 const ip = interpretCode(d.condition_code);
+                const dir = degToCompass(d.wind_direction_deg);
                 return (
                   <div key={d.id} className="flex items-center justify-between gap-3 rounded-md px-2 py-2 hover:bg-muted/40">
                     <span className="text-sm w-20 capitalize">
@@ -99,6 +130,12 @@ export function WeatherPill({ restaurantId }: Props) {
                     <span className="text-sm text-muted-foreground flex-1 text-right">
                       {d.min_temp_c !== null ? Math.round(d.min_temp_c) : "—"}° / {d.max_temp_c !== null ? Math.round(d.max_temp_c) : "—"}°
                     </span>
+                    {(d.wind_kmh_max ?? 0) >= 15 && (
+                      <span className="text-xs text-muted-foreground inline-flex items-center gap-1 w-20 justify-end">
+                        <WindArrow deg={d.wind_direction_deg} />
+                        {Math.round(d.wind_kmh_max!)}{dir ? ` ${dir}` : ""}
+                      </span>
+                    )}
                     {(d.precipitation_mm ?? 0) > 0.5 && (
                       <span className="text-xs text-primary w-12 text-right">
                         {d.precipitation_mm!.toFixed(1)}mm
@@ -108,6 +145,9 @@ export function WeatherPill({ restaurantId }: Props) {
                 );
               })}
             </div>
+            <p className="mt-2 text-[11px] text-muted-foreground">
+              Wind: {windLabel(daily[0]?.wind_kmh_max ?? null).toLowerCase()} vandaag.
+            </p>
           </section>
 
           {daily[0]?.fetched_at && (
