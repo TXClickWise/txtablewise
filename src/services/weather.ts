@@ -124,3 +124,20 @@ export function currentHour(hourly: WeatherHourly[]): WeatherHourly | null {
   }
   return best;
 }
+
+/** Compass direction (NL abbreviations) from meteorological degrees (direction the wind is coming FROM). */
+export function degToCompass(deg: number | null | undefined): string | null {
+  if (deg === null || deg === undefined || Number.isNaN(deg)) return null;
+  const dirs = ["N", "NO", "O", "ZO", "Z", "ZW", "W", "NW"];
+  return dirs[Math.round(((deg % 360) / 45)) % 8];
+}
+
+/** Short Beaufort-ish label for wind speed in km/h. */
+export function windLabel(kmh: number | null | undefined): string {
+  if (kmh === null || kmh === undefined) return "—";
+  if (kmh < 12) return "Zwak";
+  if (kmh < 28) return "Matig";
+  if (kmh < 50) return "Krachtig";
+  if (kmh < 75) return "Hard";
+  return "Storm";
+}
