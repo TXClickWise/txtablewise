@@ -53,7 +53,7 @@ const AppShellInner = ({ children }: { children?: ReactNode }) => {
                 {current.restaurants.name}
               </div>
             )}
-            <div className={cn(showTabBar && current?.restaurants?.name ? "ml-2 xl:ml-2 ml-auto" : "ml-auto")}>
+            <div className="ml-auto xl:ml-2">
               <ThemeToggle />
             </div>
           </header>
