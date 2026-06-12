@@ -196,8 +196,11 @@ export default function ZonesTablesSettings() {
                 Vul het restaurant in zone-volgorde
               </Label>
               <p className="text-xs text-muted-foreground mt-0.5">
-                Online reserveringen, AI-voice en walk-in suggesties volgen de volgorde hieronder.
+                <strong>Aan:</strong> online reserveringen, AI-voice en walk-in suggesties volgen de volgorde hieronder, met drempels en condities per zone.
                 Sleep zones om de volgorde te bepalen. Per zone kan je condities instellen onder "Vul-regels".
+                <br />
+                <strong>Uit:</strong> het systeem kiest gewoon de eerstvolgende geschikte (combinatie van) tafel(s), zonder zone-volgorde of drempels.
+                Combinaties van tafels uit verschillende zones (cross-zone) blijven altijd toegestaan — zet ze handmatig op of uit in de combinaties-sectie hieronder.
               </p>
             </div>
           </div>
