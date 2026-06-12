@@ -79,6 +79,7 @@ async function fetchAndStoreForRestaurant(
       precipitation_mm: daily.precipitation_sum?.[i] ?? null,
       condition_code: daily.weather_code?.[i] ?? null,
       wind_kmh_max: daily.wind_speed_10m_max?.[i] ?? null,
+      wind_direction_deg: daily.wind_direction_10m_dominant?.[i] ?? null,
       uv_index_max: daily.uv_index_max?.[i] ?? null,
       sunrise: daily.sunrise?.[i] ?? null,
       sunset: daily.sunset?.[i] ?? null,
