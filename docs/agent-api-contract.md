@@ -44,6 +44,7 @@ Nieuwe reserveringsaanvraag. Centrale action voor alle nieuwe voice-reserveringe
     "language": "nl"
   },
   "special_requests": "Graag een rustige tafel indien mogelijk.",
+  "prefers_terrace": false,
   "language": "nl",
   "channel": "voice",
   "source_metadata": {
@@ -52,6 +53,12 @@ Nieuwe reserveringsaanvraag. Centrale action voor alle nieuwe voice-reserveringe
   }
 }
 ```
+
+`prefers_terrace` (optioneel, boolean): zet op `true` als de gast expliciet vraagt
+om buiten / op het terras te zitten. De agent vraagt **niet** naar specifieke
+zone-namen. Het systeem probeert dan een terrastafel; als die niet beschikbaar
+is (vol, dicht of weer ongunstig), wordt automatisch een passende tafel binnen
+toegewezen.
 
 ### Required fields
 

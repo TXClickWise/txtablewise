@@ -364,6 +364,7 @@ const ReserveWidget = () => {
         marketing_consent: marketing,
         source_channel: sourceInfo.source_channel,
         source_metadata: sourceInfo.raw_source ? { raw_source: sourceInfo.raw_source } : undefined,
+        prefers_terrace: zone === "terrace",
       },
       preOrders,
     );

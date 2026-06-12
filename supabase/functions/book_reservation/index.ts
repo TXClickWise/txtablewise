@@ -8,6 +8,10 @@ import {
 } from "../_shared/reservation-utils.ts";
 import { evaluatePacing, type PacingReservation } from "../_shared/pacing.ts";
 import { durationMinutesFor } from "../_shared/duration.ts";
+import {
+  resolveActiveZones, pickTableWithFillStrategy,
+  type ZoneRow, type TableRow as FillTableRow, type WeatherRow,
+} from "../_shared/zone-fill.ts";
 
 type BookRequest = {
   restaurant_id?: string;
@@ -29,6 +33,7 @@ type BookRequest = {
   channel?: "online" | "ai_host" | "phone" | "walk_in" | "manager" | "clickwise" | "import";
   hold_only?: boolean;   // if true, create as hold (default false → confirmed)
   source_metadata?: Record<string, unknown>;
+  prefers_terrace?: boolean; // soft hint — used by fill strategy when enabled
 };
 
 Deno.serve(async (req) => {
@@ -132,9 +137,9 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Find fitting individual tables
+    // Find fitting individual tables (zone_id + fill_priority nodig voor strategie)
     const { data: tables } = await supabase
-      .from("tables").select("id, capacity_min, capacity_max")
+      .from("tables").select("id, zone_id, capacity_min, capacity_max, fill_priority, label")
       .eq("restaurant_id", restaurant.id).eq("is_active", true)
       .lte("capacity_min", body.party_size).gte("capacity_max", body.party_size)
       .order("capacity_max", { ascending: true });
@@ -163,22 +168,84 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Prefer single fitting table; fall back to a combination if none fits
-    const candidate = fittingTables.find((t) => !occupied.has(t.id)) ?? null;
+    // === Fill strategy (feature-flag per restaurant) ===
     let chosenTableIds: string[] = [];
     let chosenCombinationId: string | null = null;
-    if (candidate) {
-      chosenTableIds = [candidate.id];
-    } else {
-      const combo = await findAvailableCombination(
-        supabase, restaurant.id, body.party_size, start_iso, end_iso, undefined, excludedTableIds,
-      );
-      if (!combo) {
-        return json({ error: "Geen tafel of combinatie beschikbaar voor deze groepsgrootte op dit moment", error_code: "no_table_available", field: "party_size" }, 409);
+    let terracePreferenceUnmet = false;
+    const fillStrategyOn = restaurant.fill_strategy_enabled === true
+      && (channel === "online" || channel === "ai_host" || channel === "phone");
+
+    let pickedZoneId: string | null = null;
+
+    if (fillStrategyOn) {
+      // Haal zones + alle actieve tafels (voor zone-bezetting) + weer (optioneel)
+      const [{ data: zonesRaw }, { data: allTables }, { data: weatherRow }] = await Promise.all([
+        supabase.from("zones").select("*").eq("restaurant_id", restaurant.id),
+        supabase.from("tables").select("id, zone_id, is_active").eq("restaurant_id", restaurant.id).eq("is_active", true),
+        supabase.from("weather_forecasts").select("min_temp_c, max_temp_c, precipitation_mm")
+          .eq("restaurant_id", restaurant.id).eq("date", body.date).maybeSingle(),
+      ]);
+
+      const zones = (zonesRaw ?? []) as ZoneRow[];
+      const weather = (weatherRow ?? null) as WeatherRow | null;
+      const zoneActivity = resolveActiveZones({
+        zones, partySize: body.party_size, startIso: start_iso, timezone: tz, weather,
+      });
+
+      // Occupancy per zone: tel actieve tafels en bezette tafels per zone
+      const occupancyByZone = new Map<string, { occupied: number; total: number }>();
+      for (const z of zones) occupancyByZone.set(z.id, { occupied: 0, total: 0 });
+      for (const t of (allTables ?? []) as Array<{ id: string; zone_id: string | null }>) {
+        if (!t.zone_id) continue;
+        const entry = occupancyByZone.get(t.zone_id);
+        if (!entry) continue;
+        entry.total += 1;
+        if (occupied.has(t.id)) entry.occupied += 1;
       }
-      chosenTableIds = combo.tableIds;
-      chosenCombinationId = combo.combinationId;
+
+      const freeFitting = fittingTables.filter((t: { id: string }) => !occupied.has(t.id)) as FillTableRow[];
+      const picked = pickTableWithFillStrategy({
+        fittingFreeTables: freeFitting,
+        zoneActivity,
+        occupancyByZone,
+        prefersTerrace: !!body.prefers_terrace,
+        partySize: body.party_size,
+      });
+
+      if (picked) {
+        chosenTableIds = [picked.tableId];
+        pickedZoneId = picked.zoneId;
+        terracePreferenceUnmet = picked.terrace_preference_unmet;
+      } else {
+        // Fall back to combinatie
+        const combo = await findAvailableCombination(
+          supabase, restaurant.id, body.party_size, start_iso, end_iso, undefined, excludedTableIds,
+        );
+        if (!combo) {
+          return json({ error: "Geen tafel of combinatie beschikbaar voor deze groepsgrootte op dit moment", error_code: "no_table_available", field: "party_size" }, 409);
+        }
+        chosenTableIds = combo.tableIds;
+        chosenCombinationId = combo.combinationId;
+        terracePreferenceUnmet = !!body.prefers_terrace;
+      }
+    } else {
+      // Legacy: eerste vrije fitting tafel
+      const candidate = fittingTables.find((t: { id: string }) => !occupied.has(t.id)) ?? null;
+      if (candidate) {
+        chosenTableIds = [candidate.id];
+      } else {
+        const combo = await findAvailableCombination(
+          supabase, restaurant.id, body.party_size, start_iso, end_iso, undefined, excludedTableIds,
+        );
+        if (!combo) {
+          return json({ error: "Geen tafel of combinatie beschikbaar voor deze groepsgrootte op dit moment", error_code: "no_table_available", field: "party_size" }, 409);
+        }
+        chosenTableIds = combo.tableIds;
+        chosenCombinationId = combo.combinationId;
+      }
+      terracePreferenceUnmet = !!body.prefers_terrace;
     }
+    void pickedZoneId; // reserved for future logging
 
 
     // Pacing check (skip for operator-driven walk-ins / manager bookings)
@@ -315,6 +382,8 @@ Deno.serve(async (req) => {
       guest_last_name: body.guest.last_name ?? null,
       guest_email: body.guest.email ?? null,
       guest_phone: body.guest.phone ?? null,
+      prefers_terrace: !!body.prefers_terrace,
+      terrace_preference_unmet: terracePreferenceUnmet,
     }).select("*").single();
 
     if (resErr) return json({ error: resErr.message }, 500);

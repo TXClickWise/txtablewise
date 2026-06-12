@@ -1479,6 +1479,7 @@ export type Database = {
           pos_preorder_status: string | null
           pos_provider: string | null
           pos_receipt_id: string | null
+          prefers_terrace: boolean
           receipt_total: number | null
           reconfirmation_declined_at: string | null
           reconfirmation_requested_at: string | null
@@ -1495,6 +1496,7 @@ export type Database = {
           start_time: string
           status: Database["public"]["Enums"]["reservation_status"]
           table_combination_id: string | null
+          terrace_preference_unmet: boolean
           updated_at: string
         }
         Insert: {
@@ -1540,6 +1542,7 @@ export type Database = {
           pos_preorder_status?: string | null
           pos_provider?: string | null
           pos_receipt_id?: string | null
+          prefers_terrace?: boolean
           receipt_total?: number | null
           reconfirmation_declined_at?: string | null
           reconfirmation_requested_at?: string | null
@@ -1556,6 +1559,7 @@ export type Database = {
           start_time: string
           status?: Database["public"]["Enums"]["reservation_status"]
           table_combination_id?: string | null
+          terrace_preference_unmet?: boolean
           updated_at?: string
         }
         Update: {
@@ -1601,6 +1605,7 @@ export type Database = {
           pos_preorder_status?: string | null
           pos_provider?: string | null
           pos_receipt_id?: string | null
+          prefers_terrace?: boolean
           receipt_total?: number | null
           reconfirmation_declined_at?: string | null
           reconfirmation_requested_at?: string | null
@@ -1617,6 +1622,7 @@ export type Database = {
           start_time?: string
           status?: Database["public"]["Enums"]["reservation_status"]
           table_combination_id?: string | null
+          terrace_preference_unmet?: boolean
           updated_at?: string
         }
         Relationships: [
@@ -1788,6 +1794,7 @@ export type Database = {
           email: string | null
           email_notification_settings: Json
           extra_large_group_threshold: number | null
+          fill_strategy_enabled: boolean
           google_review_url: string | null
           guest_changes_auto_apply: boolean
           guest_changes_auto_reject_party_size: number | null
@@ -1811,9 +1818,11 @@ export type Database = {
           large_group_response_channel_label: string | null
           large_group_response_sla_label: string | null
           large_group_threshold: number
+          latitude: number | null
           legal_name: string | null
           locale: string
           logo_url: string | null
+          longitude: number | null
           manual_approval_from_party_size: number | null
           marked_live_at: string | null
           max_covers_per_slot: number | null
@@ -1892,6 +1901,7 @@ export type Database = {
           email?: string | null
           email_notification_settings?: Json
           extra_large_group_threshold?: number | null
+          fill_strategy_enabled?: boolean
           google_review_url?: string | null
           guest_changes_auto_apply?: boolean
           guest_changes_auto_reject_party_size?: number | null
@@ -1915,9 +1925,11 @@ export type Database = {
           large_group_response_channel_label?: string | null
           large_group_response_sla_label?: string | null
           large_group_threshold?: number
+          latitude?: number | null
           legal_name?: string | null
           locale?: string
           logo_url?: string | null
+          longitude?: number | null
           manual_approval_from_party_size?: number | null
           marked_live_at?: string | null
           max_covers_per_slot?: number | null
@@ -1996,6 +2008,7 @@ export type Database = {
           email?: string | null
           email_notification_settings?: Json
           extra_large_group_threshold?: number | null
+          fill_strategy_enabled?: boolean
           google_review_url?: string | null
           guest_changes_auto_apply?: boolean
           guest_changes_auto_reject_party_size?: number | null
@@ -2019,9 +2032,11 @@ export type Database = {
           large_group_response_channel_label?: string | null
           large_group_response_sla_label?: string | null
           large_group_threshold?: number
+          latitude?: number | null
           legal_name?: string | null
           locale?: string
           logo_url?: string | null
+          longitude?: number | null
           manual_approval_from_party_size?: number | null
           marked_live_at?: string | null
           max_covers_per_slot?: number | null
@@ -2326,6 +2341,7 @@ export type Database = {
           capacity_min: number
           combinable: boolean
           created_at: string
+          fill_priority: number
           height: number
           id: string
           is_active: boolean
@@ -2343,6 +2359,7 @@ export type Database = {
           capacity_min?: number
           combinable?: boolean
           created_at?: string
+          fill_priority?: number
           height?: number
           id?: string
           is_active?: boolean
@@ -2360,6 +2377,7 @@ export type Database = {
           capacity_min?: number
           combinable?: boolean
           created_at?: string
+          fill_priority?: number
           height?: number
           id?: string
           is_active?: boolean
@@ -2521,6 +2539,53 @@ export type Database = {
         }
         Relationships: []
       }
+      weather_forecasts: {
+        Row: {
+          created_at: string
+          date: string
+          fetched_at: string
+          id: string
+          max_temp_c: number | null
+          min_temp_c: number | null
+          precipitation_mm: number | null
+          restaurant_id: string
+          source: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          date: string
+          fetched_at?: string
+          id?: string
+          max_temp_c?: number | null
+          min_temp_c?: number | null
+          precipitation_mm?: number | null
+          restaurant_id: string
+          source?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          date?: string
+          fetched_at?: string
+          id?: string
+          max_temp_c?: number | null
+          min_temp_c?: number | null
+          precipitation_mm?: number | null
+          restaurant_id?: string
+          source?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "weather_forecasts_restaurant_id_fkey"
+            columns: ["restaurant_id"]
+            isOneToOne: false
+            referencedRelation: "restaurants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       webhook_endpoints: {
         Row: {
           created_at: string
@@ -2574,37 +2639,70 @@ export type Database = {
       }
       zones: {
         Row: {
+          active_time_from: string | null
+          active_time_to: string | null
+          active_weekdays: string[]
           bookable_online: boolean
           created_at: string
           description: string | null
+          fill_priority: number
+          fill_threshold_pct: number
           id: string
           is_active: boolean
+          is_terrace: boolean
+          max_party_size: number
+          min_party_size: number
           name: string
           restaurant_id: string
           sort_order: number
           updated_at: string
+          weather_blocks_on_precipitation: boolean
+          weather_dependent: boolean
+          weather_min_temp_c: number | null
         }
         Insert: {
+          active_time_from?: string | null
+          active_time_to?: string | null
+          active_weekdays?: string[]
           bookable_online?: boolean
           created_at?: string
           description?: string | null
+          fill_priority?: number
+          fill_threshold_pct?: number
           id?: string
           is_active?: boolean
+          is_terrace?: boolean
+          max_party_size?: number
+          min_party_size?: number
           name: string
           restaurant_id: string
           sort_order?: number
           updated_at?: string
+          weather_blocks_on_precipitation?: boolean
+          weather_dependent?: boolean
+          weather_min_temp_c?: number | null
         }
         Update: {
+          active_time_from?: string | null
+          active_time_to?: string | null
+          active_weekdays?: string[]
           bookable_online?: boolean
           created_at?: string
           description?: string | null
+          fill_priority?: number
+          fill_threshold_pct?: number
           id?: string
           is_active?: boolean
+          is_terrace?: boolean
+          max_party_size?: number
+          min_party_size?: number
           name?: string
           restaurant_id?: string
           sort_order?: number
           updated_at?: string
+          weather_blocks_on_precipitation?: boolean
+          weather_dependent?: boolean
+          weather_min_temp_c?: number | null
         }
         Relationships: [
           {
