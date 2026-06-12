@@ -215,6 +215,7 @@ const ReserveWidget = () => {
   const [bookingError, setBookingError] = useState<string | null>(null);
 
   const [restaurantError, setRestaurantError] = useState<string | null>(null);
+  const [dbZones, setDbZones] = useState<{ id: string; name: string }[]>([]);
 
   // Load restaurant
   useEffect(() => {
@@ -229,6 +230,14 @@ const ReserveWidget = () => {
         return;
       }
       setRestaurant(data as RestaurantInfo);
+      const { data: zonesData } = await supabase
+        .from("zones")
+        .select("id, name")
+        .eq("restaurant_id", data.id)
+        .eq("is_active", true)
+        .eq("bookable_online", true)
+        .order("sort_order");
+      setDbZones((zonesData ?? []) as { id: string; name: string }[]);
     })();
   }, [slug]);
 
@@ -325,10 +334,15 @@ const ReserveWidget = () => {
     setBookingError(null);
     setSubmitting(true);
 
+    const zoneLabel = zone === "no_pref"
+      ? ""
+      : (dbZones.find((z) => z.id === zone)?.name
+          ?? ZONES.find((z) => z.id === zone)?.label
+          ?? "");
     const combinedRequests = [
       requests.trim(),
       allergies.trim() ? `Allergieën/dieet: ${allergies.trim()}` : "",
-      zone !== "no_pref" ? `Zonevoorkeur: ${ZONES.find((z) => z.id === zone)?.label}` : "",
+      zoneLabel ? `Zonevoorkeur: ${zoneLabel}` : "",
     ].filter(Boolean).join("\n");
 
     const result = await bookReservation(
@@ -689,13 +703,18 @@ const ReserveWidget = () => {
                 <ChevronDown className={cn("h-4 w-4 transition-transform", showExtras && "rotate-180")} />
               </CollapsibleTrigger>
               <CollapsibleContent className="space-y-4 pt-4">
-                {restaurant.allow_zone_preference && (
+                {restaurant.allow_zone_preference && (dbZones.length >= 2 || dbZones.length === 0) && (
                   <div className="space-y-2">
                     <Label className="text-sm flex items-center gap-2"><MapPin className="h-4 w-4" /> {t("zoneQ")}</Label>
                     <div className="flex flex-wrap gap-2">
-                      {ZONES.map((z) => (
-                        <Chip key={z.id} active={zone === z.id} onClick={() => setZone(z.id)}>{z.label}</Chip>
-                      ))}
+                      <Chip active={zone === "no_pref"} onClick={() => setZone("no_pref")}>{t("zones.no_pref")}</Chip>
+                      {dbZones.length >= 2
+                        ? dbZones.map((z) => (
+                            <Chip key={z.id} active={zone === z.id} onClick={() => setZone(z.id)}>{z.name}</Chip>
+                          ))
+                        : ZONES.filter((z) => z.id !== "no_pref").map((z) => (
+                            <Chip key={z.id} active={zone === z.id} onClick={() => setZone(z.id)}>{z.label}</Chip>
+                          ))}
                     </div>
                   </div>
                 )}

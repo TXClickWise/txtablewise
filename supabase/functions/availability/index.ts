@@ -165,13 +165,33 @@ Deno.serve(async (req) => {
       }
     }
 
+    // Fetch zones that are NOT bookable online — used to exclude their tables
+    const { data: offlineZones } = await supabase
+      .from("zones").select("id")
+      .eq("restaurant_id", restaurant.id)
+      .eq("bookable_online", false);
+    const excludedZoneIds = new Set((offlineZones ?? []).map((z: { id: string }) => z.id));
+
     // Fetch tables that fit party size
     const { data: tables } = await supabase
-      .from("tables").select("id, capacity_min, capacity_max")
+      .from("tables").select("id, capacity_min, capacity_max, zone_id")
       .eq("restaurant_id", restaurant.id).eq("is_active", true)
       .lte("capacity_min", body.party_size).gte("capacity_max", body.party_size);
 
-    const fittingTableIds = (tables ?? []).map((t) => t.id);
+    const fittingTableIds = (tables ?? [])
+      .filter((t: { zone_id: string | null }) => !t.zone_id || !excludedZoneIds.has(t.zone_id))
+      .map((t: { id: string }) => t.id);
+
+    // For combination fallback: build excluded-table set (all tables in offline zones)
+    let excludedTableIds: Set<string> | undefined;
+    if (excludedZoneIds.size > 0) {
+      const { data: excTables } = await supabase
+        .from("tables").select("id")
+        .eq("restaurant_id", restaurant.id)
+        .in("zone_id", Array.from(excludedZoneIds));
+      excludedTableIds = new Set((excTables ?? []).map((t: { id: string }) => t.id));
+    }
+
 
     // Fetch active reservations on this date (broad window, then filter)
     const dayStartIso = zonedDateTimeToUtcIso(body.date, "00:00", tz);
@@ -216,7 +236,7 @@ Deno.serve(async (req) => {
       let isCombination = false;
       if (!tableAvailable) {
         const combo = await findAvailableCombination(
-          supabase, restaurant.id, body.party_size, slot.start_iso, slot.end_iso,
+          supabase, restaurant.id, body.party_size, slot.start_iso, slot.end_iso, undefined, excludedTableIds,
         );
         if (combo) { tableAvailable = true; isCombination = true; }
       }

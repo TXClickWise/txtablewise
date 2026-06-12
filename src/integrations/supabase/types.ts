@@ -2574,6 +2574,7 @@ export type Database = {
       }
       zones: {
         Row: {
+          bookable_online: boolean
           created_at: string
           description: string | null
           id: string
@@ -2584,6 +2585,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          bookable_online?: boolean
           created_at?: string
           description?: string | null
           id?: string
@@ -2594,6 +2596,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          bookable_online?: boolean
           created_at?: string
           description?: string | null
           id?: string

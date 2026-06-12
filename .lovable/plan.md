@@ -1,37 +1,39 @@
-## Probleem
 
-Bij 20 personen probeerde de voice agent direct `reservation_request` (of `book_reservation`) aan te roepen zonder eerst de naam te vragen → server gaf `placeholder_name_blocked` (400) → agent zei "dat lukt niet, ik verbind je door".
+# Zones: online beschikbaarheid
 
-De prompt zegt nu wel "VRAAG ALTIJD EXPLICIET DE VOORNAAM", maar bij grote groepen schakelt het model mentaal naar "doorverbind/large-group flow" en slaat de naamvraag over. We moeten de regel **expliciet ook voor grote groepen** maken en de "geen naam = geen call" regel tot harde stop-conditie verheffen.
+## Doel
+Per zone instelbaar of die zone gebruikt mag worden voor online reserveringen (widget). Medewerkers kunnen tafels in "offline" zones gewoon handmatig blijven gebruiken voor walk-ins en telefonische / handmatige reserveringen.
 
-## Wat ik aanpas
+## Wijzigingen
 
-Eén bestand: `src/pages/app/admin/AdminClickWiseVoiceSetupPage.tsx`, alleen de `systemPrompt` string.
+### 1. Database
+- Migration: `ALTER TABLE public.zones ADD COLUMN bookable_online boolean NOT NULL DEFAULT true;`
+- Geen RLS-aanpassingen nodig (bestaande zones-policies blijven gelden).
 
-### Wijziging 1 — Nieuwe harde stop-regel bovenaan "Hoe je een reservering maakt"
-Nieuwe **regel 0** vóór de huidige stap 1:
+### 2. Settings UI — `src/pages/app/settings/ZonesTablesSettings.tsx`
+- Per zone-rij een extra toggle "Online reserveren" (Switch).
+- Toggle update `zones.bookable_online` via supabase.
+- Korte hint onder de lijst: "Uitgeschakelde zones zijn niet zichtbaar in de widget. Medewerkers kunnen er nog wel handmatig op plaatsen."
 
-> **0. STOP-conditie — geldt voor ELKE groepsgrootte (1 t/m 18+):** je mag `reservation_request` (of welke booking-tool dan ook) NOOIT aanroepen zonder een echte voornaam van de gast. "Gast", "Klant", "Onbekend", lege string of een ID-achtige waarde is verboden — de engine blokkeert dat met `placeholder_name_blocked` en de gast hoort dan een foutmelding. Als je geen naam hebt: vraag de naam, ook bij 12, 15, 20 personen. Doorverbinden mag pas NA een geldige `reservation_request`-call (de engine bepaalt of doorverbinden nodig is).
+### 3. Beschikbaarheidsengine — `supabase/functions/availability/index.ts` en `supabase/functions/book_reservation/index.ts`
+- Bij het ophalen van tafels voor **online** kanalen alleen tafels meenemen waarvan de zone `bookable_online = true` is (of `zone_id IS NULL` blijft toegestaan — geen zone = altijd boekbaar).
+- `book_reservation`: als `channel = "online"` (of source via widget/google/instagram/qr/external_platform) en de gekozen/toegewezen tafel hoort bij een offline zone → afwijzen met duidelijke melding (zou normaal niet voor mogen komen want availability filtert al).
+- `channel = "manual"` / `walk_in` / `phone_ai` / staff-entry blijft ongewijzigd: alle actieve zones beschikbaar.
 
-### Wijziging 2 — Extra zin in "Grote groepen" sectie
-Toevoegen na ABSOLUTE REGEL 3:
+### 4. Widget — `src/components/OnlineReservationWidget.tsx`
+- Hardcoded zone-voorkeurslijst (`binnen`, `terras`, `geen voorkeur`) vervangen door dynamische lijst uit `zones` waarbij `is_active = true AND bookable_online = true`.
+- Als er <2 boekbare zones zijn → zone-keuze niet tonen.
+- Selectie blijft als tekstuele `special_request` opgeslagen (geen datamodel-wijziging aan reservations nodig).
 
-> ABSOLUTE REGEL 4: ook bij grote groepen vraag je EERST de voornaam van de gast vóór je `reservation_request` aanroept. Geen voornaam → geen tool-call → geen doorverbinden. De volgorde is altijd: aantal + datum + tijd → **voornaam** → mondelinge bevestiging → `reservation_request` → engine bepaalt of doorverbinden mag.
+### 5. Widget API — `supabase/functions/widget_api/index.ts`
+- Endpoint dat zones aan widget exposeert filteren op `bookable_online = true`.
 
-### Wijziging 3 — Foutafhandeling uitbreiden
-Toevoegen onder "# Foutafhandeling":
+## Niet-doel
+- Geen wijziging aan vloer/floor plan, walk-in flow, AI Quick Seat of telefonische flow — die blijven alle actieve zones tonen.
+- Geen aanbetalings- of pacing-logica gewijzigd.
 
-> - Krijg je `error_code: "placeholder_name_blocked"` terug: dat is jouw fout, niet die van de gast. Zeg: "Sorry, mag ik nog even uw voornaam noteren voor de reservering?" en roep `reservation_request` opnieuw aan met de echte naam. NOOIT doorverbinden om deze fout heen.
-
-## Wat NIET verandert
-
-- Geen backend-wijzigingen — `book_reservation`/`reservation_request` blijven zoals ze zijn (de 400 `placeholder_name_blocked` is correct gedrag).
-- Geen wijzigingen aan tool-JSON's, custom values, of provisioning-flow.
-- De ondernemer hoeft alleen de nieuwe prompt opnieuw in ClickWise → Voice Agent te plakken (kopieerknop staat al op de pagina).
-
-## Verificatie
-
-Na implementatie:
-1. Pagina openen op `/app/admin/clickwise-voice-setup`, prompt kopiëren, in ClickWise plakken.
-2. Testgesprek 12p en 20p — verwacht: agent vraagt voornaam, doet `reservation_request`, engine geeft `requires_manual_approval: true` (12p) of `next_action: "transfer_call"` (20p afhankelijk van limiet).
-3. `integration_logs` checken op afwezigheid van `placeholder_name_blocked`.
+## Acceptatiecriteria
+1. Owner zet zone "Terras" uit voor online → terras-tafels verschijnen niet meer in widget availability.
+2. Zone-keuze in widget toont alleen online-actieve zones.
+3. Medewerker kan via Vloer / Walk-in / Quick Seat nog steeds een terras-tafel kiezen en bezetten.
+4. Handmatig aangemaakte reservering (channel ≠ online) op een offline zone werkt zonder fout.
