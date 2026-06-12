@@ -11,7 +11,7 @@ import { nl } from "date-fns/locale";
 import { useSearchParams } from "react-router-dom";
 import {
   ChevronLeft, ChevronRight, Calendar as CalendarIcon,
-  ZoomIn, ZoomOut, MoveVertical, Maximize2, Minimize2,
+  ZoomIn, ZoomOut, Maximize2, Minimize2,
   CalendarDays, List, LayoutGrid,
 } from "lucide-react";
 import { useRestaurant } from "@/hooks/useRestaurant";
