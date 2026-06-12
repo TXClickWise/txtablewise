@@ -7,11 +7,12 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2, GripVertical } from "lucide-react";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { cn } from "@/lib/utils";
 import { FloorPlanEditor } from "@/components/floor-plan/FloorPlanEditor";
 import { TableCombinationsManager } from "@/components/floor-plan/TableCombinationsManager";
 
@@ -35,9 +36,39 @@ export default function ZonesTablesSettings() {
   const [combos, setCombos] = useState<{ id: string; name: string; table_ids: string[]; is_active: boolean }[]>([]);
   const [loading, setLoading] = useState(true);
   const [newZone, setNewZone] = useState("");
+  const [dragIndex, setDragIndex] = useState<number | null>(null);
+  const [dropIndex, setDropIndex] = useState<number | null>(null);
   const [newTable, setNewTable] = useState<TableRow>({
     zone_id: null, label: "", capacity_min: 2, capacity_max: 4, shape: "round", combinable: true, is_active: true,
   });
+
+  const persistZoneOrder = async (ordered: Zone[]) => {
+    const updates = ordered
+      .map((z, i) => ({ id: z.id, sort_order: i }))
+      .filter((u, i) => ordered[i].sort_order !== i);
+    if (updates.length === 0) return;
+    // Optimistic UI is al toegepast; persist één voor één.
+    const results = await Promise.all(
+      updates.map((u) =>
+        supabase.from("zones").update({ sort_order: u.sort_order }).eq("id", u.id),
+      ),
+    );
+    const firstErr = results.find((r) => r.error)?.error;
+    if (firstErr) {
+      toast.error(firstErr.message);
+      load();
+    }
+  };
+
+  const reorderZones = (from: number, to: number) => {
+    if (from === to || from < 0 || to < 0 || from >= zones.length || to >= zones.length) return;
+    const next = [...zones];
+    const [moved] = next.splice(from, 1);
+    next.splice(to, 0, moved);
+    const renumbered = next.map((z, i) => ({ ...z, sort_order: i }));
+    setZones(renumbered);
+    persistZoneOrder(renumbered);
+  };
 
   const load = async () => {
     if (!rid) return;
@@ -120,25 +151,72 @@ export default function ZonesTablesSettings() {
         <CardHeader><CardTitle className="font-display text-lg">Zones</CardTitle></CardHeader>
         <CardContent className="space-y-3">
           {zones.length === 0 && <p className="text-sm text-muted-foreground">Nog geen zones.</p>}
-          {zones.map((z) => (
-            <div key={z.id} className="flex gap-2 items-center">
-              <Input
-                defaultValue={z.name}
-                onBlur={(e) => e.target.value !== z.name && renameZone(z.id, e.target.value)}
-              />
-              <div className="flex items-center gap-2 shrink-0 px-2">
-                <Switch
-                  id={`online-${z.id}`}
-                  checked={z.bookable_online}
-                  onCheckedChange={(v) => toggleBookableOnline(z.id, v)}
+          {zones.map((z, idx) => {
+            const isDragging = dragIndex === idx;
+            const showDropAbove = dropIndex === idx && dragIndex !== null && dragIndex > idx;
+            const showDropBelow = dropIndex === idx && dragIndex !== null && dragIndex < idx;
+            return (
+              <div
+                key={z.id}
+                draggable
+                onDragStart={(e) => {
+                  setDragIndex(idx);
+                  e.dataTransfer.effectAllowed = "move";
+                }}
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  e.dataTransfer.dropEffect = "move";
+                  if (dropIndex !== idx) setDropIndex(idx);
+                }}
+                onDragLeave={() => {
+                  if (dropIndex === idx) setDropIndex(null);
+                }}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  if (dragIndex !== null && dragIndex !== idx) reorderZones(dragIndex, idx);
+                  setDragIndex(null);
+                  setDropIndex(null);
+                }}
+                onDragEnd={() => {
+                  setDragIndex(null);
+                  setDropIndex(null);
+                }}
+                className={cn(
+                  "flex gap-2 items-center rounded-md transition-colors",
+                  isDragging && "opacity-50",
+                  showDropAbove && "border-t-2 border-primary",
+                  showDropBelow && "border-b-2 border-primary",
+                )}
+              >
+                <button
+                  type="button"
+                  aria-label={`Sleep zone ${z.name} om te herordenen`}
+                  className="shrink-0 cursor-grab active:cursor-grabbing touch-none p-2 text-muted-foreground hover:text-foreground"
+                  onPointerDown={(e) => {
+                    // Stel dragIndex meteen in zodat touch ook werkt waar de browser het ondersteunt.
+                    setDragIndex(idx);
+                  }}
+                >
+                  <GripVertical className="h-4 w-4" />
+                </button>
+                <Input
+                  defaultValue={z.name}
+                  onBlur={(e) => e.target.value !== z.name && renameZone(z.id, e.target.value)}
                 />
-                <Label htmlFor={`online-${z.id}`} className="text-xs text-muted-foreground whitespace-nowrap cursor-pointer">
-                  Online reserveren
-                </Label>
+                <div className="flex items-center gap-2 shrink-0 px-2">
+                  <Switch
+                    id={`online-${z.id}`}
+                    checked={z.bookable_online}
+                    onCheckedChange={(v) => toggleBookableOnline(z.id, v)}
+                  />
+                  <Label htmlFor={`online-${z.id}`} className="text-xs text-muted-foreground whitespace-nowrap cursor-pointer">
+                    Online reserveren
+                  </Label>
+                </div>
+                <Button variant="ghost" size="icon" onClick={() => delZone(z.id)}><Trash2 className="h-4 w-4" /></Button>
               </div>
-              <Button variant="ghost" size="icon" onClick={() => delZone(z.id)}><Trash2 className="h-4 w-4" /></Button>
-            </div>
-          ))}
+            );
+          })}
           <p className="text-[11px] text-muted-foreground pt-1">
             Zones zonder "Online reserveren" zijn verborgen in de gast-widget. Medewerkers kunnen er nog steeds handmatig walk-ins en reserveringen op plaatsen.
           </p>

@@ -153,29 +153,66 @@ const AgendaPage = () => {
     enabled: !!rid,
     queryFn: async () => {
       const { data } = await supabase.from("tables")
-        .select("id, label, capacity_min, capacity_max, zone_id, pos_x, pos_y, width, height, shape, zones(name)")
+        .select("id, label, capacity_min, capacity_max, zone_id, pos_x, pos_y, width, height, shape, zones(name, sort_order)")
         .eq("restaurant_id", rid!).eq("is_active", true).order("label");
       return data ?? [];
     },
   });
   const rowRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const zoneHeaderRefs = useRef<Record<string, HTMLDivElement | null>>({});
+
+  // Sorteer tafels op (zone.sort_order, label). Tafels zonder zone of zonder sort_order → onderaan.
+  const sortedTables = useMemo(() => {
+    const arr = [...(tables as any[])];
+    arr.sort((a, b) => {
+      const aOrder = a.zone_id ? (a.zones?.sort_order ?? 9999) : 1e6;
+      const bOrder = b.zone_id ? (b.zones?.sort_order ?? 9999) : 1e6;
+      if (aOrder !== bOrder) return aOrder - bOrder;
+      const aKey = a.zone_id ?? "_none";
+      const bKey = b.zone_id ?? "_none";
+      if (aKey !== bKey) return aKey < bKey ? -1 : 1;
+      return String(a.label).localeCompare(String(b.label), undefined, { numeric: true });
+    });
+    return arr;
+  }, [tables]);
 
   const zoneGroups = useMemo(() => {
-    const map = new Map<string, { name: string; firstTableId: string }>();
-    for (const t of tables as any[]) {
+    const map = new Map<string, { name: string; sortOrder: number; tableIds: string[] }>();
+    for (const t of sortedTables as any[]) {
       const key = t.zone_id ?? "_none";
-      if (!map.has(key)) map.set(key, { name: t.zones?.name ?? "Overig", firstTableId: t.id });
+      const existing = map.get(key);
+      if (existing) {
+        existing.tableIds.push(t.id);
+      } else {
+        map.set(key, {
+          name: t.zones?.name ?? "Overig",
+          sortOrder: t.zone_id ? (t.zones?.sort_order ?? 9999) : 1e6,
+          tableIds: [t.id],
+        });
+      }
     }
-    return Array.from(map.entries()).map(([key, v]) => ({ key, ...v }));
-  }, [tables]);
+    return Array.from(map.entries()).map(([key, v]) => ({
+      key,
+      name: v.name,
+      sortOrder: v.sortOrder,
+      tableIds: v.tableIds,
+      firstTableId: v.tableIds[0],
+    }));
+  }, [sortedTables]);
 
   useEffect(() => {
     if (!floorZoneId && zoneGroups.length > 0) setFloorZoneId(zoneGroups[0].key);
   }, [zoneGroups, floorZoneId]);
 
-  const jumpToZone = (tableId: string) => {
-    const el = rowRefs.current[tableId];
-    if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+  const jumpToZone = (zoneKey: string) => {
+    const el = zoneHeaderRefs.current[zoneKey];
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "start" });
+      return;
+    }
+    const grp = zoneGroups.find((g) => g.key === zoneKey);
+    const fallback = grp ? rowRefs.current[grp.firstTableId] : null;
+    if (fallback) fallback.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
   const { data: reservations = [] } = useQuery({
@@ -476,7 +513,7 @@ const AgendaPage = () => {
                   size="sm"
                   variant="outline"
                   className="h-8 shrink-0"
-                  onClick={() => jumpToZone(z.firstTableId)}
+                  onClick={() => jumpToZone(z.key)}
                 >
                   {z.name}
                 </Button>
@@ -602,81 +639,107 @@ const AgendaPage = () => {
           onWheel={resetInactivity}
         >
           <div className="relative" style={{ minWidth: totalWidth + TAFEL_COL_W }}>
-            {(tables as any[]).map((t) => {
+            {sortedTables.map((t, idx) => {
               const items = byTable[t.id] ?? [];
               const cap = t.capacity_min === t.capacity_max
                 ? `${t.capacity_max}p`
                 : `${t.capacity_min}–${t.capacity_max}p`;
+              const zoneKey = t.zone_id ?? "_none";
+              const prev = idx > 0 ? sortedTables[idx - 1] : null;
+              const prevZoneKey = prev ? (prev.zone_id ?? "_none") : null;
+              const isFirstOfZone = zoneKey !== prevZoneKey;
+              const zoneGroup = zoneGroups.find((z) => z.key === zoneKey);
+              const zoneName = zoneGroup?.name ?? "Overig";
+              const zoneCount = zoneGroup?.tableIds.length ?? 0;
               return (
-                <div
-                  key={t.id}
-                  ref={(el) => { rowRefs.current[t.id] = el; }}
-                  className="flex border-b border-border hover:bg-muted/10 scroll-mt-2"
-                >
-                  <div
-                    className="sticky left-0 z-[5] bg-card shrink-0 p-3 border-r border-border flex flex-col justify-center"
-                    style={{ width: TAFEL_COL_W }}
-                  >
-                    <div className="flex items-baseline justify-between gap-1">
-                      <div className="font-medium text-sm">{t.label}</div>
-                      <div className="text-[11px] text-muted-foreground tabular-nums">{cap}</div>
-                    </div>
-                    {t.zones?.name && <div className="text-xs text-muted-foreground">{t.zones.name}</div>}
-                  </div>
-                  <div className="relative" style={{ width: totalWidth, height: rowHeight }}>
-                    {Array.from({ length: quarterCount }).map((_, i) => (
-                      <button
-                        key={`q-${t.id}-${i}`}
-                        type="button"
-                        onClick={() => handleQuarterClick(t, i)}
-                        className={cn(
-                          "absolute top-0 h-full border-l transition-colors",
-                          i % 4 === 0
-                            ? "border-border/60"
-                            : i % 2 === 0
-                            ? "border-border/30"
-                            : "border-border/15",
-                          "hover:bg-primary/5 active:bg-primary/10 focus-visible:bg-primary/10 focus-visible:outline-none",
-                        )}
-                        style={{ left: i * QUARTER_MIN * pxPerMin, width: QUARTER_MIN * pxPerMin }}
-                        aria-label={`Reservering toevoegen op ${t.label} om ${minutesToTime(i * QUARTER_MIN)}`}
-                      />
-                    ))}
-                    {items.map((r) => {
-                      const startMin = minutesFromStart(r.start_time);
-                      const endMin = minutesFromStart(r.end_time);
-                      const left = Math.max(0, startMin) * pxPerMin;
-                      const width = Math.max(20, (endMin - startMin) * pxPerMin - 2);
-                      const guestName = `${r.guests?.first_name ?? "Gast"} ${r.guests?.last_name ?? ""}`.trim();
-                      return (
-                        <div
-                          key={r.id}
-                          className="absolute group z-[2] hover:z-[3]"
-                          style={{ left, top: 6, height: rowHeight - 12, width }}
-                        >
-                          <button
-                            type="button"
-                            onClick={(e) => { e.stopPropagation(); setSelectedId(r.id); }}
-                            className={cn(
-                              "w-full h-full rounded-md px-2 text-left text-xs overflow-hidden transition-all duration-150 hover:shadow-elevated",
-                              STATUS_BG[r.status] ?? "bg-muted border-l-[3px] border-border",
-                            )}
-                          >
-                            <div className="font-medium truncate pr-5">
-                              {format(new Date(r.start_time), "HH:mm")} · {guestName}
-                            </div>
-                            <div className="text-[10px] opacity-80">{r.party_size}p</div>
-                          </button>
-                          <ReservationQuickActionsPopover
-                            reservationId={r.id}
-                            status={r.status}
-                            title={`${format(new Date(r.start_time), "HH:mm")} · ${guestName}`}
-                            subtitle={`${r.party_size} pers · Tafel ${t.label}`}
-                            onOpenDetails={() => setSelectedId(r.id)}
-                          />
+                <div key={t.id}>
+                  {isFirstOfZone && (
+                    <div
+                      ref={(el) => { zoneHeaderRefs.current[zoneKey] = el; }}
+                      className="flex border-b border-border bg-muted/40 scroll-mt-2"
+                    >
+                      <div
+                        className="sticky left-0 z-[6] bg-muted/60 backdrop-blur-sm shrink-0 px-3 py-1.5 border-r border-border"
+                        style={{ width: TAFEL_COL_W }}
+                      >
+                        <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                          {zoneName}
+                          <span className="ml-1 font-normal normal-case tracking-normal opacity-70">
+                            ({zoneCount})
+                          </span>
                         </div>
-                      );
-                    })}
+                      </div>
+                      <div style={{ width: totalWidth, height: 28 }} />
+                    </div>
+                  )}
+                  <div
+                    ref={(el) => { rowRefs.current[t.id] = el; }}
+                    className="flex border-b border-border hover:bg-muted/10 scroll-mt-2"
+                  >
+                    <div
+                      className="sticky left-0 z-[5] bg-card shrink-0 p-3 border-r border-border flex flex-col justify-center"
+                      style={{ width: TAFEL_COL_W }}
+                    >
+                      <div className="flex items-baseline justify-between gap-1">
+                        <div className="font-medium text-sm">{t.label}</div>
+                        <div className="text-[11px] text-muted-foreground tabular-nums">{cap}</div>
+                      </div>
+                    </div>
+                    <div className="relative" style={{ width: totalWidth, height: rowHeight }}>
+                      {Array.from({ length: quarterCount }).map((_, i) => (
+                        <button
+                          key={`q-${t.id}-${i}`}
+                          type="button"
+                          onClick={() => handleQuarterClick(t, i)}
+                          className={cn(
+                            "absolute top-0 h-full border-l transition-colors",
+                            i % 4 === 0
+                              ? "border-border/60"
+                              : i % 2 === 0
+                              ? "border-border/30"
+                              : "border-border/15",
+                            "hover:bg-primary/5 active:bg-primary/10 focus-visible:bg-primary/10 focus-visible:outline-none",
+                          )}
+                          style={{ left: i * QUARTER_MIN * pxPerMin, width: QUARTER_MIN * pxPerMin }}
+                          aria-label={`Reservering toevoegen op ${t.label} om ${minutesToTime(i * QUARTER_MIN)}`}
+                        />
+                      ))}
+                      {items.map((r) => {
+                        const startMin = minutesFromStart(r.start_time);
+                        const endMin = minutesFromStart(r.end_time);
+                        const left = Math.max(0, startMin) * pxPerMin;
+                        const width = Math.max(20, (endMin - startMin) * pxPerMin - 2);
+                        const guestName = `${r.guests?.first_name ?? "Gast"} ${r.guests?.last_name ?? ""}`.trim();
+                        return (
+                          <div
+                            key={r.id}
+                            className="absolute group z-[2] hover:z-[3]"
+                            style={{ left, top: 6, height: rowHeight - 12, width }}
+                          >
+                            <button
+                              type="button"
+                              onClick={(e) => { e.stopPropagation(); setSelectedId(r.id); }}
+                              className={cn(
+                                "w-full h-full rounded-md px-2 text-left text-xs overflow-hidden transition-all duration-150 hover:shadow-elevated",
+                                STATUS_BG[r.status] ?? "bg-muted border-l-[3px] border-border",
+                              )}
+                            >
+                              <div className="font-medium truncate pr-5">
+                                {format(new Date(r.start_time), "HH:mm")} · {guestName}
+                              </div>
+                              <div className="text-[10px] opacity-80">{r.party_size}p</div>
+                            </button>
+                            <ReservationQuickActionsPopover
+                              reservationId={r.id}
+                              status={r.status}
+                              title={`${format(new Date(r.start_time), "HH:mm")} · ${guestName}`}
+                              subtitle={`${r.party_size} pers · Tafel ${t.label}`}
+                              onOpenDetails={() => setSelectedId(r.id)}
+                            />
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
                 </div>
               );
