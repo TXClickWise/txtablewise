@@ -92,7 +92,7 @@ const AgendaPage = () => {
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [pxPerMin, setPxPerMin] = useState(PX_DEFAULT);
-  const [rowHeight, setRowHeight] = useState(ROW_DEFAULT);
+  const rowHeight = Math.max(ROW_MIN, Math.min(ROW_MAX, Math.round(ROW_DEFAULT * (pxPerMin / PX_DEFAULT))));
   const [now, setNow] = useState(new Date());
   const [createOpen, setCreateOpen] = useState(false);
   const [createPrefill, setCreatePrefill] = useState<ReservationFormPrefill | undefined>(undefined);
