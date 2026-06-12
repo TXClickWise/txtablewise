@@ -254,14 +254,14 @@ async function handleRequestChange(sb: any, reservation: any, restaurant: any, b
   // Apply changes if approved
   let newStartIso: string | null = null;
   let newEndIso: string | null = null;
-  let newCombo: { combinationId: string; tableIds: string[] } | null = null;
+  let newCombo: { combinationId: string | null; tableIds: string[] } | null = null;
 
   if (outcome === "applied") {
     if (dateTimeChanged || partyChanged) {
       const durationMinutes = restaurant.default_reservation_minutes ?? 105;
       newStartIso = zonedDateTimeToUtcIso(desiredDate, desiredTime, restaurant.timezone);
       newEndIso = addMinutesIso(newStartIso, durationMinutes);
-      newCombo = await findAvailableCombination(sb, reservation.restaurant_id, desiredParty, newStartIso, newEndIso, reservation.id);
+      newCombo = await findAvailableSeating(sb, reservation.restaurant_id, desiredParty, newStartIso, newEndIso, reservation.id);
       if (!newCombo) {
         outcome = "rejected";
         reasonCode = "no_table_available";
