@@ -25,6 +25,16 @@ function WindArrow({ deg, className = "h-3.5 w-3.5" }: { deg: number | null | un
   );
 }
 
+function strongestHourlyDirectionForDay(hourly: WeatherHourly[], date: string): number | null {
+  let strongest: WeatherHourly | null = null;
+  for (const h of hourly) {
+    if (h.hour_ts.slice(0, 10) !== date) continue;
+    if (h.wind_direction_deg === null || h.wind_direction_deg === undefined) continue;
+    if ((h.wind_kmh ?? -1) > (strongest?.wind_kmh ?? -1)) strongest = h;
+  }
+  return strongest?.wind_direction_deg ?? null;
+}
+
 export function WeatherPill({ restaurantId }: Props) {
   const { data: hourly = [] } = useQuery({
     queryKey: ["weather-hourly", restaurantId],
@@ -46,14 +56,15 @@ export function WeatherPill({ restaurantId }: Props) {
   const interp = interpretCode(now?.condition_code ?? daily[0]?.condition_code);
   const temp = now?.temp_c ?? daily[0]?.max_temp_c;
   const windNow = now?.wind_kmh ?? daily[0]?.wind_kmh_max ?? null;
-  const windDirCompact = degToCompass(now?.wind_direction_deg ?? daily[0]?.wind_direction_deg);
+  const todayDirectionDeg = now?.wind_direction_deg ?? daily[0]?.wind_direction_deg ?? strongestHourlyDirectionForDay(hourly, daily[0]?.date ?? new Date().toISOString().slice(0, 10));
+  const windDirCompact = degToCompass(todayDirectionDeg);
   const bftNow = beaufort(windNow);
   const hasWind = windNow !== null && windNow !== undefined;
 
   const todayDaily = daily[0];
   const todayWindMax = todayDaily?.wind_kmh_max ?? null;
   const todayBft = beaufort(todayWindMax);
-  const todayWindLong = compassLong(todayDaily?.wind_direction_deg);
+  const todayWindLong = compassLong(todayDirectionDeg);
 
   // Peak wind hour today
   const todayStr = new Date().toISOString().slice(0, 10);
@@ -75,7 +86,7 @@ export function WeatherPill({ restaurantId }: Props) {
           </span>
           {hasWind && (
             <span className={`text-xs inline-flex items-center gap-1 ${bftNow.textClass}`}>
-              <WindArrow deg={now?.wind_direction_deg ?? todayDaily?.wind_direction_deg} className="h-3.5 w-3.5" />
+              <WindArrow deg={todayDirectionDeg} className="h-3.5 w-3.5" />
               Wind: {windDirCompact ?? "—"} · {bftNow.name}
             </span>
           )}
@@ -87,7 +98,7 @@ export function WeatherPill({ restaurantId }: Props) {
         </Button>
       </SheetTrigger>
 
-      <SheetContent side="right" className="w-full sm:max-w-md overflow-y-auto">
+      <SheetContent side="right" className="w-full sm:max-w-2xl overflow-y-auto">
         <SheetHeader>
           <SheetTitle>Weer</SheetTitle>
         </SheetHeader>
