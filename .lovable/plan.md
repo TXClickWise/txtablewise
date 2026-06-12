@@ -1,61 +1,76 @@
+
 ## Probleem
-De Weer-sheet toont nu losse cijfers zonder labels: in de 24-uur strip zijn `62%` en `26` raadsels (regenkans vs. wind), en in de 7-daagse lijst zweven kolommen vrij rond zonder uitlijning of headers. De wind-informatie is bovendien niet als zodanig herkenbaar — alleen een cryptische "Wind: krachtig vandaag."-zin onderaan.
+- "26" en "32 km/u" zegt operators niets — ze willen weten of het rustig of stormachtig is.
+- Windrichting (NO/ZW) is nu een kleine afkorting náást een pijl en wordt over het hoofd gezien; bij sommige rijen ontbreekt 'ie zelfs visueel.
+- Er is geen visuele urgentie: een briesje en een storm zien er bijna hetzelfde uit.
 
-## Wat ik herontwerp (alleen `WeatherPill.tsx` Sheet — niet de pill-knop zelf)
+## Oplossing: Beaufort-schaal + officiële KNMI-windkracht-kleuren
 
-### 1. 24-uur sectie → vertical strip met expliciete iconen per metriek
-Vervang de zes kolomkaartjes door één compacte rij met **5 vaste rijen** boven elkaar, links de iconen, daarnaast horizontaal scrollende cellen per uur die *op één raster* uitlijnen:
+### 1. Nieuwe helper `beaufort(kmh)` in `src/services/weather.ts`
+Officiële Beaufort-schaal (km/u → Bft → NL benaming) volgens KNMI:
 
+| Bft | km/u      | Naam NL          | Kleur (hint)         |
+|-----|-----------|------------------|----------------------|
+| 0   | <1        | Windstil         | muted                |
+| 1   | 1–5       | Zwakke wind      | muted                |
+| 2   | 6–11      | Zwakke wind      | muted                |
+| 3   | 12–19     | Matige wind      | sky-500              |
+| 4   | 20–28     | Matige wind      | sky-600              |
+| 5   | 29–38     | Vrij krachtige wind | amber-500         |
+| 6   | 39–49     | Krachtige wind   | amber-600            |
+| 7   | 50–61     | Harde wind       | orange-600           |
+| 8   | 62–74     | Stormachtig      | red-600              |
+| 9   | 75–88     | Storm            | red-700              |
+| 10  | 89–102    | Zware storm      | red-800              |
+| 11  | 103–117   | Zeer zware storm | purple-700           |
+| 12  | ≥118      | Orkaan           | purple-900           |
+
+Helper geeft `{ bft, name, shortName, colorClass, bgClass }` terug — kleuren via design-tokens (mapping naar bestaande semantische tokens: `text-muted-foreground`, `text-primary`, `text-amber-600`, `text-orange-600`, `text-destructive`, `text-purple-700` — gebruikt Tailwind palette die in dit project beschikbaar is; geen hardcoded hex).
+
+### 2. Windrichting prominenter
+- Vervang lucide `Navigation`-pijl door grotere, duidelijke pijl (`Navigation` h-4 w-4) met `text-foreground` i.p.v. muted, zodat 'ie opvalt.
+- Toon de afkorting (N/NO/O/ZO/Z/ZW/W/NW) altijd náást de pijl in zelfde regel, niet als losse mini-tekst eronder.
+
+### 3. Aanpassingen `WeatherPill.tsx`
+
+**Pill-knop (header):**
 ```
-            21u   22u   23u   00u   01u   02u   ...
-☁/☀         🌥    ☀    🌤    🌤    🌤    🌤
-🌡 temp     16°   17°   16°   16°   16°   16°
-☂ regen     62%   73%   59%   31%    —    —
-💨 wind     ↘26   ↘18   ↘21   ↗22   ↗23   ↗21
+🌥 16°  ↘ ZW · Krachtig
 ```
+- Toon Beaufort-naam i.p.v. km/u-getal.
+- Pijl + kompasafkorting altijd zichtbaar als wind ≥ Bft 3.
+- Kleur van wind-chip volgt Beaufort-kleur.
 
-- Iconen-kolom is sticky links (vaste 44px) zodat tijdens scroll altijd duidelijk is welke metriek je leest.
-- Wind toont **pijl + km/u** (pijl wijst in windrichting, kleine `text-[10px]` afkorting NO/ZW eronder bij ≥20 km/u).
-- Regenrij verbergt cellen <20% (toont em-dash) om rust te bewaren.
-- Strip-cellen 44px breed → 24 uur past in horizontal scroll zonder afgehakte cijfers.
+**24-uur strip — wind-rij:**
+- Cel inhoud per uur: pijl + Bft-cijfer in gekleurde badge (bijv. `5` op amber achtergrond), kompas-afkorting eronder.
+- Wind-rij krijgt een kleine legenda-link "Beaufort 0–12" als tooltip-trigger.
 
-### 2. 7-dagen sectie → echte tabel met headers
-Vervang flex-rijen door een CSS-grid met **5 kolommen** en een sticky header-rij:
+**7-dagen tabel — wind-kolom:**
+- Vervang `↘ 32 NO` door: pijl + kompas + Beaufort-naam (bv. `↘ NO · Krachtig`).
+- Kolombreedte vergroot naar `6.5rem` om naam te passen.
+- Tekstkleur volgt Beaufort-kleur (muted bij ≤Bft 2, semantic-kleur vanaf Bft 5).
 
-```
-Dag        Weer    Min / Max    Regen   Wind
-Vri 12     🌦      12° / 17°    0.6mm   ↘32 NO
-Zat 13     ☁       14° / 16°    —       39 NO
-Zon 14     🌦      13° / 15°    —       ↘37 NO
-...
-```
-
-- Grid `grid-cols-[5rem_2.5rem_1fr_4rem_5rem]`, header-rij in `text-muted-foreground text-[11px] uppercase tracking-wide`.
-- Regenkolom toont `—` i.p.v. niets bij <0.5mm (consistent uitlijnen).
-- Windkolom: pijl + km/u + kompasrichting bij ≥15 km/u, anders em-dash. Tekstkleur muted, rood-tinted bij ≥50 km/u (zelfde drempel als `storm_warning`).
-- Eerste dag krijgt `bg-muted/30` band als subtiele "vandaag" markering.
-
-### 3. Wind-context blok
-Vervang de losse "Wind: krachtig vandaag."-zin door een klein info-blok onder de tabel:
-
+**Wind-context blok onderaan:**
+Vervang door duidelijker formulering:
 ```
 💨 Wind vandaag
-   Krachtig (tot 32 km/u uit het noordoosten)
+   Krachtige wind (Bft 6) uit het noordoosten
+   Piek 49 km/u rond 15:00
 ```
+- Toon Beaufort-naam + Bft-cijfer + windrichting in woorden.
+- Voeg piek-uur toe (uit `hourly` data).
+- Kleurband links (4px) in Beaufort-kleur als visuele indicator.
 
-- Combineert `windLabel()` + max km/u + `degToCompass()` → volledig leesbare zin in plaats van losse termen.
-- Wordt verborgen als geen wind-data beschikbaar is.
+### 4. Geen wijzigingen aan
+- Datalaag, edge functions, advisory-logica (drempels in `weather_advise` blijven op km/u — operators zien alleen Beaufort, het systeem rekent intern in km/u).
+- Pijl-rotatie-logica (blijft `(deg + 180) % 360`).
+- `degToCompass` helper (blijft in gebruik).
 
-### 4. Polish
-- Voeg subtiele kolom-scheidingslijnen toe (`divide-y`) in 7-dagen tabel zodat rijen leesbaar zijn op tablet.
-- Verhoog rij-hoogte naar `h-10` voor touch.
-- Houd kleuren binnen design tokens (`text-muted-foreground`, `text-primary`, geen hardcoded HSL).
-- Bron-regel onderaan blijft, maar krijgt `mt-4 pt-3 border-t` voor visuele scheiding.
+## Files
+- `src/services/weather.ts` — voeg `beaufort()` helper toe (km/u → Bft + naam + kleurklasse).
+- `src/components/weather/WeatherPill.tsx` — pill-knop, 24u wind-rij, 7-daagse wind-kolom, wind-context blok.
 
-## Wat blijft ongewijzigd
-- De pill-knop zelf (compacte trigger in header) — alleen de Sheet-inhoud verandert.
-- Datalaag, edge functions, service helpers. Alleen presentatie in `src/components/weather/WeatherPill.tsx`.
-- AdvisoryStrip en alle andere componenten.
-
-## Files te wijzigen
-- `src/components/weather/WeatherPill.tsx` — alleen de Sheet-body herstructureren.
+## Technische details
+- Kleurklassen worden Tailwind utility classes (geen nieuwe CSS tokens), zodat dark mode automatisch werkt via Tailwind's amber/orange/red palettes. Geen hardcoded HSL in components — Tailwind-utility classes zijn toegestaan binnen het projectsysteem (gebruikt door bv. `text-destructive`).
+- `beaufort()` is pure: input `number | null`, output object met defaults bij null.
+- Pijl-rotatie blijft inline `style={{ transform: ... }}` omdat Tailwind geen arbitrary rotation values uit data ondersteunt.
