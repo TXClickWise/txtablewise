@@ -217,16 +217,38 @@ Deno.serve(async (req) => {
         pickedZoneId = picked.zoneId;
         terracePreferenceUnmet = picked.terrace_preference_unmet;
       } else {
-        // Fall back to combinatie
-        const combo = await findAvailableCombination(
-          supabase, restaurant.id, body.party_size, start_iso, end_iso, undefined, excludedTableIds,
-        );
-        if (!combo) {
+        // Combinatie-fallback met zone-bewuste strategie
+        const { data: combosRaw } = await supabase
+          .from("table_combinations")
+          .select("id, name, table_ids, capacity_min, capacity_max, fill_priority, is_active")
+          .eq("restaurant_id", restaurant.id).eq("is_active", true);
+        const combinations = (combosRaw ?? []) as CombinationRow[];
+        const allComboTableIds = Array.from(new Set(combinations.flatMap((c) => c.table_ids ?? [])));
+        const tablesById = new Map<string, FillTableRow>();
+        if (allComboTableIds.length > 0) {
+          const { data: comboTables } = await supabase
+            .from("tables").select("id, zone_id, capacity_min, capacity_max, fill_priority, label")
+            .in("id", allComboTableIds);
+          for (const t of (comboTables ?? []) as FillTableRow[]) tablesById.set(t.id, t);
+        }
+        // Filter cross-restaurant / inactieve excludes (online widget)
+        const filteredCombos = excludedTableIds
+          ? combinations.filter((c) => !(c.table_ids ?? []).some((id) => excludedTableIds!.has(id)))
+          : combinations;
+        const pickedCombo = pickCombinationWithFillStrategy({
+          combinations: filteredCombos,
+          tablesById,
+          occupiedTableIds: occupied,
+          zoneActivity,
+          prefersTerrace: !!body.prefers_terrace,
+          partySize: body.party_size,
+        });
+        if (!pickedCombo) {
           return json({ error: "Geen tafel of combinatie beschikbaar voor deze groepsgrootte op dit moment", error_code: "no_table_available", field: "party_size" }, 409);
         }
-        chosenTableIds = combo.tableIds;
-        chosenCombinationId = combo.combinationId;
-        terracePreferenceUnmet = !!body.prefers_terrace;
+        chosenTableIds = pickedCombo.tableIds;
+        chosenCombinationId = pickedCombo.combinationId;
+        terracePreferenceUnmet = pickedCombo.terrace_preference_unmet;
       }
     } else {
       // Legacy: eerste vrije fitting tafel
