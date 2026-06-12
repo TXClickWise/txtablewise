@@ -43,14 +43,9 @@ export default function ZonesTablesSettings() {
   });
 
   const persistZoneOrder = async (ordered: Zone[]) => {
-    const updates = ordered
-      .map((z, i) => ({ id: z.id, sort_order: i }))
-      .filter((u, i) => ordered[i].sort_order !== i);
-    if (updates.length === 0) return;
-    // Optimistic UI is al toegepast; persist één voor één.
     const results = await Promise.all(
-      updates.map((u) =>
-        supabase.from("zones").update({ sort_order: u.sort_order }).eq("id", u.id),
+      ordered.map((z, i) =>
+        supabase.from("zones").update({ sort_order: i }).eq("id", z.id),
       ),
     );
     const firstErr = results.find((r) => r.error)?.error;
