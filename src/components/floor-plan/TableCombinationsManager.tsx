@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetFooter, SheetDescription } from "@/components/ui/sheet";
-import { Plus, Trash2, Pencil, Combine } from "lucide-react";
+import { Plus, Trash2, Pencil, Combine, ArrowUp, ArrowDown } from "lucide-react";
 import { toast } from "sonner";
 
 type TableRow = {
