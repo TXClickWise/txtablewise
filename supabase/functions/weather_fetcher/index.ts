@@ -57,11 +57,11 @@ async function fetchAndStoreForRestaurant(
   url.searchParams.set("forecast_days", "7");
   url.searchParams.set(
     "hourly",
-    "temperature_2m,precipitation,precipitation_probability,weather_code,wind_speed_10m",
+    "temperature_2m,precipitation,precipitation_probability,weather_code,wind_speed_10m,wind_direction_10m",
   );
   url.searchParams.set(
     "daily",
-    "temperature_2m_min,temperature_2m_max,precipitation_sum,weather_code,wind_speed_10m_max,uv_index_max,sunrise,sunset",
+    "temperature_2m_min,temperature_2m_max,precipitation_sum,weather_code,wind_speed_10m_max,wind_direction_10m_dominant,uv_index_max,sunrise,sunset",
   );
 
   const res = await fetch(url.toString());
@@ -79,6 +79,7 @@ async function fetchAndStoreForRestaurant(
       precipitation_mm: daily.precipitation_sum?.[i] ?? null,
       condition_code: daily.weather_code?.[i] ?? null,
       wind_kmh_max: daily.wind_speed_10m_max?.[i] ?? null,
+      wind_direction_deg: daily.wind_direction_10m_dominant?.[i] ?? null,
       uv_index_max: daily.uv_index_max?.[i] ?? null,
       sunrise: daily.sunrise?.[i] ?? null,
       sunset: daily.sunset?.[i] ?? null,
@@ -109,6 +110,7 @@ async function fetchAndStoreForRestaurant(
         precipitation_prob_pct: hourly.precipitation_probability?.[i] ?? null,
         condition_code: hourly.weather_code?.[i] ?? null,
         wind_kmh: hourly.wind_speed_10m?.[i] ?? null,
+        wind_direction_deg: hourly.wind_direction_10m?.[i] ?? null,
         fetched_at: new Date().toISOString(),
       });
     }

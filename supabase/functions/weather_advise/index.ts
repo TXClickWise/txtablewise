@@ -4,7 +4,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { corsHeaders } from "../_shared/cors.ts";
 
 type Advisory = {
-  type: "rain_during_service" | "heatwave" | "frost_terrace" | "great_weather_low_bookings" | "storm_warning";
+  type: "rain_during_service" | "heatwave" | "frost_terrace" | "great_weather_low_bookings" | "storm_warning" | "terrace_breeze_warning";
   date: string; // YYYY-MM-DD
   severity: "info" | "warn";
   headline_nl: string;
@@ -90,17 +90,32 @@ Deno.serve(async (req) => {
     });
   }
 
-  // Rule 4: storm warning (wind >=60 km/h today or tomorrow)
-  const stormDay = (daily ?? []).slice(0, 2).find((d) => (d.wind_kmh_max ?? 0) >= 60);
+  // Rule 4: storm warning (wind >=50 km/h today or tomorrow)
+  const stormDay = (daily ?? []).slice(0, 2).find((d) => (d.wind_kmh_max ?? 0) >= 50);
   if (stormDay) {
+    const dir = degToCompassNl(stormDay.wind_direction_deg);
     advisories.push({
       type: "storm_warning",
       date: stormDay.date,
       severity: "warn",
-      headline_nl: `Harde wind verwacht op ${formatDateNl(stormDay.date)} (${Math.round(stormDay.wind_kmh_max)} km/u).`,
+      headline_nl: `Harde ${dir ? dir + "-" : ""}wind verwacht op ${formatDateNl(stormDay.date)} (${Math.round(stormDay.wind_kmh_max)} km/u).`,
       body_nl: hasTerrace ? "Beperk terrasreserveringen of zet tafels eerder binnen." : null,
       action_route: null,
     });
+  } else if (hasTerrace) {
+    // Rule 4b: stevige bries (35-49 km/u) tijdens shift met terras
+    const breezeDay = (daily ?? []).slice(0, 2).find((d) => (d.wind_kmh_max ?? 0) >= 35 && (d.wind_kmh_max ?? 0) < 50);
+    if (breezeDay) {
+      const dir = degToCompassNl(breezeDay.wind_direction_deg);
+      advisories.push({
+        type: "terrace_breeze_warning",
+        date: breezeDay.date,
+        severity: "info",
+        headline_nl: `Stevige ${dir ? dir + "-" : ""}wind op ${formatDateNl(breezeDay.date)} (tot ${Math.round(breezeDay.wind_kmh_max)} km/u).`,
+        body_nl: "Zet windschermen klaar en verzwaar losse spullen op het terras.",
+        action_route: null,
+      });
+    }
   }
 
   // Rule 5: great weather weekend + low occupancy
@@ -213,6 +228,11 @@ function formatHHMM(d: Date, tz: string): string {
 function formatDateNl(ymd: string): string {
   const d = new Date(ymd + "T12:00:00Z");
   return new Intl.DateTimeFormat("nl-NL", { weekday: "short", day: "numeric", month: "short" }).format(d);
+}
+function degToCompassNl(deg: number | null | undefined): string | null {
+  if (deg === null || deg === undefined) return null;
+  const dirs = ["N", "NO", "O", "ZO", "Z", "ZW", "W", "NW"];
+  return dirs[Math.round(((deg % 360) / 45)) % 8];
 }
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
