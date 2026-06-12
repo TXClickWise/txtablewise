@@ -90,17 +90,32 @@ Deno.serve(async (req) => {
     });
   }
 
-  // Rule 4: storm warning (wind >=60 km/h today or tomorrow)
-  const stormDay = (daily ?? []).slice(0, 2).find((d) => (d.wind_kmh_max ?? 0) >= 60);
+  // Rule 4: storm warning (wind >=50 km/h today or tomorrow)
+  const stormDay = (daily ?? []).slice(0, 2).find((d) => (d.wind_kmh_max ?? 0) >= 50);
   if (stormDay) {
+    const dir = degToCompassNl(stormDay.wind_direction_deg);
     advisories.push({
       type: "storm_warning",
       date: stormDay.date,
       severity: "warn",
-      headline_nl: `Harde wind verwacht op ${formatDateNl(stormDay.date)} (${Math.round(stormDay.wind_kmh_max)} km/u).`,
+      headline_nl: `Harde ${dir ? dir + "-" : ""}wind verwacht op ${formatDateNl(stormDay.date)} (${Math.round(stormDay.wind_kmh_max)} km/u).`,
       body_nl: hasTerrace ? "Beperk terrasreserveringen of zet tafels eerder binnen." : null,
       action_route: null,
     });
+  } else if (hasTerrace) {
+    // Rule 4b: stevige bries (35-49 km/u) tijdens shift met terras
+    const breezeDay = (daily ?? []).slice(0, 2).find((d) => (d.wind_kmh_max ?? 0) >= 35 && (d.wind_kmh_max ?? 0) < 50);
+    if (breezeDay) {
+      const dir = degToCompassNl(breezeDay.wind_direction_deg);
+      advisories.push({
+        type: "terrace_breeze_warning",
+        date: breezeDay.date,
+        severity: "info",
+        headline_nl: `Stevige ${dir ? dir + "-" : ""}wind op ${formatDateNl(breezeDay.date)} (tot ${Math.round(breezeDay.wind_kmh_max)} km/u).`,
+        body_nl: "Zet windschermen klaar en verzwaar losse spullen op het terras.",
+        action_route: null,
+      });
+    }
   }
 
   // Rule 5: great weather weekend + low occupancy
