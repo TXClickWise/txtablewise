@@ -25,6 +25,16 @@ function WindArrow({ deg, className = "h-3.5 w-3.5" }: { deg: number | null | un
   );
 }
 
+function strongestHourlyDirectionForDay(hourly: WeatherHourly[], date: string): number | null {
+  let strongest: WeatherHourly | null = null;
+  for (const h of hourly) {
+    if (h.hour_ts.slice(0, 10) !== date) continue;
+    if (h.wind_direction_deg === null || h.wind_direction_deg === undefined) continue;
+    if ((h.wind_kmh ?? -1) > (strongest?.wind_kmh ?? -1)) strongest = h;
+  }
+  return strongest?.wind_direction_deg ?? null;
+}
+
 export function WeatherPill({ restaurantId }: Props) {
   const { data: hourly = [] } = useQuery({
     queryKey: ["weather-hourly", restaurantId],
@@ -46,14 +56,15 @@ export function WeatherPill({ restaurantId }: Props) {
   const interp = interpretCode(now?.condition_code ?? daily[0]?.condition_code);
   const temp = now?.temp_c ?? daily[0]?.max_temp_c;
   const windNow = now?.wind_kmh ?? daily[0]?.wind_kmh_max ?? null;
-  const windDirCompact = degToCompass(now?.wind_direction_deg ?? daily[0]?.wind_direction_deg);
+  const todayDirectionDeg = now?.wind_direction_deg ?? daily[0]?.wind_direction_deg ?? strongestHourlyDirectionForDay(hourly, daily[0]?.date ?? new Date().toISOString().slice(0, 10));
+  const windDirCompact = degToCompass(todayDirectionDeg);
   const bftNow = beaufort(windNow);
   const hasWind = windNow !== null && windNow !== undefined;
 
   const todayDaily = daily[0];
   const todayWindMax = todayDaily?.wind_kmh_max ?? null;
   const todayBft = beaufort(todayWindMax);
-  const todayWindLong = compassLong(todayDaily?.wind_direction_deg);
+  const todayWindLong = compassLong(todayDirectionDeg);
 
   // Peak wind hour today
   const todayStr = new Date().toISOString().slice(0, 10);
@@ -75,7 +86,7 @@ export function WeatherPill({ restaurantId }: Props) {
           </span>
           {hasWind && (
             <span className={`text-xs inline-flex items-center gap-1 ${bftNow.textClass}`}>
-              <WindArrow deg={now?.wind_direction_deg ?? todayDaily?.wind_direction_deg} className="h-3.5 w-3.5" />
+              <WindArrow deg={todayDirectionDeg} className="h-3.5 w-3.5" />
               Wind: {windDirCompact ?? "—"} · {bftNow.name}
             </span>
           )}
@@ -87,7 +98,7 @@ export function WeatherPill({ restaurantId }: Props) {
         </Button>
       </SheetTrigger>
 
-      <SheetContent side="right" className="w-full sm:max-w-md overflow-y-auto">
+      <SheetContent side="right" className="w-full sm:max-w-2xl overflow-y-auto">
         <SheetHeader>
           <SheetTitle>Weer</SheetTitle>
         </SheetHeader>
@@ -216,12 +227,13 @@ export function WeatherPill({ restaurantId }: Props) {
               Komende 7 dagen
             </h3>
 
-            <div className="rounded-md border bg-card divide-y">
+            <div className="rounded-md border bg-card overflow-x-auto">
+              <div className="min-w-[38rem] divide-y">
               {/* Header */}
-              <div className="grid grid-cols-[5rem_2rem_minmax(0,1fr)_3.5rem_4rem_6.5rem] items-center gap-2 px-3 py-2 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+              <div className="grid grid-cols-[6.5rem_3rem_5rem_4.5rem_5rem_7.5rem] items-center gap-2 px-3 py-2 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
                 <span>Dag</span>
                 <span className="text-center" aria-label="Weer">Weer</span>
-                <span className="text-right">Min / Max</span>
+                <span className="text-center">Min / Max</span>
                 <span className="text-right">Regen</span>
                 <span className="text-center">Richting</span>
                 <span className="text-right">Wind</span>
@@ -229,12 +241,13 @@ export function WeatherPill({ restaurantId }: Props) {
 
               {daily.map((d, i) => {
                 const ip = interpretCode(d.condition_code);
-                const dir = degToCompass(d.wind_direction_deg);
+                const directionDeg = d.wind_direction_deg ?? strongestHourlyDirectionForDay(hourly, d.date);
+                const dir = degToCompass(directionDeg);
                 const bft = beaufort(d.wind_kmh_max);
                 return (
                   <div
                     key={d.id}
-                    className={`grid grid-cols-[5rem_2rem_minmax(0,1fr)_3.5rem_4rem_6.5rem] items-center gap-2 px-3 h-11 text-sm ${
+                    className={`grid grid-cols-[6.5rem_3rem_5rem_4.5rem_5rem_7.5rem] items-center gap-2 px-3 min-h-11 py-2 text-sm ${
                       i === 0 ? "bg-muted/40" : ""
                     }`}
                   >
@@ -242,16 +255,16 @@ export function WeatherPill({ restaurantId }: Props) {
                       {format(new Date(d.date + "T12:00:00"), "EEE d MMM", { locale: nl })}
                     </span>
                     <span className="text-center text-lg leading-none" aria-label={ip.label}>{ip.emoji}</span>
-                    <span className="text-right text-muted-foreground tabular-nums">
+                    <span className="text-center text-muted-foreground tabular-nums whitespace-nowrap">
                       {d.min_temp_c !== null ? Math.round(d.min_temp_c) : "—"}° / {d.max_temp_c !== null ? Math.round(d.max_temp_c) : "—"}°
                     </span>
                     <span className={`text-right text-xs tabular-nums ${(d.precipitation_mm ?? 0) >= 0.5 ? "text-primary" : "text-muted-foreground"}`}>
                       {(d.precipitation_mm ?? 0) >= 0.5 ? `${d.precipitation_mm!.toFixed(1)}mm` : "—"}
                     </span>
                     <span className="text-xs inline-flex items-center justify-center gap-1 text-muted-foreground">
-                      {d.wind_direction_deg !== null && d.wind_direction_deg !== undefined ? (
+                      {directionDeg !== null && directionDeg !== undefined ? (
                         <>
-                          <WindArrow deg={d.wind_direction_deg} className="h-3 w-3" />
+                          <WindArrow deg={directionDeg} className="h-3 w-3" />
                           <span className="font-medium tabular-nums">{dir ?? "—"}</span>
                         </>
                       ) : (
@@ -273,6 +286,7 @@ export function WeatherPill({ restaurantId }: Props) {
                   </div>
                 );
               })}
+              </div>
             </div>
           </section>
 
