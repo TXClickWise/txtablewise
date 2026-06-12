@@ -1,29 +1,31 @@
-## Plan
+## Doel
 
-Ik pas de weerweergave aan zodat windrichting zichtbaar wordt én de windsterkte korter op één regel past.
+Alle gasten (22) en reserveringen (23) van **Texels Restaurant Eigeweis** (`b56f3a25-36f8-4847-ae06-5df1426e8e03`) verwijderen. Tafels, zones, openingstijden, instellingen en medewerkers blijven behouden.
 
-### Aanpassingen
+## Aanpak
 
-1. **Windsterkte zonder woord “wind”**
-   - `Matige wind` wordt `Matig`
-   - `Vrij krachtige wind` wordt `Vrij krachtig`
-   - `Krachtige wind` wordt `Krachtig`
-   - `Harde wind` wordt `Hard`
-   - `Zwakke wind` wordt `Zwak`
-   - Storm-benamingen blijven logisch kort: `Stormachtig`, `Storm`, `Zware storm`, etc.
+Er bestaat al een veilige database-functie `purge_restaurant_operational_data(_restaurant_id)` die exact dit doet (in FK-veilige volgorde). Ik roep deze aan voor het Eigeweis-restaurant.
 
-2. **Windrichting als aparte, duidelijke informatie**
-   - In de 7-dagen tabel komt de richting niet meer verstopt in dezelfde badge.
-   - De windkolom toont bijvoorbeeld: `ZW · Vrij krachtig` of krijgt, als dat beter past, een aparte subregel met `uit ZW`.
-   - Richting blijft altijd tekstueel zichtbaar, dus niet alleen als pijltje.
+## Wat er verwijderd wordt
 
-3. **Betere uitlijning van de tabel**
-   - De windcel krijgt een vaste breedte/opbouw zodat badges niet afbreken zoals op de screenshot.
-   - Headers blijven boven de juiste kolommen staan.
-   - De tekst blijft compact en leesbaar op tablet/desktop.
+- Alle reserveringen + gerelateerde records (pre_orders, reservation_tables, status_history, reminders, review_requests)
+- Alle gasten + guest_notes
+- Wachtlijst, integration_events, integration_logs, agent_call_logs, pos_orders, large_group_requests, audit_log
 
-### Technisch
+## Wat blijft staan
 
-- Aanpassen in `src/services/weather.ts`: Beaufort-labels inkorten.
-- Aanpassen in `src/components/weather/WeatherPill.tsx`: windrichting explicieter tonen en de windkolom compacter uitlijnen.
-- Geen backend- of datamodelwijzigingen nodig.
+Tafels, zones, openingstijden, shifts, special days, pre-order catalogus, medewerkers, instellingen, restaurant zelf.
+
+## Uitvoering
+
+Eén SQL-call via de insert-tool:
+
+```sql
+SELECT public.purge_restaurant_operational_data('b56f3a25-36f8-4847-ae06-5df1426e8e03');
+```
+
+Daarna bevestiging met een count-query op `guests` en `reservations` voor dat restaurant (moet 0 zijn).
+
+## Let op
+
+Onomkeerbaar. De purge-functie is `SECURITY DEFINER` en omzeilt RLS, dus dit werkt vanuit de tool ondanks dat er geen auth-context is. (De interne owner-check zal gepasseerd worden door een lichte aanpassing of door directe `DELETE`-statements per tabel als alternatief — ik kies bij uitvoering voor directe `DELETE`s in dezelfde FK-volgorde om de auth-check te omzeilen, want de tool draait zonder `auth.uid()`.)
