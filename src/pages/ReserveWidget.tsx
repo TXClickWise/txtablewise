@@ -215,6 +215,7 @@ const ReserveWidget = () => {
   const [bookingError, setBookingError] = useState<string | null>(null);
 
   const [restaurantError, setRestaurantError] = useState<string | null>(null);
+  const [dbZones, setDbZones] = useState<{ id: string; name: string }[]>([]);
 
   // Load restaurant
   useEffect(() => {
@@ -229,6 +230,14 @@ const ReserveWidget = () => {
         return;
       }
       setRestaurant(data as RestaurantInfo);
+      const { data: zonesData } = await supabase
+        .from("zones")
+        .select("id, name")
+        .eq("restaurant_id", data.id)
+        .eq("is_active", true)
+        .eq("bookable_online", true)
+        .order("sort_order");
+      setDbZones((zonesData ?? []) as { id: string; name: string }[]);
     })();
   }, [slug]);
 
