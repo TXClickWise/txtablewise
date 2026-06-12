@@ -101,3 +101,63 @@ export async function findAvailableCombination(
   }
   return null;
 }
+
+/**
+ * Zoek beschikbare zitplaats: eerst een losse passende tafel, daarna combinaties.
+ * Gebruikt voor gast-flows (guest_reservation, review_guest_change) waar geen
+ * zone-fill strategie nodig is. Retourneert combinationId=null voor losse tafels.
+ */
+// deno-lint-ignore no-explicit-any
+export async function findAvailableSeating(
+  sb: any,
+  restaurantId: string,
+  partySize: number,
+  startIso: string,
+  endIso: string,
+  excludeReservationId?: string,
+  excludedTableIds?: Set<string>,
+): Promise<{ combinationId: string | null; tableIds: string[]; name: string | null } | null> {
+  // 1. Single passende tafel
+  const { data: tables } = await sb
+    .from("tables")
+    .select("id, capacity_min, capacity_max")
+    .eq("restaurant_id", restaurantId)
+    .eq("is_active", true)
+    .lte("capacity_min", partySize)
+    .gte("capacity_max", partySize)
+    .order("capacity_max", { ascending: true });
+
+  const candidateTables = ((tables ?? []) as Array<{ id: string }>)
+    .filter((t) => !excludedTableIds?.has(t.id));
+
+  if (candidateTables.length > 0) {
+    const candidateIds = candidateTables.map((t) => t.id);
+    const { data: rtRows } = await sb
+      .from("reservation_tables")
+      .select("table_id, reservation_id, reservations!inner(id, start_time, end_time, status, hold_expires_at)")
+      .in("table_id", candidateIds);
+
+    const now = new Date();
+    const occupied = new Set<string>();
+    // deno-lint-ignore no-explicit-any
+    for (const row of (rtRows ?? []) as any[]) {
+      const r = row.reservations;
+      if (!r) continue;
+      if (excludeReservationId && r.id === excludeReservationId) continue;
+      if (!ACTIVE_STATUSES.includes(r.status)) continue;
+      if (r.status === "hold" && (!r.hold_expires_at || new Date(r.hold_expires_at) <= now)) continue;
+      if (intervalsOverlap(startIso, endIso, r.start_time, r.end_time)) {
+        occupied.add(row.table_id);
+      }
+    }
+    const free = candidateTables.find((t) => !occupied.has(t.id));
+    if (free) return { combinationId: null, tableIds: [free.id], name: null };
+  }
+
+  // 2. Fallback: multi-tafel combinatie
+  const combo = await findAvailableCombination(
+    sb, restaurantId, partySize, startIso, endIso, excludeReservationId, excludedTableIds,
+  );
+  if (!combo) return null;
+  return { combinationId: combo.combinationId, tableIds: combo.tableIds, name: combo.name };
+}
