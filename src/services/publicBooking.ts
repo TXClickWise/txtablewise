@@ -108,6 +108,7 @@ export type BookPayload = {
   marketing_consent?: boolean;
   source_channel: SourceChannel;
   source_metadata?: Record<string, unknown>;
+  prefers_terrace?: boolean;
 };
 
 export type BookResult =
