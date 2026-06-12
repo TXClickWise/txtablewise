@@ -1,31 +1,30 @@
-## Doel
+## Probleem
 
-Alle gasten (22) en reserveringen (23) van **Texels Restaurant Eigeweis** (`b56f3a25-36f8-4847-ae06-5df1426e8e03`) verwijderen. Tafels, zones, openingstijden, instellingen en medewerkers blijven behouden.
+Een gast die via de bevestigingsmail z'n reservering wil verplaatsen, krijgt altijd "Wijziging niet mogelijk — geen tafel beschikbaar", zelfs als het hele restaurant leeg is. Oorzaak: de edge function `guest_reservation` zoekt alleen in `table_combinations` (meertafel-combinaties). Voor kleine groepen (1–4) bestaan die combinaties meestal niet, want een losse 2-persoonstafel is geen "combinatie". `book_reservation` doet dit wél goed: eerst losse passende tafel, daarna pas combinaties.
 
-## Aanpak
+## Fix
 
-Er bestaat al een veilige database-functie `purge_restaurant_operational_data(_restaurant_id)` die exact dit doet (in FK-veilige volgorde). Ik roep deze aan voor het Eigeweis-restaurant.
+Eén nieuwe gedeelde helper `findAvailableSeating` in `supabase/functions/_shared/reservation-utils.ts` die:
 
-## Wat er verwijderd wordt
+1. Eerst een vrije losse tafel zoekt waar `capacity_min ≤ party ≤ capacity_max`, `is_active = true`, niet in `excludedTableIds`, en geen overlappende actieve reservering heeft.
+2. Pas als geen losse tafel past, terugvalt op de bestaande combinatie-lookup (huidige `findAvailableCombination` logica).
+3. Een uniform resultaat retourneert: `{ tableIds: string[], combinationId: string | null, name: string | null }`.
 
-- Alle reserveringen + gerelateerde records (pre_orders, reservation_tables, status_history, reminders, review_requests)
-- Alle gasten + guest_notes
-- Wachtlijst, integration_events, integration_logs, agent_call_logs, pos_orders, large_group_requests, audit_log
+De huidige `findAvailableCombination` blijft bestaan voor backward compat, maar de drie call-sites die hem voor gast-flows gebruiken schakelen om naar `findAvailableSeating`:
 
-## Wat blijft staan
+- `supabase/functions/guest_reservation/index.ts` — `evaluate()` regel 502 en de tweede call rond regel 264.
+- `supabase/functions/review_guest_change/index.ts` — call rond regel 84.
+- `supabase/functions/public_api/index.ts` — calls rond regels 776 / 792 / 806 (de manage-reservation paden).
 
-Tafels, zones, openingstijden, shifts, special days, pre-order catalogus, medewerkers, instellingen, restaurant zelf.
+`book_reservation` raken we niet aan — dat heeft al z'n eigen losse-tafel + zone-fill logica.
 
-## Uitvoering
+## Verificatie
 
-Eén SQL-call via de insert-tool:
+1. Bestaande reservering #RSYBNY5B in Eigeweis (zaterdag 13:00, 2 gasten) handmatig terugzetten via UI of laten staan zoals nu.
+2. Via de gastlink "Wijziging aanvragen" naar 14:00 verzoeken → moet `applied` retourneren en de reservering verplaatsen.
+3. Smoke-check: een wijziging die echt vol zit (bijv. zelfde tijd terwijl alle tafels bezet zijn — kan ik niet makkelijk reproduceren met lege agenda) moet nog steeds `no_table_available` geven.
 
-```sql
-SELECT public.purge_restaurant_operational_data('b56f3a25-36f8-4847-ae06-5df1426e8e03');
-```
+## Niet in scope
 
-Daarna bevestiging met een count-query op `guests` en `reservations` voor dat restaurant (moet 0 zijn).
-
-## Let op
-
-Onomkeerbaar. De purge-functie is `SECURITY DEFINER` en omzeilt RLS, dus dit werkt vanuit de tool ondanks dat er geen auth-context is. (De interne owner-check zal gepasseerd worden door een lichte aanpassing of door directe `DELETE`-statements per tabel als alternatief — ik kies bij uitvoering voor directe `DELETE`s in dezelfde FK-volgorde om de auth-check te omzeilen, want de tool draait zonder `auth.uid()`.)
+- Zone-fill strategie voor gastwijzigingen — gastflow blijft "eerste passende tafel". Operator-flow (`book_reservation`) houdt z'n rijkere logica.
+- UI-tekst van de afwijzingskaart blijft ongewijzigd.
