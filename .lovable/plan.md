@@ -1,35 +1,61 @@
-## Doel
-Windkracht én windrichting tonen in de weer-UI, en de regel-engine gevoeliger maken voor wind (vooral relevant voor terras).
+## Probleem
+De Weer-sheet toont nu losse cijfers zonder labels: in de 24-uur strip zijn `62%` en `26` raadsels (regenkans vs. wind), en in de 7-daagse lijst zweven kolommen vrij rond zonder uitlijning of headers. De wind-informatie is bovendien niet als zodanig herkenbaar — alleen een cryptische "Wind: krachtig vandaag."-zin onderaan.
 
-## Datalaag
-- `weather_forecasts`: kolom `wind_direction_deg smallint` toevoegen (dag = dominante richting). `wind_kmh_max` bestaat al.
-- `weather_hourly`: kolom `wind_direction_deg smallint` toevoegen. `wind_kmh` bestaat al.
-- Geen nieuwe tabellen, geen RLS-wijzigingen.
+## Wat ik herontwerp (alleen `WeatherPill.tsx` Sheet — niet de pill-knop zelf)
 
-## Edge functions
-- **`weather_fetcher`**: Open-Meteo call uitbreiden met `wind_direction_10m` (hourly) en `wind_direction_10m_dominant` (daily). Upsert mappen naar nieuwe kolommen.
-- **`weather_advise`**:
-  - Drempel `storm_warning` verlagen naar **≥50 km/u** (was 60) en headline windrichting meenemen ("Harde ZW-wind vanaf 14:00, terras lastig").
-  - Nieuwe regel `terrace_breeze_warning` bij **35–49 km/u** tijdens een shift mét actieve terras-zone → milde tip ("Stevige wind verwacht — windschermen klaarzetten?"). `severity = info`.
-  - Bestaande types onveranderd.
+### 1. 24-uur sectie → vertical strip met expliciete iconen per metriek
+Vervang de zes kolomkaartjes door één compacte rij met **5 vaste rijen** boven elkaar, links de iconen, daarnaast horizontaal scrollende cellen per uur die *op één raster* uitlijnen:
 
-## Frontend
-- `src/services/weather.ts`:
-  - Types uitbreiden met `wind_direction_deg`.
-  - Helper `degToCompass(deg)` → `N/NO/O/ZO/Z/ZW/W/NW` (NL-afkortingen).
-  - Helper `windLabel(kmh)` → Beaufort-achtige korte labels ("Zwak", "Matig", "Krachtig", "Hard", "Storm").
-- `WeatherPill.tsx`: in de samenvatting naast temp ook compacte wind-chip tonen wanneer ≥20 km/u (bv. "💨 32 km/u ZW"). Anders verborgen om rust te bewaren.
-- `WeatherSheet` (binnen pill): per uur-rij een klein pijltje (rotatie = richting) + km/u; in de 7-daagse strip max-wind + richting onder min/max temp.
-- `AdvisoryStrip.tsx`: ongewijzigd (krijgt automatisch de nieuwe wind-advisories binnen).
+```
+            21u   22u   23u   00u   01u   02u   ...
+☁/☀         🌥    ☀    🌤    🌤    🌤    🌤
+🌡 temp     16°   17°   16°   16°   16°   16°
+☂ regen     62%   73%   59%   31%    —    —
+💨 wind     ↘26   ↘18   ↘21   ↗22   ↗23   ↗21
+```
 
-## Wat we expliciet niet doen
-- Geen aparte wind-pagina of grafiek.
-- Geen gust/windvlaag-data (Open-Meteo levert het wel, maar voegt voor operator weinig toe — `wind_speed_10m_max` volstaat).
-- Geen automatische zone-acties op basis van wind; blijft bewuste keuze in zone-config (`weather_dependent`).
+- Iconen-kolom is sticky links (vaste 44px) zodat tijdens scroll altijd duidelijk is welke metriek je leest.
+- Wind toont **pijl + km/u** (pijl wijst in windrichting, kleine `text-[10px]` afkorting NO/ZW eronder bij ≥20 km/u).
+- Regenrij verbergt cellen <20% (toont em-dash) om rust te bewaren.
+- Strip-cellen 44px breed → 24 uur past in horizontal scroll zonder afgehakte cijfers.
 
-## Uitvoervolgorde
-1. Migratie: 2 kolommen toevoegen.
-2. `weather_fetcher` + `weather_advise` updaten.
-3. `src/services/weather.ts` helpers + types.
-4. `WeatherPill` + sheet visuele update.
-5. Memory `mem://features/weather-insights` bijwerken (wind toegevoegd, drempels).
+### 2. 7-dagen sectie → echte tabel met headers
+Vervang flex-rijen door een CSS-grid met **5 kolommen** en een sticky header-rij:
+
+```
+Dag        Weer    Min / Max    Regen   Wind
+Vri 12     🌦      12° / 17°    0.6mm   ↘32 NO
+Zat 13     ☁       14° / 16°    —       39 NO
+Zon 14     🌦      13° / 15°    —       ↘37 NO
+...
+```
+
+- Grid `grid-cols-[5rem_2.5rem_1fr_4rem_5rem]`, header-rij in `text-muted-foreground text-[11px] uppercase tracking-wide`.
+- Regenkolom toont `—` i.p.v. niets bij <0.5mm (consistent uitlijnen).
+- Windkolom: pijl + km/u + kompasrichting bij ≥15 km/u, anders em-dash. Tekstkleur muted, rood-tinted bij ≥50 km/u (zelfde drempel als `storm_warning`).
+- Eerste dag krijgt `bg-muted/30` band als subtiele "vandaag" markering.
+
+### 3. Wind-context blok
+Vervang de losse "Wind: krachtig vandaag."-zin door een klein info-blok onder de tabel:
+
+```
+💨 Wind vandaag
+   Krachtig (tot 32 km/u uit het noordoosten)
+```
+
+- Combineert `windLabel()` + max km/u + `degToCompass()` → volledig leesbare zin in plaats van losse termen.
+- Wordt verborgen als geen wind-data beschikbaar is.
+
+### 4. Polish
+- Voeg subtiele kolom-scheidingslijnen toe (`divide-y`) in 7-dagen tabel zodat rijen leesbaar zijn op tablet.
+- Verhoog rij-hoogte naar `h-10` voor touch.
+- Houd kleuren binnen design tokens (`text-muted-foreground`, `text-primary`, geen hardcoded HSL).
+- Bron-regel onderaan blijft, maar krijgt `mt-4 pt-3 border-t` voor visuele scheiding.
+
+## Wat blijft ongewijzigd
+- De pill-knop zelf (compacte trigger in header) — alleen de Sheet-inhoud verandert.
+- Datalaag, edge functions, service helpers. Alleen presentatie in `src/components/weather/WeatherPill.tsx`.
+- AdvisoryStrip en alle andere componenten.
+
+## Files te wijzigen
+- `src/components/weather/WeatherPill.tsx` — alleen de Sheet-body herstructureren.
