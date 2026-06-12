@@ -127,6 +127,7 @@ export async function bookReservation(payload: BookPayload, preOrders: SelectedP
       dietary_notes: payload.dietary_notes,
       occasion: payload.occasion,
       marketing_consent: !!payload.marketing_consent,
+      prefers_terrace: !!payload.prefers_terrace,
       channel: "online",
       source_metadata: {
         source_channel: payload.source_channel,
