@@ -1871,6 +1871,9 @@ export type Database = {
           walkin_default_zone_id: string | null
           walkin_quick_buttons: boolean
           walkins_enabled: boolean
+          weather_enabled: boolean
+          weather_location_label: string | null
+          weather_location_override: boolean
           webhook_secret: string | null
           webhook_url: string | null
           website: string | null
@@ -1978,6 +1981,9 @@ export type Database = {
           walkin_default_zone_id?: string | null
           walkin_quick_buttons?: boolean
           walkins_enabled?: boolean
+          weather_enabled?: boolean
+          weather_location_label?: string | null
+          weather_location_override?: boolean
           webhook_secret?: string | null
           webhook_url?: string | null
           website?: string | null
@@ -2085,6 +2091,9 @@ export type Database = {
           walkin_default_zone_id?: string | null
           walkin_quick_buttons?: boolean
           walkins_enabled?: boolean
+          weather_enabled?: boolean
+          weather_location_label?: string | null
+          weather_location_override?: boolean
           webhook_secret?: string | null
           webhook_url?: string | null
           website?: string | null
@@ -2542,8 +2551,65 @@ export type Database = {
         }
         Relationships: []
       }
+      weather_advisories: {
+        Row: {
+          action_route: string | null
+          ai_generated: boolean
+          body_nl: string | null
+          created_at: string
+          date: string
+          dismissed_at: string | null
+          dismissed_by: string | null
+          headline_nl: string
+          id: string
+          restaurant_id: string
+          severity: string
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          action_route?: string | null
+          ai_generated?: boolean
+          body_nl?: string | null
+          created_at?: string
+          date: string
+          dismissed_at?: string | null
+          dismissed_by?: string | null
+          headline_nl: string
+          id?: string
+          restaurant_id: string
+          severity?: string
+          type: string
+          updated_at?: string
+        }
+        Update: {
+          action_route?: string | null
+          ai_generated?: boolean
+          body_nl?: string | null
+          created_at?: string
+          date?: string
+          dismissed_at?: string | null
+          dismissed_by?: string | null
+          headline_nl?: string
+          id?: string
+          restaurant_id?: string
+          severity?: string
+          type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "weather_advisories_restaurant_id_fkey"
+            columns: ["restaurant_id"]
+            isOneToOne: false
+            referencedRelation: "restaurants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       weather_forecasts: {
         Row: {
+          condition_code: number | null
           created_at: string
           date: string
           fetched_at: string
@@ -2553,9 +2619,14 @@ export type Database = {
           precipitation_mm: number | null
           restaurant_id: string
           source: string
+          sunrise: string | null
+          sunset: string | null
           updated_at: string
+          uv_index_max: number | null
+          wind_kmh_max: number | null
         }
         Insert: {
+          condition_code?: number | null
           created_at?: string
           date: string
           fetched_at?: string
@@ -2565,9 +2636,14 @@ export type Database = {
           precipitation_mm?: number | null
           restaurant_id: string
           source?: string
+          sunrise?: string | null
+          sunset?: string | null
           updated_at?: string
+          uv_index_max?: number | null
+          wind_kmh_max?: number | null
         }
         Update: {
+          condition_code?: number | null
           created_at?: string
           date?: string
           fetched_at?: string
@@ -2577,11 +2653,65 @@ export type Database = {
           precipitation_mm?: number | null
           restaurant_id?: string
           source?: string
+          sunrise?: string | null
+          sunset?: string | null
           updated_at?: string
+          uv_index_max?: number | null
+          wind_kmh_max?: number | null
         }
         Relationships: [
           {
             foreignKeyName: "weather_forecasts_restaurant_id_fkey"
+            columns: ["restaurant_id"]
+            isOneToOne: false
+            referencedRelation: "restaurants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      weather_hourly: {
+        Row: {
+          condition_code: number | null
+          created_at: string
+          fetched_at: string
+          hour_ts: string
+          id: string
+          precipitation_mm: number | null
+          precipitation_prob_pct: number | null
+          restaurant_id: string
+          temp_c: number | null
+          updated_at: string
+          wind_kmh: number | null
+        }
+        Insert: {
+          condition_code?: number | null
+          created_at?: string
+          fetched_at?: string
+          hour_ts: string
+          id?: string
+          precipitation_mm?: number | null
+          precipitation_prob_pct?: number | null
+          restaurant_id: string
+          temp_c?: number | null
+          updated_at?: string
+          wind_kmh?: number | null
+        }
+        Update: {
+          condition_code?: number | null
+          created_at?: string
+          fetched_at?: string
+          hour_ts?: string
+          id?: string
+          precipitation_mm?: number | null
+          precipitation_prob_pct?: number | null
+          restaurant_id?: string
+          temp_c?: number | null
+          updated_at?: string
+          wind_kmh?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "weather_hourly_restaurant_id_fkey"
             columns: ["restaurant_id"]
             isOneToOne: false
             referencedRelation: "restaurants"

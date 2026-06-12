@@ -30,6 +30,7 @@ import { LastMinuteFillPanel } from "@/components/waitlist/LastMinuteFillPanel";
 import { PreOrderReadyList } from "@/components/pre-orders/PreOrderReadyList";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useIsCompact } from "@/hooks/use-breakpoint";
+import { WeatherPill } from "@/components/weather/WeatherPill";
 
 type Zone = { id: string; name: string };
 type Table = {
@@ -389,6 +390,7 @@ const FloorModePage = () => {
             >
               <RefreshCw className={cn("h-4 w-4", isFetching && "animate-spin")} />
             </Button>
+            {restaurantId && <WeatherPill restaurantId={restaurantId} />}
           </div>
         </div>
         {isError && (
