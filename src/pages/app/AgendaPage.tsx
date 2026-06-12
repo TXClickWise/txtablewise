@@ -204,9 +204,15 @@ const AgendaPage = () => {
     if (!floorZoneId && zoneGroups.length > 0) setFloorZoneId(zoneGroups[0].key);
   }, [zoneGroups, floorZoneId]);
 
-  const jumpToZone = (tableId: string) => {
-    const el = rowRefs.current[tableId];
-    if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+  const jumpToZone = (zoneKey: string) => {
+    const el = zoneHeaderRefs.current[zoneKey];
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "start" });
+      return;
+    }
+    const grp = zoneGroups.find((g) => g.key === zoneKey);
+    const fallback = grp ? rowRefs.current[grp.firstTableId] : null;
+    if (fallback) fallback.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
   const { data: reservations = [] } = useQuery({
