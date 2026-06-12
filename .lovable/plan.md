@@ -1,27 +1,37 @@
-# Tijdlijn zoom: één knop voor beide richtingen
-
 ## Doel
-- De afzonderlijke verticale "rijhoogte"-knop (MoveVertical) in de tijdlijn-toolbar verwijderen.
-- De bestaande − / 100% / + zoomknoppen laten zowel de horizontale schaal (`pxPerMin`) als de verticale rijhoogte (`rowHeight`) evenredig mee schalen.
 
-## Scope
-Alleen `src/pages/app/AgendaPage.tsx` (de Tijdlijn-weergave op /app/agenda). Andere views (Lijst, Plattegrond, TableGridView, FloorMode) blijven ongewijzigd.
+1. **Instellingen → Tafels & zones**: zones zelf rangschikken door te slepen. Volgorde wordt opgeslagen in `zones.sort_order` (kolom bestaat al).
+2. **Agenda → Tijdlijn**: de verticale "Tafel"-kolom krijgt een onderverdeling per zone (sticky zone-koptekst boven de bijbehorende tafelrijen), in dezelfde volgorde als ingesteld.
 
-## Wijzigingen
+## Aanpak
 
-1. **Afgeleide rijhoogte** — `rowHeight` koppelen aan `pxPerMin`:
-   - `derivedRowHeight = clamp(ROW_DEFAULT * (pxPerMin / PX_DEFAULT), ROW_MIN, ROW_MAX)`
-   - State `rowHeight` en `setRowHeight` verwijderen (of vervangen door `useMemo` op `pxPerMin`).
-2. **Toolbar opschonen**:
-   - De `<Button>` met `MoveVertical` (regel 421-423) verwijderen.
-   - Bijbehorende `rowZoom` helper (regel 273-274) verwijderen.
-   - Import `MoveVertical` uit lucide-react verwijderen.
-3. **Pinch-zoom** blijft ongewijzigd (gebruikt al alleen `pxPerMin`); de rijhoogte volgt automatisch via de afgeleide waarde.
-4. **Ondergrens**: omdat `PX_MIN=1` en `PX_DEFAULT=2`, valt de afgeleide rijhoogte bij maximaal uitzoomen op `ROW_DEFAULT * 0.5 = 32` — daarom de `ROW_MIN` (48) handhaven via clamp, zodat tekst in tafelblokken leesbaar blijft. Bij maximaal inzoomen (`PX_MAX=6`) wordt `rowHeight` geclampt op `ROW_MAX` (120).
+### A. Zones sleepbaar maken (`src/pages/app/settings/ZonesTablesSettings.tsx`)
+
+- Per zone-rij een drag-handle icoon (`GripVertical`, links naast het naam-input). Hele rij wordt `draggable`, sleep wordt via de handle gestart (touch-vriendelijk).
+- Native HTML5 drag-and-drop (geen nieuwe dependency): `onDragStart` zet bron-index, `onDragOver` toont drop-indicator (border-top/bottom), `onDrop` voert reorder uit.
+- Bij drop: lokale state direct bijwerken (optimistic), daarna voor elke gewijzigde zone `sort_order` opslaan in DB. Bij fout: `load()` opnieuw + toast.
+- Nieuwe zones krijgen al `sort_order = zones.length` (bestaande logica blijft).
+
+### B. Tijdlijn-kolom groeperen per zone (`src/pages/app/AgendaPage.tsx`)
+
+- Query `tables` aanvullen met `zones(name, sort_order)` en in JS sorteren op `(zone.sort_order, label)` zodat de volgorde uit instellingen overal doorwerkt (chips "Spring naar", plattegrond-tabs, tafelrijen).
+- Zones zonder `sort_order` (NULL) of tafels zonder zone (`Overig`) komen onderaan.
+- In de tafellijst-render (rond regel 605): vóór de eerste rij van elke nieuwe zone een sticky zone-header injecteren:
+  - `sticky left-0` binnen de scroll-container, breedte = `TAFEL_COL_W`, achtergrond `bg-muted/40`, kleine uppercase zone-naam, met aantal tafels.
+  - Tafels eronder behouden hun bestaande layout; de losse zone-naam onder de tafellabel (regel 624) wordt verwijderd want redundant geworden.
+- "Spring naar"-chips (regel 470-485) scrollen naar de zone-header in plaats van de eerste tafel.
+
+### C. Geen wijzigingen aan publiek widget/booking-logica
+Alleen UI/sortering. `bookable_online` blijft de bron voor widget-zichtbaarheid.
 
 ## Acceptatiecriteria
-- De omcirkelde verticale knop staat niet meer in de toolbar.
-- − en + knoppen zoomen zichtbaar zowel kolombreedte als rijhoogte evenredig in/uit.
-- 100%-label blijft de horizontale zoom weergeven (ongewijzigd gedrag).
-- Pinch-zoom op tablet werkt nog en past ook de rijhoogte aan.
-- Geen wijzigingen aan data, reserveringslogica of andere views.
+
+- In Instellingen kan ik zones via drag-handle herordenen; nieuwe volgorde blijft na refresh.
+- In Agenda → Tijdlijn zie ik per zone een kop boven de tafels, in de ingestelde volgorde.
+- "Spring naar"-chips, plattegrond-tabs en floor-zone-selector volgen dezelfde volgorde.
+- Geen regressie in walk-in / reservering-creatie of widget-zone-filtering.
+
+## Bestanden
+
+- `src/pages/app/settings/ZonesTablesSettings.tsx` — drag-reorder + persist `sort_order`.
+- `src/pages/app/AgendaPage.tsx` — query uitbreiden, sorteren, zone-header-rijen renderen.
