@@ -4,7 +4,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { corsHeaders } from "../_shared/cors.ts";
 
 type Advisory = {
-  type: "rain_during_service" | "heatwave" | "frost_terrace" | "great_weather_low_bookings" | "storm_warning";
+  type: "rain_during_service" | "heatwave" | "frost_terrace" | "great_weather_low_bookings" | "storm_warning" | "terrace_breeze_warning";
   date: string; // YYYY-MM-DD
   severity: "info" | "warn";
   headline_nl: string;
