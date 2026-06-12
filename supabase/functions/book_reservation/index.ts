@@ -114,12 +114,34 @@ Deno.serve(async (req) => {
       }
     }
 
+    // For online bookings only: exclude tables in zones that are not bookable online.
+    // Operator channels (manager/walk_in/phone/ai_host/clickwise/import) keep full table access.
+    let excludedTableIds: Set<string> | undefined;
+    if (channel === "online") {
+      const { data: offlineZones } = await supabase
+        .from("zones").select("id")
+        .eq("restaurant_id", restaurant.id)
+        .eq("bookable_online", false);
+      const excludedZoneIds = (offlineZones ?? []).map((z: { id: string }) => z.id);
+      if (excludedZoneIds.length > 0) {
+        const { data: excTables } = await supabase
+          .from("tables").select("id")
+          .eq("restaurant_id", restaurant.id)
+          .in("zone_id", excludedZoneIds);
+        excludedTableIds = new Set((excTables ?? []).map((t: { id: string }) => t.id));
+      }
+    }
+
     // Find fitting individual tables
     const { data: tables } = await supabase
       .from("tables").select("id, capacity_min, capacity_max")
       .eq("restaurant_id", restaurant.id).eq("is_active", true)
       .lte("capacity_min", body.party_size).gte("capacity_max", body.party_size)
       .order("capacity_max", { ascending: true });
+
+    const fittingTables = (tables ?? []).filter(
+      (t: { id: string }) => !excludedTableIds || !excludedTableIds.has(t.id),
+    );
 
     // Existing active reservations overlapping window
     const { data: existing } = await supabase
@@ -142,14 +164,14 @@ Deno.serve(async (req) => {
     }
 
     // Prefer single fitting table; fall back to a combination if none fits
-    const candidate = (tables ?? []).find((t) => !occupied.has(t.id)) ?? null;
+    const candidate = fittingTables.find((t) => !occupied.has(t.id)) ?? null;
     let chosenTableIds: string[] = [];
     let chosenCombinationId: string | null = null;
     if (candidate) {
       chosenTableIds = [candidate.id];
     } else {
       const combo = await findAvailableCombination(
-        supabase, restaurant.id, body.party_size, start_iso, end_iso,
+        supabase, restaurant.id, body.party_size, start_iso, end_iso, undefined, excludedTableIds,
       );
       if (!combo) {
         return json({ error: "Geen tafel of combinatie beschikbaar voor deze groepsgrootte op dit moment", error_code: "no_table_available", field: "party_size" }, 409);
@@ -157,6 +179,7 @@ Deno.serve(async (req) => {
       chosenTableIds = combo.tableIds;
       chosenCombinationId = combo.combinationId;
     }
+
 
     // Pacing check (skip for operator-driven walk-ins / manager bookings)
     const skipPacing = channel === "walk_in" || channel === "manager";
