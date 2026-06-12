@@ -10,6 +10,7 @@ import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import { ExternalLink, Copy, Wrench } from "lucide-react";
 import { getWidgetUrl } from "@/lib/widgetUrl";
+import { WeatherSettingsCard } from "@/components/weather/WeatherSettingsCard";
 
 export default function GeneralSettings() {
   const { current } = useRestaurant();
@@ -94,6 +95,8 @@ export default function GeneralSettings() {
           <div className="space-y-1"><Label>Plaats</Label><Input value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })} /></div>
         </CardContent>
       </Card>
+
+      <WeatherSettingsCard />
 
       <Card>
         <CardHeader>
