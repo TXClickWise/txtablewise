@@ -499,7 +499,7 @@ async function evaluate(sb: any, reservation: any, restaurant: any, desiredDate:
 
   // 6. Table availability
   const desiredEndIso = addMinutesIso(desiredStartIso, durationMinutes);
-  const combo = await findAvailableCombination(sb, reservation.restaurant_id, desiredParty, desiredStartIso, desiredEndIso, reservation.id);
+  const combo = await findAvailableSeating(sb, reservation.restaurant_id, desiredParty, desiredStartIso, desiredEndIso, reservation.id);
   if (!combo) {
     return { outcome: "rejected", reasonCode: "no_table_available" };
   }
