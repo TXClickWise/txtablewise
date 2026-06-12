@@ -53,6 +53,7 @@ export async function findAvailableCombination(
   startIso: string,
   endIso: string,
   excludeReservationId?: string,
+  excludedTableIds?: Set<string>,
 ): Promise<{ combinationId: string; tableIds: string[]; name: string } | null> {
   const { data: combos } = await sb
     .from("table_combinations")
@@ -94,6 +95,7 @@ export async function findAvailableCombination(
   for (const c of combos as Array<{ id: string; name: string; table_ids: string[] }>) {
     const tableIds = c.table_ids ?? [];
     if (tableIds.length === 0) continue;
+    if (excludedTableIds && tableIds.some((id) => excludedTableIds.has(id))) continue;
     const allFree = tableIds.every((id) => !occupied.has(id));
     if (allFree) return { combinationId: c.id, tableIds, name: c.name };
   }
