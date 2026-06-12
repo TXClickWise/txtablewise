@@ -110,6 +110,7 @@ async function fetchAndStoreForRestaurant(
         precipitation_prob_pct: hourly.precipitation_probability?.[i] ?? null,
         condition_code: hourly.weather_code?.[i] ?? null,
         wind_kmh: hourly.wind_speed_10m?.[i] ?? null,
+        wind_direction_deg: hourly.wind_direction_10m?.[i] ?? null,
         fetched_at: new Date().toISOString(),
       });
     }
