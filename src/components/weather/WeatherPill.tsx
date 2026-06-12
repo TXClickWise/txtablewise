@@ -227,12 +227,13 @@ export function WeatherPill({ restaurantId }: Props) {
               Komende 7 dagen
             </h3>
 
-            <div className="rounded-md border bg-card divide-y">
+            <div className="rounded-md border bg-card overflow-x-auto">
+              <div className="min-w-[38rem] divide-y">
               {/* Header */}
-              <div className="grid grid-cols-[5rem_2rem_minmax(0,1fr)_3.5rem_4rem_6.5rem] items-center gap-2 px-3 py-2 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+              <div className="grid grid-cols-[6.5rem_3rem_5rem_4.5rem_5rem_7.5rem] items-center gap-2 px-3 py-2 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
                 <span>Dag</span>
                 <span className="text-center" aria-label="Weer">Weer</span>
-                <span className="text-right">Min / Max</span>
+                <span className="text-center">Min / Max</span>
                 <span className="text-right">Regen</span>
                 <span className="text-center">Richting</span>
                 <span className="text-right">Wind</span>
@@ -240,12 +241,13 @@ export function WeatherPill({ restaurantId }: Props) {
 
               {daily.map((d, i) => {
                 const ip = interpretCode(d.condition_code);
-                const dir = degToCompass(d.wind_direction_deg);
+                const directionDeg = d.wind_direction_deg ?? strongestHourlyDirectionForDay(hourly, d.date);
+                const dir = degToCompass(directionDeg);
                 const bft = beaufort(d.wind_kmh_max);
                 return (
                   <div
                     key={d.id}
-                    className={`grid grid-cols-[5rem_2rem_minmax(0,1fr)_3.5rem_4rem_6.5rem] items-center gap-2 px-3 h-11 text-sm ${
+                    className={`grid grid-cols-[6.5rem_3rem_5rem_4.5rem_5rem_7.5rem] items-center gap-2 px-3 min-h-11 py-2 text-sm ${
                       i === 0 ? "bg-muted/40" : ""
                     }`}
                   >
@@ -253,16 +255,16 @@ export function WeatherPill({ restaurantId }: Props) {
                       {format(new Date(d.date + "T12:00:00"), "EEE d MMM", { locale: nl })}
                     </span>
                     <span className="text-center text-lg leading-none" aria-label={ip.label}>{ip.emoji}</span>
-                    <span className="text-right text-muted-foreground tabular-nums">
+                    <span className="text-center text-muted-foreground tabular-nums whitespace-nowrap">
                       {d.min_temp_c !== null ? Math.round(d.min_temp_c) : "—"}° / {d.max_temp_c !== null ? Math.round(d.max_temp_c) : "—"}°
                     </span>
                     <span className={`text-right text-xs tabular-nums ${(d.precipitation_mm ?? 0) >= 0.5 ? "text-primary" : "text-muted-foreground"}`}>
                       {(d.precipitation_mm ?? 0) >= 0.5 ? `${d.precipitation_mm!.toFixed(1)}mm` : "—"}
                     </span>
                     <span className="text-xs inline-flex items-center justify-center gap-1 text-muted-foreground">
-                      {d.wind_direction_deg !== null && d.wind_direction_deg !== undefined ? (
+                      {directionDeg !== null && directionDeg !== undefined ? (
                         <>
-                          <WindArrow deg={d.wind_direction_deg} className="h-3 w-3" />
+                          <WindArrow deg={directionDeg} className="h-3 w-3" />
                           <span className="font-medium tabular-nums">{dir ?? "—"}</span>
                         </>
                       ) : (
@@ -284,6 +286,7 @@ export function WeatherPill({ restaurantId }: Props) {
                   </div>
                 );
               })}
+              </div>
             </div>
           </section>
 
