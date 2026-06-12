@@ -9,8 +9,8 @@ import {
 import { evaluatePacing, type PacingReservation } from "../_shared/pacing.ts";
 import { durationMinutesFor } from "../_shared/duration.ts";
 import {
-  resolveActiveZones, pickTableWithFillStrategy,
-  type ZoneRow, type TableRow as FillTableRow, type WeatherRow,
+  resolveActiveZones, pickTableWithFillStrategy, pickCombinationWithFillStrategy,
+  type ZoneRow, type TableRow as FillTableRow, type WeatherRow, type CombinationRow,
 } from "../_shared/zone-fill.ts";
 
 type BookRequest = {
