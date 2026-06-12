@@ -116,19 +116,7 @@ export default function ZonesTablesSettings() {
 
       <TabsContent value="list" className="space-y-6">
       <Card>
-        <CardHeader><CardTitle className="font-display text-lg">Zones</CardTitle></CardHeader>
-        <CardContent className="space-y-3">
-          {zones.length === 0 && <p className="text-sm text-muted-foreground">Nog geen zones.</p>}
-          {zones.map((z) => (
-            <div key={z.id} className="flex gap-2 items-center">
-              <Input
-                defaultValue={z.name}
-                onBlur={(e) => e.target.value !== z.name && renameZone(z.id, e.target.value)}
-              />
-              <Button variant="ghost" size="icon" onClick={() => delZone(z.id)}><Trash2 className="h-4 w-4" /></Button>
-            </div>
-          ))}
-      <Card>
+
         <CardHeader><CardTitle className="font-display text-lg">Zones</CardTitle></CardHeader>
         <CardContent className="space-y-3">
           {zones.length === 0 && <p className="text-sm text-muted-foreground">Nog geen zones.</p>}
