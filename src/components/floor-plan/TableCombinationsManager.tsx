@@ -26,6 +26,7 @@ type Combination = {
   capacity_min: number;
   capacity_max: number;
   is_active: boolean;
+  fill_priority: number;
 };
 
 type FormState = {
