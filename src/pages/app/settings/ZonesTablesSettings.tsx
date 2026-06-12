@@ -15,7 +15,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { FloorPlanEditor } from "@/components/floor-plan/FloorPlanEditor";
 import { TableCombinationsManager } from "@/components/floor-plan/TableCombinationsManager";
 
-type Zone = { id: string; name: string; sort_order: number; is_active: boolean };
+type Zone = { id: string; name: string; sort_order: number; is_active: boolean; bookable_online: boolean };
 type TableRow = {
   id?: string;
   zone_id: string | null;
@@ -72,6 +72,16 @@ export default function ZonesTablesSettings() {
   const renameZone = async (id: string, name: string) => {
     await supabase.from("zones").update({ name }).eq("id", id);
   };
+  const toggleBookableOnline = async (id: string, value: boolean) => {
+    setZones((p) => p.map((z) => (z.id === id ? { ...z, bookable_online: value } : z)));
+    const { error } = await supabase.from("zones").update({ bookable_online: value }).eq("id", id);
+    if (error) {
+      toast.error(error.message);
+      load();
+    } else {
+      toast.success(value ? "Zone zichtbaar in online widget" : "Zone verborgen in online widget");
+    }
+  };
 
   const addTable = async () => {
     if (!rid || !newTable.label.trim()) return toast.error("Label vereist");
@@ -118,6 +128,32 @@ export default function ZonesTablesSettings() {
               <Button variant="ghost" size="icon" onClick={() => delZone(z.id)}><Trash2 className="h-4 w-4" /></Button>
             </div>
           ))}
+      <Card>
+        <CardHeader><CardTitle className="font-display text-lg">Zones</CardTitle></CardHeader>
+        <CardContent className="space-y-3">
+          {zones.length === 0 && <p className="text-sm text-muted-foreground">Nog geen zones.</p>}
+          {zones.map((z) => (
+            <div key={z.id} className="flex gap-2 items-center">
+              <Input
+                defaultValue={z.name}
+                onBlur={(e) => e.target.value !== z.name && renameZone(z.id, e.target.value)}
+              />
+              <div className="flex items-center gap-2 shrink-0 px-2">
+                <Switch
+                  id={`online-${z.id}`}
+                  checked={z.bookable_online}
+                  onCheckedChange={(v) => toggleBookableOnline(z.id, v)}
+                />
+                <Label htmlFor={`online-${z.id}`} className="text-xs text-muted-foreground whitespace-nowrap cursor-pointer">
+                  Online reserveren
+                </Label>
+              </div>
+              <Button variant="ghost" size="icon" onClick={() => delZone(z.id)}><Trash2 className="h-4 w-4" /></Button>
+            </div>
+          ))}
+          <p className="text-[11px] text-muted-foreground pt-1">
+            Zones zonder "Online reserveren" zijn verborgen in de gast-widget. Medewerkers kunnen er nog steeds handmatig walk-ins en reserveringen op plaatsen.
+          </p>
           <div className="flex gap-2 pt-2 border-t border-border">
             <Input placeholder="Nieuwe zone (bv. Terras)" value={newZone} onChange={(e) => setNewZone(e.target.value)} />
             <Button onClick={addZone}><Plus className="h-4 w-4 mr-1" /> Toevoegen</Button>
