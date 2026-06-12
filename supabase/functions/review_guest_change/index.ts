@@ -72,7 +72,7 @@ Deno.serve(async (req) => {
     if (body.action === "approve") {
       let newStartIso: string | null = null;
       let newEndIso: string | null = null;
-      let newCombo: { combinationId: string; tableIds: string[] } | null = null;
+      let newCombo: { combinationId: string | null; tableIds: string[] } | null = null;
 
       const dateTimeChanged = gcr.desired_reservation_date !== reservation.reservation_date
         || formatTimeFromIso(reservation.start_time, tz) !== gcr.desired_time;
@@ -81,7 +81,7 @@ Deno.serve(async (req) => {
       if (dateTimeChanged || partyChanged) {
         newStartIso = zonedDateTimeToUtcIso(gcr.desired_reservation_date, gcr.desired_time, tz);
         newEndIso = addMinutesIso(newStartIso, durationMinutes);
-        newCombo = await findAvailableCombination(
+        newCombo = await findAvailableSeating(
           service, gcr.restaurant_id, gcr.desired_party_size, newStartIso, newEndIso, reservation.id,
         );
         if (!newCombo) return json({ error: "no_table_available" }, 409);
