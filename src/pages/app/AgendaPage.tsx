@@ -11,7 +11,7 @@ import { nl } from "date-fns/locale";
 import { useSearchParams } from "react-router-dom";
 import {
   ChevronLeft, ChevronRight, Calendar as CalendarIcon,
-  ZoomIn, ZoomOut, MoveVertical, Maximize2, Minimize2,
+  ZoomIn, ZoomOut, Maximize2, Minimize2,
   CalendarDays, List, LayoutGrid,
 } from "lucide-react";
 import { useRestaurant } from "@/hooks/useRestaurant";
@@ -92,7 +92,7 @@ const AgendaPage = () => {
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [pxPerMin, setPxPerMin] = useState(PX_DEFAULT);
-  const [rowHeight, setRowHeight] = useState(ROW_DEFAULT);
+  const rowHeight = Math.max(ROW_MIN, Math.min(ROW_MAX, Math.round(ROW_DEFAULT * (pxPerMin / PX_DEFAULT))));
   const [now, setNow] = useState(new Date());
   const [createOpen, setCreateOpen] = useState(false);
   const [createPrefill, setCreatePrefill] = useState<ReservationFormPrefill | undefined>(undefined);
@@ -270,8 +270,6 @@ const AgendaPage = () => {
       if (headerAxisRef.current) headerAxisRef.current.scrollLeft = e2.scrollLeft;
     });
   };
-  const rowZoom = (delta: number) =>
-    setRowHeight((v) => Math.max(ROW_MIN, Math.min(ROW_MAX, v + delta)));
 
   // Pinch-zoom op touch
   const pointers = useRef<Map<number, { x: number; y: number }>>(new Map());
@@ -417,9 +415,6 @@ const AgendaPage = () => {
           </Button>
           <Button variant="outline" size="icon" className="h-9 w-9" onClick={() => setFullscreen((v) => !v)} aria-label={fullscreen ? "Verlaat volledig scherm" : "Volledig scherm"}>
             {fullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
-          </Button>
-          <Button variant="outline" size="icon" className="h-9 w-9" onClick={() => rowZoom(rowHeight >= ROW_MAX ? -ROW_STEP : ROW_STEP)} aria-label="Rijhoogte wisselen">
-            <MoveVertical className="h-4 w-4" />
           </Button>
         </>
       )}
