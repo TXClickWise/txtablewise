@@ -1,0 +1,2 @@
+ALTER TABLE public.table_combinations ADD COLUMN IF NOT EXISTS fill_priority integer NOT NULL DEFAULT 100;
+CREATE INDEX IF NOT EXISTS table_combinations_restaurant_fill_priority_idx ON public.table_combinations(restaurant_id, fill_priority);
