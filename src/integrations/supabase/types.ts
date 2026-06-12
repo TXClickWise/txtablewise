@@ -2623,6 +2623,7 @@ export type Database = {
           sunset: string | null
           updated_at: string
           uv_index_max: number | null
+          wind_direction_deg: number | null
           wind_kmh_max: number | null
         }
         Insert: {
@@ -2640,6 +2641,7 @@ export type Database = {
           sunset?: string | null
           updated_at?: string
           uv_index_max?: number | null
+          wind_direction_deg?: number | null
           wind_kmh_max?: number | null
         }
         Update: {
@@ -2657,6 +2659,7 @@ export type Database = {
           sunset?: string | null
           updated_at?: string
           uv_index_max?: number | null
+          wind_direction_deg?: number | null
           wind_kmh_max?: number | null
         }
         Relationships: [
@@ -2681,6 +2684,7 @@ export type Database = {
           restaurant_id: string
           temp_c: number | null
           updated_at: string
+          wind_direction_deg: number | null
           wind_kmh: number | null
         }
         Insert: {
@@ -2694,6 +2698,7 @@ export type Database = {
           restaurant_id: string
           temp_c?: number | null
           updated_at?: string
+          wind_direction_deg?: number | null
           wind_kmh?: number | null
         }
         Update: {
@@ -2707,6 +2712,7 @@ export type Database = {
           restaurant_id?: string
           temp_c?: number | null
           updated_at?: string
+          wind_direction_deg?: number | null
           wind_kmh?: number | null
         }
         Relationships: [
