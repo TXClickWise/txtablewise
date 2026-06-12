@@ -153,21 +153,52 @@ const AgendaPage = () => {
     enabled: !!rid,
     queryFn: async () => {
       const { data } = await supabase.from("tables")
-        .select("id, label, capacity_min, capacity_max, zone_id, pos_x, pos_y, width, height, shape, zones(name)")
+        .select("id, label, capacity_min, capacity_max, zone_id, pos_x, pos_y, width, height, shape, zones(name, sort_order)")
         .eq("restaurant_id", rid!).eq("is_active", true).order("label");
       return data ?? [];
     },
   });
   const rowRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const zoneHeaderRefs = useRef<Record<string, HTMLDivElement | null>>({});
+
+  // Sorteer tafels op (zone.sort_order, label). Tafels zonder zone of zonder sort_order → onderaan.
+  const sortedTables = useMemo(() => {
+    const arr = [...(tables as any[])];
+    arr.sort((a, b) => {
+      const aOrder = a.zone_id ? (a.zones?.sort_order ?? 9999) : 1e6;
+      const bOrder = b.zone_id ? (b.zones?.sort_order ?? 9999) : 1e6;
+      if (aOrder !== bOrder) return aOrder - bOrder;
+      const aKey = a.zone_id ?? "_none";
+      const bKey = b.zone_id ?? "_none";
+      if (aKey !== bKey) return aKey < bKey ? -1 : 1;
+      return String(a.label).localeCompare(String(b.label), undefined, { numeric: true });
+    });
+    return arr;
+  }, [tables]);
 
   const zoneGroups = useMemo(() => {
-    const map = new Map<string, { name: string; firstTableId: string }>();
-    for (const t of tables as any[]) {
+    const map = new Map<string, { name: string; sortOrder: number; tableIds: string[] }>();
+    for (const t of sortedTables as any[]) {
       const key = t.zone_id ?? "_none";
-      if (!map.has(key)) map.set(key, { name: t.zones?.name ?? "Overig", firstTableId: t.id });
+      const existing = map.get(key);
+      if (existing) {
+        existing.tableIds.push(t.id);
+      } else {
+        map.set(key, {
+          name: t.zones?.name ?? "Overig",
+          sortOrder: t.zone_id ? (t.zones?.sort_order ?? 9999) : 1e6,
+          tableIds: [t.id],
+        });
+      }
     }
-    return Array.from(map.entries()).map(([key, v]) => ({ key, ...v }));
-  }, [tables]);
+    return Array.from(map.entries()).map(([key, v]) => ({
+      key,
+      name: v.name,
+      sortOrder: v.sortOrder,
+      tableIds: v.tableIds,
+      firstTableId: v.tableIds[0],
+    }));
+  }, [sortedTables]);
 
   useEffect(() => {
     if (!floorZoneId && zoneGroups.length > 0) setFloorZoneId(zoneGroups[0].key);
