@@ -418,9 +418,6 @@ const AgendaPage = () => {
           <Button variant="outline" size="icon" className="h-9 w-9" onClick={() => setFullscreen((v) => !v)} aria-label={fullscreen ? "Verlaat volledig scherm" : "Volledig scherm"}>
             {fullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
           </Button>
-          <Button variant="outline" size="icon" className="h-9 w-9" onClick={() => rowZoom(rowHeight >= ROW_MAX ? -ROW_STEP : ROW_STEP)} aria-label="Rijhoogte wisselen">
-            <MoveVertical className="h-4 w-4" />
-          </Button>
         </>
       )}
       <Button variant="outline" size="icon" className="h-9 w-9" onClick={() => setDate(subDays(date, 1))} aria-label="Vorige dag">
