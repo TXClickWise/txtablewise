@@ -29,3 +29,7 @@ project_id = "lbhtztbpxmqlzhyephew"
     verify_jwt = false
   [functions.translate-email-templates]
     verify_jwt = true
+  [functions.weather_fetcher]
+    verify_jwt = false
+  [functions.weather_advise]
+    verify_jwt = false
