@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetFooter, SheetDescription } from "@/components/ui/sheet";
-import { Plus, Trash2, Pencil, Combine } from "lucide-react";
+import { Plus, Trash2, Pencil, Combine, ArrowUp, ArrowDown } from "lucide-react";
 import { toast } from "sonner";
 
 type TableRow = {
@@ -26,6 +26,7 @@ type Combination = {
   capacity_min: number;
   capacity_max: number;
   is_active: boolean;
+  fill_priority: number;
 };
 
 type FormState = {
@@ -61,7 +62,7 @@ export function TableCombinationsManager({ restaurantId }: { restaurantId: strin
         .eq("restaurant_id", restaurantId).eq("is_active", true).order("label"),
       supabase.from("zones").select("id, name").eq("restaurant_id", restaurantId).order("sort_order"),
       supabase.from("table_combinations").select("*")
-        .eq("restaurant_id", restaurantId).order("name"),
+        .eq("restaurant_id", restaurantId).order("fill_priority").order("name"),
     ]);
     setTables((t ?? []) as TableRow[]);
     setZones((z ?? []) as ZoneRow[]);
@@ -144,6 +145,26 @@ export function TableCombinationsManager({ restaurantId }: { restaurantId: strin
       .update({ is_active: !c.is_active }).eq("id", c.id);
     if (error) { toast.error(error.message); return; }
     load();
+  };
+
+  const movePriority = async (c: Combination, direction: -1 | 1) => {
+    const idx = combos.findIndex((x) => x.id === c.id);
+    const swapIdx = idx + direction;
+    if (idx < 0 || swapIdx < 0 || swapIdx >= combos.length) return;
+    const other = combos[swapIdx];
+    // Swap fill_priority values; if equal, assign explicit values.
+    const aPrio = c.fill_priority;
+    const bPrio = other.fill_priority === aPrio ? aPrio + direction : other.fill_priority;
+    await Promise.all([
+      supabase.from("table_combinations").update({ fill_priority: bPrio }).eq("id", c.id),
+      supabase.from("table_combinations").update({ fill_priority: aPrio }).eq("id", other.id),
+    ]);
+    load();
+  };
+
+  const zoneIdsForCombo = (c: Combination): string[] => {
+    const ids = c.table_ids.map((id) => tables.find((t) => t.id === id)?.zone_id ?? null);
+    return Array.from(new Set(ids.filter((x): x is string => !!x)));
   };
 
   return (
@@ -258,11 +279,28 @@ export function TableCombinationsManager({ restaurantId }: { restaurantId: strin
           </p>
         ) : (
           <div className="space-y-2">
-            {combos.map((c) => (
+            {combos.map((c, idx) => {
+              const zIds = zoneIdsForCombo(c);
+              const crossZone = zIds.length > 1;
+              const zoneLabel = zIds.length === 0
+                ? "Geen zone"
+                : zIds.map((id) => zones.find((z) => z.id === id)?.name ?? "?").join(" + ");
+              return (
               <div key={c.id} className="flex items-start justify-between gap-3 rounded-md border border-border p-3">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
                     <p className="font-medium text-sm">{c.name}</p>
+                    <span
+                      className={
+                        "text-[10px] uppercase tracking-wide rounded px-1.5 py-0.5 border " +
+                        (crossZone
+                          ? "border-amber-500/40 text-amber-700 dark:text-amber-400 bg-amber-500/5"
+                          : "border-border text-muted-foreground")
+                      }
+                      title={crossZone ? "Combinatie loopt over meerdere zones — laatste keuze in vul-strategie" : "Eén zone"}
+                    >
+                      {crossZone ? "Cross-zone" : "Eén zone"}: {zoneLabel}
+                    </span>
                     {!c.is_active && (
                       <span className="text-[10px] uppercase tracking-wide text-muted-foreground border border-border rounded px-1.5 py-0.5">
                         inactief
@@ -274,6 +312,24 @@ export function TableCombinationsManager({ restaurantId }: { restaurantId: strin
                   </p>
                 </div>
                 <div className="flex items-center gap-1">
+                  <div className="flex flex-col -space-y-1 mr-1">
+                    <Button
+                      variant="ghost" size="icon" className="h-5 w-5"
+                      onClick={() => movePriority(c, -1)}
+                      disabled={idx === 0}
+                      aria-label="Hogere prioriteit"
+                    >
+                      <ArrowUp className="h-3 w-3" />
+                    </Button>
+                    <Button
+                      variant="ghost" size="icon" className="h-5 w-5"
+                      onClick={() => movePriority(c, 1)}
+                      disabled={idx === combos.length - 1}
+                      aria-label="Lagere prioriteit"
+                    >
+                      <ArrowDown className="h-3 w-3" />
+                    </Button>
+                  </div>
                   <Switch checked={c.is_active} onCheckedChange={() => toggleActive(c)} />
                   <Button variant="ghost" size="icon" onClick={() => startEdit(c)}>
                     <Pencil className="h-4 w-4" />
@@ -283,7 +339,8 @@ export function TableCombinationsManager({ restaurantId }: { restaurantId: strin
                   </Button>
                 </div>
               </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </CardContent>

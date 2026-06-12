@@ -2296,6 +2296,7 @@ export type Database = {
           capacity_max: number
           capacity_min: number
           created_at: string
+          fill_priority: number
           id: string
           is_active: boolean
           name: string
@@ -2307,6 +2308,7 @@ export type Database = {
           capacity_max: number
           capacity_min: number
           created_at?: string
+          fill_priority?: number
           id?: string
           is_active?: boolean
           name: string
@@ -2318,6 +2320,7 @@ export type Database = {
           capacity_max?: number
           capacity_min?: number
           created_at?: string
+          fill_priority?: number
           id?: string
           is_active?: boolean
           name?: string
