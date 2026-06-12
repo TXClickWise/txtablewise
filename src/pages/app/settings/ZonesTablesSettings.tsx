@@ -150,25 +150,72 @@ export default function ZonesTablesSettings() {
         <CardHeader><CardTitle className="font-display text-lg">Zones</CardTitle></CardHeader>
         <CardContent className="space-y-3">
           {zones.length === 0 && <p className="text-sm text-muted-foreground">Nog geen zones.</p>}
-          {zones.map((z) => (
-            <div key={z.id} className="flex gap-2 items-center">
-              <Input
-                defaultValue={z.name}
-                onBlur={(e) => e.target.value !== z.name && renameZone(z.id, e.target.value)}
-              />
-              <div className="flex items-center gap-2 shrink-0 px-2">
-                <Switch
-                  id={`online-${z.id}`}
-                  checked={z.bookable_online}
-                  onCheckedChange={(v) => toggleBookableOnline(z.id, v)}
+          {zones.map((z, idx) => {
+            const isDragging = dragIndex === idx;
+            const showDropAbove = dropIndex === idx && dragIndex !== null && dragIndex > idx;
+            const showDropBelow = dropIndex === idx && dragIndex !== null && dragIndex < idx;
+            return (
+              <div
+                key={z.id}
+                draggable
+                onDragStart={(e) => {
+                  setDragIndex(idx);
+                  e.dataTransfer.effectAllowed = "move";
+                }}
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  e.dataTransfer.dropEffect = "move";
+                  if (dropIndex !== idx) setDropIndex(idx);
+                }}
+                onDragLeave={() => {
+                  if (dropIndex === idx) setDropIndex(null);
+                }}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  if (dragIndex !== null && dragIndex !== idx) reorderZones(dragIndex, idx);
+                  setDragIndex(null);
+                  setDropIndex(null);
+                }}
+                onDragEnd={() => {
+                  setDragIndex(null);
+                  setDropIndex(null);
+                }}
+                className={cn(
+                  "flex gap-2 items-center rounded-md transition-colors",
+                  isDragging && "opacity-50",
+                  showDropAbove && "border-t-2 border-primary",
+                  showDropBelow && "border-b-2 border-primary",
+                )}
+              >
+                <button
+                  type="button"
+                  aria-label={`Sleep zone ${z.name} om te herordenen`}
+                  className="shrink-0 cursor-grab active:cursor-grabbing touch-none p-2 text-muted-foreground hover:text-foreground"
+                  onPointerDown={(e) => {
+                    // Stel dragIndex meteen in zodat touch ook werkt waar de browser het ondersteunt.
+                    setDragIndex(idx);
+                  }}
+                >
+                  <GripVertical className="h-4 w-4" />
+                </button>
+                <Input
+                  defaultValue={z.name}
+                  onBlur={(e) => e.target.value !== z.name && renameZone(z.id, e.target.value)}
                 />
-                <Label htmlFor={`online-${z.id}`} className="text-xs text-muted-foreground whitespace-nowrap cursor-pointer">
-                  Online reserveren
-                </Label>
+                <div className="flex items-center gap-2 shrink-0 px-2">
+                  <Switch
+                    id={`online-${z.id}`}
+                    checked={z.bookable_online}
+                    onCheckedChange={(v) => toggleBookableOnline(z.id, v)}
+                  />
+                  <Label htmlFor={`online-${z.id}`} className="text-xs text-muted-foreground whitespace-nowrap cursor-pointer">
+                    Online reserveren
+                  </Label>
+                </div>
+                <Button variant="ghost" size="icon" onClick={() => delZone(z.id)}><Trash2 className="h-4 w-4" /></Button>
               </div>
-              <Button variant="ghost" size="icon" onClick={() => delZone(z.id)}><Trash2 className="h-4 w-4" /></Button>
-            </div>
-          ))}
+            );
+          })}
           <p className="text-[11px] text-muted-foreground pt-1">
             Zones zonder "Online reserveren" zijn verborgen in de gast-widget. Medewerkers kunnen er nog steeds handmatig walk-ins en reserveringen op plaatsen.
           </p>
