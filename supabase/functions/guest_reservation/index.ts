@@ -14,7 +14,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { corsHeaders } from "../_shared/cors.ts";
 import {
   addMinutesIso,
-  findAvailableCombination,
+  findAvailableSeating,
   getWeekdayKey,
   zonedDateTimeToUtcIso,
 } from "../_shared/reservation-utils.ts";
@@ -254,14 +254,14 @@ async function handleRequestChange(sb: any, reservation: any, restaurant: any, b
   // Apply changes if approved
   let newStartIso: string | null = null;
   let newEndIso: string | null = null;
-  let newCombo: { combinationId: string; tableIds: string[] } | null = null;
+  let newCombo: { combinationId: string | null; tableIds: string[] } | null = null;
 
   if (outcome === "applied") {
     if (dateTimeChanged || partyChanged) {
       const durationMinutes = restaurant.default_reservation_minutes ?? 105;
       newStartIso = zonedDateTimeToUtcIso(desiredDate, desiredTime, restaurant.timezone);
       newEndIso = addMinutesIso(newStartIso, durationMinutes);
-      newCombo = await findAvailableCombination(sb, reservation.restaurant_id, desiredParty, newStartIso, newEndIso, reservation.id);
+      newCombo = await findAvailableSeating(sb, reservation.restaurant_id, desiredParty, newStartIso, newEndIso, reservation.id);
       if (!newCombo) {
         outcome = "rejected";
         reasonCode = "no_table_available";
@@ -499,7 +499,7 @@ async function evaluate(sb: any, reservation: any, restaurant: any, desiredDate:
 
   // 6. Table availability
   const desiredEndIso = addMinutesIso(desiredStartIso, durationMinutes);
-  const combo = await findAvailableCombination(sb, reservation.restaurant_id, desiredParty, desiredStartIso, desiredEndIso, reservation.id);
+  const combo = await findAvailableSeating(sb, reservation.restaurant_id, desiredParty, desiredStartIso, desiredEndIso, reservation.id);
   if (!combo) {
     return { outcome: "rejected", reasonCode: "no_table_available" };
   }
