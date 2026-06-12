@@ -12,6 +12,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { cn } from "@/lib/utils";
 import { FloorPlanEditor } from "@/components/floor-plan/FloorPlanEditor";
 import { TableCombinationsManager } from "@/components/floor-plan/TableCombinationsManager";
 
