@@ -382,6 +382,8 @@ Deno.serve(async (req) => {
       guest_last_name: body.guest.last_name ?? null,
       guest_email: body.guest.email ?? null,
       guest_phone: body.guest.phone ?? null,
+      prefers_terrace: !!body.prefers_terrace,
+      terrace_preference_unmet: terracePreferenceUnmet,
     }).select("*").single();
 
     if (resErr) return json({ error: resErr.message }, 500);
