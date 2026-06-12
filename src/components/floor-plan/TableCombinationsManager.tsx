@@ -62,7 +62,7 @@ export function TableCombinationsManager({ restaurantId }: { restaurantId: strin
         .eq("restaurant_id", restaurantId).eq("is_active", true).order("label"),
       supabase.from("zones").select("id, name").eq("restaurant_id", restaurantId).order("sort_order"),
       supabase.from("table_combinations").select("*")
-        .eq("restaurant_id", restaurantId).order("name"),
+        .eq("restaurant_id", restaurantId).order("fill_priority").order("name"),
     ]);
     setTables((t ?? []) as TableRow[]);
     setZones((z ?? []) as ZoneRow[]);
