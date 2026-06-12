@@ -20,6 +20,8 @@ import { PreOrderReadyList } from "@/components/pre-orders/PreOrderReadyList";
 import { GuestChangeRequestsPanel } from "@/components/reservations/GuestChangeRequestsPanel";
 import { CardSkeletonGrid, EmptyState } from "@/components/touch/StateViews";
 import { PendingLargeGroupsAlert } from "@/components/large-groups/PendingLargeGroupsAlert";
+import { WeatherPill } from "@/components/weather/WeatherPill";
+import { AdvisoryStrip } from "@/components/weather/AdvisoryStrip";
 
 const TodayPage = () => {
   const { current } = useRestaurant();
@@ -120,6 +122,7 @@ const TodayPage = () => {
           {format(new Date(), "EEEE d MMMM yyyy", { locale: nl })}
         </p>
         <div className="flex items-center gap-2">
+          {restaurantId && <WeatherPill restaurantId={restaurantId} />}
           <Badge variant="outline" className="gap-1.5">
             <span className="h-1.5 w-1.5 rounded-full bg-success animate-pulse" />
             Live
@@ -132,6 +135,8 @@ const TodayPage = () => {
           )}
         </div>
       </div>
+
+      {restaurantId && <AdvisoryStrip restaurantId={restaurantId} />}
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <KpiCard
