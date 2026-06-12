@@ -334,10 +334,15 @@ const ReserveWidget = () => {
     setBookingError(null);
     setSubmitting(true);
 
+    const zoneLabel = zone === "no_pref"
+      ? ""
+      : (dbZones.find((z) => z.id === zone)?.name
+          ?? ZONES.find((z) => z.id === zone)?.label
+          ?? "");
     const combinedRequests = [
       requests.trim(),
       allergies.trim() ? `Allergieën/dieet: ${allergies.trim()}` : "",
-      zone !== "no_pref" ? `Zonevoorkeur: ${ZONES.find((z) => z.id === zone)?.label}` : "",
+      zoneLabel ? `Zonevoorkeur: ${zoneLabel}` : "",
     ].filter(Boolean).join("\n");
 
     const result = await bookReservation(
