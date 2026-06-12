@@ -35,9 +35,39 @@ export default function ZonesTablesSettings() {
   const [combos, setCombos] = useState<{ id: string; name: string; table_ids: string[]; is_active: boolean }[]>([]);
   const [loading, setLoading] = useState(true);
   const [newZone, setNewZone] = useState("");
+  const [dragIndex, setDragIndex] = useState<number | null>(null);
+  const [dropIndex, setDropIndex] = useState<number | null>(null);
   const [newTable, setNewTable] = useState<TableRow>({
     zone_id: null, label: "", capacity_min: 2, capacity_max: 4, shape: "round", combinable: true, is_active: true,
   });
+
+  const persistZoneOrder = async (ordered: Zone[]) => {
+    const updates = ordered
+      .map((z, i) => ({ id: z.id, sort_order: i }))
+      .filter((u, i) => ordered[i].sort_order !== i);
+    if (updates.length === 0) return;
+    // Optimistic UI is al toegepast; persist één voor één.
+    const results = await Promise.all(
+      updates.map((u) =>
+        supabase.from("zones").update({ sort_order: u.sort_order }).eq("id", u.id),
+      ),
+    );
+    const firstErr = results.find((r) => r.error)?.error;
+    if (firstErr) {
+      toast.error(firstErr.message);
+      load();
+    }
+  };
+
+  const reorderZones = (from: number, to: number) => {
+    if (from === to || from < 0 || to < 0 || from >= zones.length || to >= zones.length) return;
+    const next = [...zones];
+    const [moved] = next.splice(from, 1);
+    next.splice(to, 0, moved);
+    const renumbered = next.map((z, i) => ({ ...z, sort_order: i }));
+    setZones(renumbered);
+    persistZoneOrder(renumbered);
+  };
 
   const load = async () => {
     if (!rid) return;
