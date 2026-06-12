@@ -147,6 +147,26 @@ export function TableCombinationsManager({ restaurantId }: { restaurantId: strin
     load();
   };
 
+  const movePriority = async (c: Combination, direction: -1 | 1) => {
+    const idx = combos.findIndex((x) => x.id === c.id);
+    const swapIdx = idx + direction;
+    if (idx < 0 || swapIdx < 0 || swapIdx >= combos.length) return;
+    const other = combos[swapIdx];
+    // Swap fill_priority values; if equal, assign explicit values.
+    const aPrio = c.fill_priority;
+    const bPrio = other.fill_priority === aPrio ? aPrio + direction : other.fill_priority;
+    await Promise.all([
+      supabase.from("table_combinations").update({ fill_priority: bPrio }).eq("id", c.id),
+      supabase.from("table_combinations").update({ fill_priority: aPrio }).eq("id", other.id),
+    ]);
+    load();
+  };
+
+  const zoneIdsForCombo = (c: Combination): string[] => {
+    const ids = c.table_ids.map((id) => tables.find((t) => t.id === id)?.zone_id ?? null);
+    return Array.from(new Set(ids.filter((x): x is string => !!x)));
+  };
+
   return (
     <Card>
       <CardHeader className="flex flex-row items-start justify-between gap-3">
