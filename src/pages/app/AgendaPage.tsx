@@ -270,8 +270,6 @@ const AgendaPage = () => {
       if (headerAxisRef.current) headerAxisRef.current.scrollLeft = e2.scrollLeft;
     });
   };
-  const rowZoom = (delta: number) =>
-    setRowHeight((v) => Math.max(ROW_MIN, Math.min(ROW_MAX, v + delta)));
 
   // Pinch-zoom op touch
   const pointers = useRef<Map<number, { x: number; y: number }>>(new Map());
