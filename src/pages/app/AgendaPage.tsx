@@ -105,9 +105,30 @@ const AgendaPage = () => {
   const [fullscreen, setFullscreen] = useState(false);
   const [floorZoneId, setFloorZoneId] = useState<string | null>(null);
 
+  // Drag-to-reschedule state
+  const qc = useQueryClient();
+  type DragState = {
+    id: string;
+    sourceTableId: string;
+    startMin: number;
+    durationMin: number;
+    startPointerX: number;
+    startPointerY: number;
+    pointerX: number;
+    pointerY: number;
+    moved: boolean;
+    targetTableId: string | null;
+    targetStartMin: number | null;
+    conflict: boolean;
+  };
+  const [drag, setDrag] = useState<DragState | null>(null);
+  const dragRef = useRef<DragState | null>(null);
+  dragRef.current = drag;
+
   const scrollRef = useRef<HTMLDivElement>(null);
   const headerAxisRef = useRef<HTMLDivElement>(null);
   const didInitialScroll = useRef(false);
+
   const dateStr = format(date, "yyyy-MM-dd");
 
   // tick "nu" elke 15 min — synchroon met kwartier
