@@ -659,7 +659,7 @@ function ZoneBlock({
   onSelect: (id: string) => void;
 }) {
   const seated = tables.filter(t => state.get(t.id)?.status === "seated").length;
-  const free = tables.filter(t => (state.get(t.id)?.status ?? "free") === "free").length;
+  const free = tables.filter(t => t.is_active && (state.get(t.id)?.status ?? "free") === "free").length;
   return (
     <section>
       <div className="flex items-baseline justify-between mb-3">
