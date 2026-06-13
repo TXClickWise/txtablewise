@@ -874,18 +874,27 @@ const AgendaPage = () => {
                         const left = Math.max(0, startMin) * pxPerMin;
                         const width = Math.max(20, (endMin - startMin) * pxPerMin - 2);
                         const guestName = `${r.guests?.first_name ?? "Gast"} ${r.guests?.last_name ?? ""}`.trim();
+                        const isDragging = drag?.id === r.id && drag?.moved;
+                        const isLockedStatus = ["completed", "cancelled", "no_show"].includes(r.status);
                         return (
                           <div
                             key={r.id}
-                            className="absolute group z-[2] hover:z-[3]"
+                            className={cn("absolute group z-[2] hover:z-[3]", isDragging && "opacity-30 pointer-events-none")}
                             style={{ left, top: 6, height: rowHeight - 12, width }}
+                            onPointerDown={(e) => { if (!isLockedStatus) onBlockPointerDown(e, r, t.id); }}
                           >
                             <button
                               type="button"
-                              onClick={(e) => { e.stopPropagation(); setSelectedId(r.id); }}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                // suppress click directly after a drag finished
+                                if (drag) return;
+                                setSelectedId(r.id);
+                              }}
                               className={cn(
                                 "w-full h-full rounded-md px-2 text-left text-xs overflow-hidden transition-all duration-150 hover:shadow-elevated",
                                 STATUS_BG[r.status] ?? "bg-muted border-l-[3px] border-border",
+                                !isLockedStatus && "cursor-grab active:cursor-grabbing",
                               )}
                             >
                               <div className="font-medium truncate pr-5">
@@ -893,16 +902,41 @@ const AgendaPage = () => {
                               </div>
                               <div className="text-[10px] opacity-80">{r.party_size}p</div>
                             </button>
-                            <ReservationQuickActionsPopover
-                              reservationId={r.id}
-                              status={r.status}
-                              title={`${format(new Date(r.start_time), "HH:mm")} · ${guestName}`}
-                              subtitle={`${r.party_size} pers · Tafel ${t.label}`}
-                              onOpenDetails={() => setSelectedId(r.id)}
-                            />
+                            <div data-no-drag>
+                              <ReservationQuickActionsPopover
+                                reservationId={r.id}
+                                status={r.status}
+                                title={`${format(new Date(r.start_time), "HH:mm")} · ${guestName}`}
+                                subtitle={`${r.party_size} pers · Tafel ${t.label}`}
+                                onOpenDetails={() => setSelectedId(r.id)}
+                              />
+                            </div>
                           </div>
                         );
                       })}
+                      {/* Drop preview ghost in this row */}
+                      {drag?.moved && drag?.targetTableId === t.id && drag?.targetStartMin !== null && (
+                        <div
+                          className={cn(
+                            "absolute rounded-md border-2 border-dashed pointer-events-none transition-colors",
+                            drag.conflict
+                              ? "border-destructive bg-destructive/15"
+                              : "border-primary bg-primary/15",
+                          )}
+                          style={{
+                            left: drag.targetStartMin * pxPerMin,
+                            top: 6,
+                            height: rowHeight - 12,
+                            width: Math.max(20, drag.durationMin * pxPerMin - 2),
+                          }}
+                        >
+                          <div className="text-[10px] px-2 pt-1 font-semibold">
+                            {minutesToTime(drag.targetStartMin)}
+                            {drag.conflict && " · bezet"}
+                          </div>
+                        </div>
+                      )}
+
                     </div>
                   </div>
                 </div>
