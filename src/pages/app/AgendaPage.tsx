@@ -124,6 +124,10 @@ const AgendaPage = () => {
   const [drag, setDrag] = useState<DragState | null>(null);
   const dragRef = useRef<DragState | null>(null);
   dragRef.current = drag;
+  // Touch long-press hold (drag initiates only after ~250ms ingedrukt houden)
+  const [holdId, setHoldId] = useState<string | null>(null);
+  const holdTimerRef = useRef<number | null>(null);
+  const holdStartRef = useRef<{ x: number; y: number; pointerId: number; r: any; sourceTableId: string } | null>(null);
   // Mark that the most recent pointer interaction was a drag, so the click
   // event that follows on the button is ignored.
   const justDraggedRef = useRef(false);
