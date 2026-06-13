@@ -52,19 +52,63 @@ interface SheetContentProps
     VariantProps<typeof sheetVariants> {}
 
 const SheetContent = React.forwardRef<React.ElementRef<typeof SheetPrimitive.Content>, SheetContentProps>(
-  ({ side = "right", className, children, ...props }, ref) => (
-    <SheetPortal>
-      <SheetOverlay />
-      <SheetPrimitive.Content ref={ref} className={cn(sheetVariants({ side }), className)} {...props}>
-        {children}
-        <SheetPrimitive.Close className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity data-[state=open]:bg-secondary hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none">
-          <X className="h-4 w-4" />
-          <span className="sr-only">Close</span>
-        </SheetPrimitive.Close>
-      </SheetPrimitive.Content>
-    </SheetPortal>
-  ),
+  ({ side = "right", className, children, style, ...props }, ref) => {
+    const contentRef = React.useRef<HTMLDivElement | null>(null);
+    const setRefs = (el: HTMLDivElement | null) => {
+      contentRef.current = el;
+      if (typeof ref === "function") ref(el);
+      else if (ref) (ref as React.MutableRefObject<HTMLDivElement | null>).current = el;
+    };
+
+    // Scroll focused field into view when the keyboard opens — covers iOS Safari
+    // edge cases where visualViewport changes but the field stays behind the keyboard.
+    React.useEffect(() => {
+      const el = contentRef.current;
+      if (!el) return;
+      const onFocusIn = (e: FocusEvent) => {
+        const target = e.target as HTMLElement | null;
+        if (!target || !(target instanceof HTMLElement)) return;
+        if (!["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName)) return;
+        // Wait for the visual viewport to settle, then scroll into view.
+        window.setTimeout(() => {
+          target.scrollIntoView({ block: "center", behavior: "smooth" });
+        }, 250);
+      };
+      el.addEventListener("focusin", onFocusIn);
+      return () => el.removeEventListener("focusin", onFocusIn);
+    }, []);
+
+    const isBottom = side === "bottom";
+    // For bottom sheets, shrink above the keyboard and pad against the inset
+    // so confirm buttons / inputs stay reachable.
+    const keyboardStyle: React.CSSProperties = isBottom
+      ? {
+          paddingBottom:
+            "max(env(safe-area-inset-bottom, 0px), var(--kb-inset, 0px))",
+          maxHeight: "calc(100dvh - var(--kb-inset, 0px))",
+        }
+      : {};
+
+    return (
+      <SheetPortal>
+        <SheetOverlay />
+        <SheetPrimitive.Content
+          ref={setRefs}
+          className={cn(sheetVariants({ side }), className)}
+          style={{ ...keyboardStyle, ...style }}
+          {...props}
+        >
+          {children}
+          <SheetPrimitive.Close className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity data-[state=open]:bg-secondary hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none">
+            <X className="h-4 w-4" />
+            <span className="sr-only">Close</span>
+          </SheetPrimitive.Close>
+        </SheetPrimitive.Content>
+      </SheetPortal>
+    );
+  },
 );
+
 SheetContent.displayName = SheetPrimitive.Content.displayName;
 
 const SheetHeader = ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
