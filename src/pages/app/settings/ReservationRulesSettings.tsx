@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRestaurant } from "@/hooks/useRestaurant";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -77,11 +78,43 @@ const PRESETS: Preset[] = [
   },
 ];
 
+const PRESET_FIELDS = Object.keys(PRESETS[0].values);
+
+function matchesPreset(current: Record<string, unknown> | null | undefined, preset: Preset): boolean {
+  if (!current) return false;
+  for (const [k, v] of Object.entries(preset.values)) {
+    if (current[k] !== v) return false;
+  }
+  return true;
+}
+
 export default function ReservationRulesSettings() {
   const { current } = useRestaurant();
   const restaurantId = current?.restaurant_id;
+  const qc = useQueryClient();
   const [applying, setApplying] = useState<PresetKey | null>(null);
-  const [appliedKey, setAppliedKey] = useState<PresetKey | null>(null);
+
+  const { data: rulesRow } = useQuery({
+    queryKey: ["reservation-rules-preset", restaurantId],
+    enabled: !!restaurantId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("restaurants")
+        .select(PRESET_FIELDS.join(","))
+        .eq("id", restaurantId!)
+        .maybeSingle();
+      if (error) throw error;
+      return (data ?? null) as unknown as Record<string, unknown> | null;
+    },
+  });
+
+  const activeKey: PresetKey | null = useMemo(() => {
+    if (!rulesRow) return null;
+    for (const p of PRESETS) {
+      if (matchesPreset(rulesRow, p)) return p.key;
+    }
+    return null;
+  }, [rulesRow]);
 
   const apply = async (preset: Preset) => {
     if (!restaurantId) return;
@@ -95,7 +128,7 @@ export default function ReservationRulesSettings() {
       toast.error("Niet opgeslagen: " + error.message);
       return;
     }
-    setAppliedKey(preset.key);
+    await qc.invalidateQueries({ queryKey: ["reservation-rules-preset", restaurantId] });
     toast.success(`Preset "${preset.label}" toegepast — je kunt onderaan finetunen indien gewenst.`);
   };
 
@@ -112,7 +145,7 @@ export default function ReservationRulesSettings() {
       <div className="grid gap-3 sm:grid-cols-3">
         {PRESETS.map((p) => {
           const Icon = p.icon;
-          const isApplied = appliedKey === p.key;
+          const isApplied = activeKey === p.key;
           const isBusy = applying === p.key;
           return (
             <Card
