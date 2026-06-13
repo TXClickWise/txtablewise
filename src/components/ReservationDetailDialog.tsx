@@ -18,7 +18,7 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { ChannelBadge } from "@/components/ChannelBadge";
 import { toast } from "sonner";
 import { reservations as resService, type ReservationStatus } from "@/services/reservations";
-import { CheckCircle2, UserCheck, XCircle, AlertOctagon, ShieldCheck, ShieldX, Activity } from "lucide-react";
+import { CheckCircle2, UserCheck, XCircle, AlertOctagon, ShieldCheck, ShieldX, Activity, Pencil } from "lucide-react";
 import { ReservationNoShowSection } from "@/components/no-show/ReservationNoShowSection";
 import { ReservationPreOrderSection } from "@/components/pre-orders/ReservationPreOrderSection";
 import { GuestPreviewInReservation } from "@/components/guests/GuestPreviewInReservation";
@@ -27,6 +27,8 @@ import { ReservationAftercareSection } from "@/components/reviews/ReservationAft
 import { createReviewRequestForReservation } from "@/services/reviews";
 import { ReservationPOSSection } from "@/components/pos/ReservationPOSSection";
 import { ReservationStatusQuickBar } from "@/components/reservations/ReservationStatusQuickBar";
+import { ReservationStatusSwitcher } from "@/components/reservations/ReservationStatusSwitcher";
+import { ReservationSlotEditor } from "@/components/reservations/ReservationSlotEditor";
 import { ReservationCallLogSection } from "@/components/reservations/ReservationCallLogSection";
 
 type Props = {
