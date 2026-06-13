@@ -345,22 +345,13 @@ export function ReservationDetailDialog({ reservationId, open, onOpenChange }: P
                 </div>
               )}
 
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <Label className="text-xs">Datum</Label>
-                  <Input type="date" value={form.reservation_date}
-                    onChange={(e) => setForm({ ...form, reservation_date: e.target.value })} />
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-xs">Tijd</Label>
-                  <Input type="time" value={form.start_time_local}
-                    onChange={(e) => setForm({ ...form, start_time_local: e.target.value })} />
-                </div>
-                <div className="space-y-1 col-span-2">
-                  <Label className="text-xs">Personen</Label>
-                  <Input type="number" min={1} value={form.party_size}
-                    onChange={(e) => setForm({ ...form, party_size: parseInt(e.target.value) || 1 })} />
-                </div>
+              <div className="space-y-1">
+                <Label className="text-xs">Personen</Label>
+                <Input type="number" min={1} value={form.party_size}
+                  onChange={(e) => setForm({ ...form, party_size: parseInt(e.target.value) || 1 })} />
+                <p className="text-[11px] text-muted-foreground">
+                  Datum, tijd en tafel wijzig je via 'Tafel & tijd' bovenaan.
+                </p>
               </div>
 
               {data.special_requests !== null && (
