@@ -124,6 +124,10 @@ const AgendaPage = () => {
   const [drag, setDrag] = useState<DragState | null>(null);
   const dragRef = useRef<DragState | null>(null);
   dragRef.current = drag;
+  // Mark that the most recent pointer interaction was a drag, so the click
+  // event that follows on the button is ignored.
+  const justDraggedRef = useRef(false);
+
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const headerAxisRef = useRef<HTMLDivElement>(null);
