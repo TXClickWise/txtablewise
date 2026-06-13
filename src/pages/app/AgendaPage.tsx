@@ -15,7 +15,7 @@ import {
   CalendarDays, List, LayoutGrid,
 } from "lucide-react";
 import { useRestaurant } from "@/hooks/useRestaurant";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -30,8 +30,8 @@ import { ReservationQuickActionsPopover } from "@/components/reservations/Reserv
 import { PendingLargeGroupsAlert } from "@/components/large-groups/PendingLargeGroupsAlert";
 import { reservations as resService } from "@/services/reservations";
 import { toast } from "sonner";
-import { useQueryClient } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
+
 
 
 const START_HOUR = 11;
