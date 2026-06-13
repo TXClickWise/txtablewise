@@ -387,7 +387,10 @@ const AgendaPage = () => {
       const d = dragRef.current;
       setDrag(null);
       if (!d || !d.moved) return;
+      justDraggedRef.current = true;
+      window.setTimeout(() => { justDraggedRef.current = false; }, 300);
       if (!d.targetTableId || d.targetStartMin === null) return;
+
       if (d.conflict) {
         toast.error("Tafel is bezet op dit tijdstip.");
         return;
