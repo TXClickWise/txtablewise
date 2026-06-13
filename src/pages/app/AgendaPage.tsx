@@ -298,6 +298,132 @@ const AgendaPage = () => {
     return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
   };
 
+  // -- Drag-to-reschedule helpers --------------------------------------------
+  const computeDropTarget = (clientX: number, clientY: number) => {
+    // Find which table row the pointer is over
+    for (const [tid, el] of Object.entries(rowRefs.current)) {
+      if (!el) continue;
+      const rect = el.getBoundingClientRect();
+      if (clientY < rect.top || clientY > rect.bottom) continue;
+      // Content area starts after the sticky label column
+      const contentLeft = rect.left + TAFEL_COL_W;
+      const xInContent = clientX - contentLeft;
+      const minRaw = xInContent / pxPerMin;
+      const snapped = Math.round(minRaw / QUARTER_MIN) * QUARTER_MIN;
+      return { tableId: tid, startMin: Math.max(0, Math.min(totalMinutes - QUARTER_MIN, snapped)) };
+    }
+    return null;
+  };
+
+  const checkConflict = (tableId: string, startMin: number, durationMin: number, excludeId: string) => {
+    const endMin = startMin + durationMin;
+    const items = (byTable[tableId] ?? []) as any[];
+    return items.some((r) => {
+      if (r.id === excludeId) return false;
+      if (["cancelled", "no_show"].includes(r.status)) return false;
+      const sMin = minutesFromStart(r.start_time);
+      const eMin = minutesFromStart(r.end_time);
+      return sMin < endMin && eMin > startMin;
+    });
+  };
+
+  const onBlockPointerDown = (
+    e: React.PointerEvent<HTMLDivElement>,
+    r: any,
+    sourceTableId: string,
+  ) => {
+    if (e.pointerType === "touch" && pointers.current.size >= 1) return; // don't fight pinch
+    if ((e.target as HTMLElement).closest("[data-no-drag]")) return;
+    if (e.button !== undefined && e.button !== 0) return;
+    const startMin = minutesFromStart(r.start_time);
+    const endMin = minutesFromStart(r.end_time);
+    const durationMin = Math.max(QUARTER_MIN, endMin - startMin);
+    setDrag({
+      id: r.id,
+      sourceTableId,
+      startMin,
+      durationMin,
+      startPointerX: e.clientX,
+      startPointerY: e.clientY,
+      pointerX: e.clientX,
+      pointerY: e.clientY,
+      moved: false,
+      targetTableId: sourceTableId,
+      targetStartMin: startMin,
+      conflict: false,
+    });
+  };
+
+  useEffect(() => {
+    if (!drag) return;
+    const onMove = (e: PointerEvent) => {
+      const d = dragRef.current;
+      if (!d) return;
+      const dx = e.clientX - d.startPointerX;
+      const dy = e.clientY - d.startPointerY;
+      const moved = d.moved || Math.hypot(dx, dy) > 8;
+      let targetTableId = d.targetTableId;
+      let targetStartMin = d.targetStartMin;
+      let conflict = d.conflict;
+      if (moved) {
+        const hit = computeDropTarget(e.clientX, e.clientY);
+        if (hit) {
+          targetTableId = hit.tableId;
+          targetStartMin = hit.startMin;
+          conflict = checkConflict(hit.tableId, hit.startMin, d.durationMin, d.id);
+        } else {
+          targetTableId = null;
+          targetStartMin = null;
+          conflict = false;
+        }
+      }
+      setDrag({ ...d, pointerX: e.clientX, pointerY: e.clientY, moved, targetTableId, targetStartMin, conflict });
+    };
+    const onUp = async () => {
+      const d = dragRef.current;
+      setDrag(null);
+      if (!d || !d.moved) return;
+      if (!d.targetTableId || d.targetStartMin === null) return;
+      if (d.conflict) {
+        toast.error("Tafel is bezet op dit tijdstip.");
+        return;
+      }
+      const sameTable = d.targetTableId === d.sourceTableId;
+      const sameTime = d.targetStartMin === d.startMin;
+      if (sameTable && sameTime) return;
+      const payload: Parameters<typeof resService.update>[1] = {};
+      if (!sameTime) payload.start_time_local = minutesToTime(d.targetStartMin);
+      if (!sameTable) payload.table_id = d.targetTableId;
+      const res = await resService.update(d.id, payload);
+      if (!res.ok) {
+        toast.error(res.error || "Verplaatsen is mislukt.");
+        return;
+      }
+      // Bij tijdwijziging end_time bijwerken zodat duur behouden blijft
+      // (manage_reservation past end_time niet automatisch aan).
+      if (!sameTime) {
+        const newStart = new Date(`${dateStr}T${minutesToTime(d.targetStartMin)}:00`);
+        const newEnd = new Date(newStart.getTime() + d.durationMin * 60000);
+        await supabase.from("reservations")
+          .update({ end_time: newEnd.toISOString() })
+          .eq("id", d.id);
+      }
+      toast.success("Reservering verplaatst.");
+      qc.invalidateQueries({ queryKey: ["agenda-day"] });
+    };
+    document.addEventListener("pointermove", onMove);
+    document.addEventListener("pointerup", onUp);
+    document.addEventListener("pointercancel", onUp);
+    return () => {
+      document.removeEventListener("pointermove", onMove);
+      document.removeEventListener("pointerup", onUp);
+      document.removeEventListener("pointercancel", onUp);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [drag?.id]);
+
+
+
   const isToday = isSameDay(date, now);
   const nowMin = (now.getHours() - START_HOUR) * 60 + now.getMinutes();
   const showNowLine = isToday && nowMin >= 0 && nowMin <= totalMinutes;
