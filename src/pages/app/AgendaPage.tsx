@@ -703,7 +703,7 @@ const AgendaPage = () => {
           <>
             {/* Rij 2: tip */}
             <div className="px-3 py-1.5 text-xs text-muted-foreground border-t border-border">
-              Tip: tik op een leeg tijdvak om snel een reservering toe te voegen op die tafel.
+              Tip: tik op een leeg tijdvak om een reservering toe te voegen, of sleep een bestaande reservering naar een andere tafel of tijd.
             </div>
 
             {/* Rij 3: uren-as (horizontaal gesynced met body) */}
