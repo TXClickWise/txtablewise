@@ -339,6 +339,28 @@ export function FloorPlanEditor({ restaurantId }: { restaurantId: string }) {
                 onChange={(e) => updateLocal(selected.id, { height: snap(parseInt(e.target.value) || 80) })}
               />
             </div>
+            <div className="sm:col-span-4 flex items-center justify-between gap-3 pt-3 border-t border-border">
+              <div className="space-y-0.5">
+                <Label className="text-xs">Beschikbaar voor reserveringen</Label>
+                <p className="text-[11px] text-muted-foreground">
+                  Uit = tafel is tijdelijk niet beschikbaar voor reserveringen of walk-ins. Blijft zichtbaar op de plattegrond.
+                </p>
+              </div>
+              <Switch
+                checked={selected.is_active}
+                onCheckedChange={async (v) => {
+                  // Direct persisteren — bookability moet meteen actief zijn.
+                  setTables((prev) => prev.map((t) => (t.id === selected.id ? { ...t, is_active: v } : t)));
+                  const { error } = await supabase.from("tables").update({ is_active: v }).eq("id", selected.id);
+                  if (error) {
+                    toast.error(error.message);
+                    setTables((prev) => prev.map((t) => (t.id === selected.id ? { ...t, is_active: !v } : t)));
+                    return;
+                  }
+                  toast.success(v ? `Tafel ${selected.label} is weer beschikbaar.` : `Tafel ${selected.label} staat op niet-beschikbaar.`);
+                }}
+              />
+            </div>
           </CardContent>
         </Card>
       )}
