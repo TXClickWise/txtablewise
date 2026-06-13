@@ -145,7 +145,7 @@ export default function ReservationRulesSettings() {
       <div className="grid gap-3 sm:grid-cols-3">
         {PRESETS.map((p) => {
           const Icon = p.icon;
-          const isApplied = appliedKey === p.key;
+          const isApplied = activeKey === p.key;
           const isBusy = applying === p.key;
           return (
             <Card
