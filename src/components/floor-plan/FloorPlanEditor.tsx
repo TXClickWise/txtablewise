@@ -9,6 +9,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
+import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 import { Save, Trash2, RotateCcw, Grid3x3, Square, Circle, RectangleHorizontal } from "lucide-react";
 
@@ -24,6 +25,7 @@ type Table = {
   pos_y: number;
   width: number;
   height: number;
+  is_active: boolean;
 };
 
 const CANVAS_W = 900;
@@ -52,7 +54,7 @@ export function FloorPlanEditor({ restaurantId }: { restaurantId: string }) {
   const load = useCallback(async () => {
     const [{ data: z }, { data: t }] = await Promise.all([
       supabase.from("zones").select("id, name").eq("restaurant_id", restaurantId).eq("is_active", true).order("sort_order"),
-      supabase.from("tables").select("*").eq("restaurant_id", restaurantId).eq("is_active", true).order("label"),
+      supabase.from("tables").select("*").eq("restaurant_id", restaurantId).order("label"),
     ]);
     setZones((z ?? []) as Zone[]);
     setTables((t ?? []) as Table[]);
@@ -72,8 +74,9 @@ export function FloorPlanEditor({ restaurantId }: { restaurantId: string }) {
   // Pointer handlers
   const onPointerDownTable = (e: React.PointerEvent, t: Table) => {
     e.stopPropagation();
-    (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
     setSelectedId(t.id);
+    if (!t.is_active) return; // inactieve tafels: alleen selecteren, niet slepen
+    (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
     const rect = canvasRef.current!.getBoundingClientRect();
     dragRef.current = {
       type: "move",
@@ -235,24 +238,43 @@ export function FloorPlanEditor({ restaurantId }: { restaurantId: string }) {
               {visible.map((t) => {
                 const isSelected = t.id === selectedId;
                 const isRound = t.shape === "round";
+                const inactive = !t.is_active;
                 return (
                   <div
                     key={t.id}
                     onPointerDown={(e) => onPointerDownTable(e, t)}
                     className={cn(
-                      "absolute flex flex-col items-center justify-center border-2 cursor-grab active:cursor-grabbing transition-shadow",
+                      "absolute flex flex-col items-center justify-center border-2 transition-shadow",
                       isRound ? "rounded-full" : "rounded-md",
-                      isSelected
+                      inactive
+                        ? "cursor-pointer border-dashed border-muted-foreground/40 bg-muted/40 text-muted-foreground"
+                        : "cursor-grab active:cursor-grabbing",
+                      !inactive && (isSelected
                         ? "border-primary bg-primary/10 shadow-lg ring-2 ring-primary/30"
-                        : "border-border bg-card hover:border-primary/50",
+                        : "border-border bg-card hover:border-primary/50"),
+                      inactive && isSelected && "ring-2 ring-primary/40",
                     )}
-                    style={{ left: t.pos_x, top: t.pos_y, width: t.width, height: t.height }}
+                    style={{
+                      left: t.pos_x,
+                      top: t.pos_y,
+                      width: t.width,
+                      height: t.height,
+                      ...(inactive
+                        ? {
+                            backgroundImage:
+                              "repeating-linear-gradient(45deg, hsl(var(--muted-foreground) / 0.15) 0 6px, transparent 6px 12px)",
+                          }
+                        : {}),
+                    }}
                   >
                     <div className="font-display text-sm pointer-events-none">{t.label}</div>
                     <div className="text-[10px] text-muted-foreground pointer-events-none">
                       {t.capacity_min}-{t.capacity_max}p
                     </div>
-                    {isSelected && (
+                    {inactive && (
+                      <div className="text-[9px] uppercase tracking-wide pointer-events-none mt-0.5">Uit</div>
+                    )}
+                    {isSelected && !inactive && (
                       <div
                         onPointerDown={(e) => onPointerDownResize(e, t)}
                         className="absolute -bottom-1 -right-1 h-4 w-4 rounded-sm bg-primary border-2 border-background cursor-se-resize"
@@ -315,6 +337,28 @@ export function FloorPlanEditor({ restaurantId }: { restaurantId: string }) {
                 type="number" min={40} max={CANVAS_H} step={GRID}
                 value={selected.height}
                 onChange={(e) => updateLocal(selected.id, { height: snap(parseInt(e.target.value) || 80) })}
+              />
+            </div>
+            <div className="sm:col-span-4 flex items-center justify-between gap-3 pt-3 border-t border-border">
+              <div className="space-y-0.5">
+                <Label className="text-xs">Beschikbaar voor reserveringen</Label>
+                <p className="text-[11px] text-muted-foreground">
+                  Uit = tafel is tijdelijk niet beschikbaar voor reserveringen of walk-ins. Blijft zichtbaar op de plattegrond.
+                </p>
+              </div>
+              <Switch
+                checked={selected.is_active}
+                onCheckedChange={async (v) => {
+                  // Direct persisteren — bookability moet meteen actief zijn.
+                  setTables((prev) => prev.map((t) => (t.id === selected.id ? { ...t, is_active: v } : t)));
+                  const { error } = await supabase.from("tables").update({ is_active: v }).eq("id", selected.id);
+                  if (error) {
+                    toast.error(error.message);
+                    setTables((prev) => prev.map((t) => (t.id === selected.id ? { ...t, is_active: !v } : t)));
+                    return;
+                  }
+                  toast.success(v ? `Tafel ${selected.label} is weer beschikbaar.` : `Tafel ${selected.label} staat op niet-beschikbaar.`);
+                }}
               />
             </div>
           </CardContent>

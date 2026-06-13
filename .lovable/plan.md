@@ -1,46 +1,47 @@
+## Doel
 
-## Probleem
+Operators kunnen een tafel met één tap tijdelijk **Uit** (niet beschikbaar) zetten zonder hem te verwijderen. Gebruikt de bestaande `tables.is_active` kolom — die wordt al door alle auto-toewijzingsflows als harde filter gehanteerd. Geen schema-wijziging nodig.
 
-Bij Eigeweis staat de vul-strategie aan met zone-volgorde Terras → Serre → Restaurant → Podium. Bij een nieuwe boeking via de widget werkt dat goed (`book_reservation` past de strategie toe). Maar als een gast via de mail z'n reservering verplaatst, wordt er een tafel gekozen die volledig voorbij de strategie gaat — in dit geval tafel 50 in Podium, terwijl Serre/Terras vrij waren.
+## Wat er nu klopt (geen werk)
 
-Oorzaak: de helper `findAvailableSeating` die we voor de gast-flow hebben gemaakt sorteert puur op `capacity_max ASC`. Geen zones, geen `fill_priority`, geen terras-voorkeur, geen terras-blokkering bij regen. Dezelfde helper wordt ook gebruikt in `review_guest_change` (operator keurt gastwijziging goed) en in `public_api` (extern manage-reservation pad), dus die hebben hetzelfde probleem.
+- `availability`, `book_reservation`, `guest_reservation`, `review_guest_change`, `public_api`, `reservation-utils`, `zone-fill`, `WalkInQuickSheet`, `AssignTableSheet` → filteren al op `is_active = true`.
+- Dus zodra de toggle uit staat, valt de tafel automatisch overal weg uit auto- én handmatige pickers.
 
-## Fix
+## Wijzigingen
 
-Eén gedeelde "seating picker" die de volledige vul-strategie toepast, en die zowel `book_reservation` als alle wijzig-flows gebruiken. Geen nieuwe logica — we hergebruiken `resolveActiveZones` + `pickTableWithFillStrategy` + `pickCombinationWithFillStrategy` uit `zone-fill.ts`, plus de bestaande overlap-detectie.
+### 1. Zones & Tables — tafellijst (`src/pages/app/settings/ZonesTablesSettings.tsx`)
+- Voeg per tafelregel een **Switch "Beschikbaar"** toe (naast de prullenbak-knop), gebonden aan `t.is_active`.
+- Toggle roept bestaande `updateTable(id, { is_active: bool })` aan (die functie bestaat al voor de andere velden).
+- Visueel: rij krijgt `opacity-60` + badge "Uit" (subtiel, naast label) wanneer `is_active = false`.
+- Grid van `grid-cols-12` aanpassen om ruimte te maken (label 2, zone 3, capaciteit 2, vorm 2, switch 2, delete 1).
 
-### Stappen
+### 2. Floor Plan editor (`src/components/floor-plan/FloorPlanEditor.tsx`)
+- Query verwijdert nu `is_active = true` filter → ook inactieve tafels worden getoond (operator moet ze zien om te kunnen reactiveren of verplaatsen).
+- Inactieve tafels: diagonaal gearceerd patroon + `opacity-50` + niet-draggable klikbaar (selecteren mag, slepen niet).
+- Eigenschappen-paneel van geselecteerde tafel: extra Switch **"Beschikbaar voor reserveringen"**.
 
-1. **Nieuwe shared helper** `pickSeatingWithStrategy` in `supabase/functions/_shared/reservation-utils.ts`:
-   - Input: `sb`, `restaurantId`, `partySize`, `startIso`, `endIso`, `timezone`, `excludeReservationId?`, `excludedTableIds?`, `prefersTerrace?`, `date` (YYYY-MM-DD, voor weer-lookup), `fallbackToLegacy` (bool — voor wanneer fill_strategy_enabled = false).
-   - Haalt zelf zones, alle actieve tafels, fitting tafels, overlapping reserveringen, weer-row op.
-   - Bouwt `occupancyByZone`, roept `resolveActiveZones` + `pickTableWithFillStrategy` aan.
-   - Bij geen losse tafel: combinaties via `pickCombinationWithFillStrategy`.
-   - Return `{ combinationId, tableIds, name, terracePreferenceUnmet, zoneId } | null`.
-   - Als `fallbackToLegacy = true` en `fill_strategy_enabled = false`: val terug op huidige `findAvailableSeating`-gedrag (eerste passende losse tafel, dan combinatie). Helper leest `fill_strategy_enabled` zelf uit `restaurants`.
+### 3. Floor Mode (operationeel scherm) — *check & licht aanpassen*
+- Verifiëren dat inactieve tafels grijs/uit getoond worden en niet als "vrij" tellen voor walk-in suggesties. Als de pagina `is_active = true` al filtert: een visuele indicator toevoegen (badge "Uit") in plaats van helemaal verbergen — operator wil weten waarom een tafel "ontbreekt".
+- (Concrete bestanden: `src/pages/app/FloorModePage.tsx` of onderliggende componenten — bij implementatie kort verifiëren.)
 
-2. **Aanpassen call-sites** — `findAvailableSeating` vervangen door `pickSeatingWithStrategy` in:
-   - `supabase/functions/guest_reservation/index.ts` — `evaluate()` (regel 502) en de `applied`-branch (regel 264). `prefersTerrace` lezen uit `reservation.prefers_terrace` als die kolom bestaat, anders `false`.
-   - `supabase/functions/review_guest_change/index.ts` — `applied`-branch (regel 84).
-   - `supabase/functions/public_api/index.ts` — manage-reservation paden (regels 776 / 792 / 806).
-
-3. **`book_reservation` opschonen** — de inline fill-strategy block (regels 171–252) vervangen door één call naar `pickSeatingWithStrategy`. Operator-specifieke gedragingen (kanaal-check `channel === "online" | "ai_host" | "phone"` voor `fillStrategyOn`, en walk-in/manager skip) blijven in `book_reservation` zelf — we geven `useFillStrategy: boolean` mee aan de helper in plaats van dat de helper het kanaal kent. Doel: één bron van waarheid voor "welke tafel kies ik" zonder dat `book_reservation` z'n operator-policies kwijtraakt.
-
-4. **`findAvailableSeating` behouden** als deprecated re-export (interne gebruikers overgezet, externe code zou er niet bij moeten). Verwijderen kan later.
-
-### Verificatie
-
-1. In Eigeweis: huidige reservering RSYBNY5B handmatig verplaatsen via de gastlink naar een nieuw tijdstip → moet nu in **Terras** of **Serre** landen, niet Podium. Bevestigen via `reservation_tables` + zone-naam.
-2. Tweede testreservering: terras-zone weer-blokkeren (bv. tijdelijk min_temp hoog zetten of regen in weather_forecasts) → moet in Serre landen.
-3. Smoke: nieuwe boeking via widget bij Eigeweis (party 2) → moet nog steeds in Terras/Serre komen, niet Podium (regressie-check op `book_reservation`).
-4. Smoke: restaurant met `fill_strategy_enabled = false` → wijziging via gastlink valt terug op "eerste vrije passende tafel" (huidig gedrag).
+### 4. Microcopy
+- Tooltip op de switch: *"Uit = tafel is tijdelijk niet beschikbaar voor reserveringen of walk-ins. Blijft zichtbaar op de plattegrond."*
+- Toast bij uitzetten: *"Tafel {label} staat op niet-beschikbaar."*
+- Toast bij aanzetten: *"Tafel {label} is weer beschikbaar."*
 
 ## Niet in scope
 
-- UI/copy van de bevestigings- of afwijspagina.
-- Nieuwe instellingen of toggles voor gast-wijzigingen — we gebruiken de bestaande `fill_strategy_enabled` van het restaurant.
-- Pacing-check voor gastwijzigingen (blijft zoals nu).
+- Geen "Uit tot…" timer (auto-reactivering op tijdstip) — kan later als operators erom vragen.
+- Geen schemamigratie.
+- Geen wijziging aan `capacity_min/max = 0` gedrag (laten zoals het is).
+- Geen aanpassing aan zone-fill of fill_priority logica.
 
-## Risico
+## Verificatie
 
-`public_api` manage-paden krijgen nu zone-strategie er gratis bij. Als een externe integratie verwachtte dat de oude "eerste passende tafel"-logica bleef, kan een wijziging in een andere zone landen dan voorheen. Met `fill_strategy_enabled = false` blijft het gedrag identiek aan vandaag, dus dit raakt alleen restaurants die de strategie expliciet hebben aangezet.
+1. Tafel uitzetten in Zones & Tables → controleer dat:
+   - Widget (`availability`) hem niet meer aanbiedt.
+   - Walk-in lijst hem niet toont.
+   - AssignTableSheet hem niet toont.
+   - Floor Plan editor hem nog wél toont (gearceerd).
+2. Tafel weer aanzetten → terug beschikbaar.
+3. Bestaande reservering op nu-uit-gezette tafel blijft staan (geen cascade — verifieer alleen).

@@ -425,10 +425,18 @@ export default function ZonesTablesSettings() {
           <div className="space-y-2">
             {tables.map((t) => {
               const inCombos = combosForTable(t.id!);
+              const inactive = !t.is_active;
               return (
               <div key={t.id} className="space-y-1">
-                <div className="grid grid-cols-12 gap-2 items-center">
-                  <Input className="col-span-2" value={t.label} onChange={(e) => updateTable(t.id!, { label: e.target.value })} />
+                <div className={cn("grid grid-cols-12 gap-2 items-center transition-opacity", inactive && "opacity-60")}>
+                  <div className="col-span-2 flex items-center gap-1">
+                    <Input value={t.label} onChange={(e) => updateTable(t.id!, { label: e.target.value })} />
+                    {inactive && (
+                      <span className="text-[10px] uppercase tracking-wide px-1.5 py-0.5 rounded bg-muted text-muted-foreground border border-border shrink-0">
+                        Uit
+                      </span>
+                    )}
+                  </div>
                   <Select value={t.zone_id ?? "none"} onValueChange={(v) => updateTable(t.id!, { zone_id: v === "none" ? null : v })}>
                     <SelectTrigger className="col-span-3"><SelectValue /></SelectTrigger>
                     <SelectContent>
@@ -436,19 +444,29 @@ export default function ZonesTablesSettings() {
                       {zones.map((z) => <SelectItem key={z.id} value={z.id}>{z.name}</SelectItem>)}
                     </SelectContent>
                   </Select>
-                  <div className="col-span-3 flex items-center gap-1">
+                  <div className="col-span-2 flex items-center gap-1">
                     <Input type="number" value={t.capacity_min} onChange={(e) => updateTable(t.id!, { capacity_min: parseInt(e.target.value) || 1 })} />
                     <span className="text-muted-foreground">–</span>
                     <Input type="number" value={t.capacity_max} onChange={(e) => updateTable(t.id!, { capacity_max: parseInt(e.target.value) || 1 })} />
                   </div>
                   <Select value={t.shape} onValueChange={(v) => updateTable(t.id!, { shape: v })}>
-                    <SelectTrigger className="col-span-3"><SelectValue /></SelectTrigger>
+                    <SelectTrigger className="col-span-2"><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="round">Rond</SelectItem>
                       <SelectItem value="square">Vierkant</SelectItem>
                       <SelectItem value="rect">Rechthoek</SelectItem>
                     </SelectContent>
                   </Select>
+                  <div className="col-span-2 flex items-center justify-center gap-2" title="Uit = tafel is tijdelijk niet beschikbaar voor reserveringen of walk-ins. Blijft zichtbaar op de plattegrond.">
+                    <Switch
+                      checked={t.is_active}
+                      onCheckedChange={async (v) => {
+                        await updateTable(t.id!, { is_active: v });
+                        toast.success(v ? `Tafel ${t.label} is weer beschikbaar.` : `Tafel ${t.label} staat op niet-beschikbaar.`);
+                      }}
+                    />
+                    <span className="text-xs text-muted-foreground">{t.is_active ? "Aan" : "Uit"}</span>
+                  </div>
                   <Button variant="ghost" size="icon" className="col-span-1" onClick={() => delTable(t.id!)}><Trash2 className="h-4 w-4" /></Button>
                 </div>
                 {inCombos.length > 0 && (
