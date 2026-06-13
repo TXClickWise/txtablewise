@@ -153,8 +153,8 @@ const AgendaPage = () => {
     enabled: !!rid,
     queryFn: async () => {
       const { data } = await supabase.from("tables")
-        .select("id, label, capacity_min, capacity_max, zone_id, pos_x, pos_y, width, height, shape, zones(name, sort_order)")
-        .eq("restaurant_id", rid!).eq("is_active", true).order("label");
+        .select("id, label, capacity_min, capacity_max, zone_id, pos_x, pos_y, width, height, shape, is_active, zones(name, sort_order)")
+        .eq("restaurant_id", rid!).order("label");
       return data ?? [];
     },
   });
@@ -674,14 +674,24 @@ const AgendaPage = () => {
                   )}
                   <div
                     ref={(el) => { rowRefs.current[t.id] = el; }}
-                    className="flex border-b border-border hover:bg-muted/10 scroll-mt-2"
+                    className={cn(
+                      "flex border-b border-border hover:bg-muted/10 scroll-mt-2",
+                      !t.is_active && "opacity-60",
+                    )}
                   >
                     <div
                       className="sticky left-0 z-[5] bg-card shrink-0 p-3 border-r border-border flex flex-col justify-center"
                       style={{ width: TAFEL_COL_W }}
                     >
                       <div className="flex items-baseline justify-between gap-1">
-                        <div className="font-medium text-sm">{t.label}</div>
+                        <div className="font-medium text-sm flex items-center gap-1.5">
+                          {t.label}
+                          {!t.is_active && (
+                            <span className="text-[9px] uppercase tracking-wide px-1 py-0.5 rounded bg-muted text-muted-foreground border border-border">
+                              Uit
+                            </span>
+                          )}
+                        </div>
                         <div className="text-[11px] text-muted-foreground tabular-nums">{cap}</div>
                       </div>
                     </div>
@@ -690,7 +700,8 @@ const AgendaPage = () => {
                         <button
                           key={`q-${t.id}-${i}`}
                           type="button"
-                          onClick={() => handleQuarterClick(t, i)}
+                          onClick={() => { if (t.is_active) handleQuarterClick(t, i); }}
+                          disabled={!t.is_active}
                           className={cn(
                             "absolute top-0 h-full border-l transition-colors",
                             i % 4 === 0
@@ -698,10 +709,12 @@ const AgendaPage = () => {
                               : i % 2 === 0
                               ? "border-border/30"
                               : "border-border/15",
-                            "hover:bg-primary/5 active:bg-primary/10 focus-visible:bg-primary/10 focus-visible:outline-none",
+                            t.is_active
+                              ? "hover:bg-primary/5 active:bg-primary/10 focus-visible:bg-primary/10 focus-visible:outline-none"
+                              : "cursor-not-allowed",
                           )}
                           style={{ left: i * QUARTER_MIN * pxPerMin, width: QUARTER_MIN * pxPerMin }}
-                          aria-label={`Reservering toevoegen op ${t.label} om ${minutesToTime(i * QUARTER_MIN)}`}
+                          aria-label={t.is_active ? `Reservering toevoegen op ${t.label} om ${minutesToTime(i * QUARTER_MIN)}` : `${t.label} — niet beschikbaar`}
                         />
                       ))}
                       {items.map((r) => {
@@ -918,7 +931,9 @@ function FloorPlanBody({
             const w = (t.width ?? 80) * scale;
             const h = (t.height ?? 80) * scale;
             const compact = Math.min(w, h) < 110;
+            const inactive = !t.is_active;
             const handleClick = () => {
+              if (inactive) return;
               if (active) onOpenReservation(active.id);
               else onCreateOnTable(t);
             };
@@ -939,30 +954,50 @@ function FloorPlanBody({
                 <button
                   type="button"
                   onClick={handleClick}
+                  disabled={inactive}
+                  title={inactive ? "Tafel staat op niet-beschikbaar. Zet aan via Instellingen > Zones & Tafels of de Plattegrond-editor." : undefined}
                   className={cn(
-                    "w-full h-full flex flex-col items-center justify-center border-2 shadow-sm select-none text-left transition-all hover:brightness-105 active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none overflow-hidden",
+                    "w-full h-full flex flex-col items-center justify-center border-2 shadow-sm select-none text-left transition-all focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none overflow-hidden",
                     isRound ? "rounded-full" : "rounded-lg",
-                    FLOOR_TONE[tone],
+                    inactive
+                      ? "cursor-not-allowed opacity-60 border-dashed border-muted-foreground/40 bg-muted/40 text-muted-foreground"
+                      : cn("hover:brightness-105 active:scale-[0.98]", FLOOR_TONE[tone]),
                   )}
-                  style={{ padding: compact ? 4 : 8 }}
-                  aria-label={active
+                  style={{
+                    padding: compact ? 4 : 8,
+                    ...(inactive
+                      ? {
+                          backgroundImage:
+                            "repeating-linear-gradient(45deg, hsl(var(--muted-foreground) / 0.15) 0 6px, transparent 6px 12px)",
+                        }
+                      : {}),
+                  }}
+                  aria-label={inactive
+                    ? `Tafel ${t.label} — niet beschikbaar`
+                    : active
                     ? `Tafel ${t.label}: ${active.guests?.first_name ?? "Gast"} ${active.party_size}p`
                     : `Tafel ${t.label} vrij — nieuwe reservering`}
                 >
                   <div className="w-full flex items-center justify-between gap-1">
                     <div className="font-display text-base font-bold leading-none truncate">{t.label}</div>
                     <div className="flex items-center gap-1 shrink-0">
-                      <span
-                        className={cn(
-                          "h-1.5 w-1.5 rounded-full",
-                          FLOOR_DOT[tone],
-                          FLOOR_PULSE[tone] && "status-dot-active",
-                        )}
-                      />
+                      {!inactive && (
+                        <span
+                          className={cn(
+                            "h-1.5 w-1.5 rounded-full",
+                            FLOOR_DOT[tone],
+                            FLOOR_PULSE[tone] && "status-dot-active",
+                          )}
+                        />
+                      )}
                       <div className="text-[10px] text-muted-foreground tabular-nums">{cap}</div>
                     </div>
                   </div>
-                  {active ? (
+                  {inactive ? (
+                    <div className="mt-1 inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-muted-foreground border border-border">
+                      Uit
+                    </div>
+                  ) : active ? (
                     <div className="w-full mt-1 text-center">
                       <div className="text-[11px] font-semibold truncate">
                         {active.guests?.is_vip ? <span className="text-accent">★ </span> : ""}
