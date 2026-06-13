@@ -211,8 +211,47 @@ export function ReservationDetailDialog({ reservationId, open, onOpenChange }: P
                 )}
               </div>
 
+              {/* Tafel & tijd — inline aanpassen, bovenaan */}
+              <div className="rounded-lg border border-border bg-card p-3 space-y-2">
+                <div className="flex items-center justify-between gap-2 flex-wrap">
+                  <div>
+                    <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                      Tafel & tijd
+                    </div>
+                    <div className="text-sm">
+                      {data.reservation_tables?.length > 0
+                        ? <>Tafel {data.reservation_tables.map((rt: { tables?: { label?: string } }) => rt.tables?.label).filter(Boolean).join(", ")}</>
+                        : <span className="text-muted-foreground">Geen tafel toegewezen</span>}
+                      {" · "}
+                      {format(new Date(data.start_time), "HH:mm")}–{format(new Date(data.end_time), "HH:mm")}
+                      <span className="text-muted-foreground"> ({Math.round((new Date(data.end_time).getTime() - new Date(data.start_time).getTime()) / 60000)} min)</span>
+                    </div>
+                  </div>
+                  <Button
+                    size="sm"
+                    variant={slotEditOpen ? "secondary" : "outline"}
+                    className="h-8 px-2 text-xs"
+                    onClick={() => setSlotEditOpen((v) => !v)}
+                  >
+                    <Pencil className="h-3.5 w-3.5 mr-1" /> {slotEditOpen ? "Sluit" : "Wijzig"}
+                  </Button>
+                </div>
+                {slotEditOpen && (
+                  <ReservationSlotEditor
+                    reservationId={data.id}
+                    restaurantId={data.restaurant_id}
+                    startTime={data.start_time}
+                    endTime={data.end_time}
+                    currentTableIds={(data.reservation_tables ?? []).map((rt: { table_id?: string }) => rt.table_id).filter(Boolean)}
+                    partySize={data.party_size}
+                    onCancel={() => setSlotEditOpen(false)}
+                    onSaved={() => { setSlotEditOpen(false); refresh(); }}
+                  />
+                )}
+              </div>
+
               {/* Status wijzigen — bovenaan, prominent, geen scrollen nodig */}
-              <div className="rounded-lg border-2 border-primary/20 bg-card shadow-sm p-4 space-y-2">
+              <div className="rounded-lg border-2 border-primary/20 bg-card shadow-sm p-4 space-y-3">
                 <div className="flex items-center justify-between gap-2 flex-wrap">
                   <div className="flex items-center gap-2">
                     <Activity className="h-4 w-4 text-primary" />
@@ -230,6 +269,13 @@ export function ReservationDetailDialog({ reservationId, open, onOpenChange }: P
                   layout="grid"
                   onChanged={refresh}
                 />
+                <div className="pt-2 border-t border-border/60">
+                  <ReservationStatusSwitcher
+                    reservationId={data.id}
+                    status={data.status}
+                    onChanged={refresh}
+                  />
+                </div>
               </div>
 
               <div className="rounded-lg bg-muted/50 p-3">
