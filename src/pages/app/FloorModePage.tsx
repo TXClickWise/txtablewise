@@ -768,7 +768,7 @@ function TableCard({
         )}
       </div>
 
-      {active ? (
+      {inactive ? null : active ? (
         <div className="mt-2 text-sm">
           <div className="flex items-center gap-1 font-medium truncate">
             {active.guests?.is_vip && <Crown className="h-3.5 w-3.5 text-warning shrink-0" />}
