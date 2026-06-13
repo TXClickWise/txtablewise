@@ -9,6 +9,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
+import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 import { Save, Trash2, RotateCcw, Grid3x3, Square, Circle, RectangleHorizontal } from "lucide-react";
 
