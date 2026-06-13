@@ -446,6 +446,7 @@ const AgendaPage = () => {
     const onUp = async () => {
       const d = dragRef.current;
       setDrag(null);
+      document.documentElement.style.touchAction = "";
       if (!d || !d.moved) return;
       justDraggedRef.current = true;
       window.setTimeout(() => { justDraggedRef.current = false; }, 300);
