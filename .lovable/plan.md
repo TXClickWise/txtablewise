@@ -1,36 +1,31 @@
-## Probleem
+Twee kleine, geïsoleerde bugs in de weer-feature. Beide alleen presentatie-/copy-laag, geen datamodel of business-logica.
 
-De agenda (`/app/agenda`) opent `ReservationDetailDialog`, niet de nieuwere `ReservationDetailSheet`. In de Dialog staat alleen de **QuickBar** (3 knoppen: Aan tafel / No-show / Annuleer) — de **Status­wisselaar met alle 7 status­pillen** en de **inline Tafel-/tijd-editor** zitten daar nooit in gemount. Vandaar dat je ze niet ziet en niet snel van tafel kunt wisselen.
+## Bug 1 — "vrijdag" terwijl het zaterdag is
 
-Daarnaast staan datum-/tijd-/persoons­velden nu *onderaan* de Dialog, achter een grote scroll. Dat schendt de regel "snelle bewerk-acties altijd bovenaan".
+**Oorzaak:** `supabase/functions/weather_advise/index.ts` bouwt rule-based tips correct op (de headline gebruikt `formatDateNl(date)` → "za 13 jun"). Daarna polished de Lovable AI Gateway (`polishWithAi`) de tekst vrij — het model krijgt alleen `{type, date, headline_nl, body_nl}` en verzint zelf weekdagnamen, vandaar "deze vrijdag" op een zaterdag.
 
-## Aanpak
+**Fix:** in `polishWithAi`
+1. Per item een vooraf-berekende `weekday_nl` + `date_label_nl` (op basis van `Intl.DateTimeFormat("nl-NL", { weekday: "long" })` voor de item-`date`) toevoegen aan de payload die naar de AI gaat.
+2. System-prompt aanscherpen: "Gebruik uitsluitend de meegegeven `weekday_nl`/`date_label_nl` als je naar de dag verwijst. Verzin nooit zelf een dag van de week of datum. Behoud cijfers (graden, km/u, tijden) exact." 
+3. Vangnet na de AI-call: als `headline_nl` of `body_nl` een andere weekdagnaam bevat dan de verwachte → terugvallen op de originele rule-based tekst voor dat item (geen polished versie gebruiken).
 
-Eén bestand wijzigen: `src/components/ReservationDetailDialog.tsx`. Geen logica- of backend-wijzigingen, alleen UI/compositie.
+## Bug 2 — Windpijl wijst de verkeerde kant op
 
-### 1. Bovenin het Dialog (direct onder de badges) drie compacte blokken in deze volgorde
+**Oorzaak:** in `src/components/weather/WeatherPill.tsx` rendert `WindArrow` het Lucide `Navigation`-icoon en draait het met `rotate((deg + 180) % 360)`. Het `Navigation`-icoon wijst echter standaard naar rechts-boven (~NO), niet naar het noorden. Daardoor staat de pijl 45° verkeerd t.o.v. de tekstuele richting (W, NW, Z, etc.) die wél correct uit `degToCompass` komt.
 
-1. **Tafel & tijd** — toont huidige tafel, starttijd, eindtijd en duur als één regel, met "Wijzig"-knop die de bestaande `ReservationSlotEditor` inline uitklapt (zelfde component als de Sheet gebruikt).
-2. **Status van reservering** — bovenin de primaire `ReservationStatusQuickBar` (groot, layout="grid", 1 tap voor de meest gebruikte stappen) en daaronder, gescheiden met een dunne lijn, de `ReservationStatusSwitcher` met alle 7 status­pillen (incl. terugzetten-bevestiging + reden, audit-trail blijft intact).
-3. Bestaande gast­blok blijft direct daaronder.
-
-### 2. De oude losse Datum/Tijd/Personen-velden onderaan verwijderen
-
-Die zijn nu redundant met `ReservationSlotEditor`. Het `internal_notes` / `special_requests` veld + "Wijzigingen opslaan"-knop blijven onderaan voor notities (die heeft de SlotEditor niet). De save-functie wordt versmald: alleen `internal_notes`, `special_requests`, `party_size` (party_size verhuist naar een compacte regel boven de notities, want dat hoort logisch bij de bewerk-sectie).
-
-### 3. Niets aan de andere kant raken
-
-- `ReservationDetailSheet` heeft de juiste opbouw al; ongewijzigd.
-- `ReservationStatusSwitcher`, `ReservationSlotEditor`, `ReservationStatusQuickBar` ongewijzigd.
-- Agenda popover (klein menu in screenshot 2) blijft zoals die is — die is bewust beknopt.
-
-## Verificatie
-
-- /app/agenda → klik reservering → Dialog opent → bovenaan staan **Tafel & tijd** (met Wijzig-knop die SlotEditor toont) en **Status van reservering** met alle 7 pillen.
-- Wissel "Aan tafel" → "Bevestigd" via pil: bevestigingsdialog met redenveld verschijnt.
-- Wijzig tafel via SlotEditor: opslaan werkt, toast verschijnt, agenda ververst.
-- Geen scrollen nodig om status of tafel te wijzigen.
+**Fix:** rotatie corrigeren met -45° offset zodat `rotate(0deg)` daadwerkelijk noord is:
+```
+transform: `rotate(${(deg + 180 - 45 + 360) % 360}deg)`
+```
+Dit is één regel in de `WindArrow`-helper; alle gebruikers (pill, uurrij, 7-daagse rij) krijgen automatisch de correcte pijl. De tekst-labels (W/NW/…) en de Beaufort-kleur blijven ongewijzigd.
 
 ## Bestanden
 
-- `src/components/ReservationDetailDialog.tsx` (compositie + imports)
+- `supabase/functions/weather_advise/index.ts` — payload + prompt + post-validatie in `polishWithAi`.
+- `src/components/weather/WeatherPill.tsx` — alleen `WindArrow`-rotatie.
+
+## Verificatie
+
+- Hard reload `/app/vandaag`: tip moet "deze zaterdag" (of geen weekdag) tonen i.p.v. "vrijdag".
+- Op een W-wind moet de pijl horizontaal naar rechts wijzen (richting waarheen de wind blaast), bij N naar beneden, etc.
+- Bestaande, al opgeslagen advisories met foute tekst worden bij de volgende `weather_fetcher`-run automatisch overschreven (upsert op `restaurant_id,date,type`).
