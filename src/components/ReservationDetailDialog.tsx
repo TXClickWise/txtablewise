@@ -18,7 +18,7 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { ChannelBadge } from "@/components/ChannelBadge";
 import { toast } from "sonner";
 import { reservations as resService, type ReservationStatus } from "@/services/reservations";
-import { CheckCircle2, UserCheck, XCircle, AlertOctagon, ShieldCheck, ShieldX, Activity } from "lucide-react";
+import { CheckCircle2, UserCheck, XCircle, AlertOctagon, ShieldCheck, ShieldX, Activity, Pencil } from "lucide-react";
 import { ReservationNoShowSection } from "@/components/no-show/ReservationNoShowSection";
 import { ReservationPreOrderSection } from "@/components/pre-orders/ReservationPreOrderSection";
 import { GuestPreviewInReservation } from "@/components/guests/GuestPreviewInReservation";
@@ -27,6 +27,8 @@ import { ReservationAftercareSection } from "@/components/reviews/ReservationAft
 import { createReviewRequestForReservation } from "@/services/reviews";
 import { ReservationPOSSection } from "@/components/pos/ReservationPOSSection";
 import { ReservationStatusQuickBar } from "@/components/reservations/ReservationStatusQuickBar";
+import { ReservationStatusSwitcher } from "@/components/reservations/ReservationStatusSwitcher";
+import { ReservationSlotEditor } from "@/components/reservations/ReservationSlotEditor";
 import { ReservationCallLogSection } from "@/components/reservations/ReservationCallLogSection";
 
 type Props = {
@@ -49,6 +51,7 @@ export function ReservationDetailDialog({ reservationId, open, onOpenChange }: P
   const [loading, setLoading] = useState(false);
   const [busy, setBusy] = useState(false);
   const [confirm, setConfirm] = useState<ConfirmAction>(null);
+  const [slotEditOpen, setSlotEditOpen] = useState(false);
   const [restaurantCfg, setRestaurantCfg] = useState<{ large_group_threshold?: number; deposit_default_amount_cents?: number } | null>(null);
   const [form, setForm] = useState({
     party_size: 2,
@@ -94,8 +97,6 @@ export function ReservationDetailDialog({ reservationId, open, onOpenChange }: P
     if (!reservationId || !data) return;
     setBusy(true);
     const result = await resService.update(reservationId, {
-      reservation_date: form.reservation_date,
-      start_time_local: form.start_time_local,
       party_size: form.party_size,
       internal_notes: form.internal_notes || null,
       special_requests: form.special_requests || null,
@@ -210,8 +211,47 @@ export function ReservationDetailDialog({ reservationId, open, onOpenChange }: P
                 )}
               </div>
 
+              {/* Tafel & tijd — inline aanpassen, bovenaan */}
+              <div className="rounded-lg border border-border bg-card p-3 space-y-2">
+                <div className="flex items-center justify-between gap-2 flex-wrap">
+                  <div>
+                    <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                      Tafel & tijd
+                    </div>
+                    <div className="text-sm">
+                      {data.reservation_tables?.length > 0
+                        ? <>Tafel {data.reservation_tables.map((rt: { tables?: { label?: string } }) => rt.tables?.label).filter(Boolean).join(", ")}</>
+                        : <span className="text-muted-foreground">Geen tafel toegewezen</span>}
+                      {" · "}
+                      {format(new Date(data.start_time), "HH:mm")}–{format(new Date(data.end_time), "HH:mm")}
+                      <span className="text-muted-foreground"> ({Math.round((new Date(data.end_time).getTime() - new Date(data.start_time).getTime()) / 60000)} min)</span>
+                    </div>
+                  </div>
+                  <Button
+                    size="sm"
+                    variant={slotEditOpen ? "secondary" : "outline"}
+                    className="h-8 px-2 text-xs"
+                    onClick={() => setSlotEditOpen((v) => !v)}
+                  >
+                    <Pencil className="h-3.5 w-3.5 mr-1" /> {slotEditOpen ? "Sluit" : "Wijzig"}
+                  </Button>
+                </div>
+                {slotEditOpen && (
+                  <ReservationSlotEditor
+                    reservationId={data.id}
+                    restaurantId={data.restaurant_id}
+                    startTime={data.start_time}
+                    endTime={data.end_time}
+                    currentTableIds={(data.reservation_tables ?? []).map((rt: { table_id?: string }) => rt.table_id).filter(Boolean)}
+                    partySize={data.party_size}
+                    onCancel={() => setSlotEditOpen(false)}
+                    onSaved={() => { setSlotEditOpen(false); refresh(); }}
+                  />
+                )}
+              </div>
+
               {/* Status wijzigen — bovenaan, prominent, geen scrollen nodig */}
-              <div className="rounded-lg border-2 border-primary/20 bg-card shadow-sm p-4 space-y-2">
+              <div className="rounded-lg border-2 border-primary/20 bg-card shadow-sm p-4 space-y-3">
                 <div className="flex items-center justify-between gap-2 flex-wrap">
                   <div className="flex items-center gap-2">
                     <Activity className="h-4 w-4 text-primary" />
@@ -229,6 +269,13 @@ export function ReservationDetailDialog({ reservationId, open, onOpenChange }: P
                   layout="grid"
                   onChanged={refresh}
                 />
+                <div className="pt-2 border-t border-border/60">
+                  <ReservationStatusSwitcher
+                    reservationId={data.id}
+                    status={data.status}
+                    onChanged={refresh}
+                  />
+                </div>
               </div>
 
               <div className="rounded-lg bg-muted/50 p-3">
@@ -298,22 +345,13 @@ export function ReservationDetailDialog({ reservationId, open, onOpenChange }: P
                 </div>
               )}
 
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <Label className="text-xs">Datum</Label>
-                  <Input type="date" value={form.reservation_date}
-                    onChange={(e) => setForm({ ...form, reservation_date: e.target.value })} />
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-xs">Tijd</Label>
-                  <Input type="time" value={form.start_time_local}
-                    onChange={(e) => setForm({ ...form, start_time_local: e.target.value })} />
-                </div>
-                <div className="space-y-1 col-span-2">
-                  <Label className="text-xs">Personen</Label>
-                  <Input type="number" min={1} value={form.party_size}
-                    onChange={(e) => setForm({ ...form, party_size: parseInt(e.target.value) || 1 })} />
-                </div>
+              <div className="space-y-1">
+                <Label className="text-xs">Personen</Label>
+                <Input type="number" min={1} value={form.party_size}
+                  onChange={(e) => setForm({ ...form, party_size: parseInt(e.target.value) || 1 })} />
+                <p className="text-[11px] text-muted-foreground">
+                  Datum, tijd en tafel wijzig je via 'Tafel & tijd' bovenaan.
+                </p>
               </div>
 
               {data.special_requests !== null && (
