@@ -674,14 +674,24 @@ const AgendaPage = () => {
                   )}
                   <div
                     ref={(el) => { rowRefs.current[t.id] = el; }}
-                    className="flex border-b border-border hover:bg-muted/10 scroll-mt-2"
+                    className={cn(
+                      "flex border-b border-border hover:bg-muted/10 scroll-mt-2",
+                      !t.is_active && "opacity-60",
+                    )}
                   >
                     <div
                       className="sticky left-0 z-[5] bg-card shrink-0 p-3 border-r border-border flex flex-col justify-center"
                       style={{ width: TAFEL_COL_W }}
                     >
                       <div className="flex items-baseline justify-between gap-1">
-                        <div className="font-medium text-sm">{t.label}</div>
+                        <div className="font-medium text-sm flex items-center gap-1.5">
+                          {t.label}
+                          {!t.is_active && (
+                            <span className="text-[9px] uppercase tracking-wide px-1 py-0.5 rounded bg-muted text-muted-foreground border border-border">
+                              Uit
+                            </span>
+                          )}
+                        </div>
                         <div className="text-[11px] text-muted-foreground tabular-nums">{cap}</div>
                       </div>
                     </div>
@@ -690,7 +700,8 @@ const AgendaPage = () => {
                         <button
                           key={`q-${t.id}-${i}`}
                           type="button"
-                          onClick={() => handleQuarterClick(t, i)}
+                          onClick={() => { if (t.is_active) handleQuarterClick(t, i); }}
+                          disabled={!t.is_active}
                           className={cn(
                             "absolute top-0 h-full border-l transition-colors",
                             i % 4 === 0
@@ -698,10 +709,12 @@ const AgendaPage = () => {
                               : i % 2 === 0
                               ? "border-border/30"
                               : "border-border/15",
-                            "hover:bg-primary/5 active:bg-primary/10 focus-visible:bg-primary/10 focus-visible:outline-none",
+                            t.is_active
+                              ? "hover:bg-primary/5 active:bg-primary/10 focus-visible:bg-primary/10 focus-visible:outline-none"
+                              : "cursor-not-allowed",
                           )}
                           style={{ left: i * QUARTER_MIN * pxPerMin, width: QUARTER_MIN * pxPerMin }}
-                          aria-label={`Reservering toevoegen op ${t.label} om ${minutesToTime(i * QUARTER_MIN)}`}
+                          aria-label={t.is_active ? `Reservering toevoegen op ${t.label} om ${minutesToTime(i * QUARTER_MIN)}` : `${t.label} — niet beschikbaar`}
                         />
                       ))}
                       {items.map((r) => {
