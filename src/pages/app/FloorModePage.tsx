@@ -38,6 +38,7 @@ type Table = {
   capacity_min: number; capacity_max: number;
   pos_x: number; pos_y: number; width: number; height: number; shape: string;
   combinable: boolean;
+  is_active: boolean;
 };
 type Res = {
   id: string;
