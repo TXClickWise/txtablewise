@@ -14,8 +14,8 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { corsHeaders } from "../_shared/cors.ts";
 import {
   addMinutesIso,
-  findAvailableSeating,
   getWeekdayKey,
+  pickSeatingWithStrategy,
   zonedDateTimeToUtcIso,
 } from "../_shared/reservation-utils.ts";
 
@@ -261,7 +261,16 @@ async function handleRequestChange(sb: any, reservation: any, restaurant: any, b
       const durationMinutes = restaurant.default_reservation_minutes ?? 105;
       newStartIso = zonedDateTimeToUtcIso(desiredDate, desiredTime, restaurant.timezone);
       newEndIso = addMinutesIso(newStartIso, durationMinutes);
-      newCombo = await findAvailableSeating(sb, reservation.restaurant_id, desiredParty, newStartIso, newEndIso, reservation.id);
+      newCombo = await pickSeatingWithStrategy(sb, {
+        restaurantId: reservation.restaurant_id,
+        partySize: desiredParty,
+        startIso: newStartIso,
+        endIso: newEndIso,
+        timezone: restaurant.timezone,
+        date: desiredDate,
+        excludeReservationId: reservation.id,
+        prefersTerrace: !!reservation.prefers_terrace,
+      });
       if (!newCombo) {
         outcome = "rejected";
         reasonCode = "no_table_available";
@@ -499,7 +508,16 @@ async function evaluate(sb: any, reservation: any, restaurant: any, desiredDate:
 
   // 6. Table availability
   const desiredEndIso = addMinutesIso(desiredStartIso, durationMinutes);
-  const combo = await findAvailableSeating(sb, reservation.restaurant_id, desiredParty, desiredStartIso, desiredEndIso, reservation.id);
+  const combo = await pickSeatingWithStrategy(sb, {
+    restaurantId: reservation.restaurant_id,
+    partySize: desiredParty,
+    startIso: desiredStartIso,
+    endIso: desiredEndIso,
+    timezone: restaurant.timezone,
+    date: desiredDate,
+    excludeReservationId: reservation.id,
+    prefersTerrace: !!reservation.prefers_terrace,
+  });
   if (!combo) {
     return { outcome: "rejected", reasonCode: "no_table_available" };
   }
