@@ -707,26 +707,38 @@ function TableCard({
     : null;
   const minToEnd = active ? differenceInMinutes(new Date(active.end_time), now) : null;
 
+  const inactive = !table.is_active;
+
   return (
     <button
       type="button"
-      onClick={onSelect}
+      onClick={() => { if (!inactive) onSelect(); }}
+      disabled={inactive}
+      title={inactive ? "Tafel staat op niet-beschikbaar. Zet aan via Instellingen > Zones & Tafels of de Plattegrond-editor." : undefined}
       className={cn(
-        "text-left rounded-xl border-2 p-3 transition-all min-h-[112px] active:scale-[0.98]",
-        CELL_TONE[status],
-        selected && "ring-2 ring-primary ring-offset-2 ring-offset-background",
+        "text-left rounded-xl border-2 p-3 transition-all min-h-[112px]",
+        inactive
+          ? "cursor-not-allowed opacity-60 border-dashed border-muted-foreground/40 bg-muted/40 text-muted-foreground"
+          : cn("active:scale-[0.98]", CELL_TONE[status]),
+        !inactive && selected && "ring-2 ring-primary ring-offset-2 ring-offset-background",
       )}
+      style={inactive ? {
+        backgroundImage:
+          "repeating-linear-gradient(45deg, hsl(var(--muted-foreground) / 0.15) 0 6px, transparent 6px 12px)",
+      } : undefined}
     >
       <div className="flex items-start justify-between gap-2">
         <div className="flex items-center gap-2 min-w-0">
-          <span
-            className={cn(
-              "h-2 w-2 rounded-full shrink-0",
-              CELL_DOT[status],
-              CELL_PULSE[status] && "status-dot-active",
-            )}
-            aria-hidden
-          />
+          {!inactive && (
+            <span
+              className={cn(
+                "h-2 w-2 rounded-full shrink-0",
+                CELL_DOT[status],
+                CELL_PULSE[status] && "status-dot-active",
+              )}
+              aria-hidden
+            />
+          )}
           <div className="min-w-0">
             <div className="font-display text-xl font-bold leading-none truncate">Tafel {table.label}</div>
             <div className="text-[11px] text-muted-foreground mt-0.5">
@@ -734,7 +746,11 @@ function TableCard({
             </div>
           </div>
         </div>
-        {status === "free" ? (
+        {inactive ? (
+          <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-muted-foreground border border-border">
+            UIT
+          </span>
+        ) : status === "free" ? (
           <span className="rounded-full bg-table-free-border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white shadow-soft">
             VRIJ
           </span>
