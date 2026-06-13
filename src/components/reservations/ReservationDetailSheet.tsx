@@ -21,9 +21,12 @@ import {
 } from "lucide-react";
 import { reservations as resService } from "@/services/reservations";
 import { ReservationStatusQuickBar } from "./ReservationStatusQuickBar";
+import { ReservationStatusSwitcher } from "./ReservationStatusSwitcher";
+import { ReservationSlotEditor } from "./ReservationSlotEditor";
 import { toast } from "sonner";
 import { Link } from "react-router-dom";
 import { cn } from "@/lib/utils";
+
 
 type Props = {
   reservationId: string | null;
@@ -41,6 +44,8 @@ const RISK_BADGE: Record<string, string> = {
 export function ReservationDetailSheet({ reservationId, open, onOpenChange, onOpenFullEditor }: Props) {
   const qc = useQueryClient();
   const [busy, setBusy] = useState(false);
+  const [slotEditOpen, setSlotEditOpen] = useState(false);
+
 
   const { data, isLoading } = useQuery({
     queryKey: ["reservation-detail", reservationId],
@@ -186,6 +191,43 @@ export function ReservationDetailSheet({ reservationId, open, onOpenChange, onOp
                 </div>
               </div>
 
+              {/* Tafel & tijd — inline aanpassen */}
+              <div className="rounded-lg border border-border bg-card p-3 space-y-2">
+                <div className="flex items-center justify-between gap-2 flex-wrap">
+                  <div>
+                    <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                      Tafel & tijd
+                    </div>
+                    <div className="text-sm">
+                      {tableLabels ? <>Tafel {tableLabels}</> : <span className="text-muted-foreground">Geen tafel toegewezen</span>}
+                      {" · "}
+                      {format(new Date(data.start_time), "HH:mm")}–{format(new Date(data.end_time), "HH:mm")}
+                      <span className="text-muted-foreground"> ({Math.round((new Date(data.end_time).getTime() - new Date(data.start_time).getTime()) / 60000)} min)</span>
+                    </div>
+                  </div>
+                  <Button
+                    size="sm"
+                    variant={slotEditOpen ? "secondary" : "outline"}
+                    className="h-8 px-2 text-xs"
+                    onClick={() => setSlotEditOpen((v) => !v)}
+                  >
+                    <Pencil className="h-3.5 w-3.5 mr-1" /> {slotEditOpen ? "Sluit" : "Wijzig"}
+                  </Button>
+                </div>
+                {slotEditOpen && (
+                  <ReservationSlotEditor
+                    reservationId={data.id}
+                    restaurantId={(data as any).restaurant_id}
+                    startTime={data.start_time}
+                    endTime={data.end_time}
+                    currentTableIds={(data.reservation_tables as any[] ?? []).map((rt: any) => rt.table_id).filter(Boolean)}
+                    partySize={data.party_size}
+                    onCancel={() => setSlotEditOpen(false)}
+                    onSaved={() => { setSlotEditOpen(false); refresh(); }}
+                  />
+                )}
+              </div>
+
               {/* Status wijzigen — prominent en bovenaan, geen scrollen nodig */}
               <div className="rounded-lg border-2 border-primary/20 bg-card shadow-sm p-3 space-y-2">
                 <div className="flex items-center justify-between gap-2 flex-wrap">
@@ -204,7 +246,15 @@ export function ReservationDetailSheet({ reservationId, open, onOpenChange, onOp
                   layout="grid"
                   onChanged={refresh}
                 />
+                <div className="pt-2 border-t border-border/60">
+                  <ReservationStatusSwitcher
+                    reservationId={data.id}
+                    status={data.status}
+                    onChanged={refresh}
+                  />
+                </div>
               </div>
+
             </div>
 
             <Tabs defaultValue="overview" className="flex-1 flex flex-col overflow-hidden">
