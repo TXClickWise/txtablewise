@@ -97,8 +97,6 @@ export function ReservationDetailDialog({ reservationId, open, onOpenChange }: P
     if (!reservationId || !data) return;
     setBusy(true);
     const result = await resService.update(reservationId, {
-      reservation_date: form.reservation_date,
-      start_time_local: form.start_time_local,
       party_size: form.party_size,
       internal_notes: form.internal_notes || null,
       special_requests: form.special_requests || null,
