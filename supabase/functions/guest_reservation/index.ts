@@ -14,8 +14,8 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { corsHeaders } from "../_shared/cors.ts";
 import {
   addMinutesIso,
-  findAvailableSeating,
   getWeekdayKey,
+  pickSeatingWithStrategy,
   zonedDateTimeToUtcIso,
 } from "../_shared/reservation-utils.ts";
 
