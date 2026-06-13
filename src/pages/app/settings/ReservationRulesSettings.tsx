@@ -104,7 +104,7 @@ export default function ReservationRulesSettings() {
         .eq("id", restaurantId!)
         .maybeSingle();
       if (error) throw error;
-      return data as Record<string, unknown> | null;
+      return (data ?? null) as unknown as Record<string, unknown> | null;
     },
   });
 
