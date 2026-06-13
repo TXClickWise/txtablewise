@@ -1,31 +1,43 @@
-Twee kleine, geïsoleerde bugs in de weer-feature. Beide alleen presentatie-/copy-laag, geen datamodel of business-logica.
+# Probleem
 
-## Bug 1 — "vrijdag" terwijl het zaterdag is
+In de tijdlijn op /app/agenda kan een reservering met de muis naar een andere tafel/tijd worden gesleept, maar op telefoon en tablet werkt dat niet met de vinger. Reden: de scroll-container heeft `touch-action: pan-x pan-y`, en het reserveringsblokje vangt `pointerdown` af zonder dat te onderdrukken. Zodra de vinger beweegt vat de browser het op als scrollen → drag krijgt `pointercancel` en wordt nooit een echte drag.
 
-**Oorzaak:** `supabase/functions/weather_advise/index.ts` bouwt rule-based tips correct op (de headline gebruikt `formatDateNl(date)` → "za 13 jun"). Daarna polished de Lovable AI Gateway (`polishWithAi`) de tekst vrij — het model krijgt alleen `{type, date, headline_nl, body_nl}` en verzint zelf weekdagnamen, vandaar "deze vrijdag" op een zaterdag.
+# Oplossing — long-press initiated drag op touch
 
-**Fix:** in `polishWithAi`
-1. Per item een vooraf-berekende `weekday_nl` + `date_label_nl` (op basis van `Intl.DateTimeFormat("nl-NL", { weekday: "long" })` voor de item-`date`) toevoegen aan de payload die naar de AI gaat.
-2. System-prompt aanscherpen: "Gebruik uitsluitend de meegegeven `weekday_nl`/`date_label_nl` als je naar de dag verwijst. Verzin nooit zelf een dag van de week of datum. Behoud cijfers (graden, km/u, tijden) exact." 
-3. Vangnet na de AI-call: als `headline_nl` of `body_nl` een andere weekdagnaam bevat dan de verwachte → terugvallen op de originele rule-based tekst voor dat item (geen polished versie gebruiken).
+Bekend en gastvrij patroon voor tablet-first apps: bij touch start een drag pas na ±250 ms ingedrukt houden, met haptische feedback. Bij muis (zoals nu) direct slepen na 8 px beweging.
 
-## Bug 2 — Windpijl wijst de verkeerde kant op
+## Gedrag
 
-**Oorzaak:** in `src/components/weather/WeatherPill.tsx` rendert `WindArrow` het Lucide `Navigation`-icoon en draait het met `rotate((deg + 180) % 360)`. Het `Navigation`-icoon wijst echter standaard naar rechts-boven (~NO), niet naar het noorden. Daardoor staat de pijl 45° verkeerd t.o.v. de tekstuele richting (W, NW, Z, etc.) die wél correct uit `degToCompass` komt.
+- **Muis / pen**: ongewijzigd — direct slepen na ~8 px (huidige drempel).
+- **Touch (telefoon/tablet)**:
+  1. Vinger op een reserveringsblokje → 250 ms timer start, blok krijgt subtiele "hold" highlight (ring + lichte schaal).
+  2. Beweegt de vinger > 8 px vóór de timer afloopt → timer cancelt, gewone tijdlijn-scroll/pinch werkt zoals voorheen.
+  3. Tikt de gebruiker kort (loslaten < 250 ms zonder bewegen) → opent de detail-sheet (huidige onClick), niets verandert.
+  4. Timer haalt 250 ms → `navigator.vibrate?.(15)`, drag-mode actief, `touch-action: none` wordt op `<html>` gezet zolang de drag loopt zodat de browser niet meer scrollt, en de bestaande pointermove-flow neemt het over (snapping op kwartier, conflict-check, drop op andere tafel).
+  5. Loslaten → bestaande save-flow (manage_reservation) en toast.
+  6. Annuleren door de vinger ver buiten de tijdlijn te bewegen of een tweede vinger erbij (pinch) → drag cancel, terug naar normale scroll.
 
-**Fix:** rotatie corrigeren met -45° offset zodat `rotate(0deg)` daadwerkelijk noord is:
-```
-transform: `rotate(${(deg + 180 - 45 + 360) % 360}deg)`
-```
-Dit is één regel in de `WindArrow`-helper; alle gebruikers (pill, uurrij, 7-daagse rij) krijgen automatisch de correcte pijl. De tekst-labels (W/NW/…) en de Beaufort-kleur blijven ongewijzigd.
+## Subtiele UI hints (alleen tijdlijn-mobiel)
 
-## Bestanden
+- Tip-tekst bovenaan tijdlijn aanvullen: "Houd een reservering even ingedrukt om naar een andere tafel of tijd te slepen."
+- Tijdens hold-fase: blok krijgt `ring-2 ring-primary/60` en lichte `scale-[1.02]`.
+- Tijdens drag: bestaande "ghost"/preview blijft werken.
 
-- `supabase/functions/weather_advise/index.ts` — payload + prompt + post-validatie in `polishWithAi`.
-- `src/components/weather/WeatherPill.tsx` — alleen `WindArrow`-rotatie.
+# Bestanden
 
-## Verificatie
+Alleen `src/pages/app/AgendaPage.tsx`:
 
-- Hard reload `/app/vandaag`: tip moet "deze zaterdag" (of geen weekdag) tonen i.p.v. "vrijdag".
-- Op een W-wind moet de pijl horizontaal naar rechts wijzen (richting waarheen de wind blaast), bij N naar beneden, etc.
-- Bestaande, al opgeslagen advisories met foute tekst worden bij de volgende `weather_fetcher`-run automatisch overschreven (upsert op `restaurant_id,date,type`).
+1. **Nieuwe state** `holdId: string | null` + `holdTimerRef` + `holdStartRef`.
+2. **`onBlockPointerDown` aanpassen**: bij `pointerType === "touch"` géén directe drag-init meer; in plaats daarvan timer (250 ms) starten, beginpositie onthouden. Bij mouse/pen: huidige logica behouden.
+3. **Document-level `pointermove` luisteraar (touch hold-fase)**: als vinger > 8 px beweegt vóór timer-afloop → timer cancelen, hold-state legen. Als timer afloopt → `setDrag(...)` zoals nu, `document.documentElement.style.touchAction = "none"`, vibrate.
+4. **`pointerup`/`pointercancel`**: timer altijd opruimen, `touchAction` van `<html>` herstellen.
+5. **Tap = open detail**: in de bestaande `onClick` van de inner-button blijft `justDraggedRef` werken; voor touch tellen we het pas als drag wanneer de timer is afgelopen, dus korte tap opent gewoon de sheet.
+6. **Tip-tekst** boven de tijdlijn aanvullen met de hold-zin.
+
+Geen backend-, edge-function- of datamodel-wijziging.
+
+# Out-of-scope
+
+- Drag-and-drop op de Plattegrond/Floor Mode (apart verhaal).
+- Resize van blokjes via drag (duur wijzigen) — blijft via slot-editor in detail-sheet.
+- Verzending van herbevestigingsmail bij verplaatsing — afzonderlijke discussie die nog openstaat.

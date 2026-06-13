@@ -124,6 +124,10 @@ const AgendaPage = () => {
   const [drag, setDrag] = useState<DragState | null>(null);
   const dragRef = useRef<DragState | null>(null);
   dragRef.current = drag;
+  // Touch long-press hold (drag initiates only after ~250ms ingedrukt houden)
+  const [holdId, setHoldId] = useState<string | null>(null);
+  const holdTimerRef = useRef<number | null>(null);
+  const holdStartRef = useRef<{ x: number; y: number; pointerId: number; r: any; sourceTableId: string } | null>(null);
   // Mark that the most recent pointer interaction was a drag, so the click
   // event that follows on the button is ignored.
   const justDraggedRef = useRef(false);
@@ -331,14 +335,12 @@ const AgendaPage = () => {
     });
   };
 
-  const onBlockPointerDown = (
-    e: React.PointerEvent<HTMLDivElement>,
+  const beginDrag = (
     r: any,
     sourceTableId: string,
+    clientX: number,
+    clientY: number,
   ) => {
-    if (e.pointerType === "touch" && pointers.current.size >= 1) return; // don't fight pinch
-    if ((e.target as HTMLElement).closest("[data-no-drag]")) return;
-    if (e.button !== undefined && e.button !== 0) return;
     const startMin = minutesFromStart(r.start_time);
     const endMin = minutesFromStart(r.end_time);
     const durationMin = Math.max(QUARTER_MIN, endMin - startMin);
@@ -347,16 +349,74 @@ const AgendaPage = () => {
       sourceTableId,
       startMin,
       durationMin,
-      startPointerX: e.clientX,
-      startPointerY: e.clientY,
-      pointerX: e.clientX,
-      pointerY: e.clientY,
+      startPointerX: clientX,
+      startPointerY: clientY,
+      pointerX: clientX,
+      pointerY: clientY,
       moved: false,
       targetTableId: sourceTableId,
       targetStartMin: startMin,
       conflict: false,
     });
   };
+
+  const clearHold = () => {
+    if (holdTimerRef.current !== null) {
+      window.clearTimeout(holdTimerRef.current);
+      holdTimerRef.current = null;
+    }
+    holdStartRef.current = null;
+    setHoldId(null);
+    document.documentElement.style.touchAction = "";
+  };
+
+  const onBlockPointerDown = (
+    e: React.PointerEvent<HTMLDivElement>,
+    r: any,
+    sourceTableId: string,
+  ) => {
+    if (e.pointerType === "touch" && pointers.current.size >= 1) return; // don't fight pinch
+    if ((e.target as HTMLElement).closest("[data-no-drag]")) return;
+    if (e.button !== undefined && e.button !== 0) return;
+
+    if (e.pointerType === "touch") {
+      // Long-press to start drag op touch — anders blijft swipe = scroll werken.
+      holdStartRef.current = { x: e.clientX, y: e.clientY, pointerId: e.pointerId, r, sourceTableId };
+      setHoldId(r.id);
+      holdTimerRef.current = window.setTimeout(() => {
+        const h = holdStartRef.current;
+        holdTimerRef.current = null;
+        if (!h) return;
+        try { navigator.vibrate?.(15); } catch { /* ignore */ }
+        // Voorkom dat de browser nog gaat scrollen tijdens de drag.
+        document.documentElement.style.touchAction = "none";
+        beginDrag(h.r, h.sourceTableId, h.x, h.y);
+        setHoldId(null);
+      }, 250);
+      return;
+    }
+
+    beginDrag(r, sourceTableId, e.clientX, e.clientY);
+  };
+
+  // Touch hold-fase: cancel hold als vinger te ver beweegt of loslaat vóór de timer
+  useEffect(() => {
+    if (!holdId) return;
+    const onMove = (e: PointerEvent) => {
+      const h = holdStartRef.current;
+      if (!h || e.pointerId !== h.pointerId) return;
+      if (Math.hypot(e.clientX - h.x, e.clientY - h.y) > 8) clearHold();
+    };
+    const onEnd = () => clearHold();
+    document.addEventListener("pointermove", onMove);
+    document.addEventListener("pointerup", onEnd);
+    document.addEventListener("pointercancel", onEnd);
+    return () => {
+      document.removeEventListener("pointermove", onMove);
+      document.removeEventListener("pointerup", onEnd);
+      document.removeEventListener("pointercancel", onEnd);
+    };
+  }, [holdId]);
 
   useEffect(() => {
     if (!drag) return;
@@ -386,6 +446,7 @@ const AgendaPage = () => {
     const onUp = async () => {
       const d = dragRef.current;
       setDrag(null);
+      document.documentElement.style.touchAction = "";
       if (!d || !d.moved) return;
       justDraggedRef.current = true;
       window.setTimeout(() => { justDraggedRef.current = false; }, 300);
@@ -710,7 +771,7 @@ const AgendaPage = () => {
           <>
             {/* Rij 2: tip */}
             <div className="px-3 py-1.5 text-xs text-muted-foreground border-t border-border">
-              Tip: tik op een leeg tijdvak om een reservering toe te voegen, of sleep een bestaande reservering naar een andere tafel of tijd.
+              Tip: tik op een leeg tijdvak om een reservering toe te voegen. Houd een reservering even ingedrukt om te slepen naar een andere tafel of tijd.
             </div>
 
             {/* Rij 3: uren-as (horizontaal gesynced met body) */}
@@ -882,11 +943,16 @@ const AgendaPage = () => {
                         const width = Math.max(20, (endMin - startMin) * pxPerMin - 2);
                         const guestName = `${r.guests?.first_name ?? "Gast"} ${r.guests?.last_name ?? ""}`.trim();
                         const isDragging = drag?.id === r.id && drag?.moved;
+                        const isHolding = holdId === r.id;
                         const isLockedStatus = ["completed", "cancelled", "no_show"].includes(r.status);
                         return (
                           <div
                             key={r.id}
-                            className={cn("absolute group z-[2] hover:z-[3]", isDragging && "opacity-30 pointer-events-none")}
+                            className={cn(
+                              "absolute group z-[2] hover:z-[3] transition-transform",
+                              isDragging && "opacity-30 pointer-events-none",
+                              isHolding && "scale-[1.03] ring-2 ring-primary/60 rounded-md z-[4]",
+                            )}
                             style={{ left, top: 6, height: rowHeight - 12, width }}
                             onPointerDown={(e) => { if (!isLockedStatus) onBlockPointerDown(e, r, t.id); }}
                           >
