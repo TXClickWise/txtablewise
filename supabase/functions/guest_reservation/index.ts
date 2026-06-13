@@ -261,7 +261,16 @@ async function handleRequestChange(sb: any, reservation: any, restaurant: any, b
       const durationMinutes = restaurant.default_reservation_minutes ?? 105;
       newStartIso = zonedDateTimeToUtcIso(desiredDate, desiredTime, restaurant.timezone);
       newEndIso = addMinutesIso(newStartIso, durationMinutes);
-      newCombo = await findAvailableSeating(sb, reservation.restaurant_id, desiredParty, newStartIso, newEndIso, reservation.id);
+      newCombo = await pickSeatingWithStrategy(sb, {
+        restaurantId: reservation.restaurant_id,
+        partySize: desiredParty,
+        startIso: newStartIso,
+        endIso: newEndIso,
+        timezone: restaurant.timezone,
+        date: desiredDate,
+        excludeReservationId: reservation.id,
+        prefersTerrace: !!reservation.prefers_terrace,
+      });
       if (!newCombo) {
         outcome = "rejected";
         reasonCode = "no_table_available";
