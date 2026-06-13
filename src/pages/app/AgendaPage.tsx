@@ -943,11 +943,16 @@ const AgendaPage = () => {
                         const width = Math.max(20, (endMin - startMin) * pxPerMin - 2);
                         const guestName = `${r.guests?.first_name ?? "Gast"} ${r.guests?.last_name ?? ""}`.trim();
                         const isDragging = drag?.id === r.id && drag?.moved;
+                        const isHolding = holdId === r.id;
                         const isLockedStatus = ["completed", "cancelled", "no_show"].includes(r.status);
                         return (
                           <div
                             key={r.id}
-                            className={cn("absolute group z-[2] hover:z-[3]", isDragging && "opacity-30 pointer-events-none")}
+                            className={cn(
+                              "absolute group z-[2] hover:z-[3] transition-transform",
+                              isDragging && "opacity-30 pointer-events-none",
+                              isHolding && "scale-[1.03] ring-2 ring-primary/60 rounded-md z-[4]",
+                            )}
                             style={{ left, top: 6, height: rowHeight - 12, width }}
                             onPointerDown={(e) => { if (!isLockedStatus) onBlockPointerDown(e, r, t.id); }}
                           >
