@@ -301,7 +301,7 @@ const FloorModePage = () => {
       .reduce((sum, r) => sum + r.party_size, 0),
     [reservations, now]);
 
-  const totalCapacity = tables.reduce((s, t) => s + t.capacity_max, 0);
+  const totalCapacity = tables.filter(t => t.is_active).reduce((s, t) => s + t.capacity_max, 0);
   const pacingLevel = pacingLevelFromCovers(coversNextHour, totalCapacity || null);
 
   const selectedTable = tables.find(t => t.id === selectedTableId) ?? null;
