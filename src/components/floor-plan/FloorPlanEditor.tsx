@@ -73,8 +73,9 @@ export function FloorPlanEditor({ restaurantId }: { restaurantId: string }) {
   // Pointer handlers
   const onPointerDownTable = (e: React.PointerEvent, t: Table) => {
     e.stopPropagation();
-    (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
     setSelectedId(t.id);
+    if (!t.is_active) return; // inactieve tafels: alleen selecteren, niet slepen
+    (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
     const rect = canvasRef.current!.getBoundingClientRect();
     dragRef.current = {
       type: "move",
