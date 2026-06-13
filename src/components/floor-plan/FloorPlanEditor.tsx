@@ -237,24 +237,43 @@ export function FloorPlanEditor({ restaurantId }: { restaurantId: string }) {
               {visible.map((t) => {
                 const isSelected = t.id === selectedId;
                 const isRound = t.shape === "round";
+                const inactive = !t.is_active;
                 return (
                   <div
                     key={t.id}
                     onPointerDown={(e) => onPointerDownTable(e, t)}
                     className={cn(
-                      "absolute flex flex-col items-center justify-center border-2 cursor-grab active:cursor-grabbing transition-shadow",
+                      "absolute flex flex-col items-center justify-center border-2 transition-shadow",
                       isRound ? "rounded-full" : "rounded-md",
-                      isSelected
+                      inactive
+                        ? "cursor-pointer border-dashed border-muted-foreground/40 bg-muted/40 text-muted-foreground"
+                        : "cursor-grab active:cursor-grabbing",
+                      !inactive && (isSelected
                         ? "border-primary bg-primary/10 shadow-lg ring-2 ring-primary/30"
-                        : "border-border bg-card hover:border-primary/50",
+                        : "border-border bg-card hover:border-primary/50"),
+                      inactive && isSelected && "ring-2 ring-primary/40",
                     )}
-                    style={{ left: t.pos_x, top: t.pos_y, width: t.width, height: t.height }}
+                    style={{
+                      left: t.pos_x,
+                      top: t.pos_y,
+                      width: t.width,
+                      height: t.height,
+                      ...(inactive
+                        ? {
+                            backgroundImage:
+                              "repeating-linear-gradient(45deg, hsl(var(--muted-foreground) / 0.15) 0 6px, transparent 6px 12px)",
+                          }
+                        : {}),
+                    }}
                   >
                     <div className="font-display text-sm pointer-events-none">{t.label}</div>
                     <div className="text-[10px] text-muted-foreground pointer-events-none">
                       {t.capacity_min}-{t.capacity_max}p
                     </div>
-                    {isSelected && (
+                    {inactive && (
+                      <div className="text-[9px] uppercase tracking-wide pointer-events-none mt-0.5">Uit</div>
+                    )}
+                    {isSelected && !inactive && (
                       <div
                         onPointerDown={(e) => onPointerDownResize(e, t)}
                         className="absolute -bottom-1 -right-1 h-4 w-4 rounded-sm bg-primary border-2 border-background cursor-se-resize"
