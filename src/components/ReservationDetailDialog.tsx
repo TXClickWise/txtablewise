@@ -51,6 +51,7 @@ export function ReservationDetailDialog({ reservationId, open, onOpenChange }: P
   const [loading, setLoading] = useState(false);
   const [busy, setBusy] = useState(false);
   const [confirm, setConfirm] = useState<ConfirmAction>(null);
+  const [slotEditOpen, setSlotEditOpen] = useState(false);
   const [restaurantCfg, setRestaurantCfg] = useState<{ large_group_threshold?: number; deposit_default_amount_cents?: number } | null>(null);
   const [form, setForm] = useState({
     party_size: 2,
