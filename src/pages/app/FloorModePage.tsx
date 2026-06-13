@@ -289,7 +289,7 @@ const FloorModePage = () => {
   const totalToday = reservations.length;
   const seatedNow = reservations.filter(r => r.status === "seated").length;
   const walkInsToday = reservations.filter(r => r.channel === "walk_in").length;
-  const tablesFree = tables.filter(t => (tableState.get(t.id)?.status ?? "free") === "free").length;
+  const tablesFree = tables.filter(t => t.is_active && (tableState.get(t.id)?.status ?? "free") === "free").length;
 
   const coversNextHour = useMemo(() =>
     reservations
