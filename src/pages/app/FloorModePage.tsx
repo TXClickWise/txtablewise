@@ -162,7 +162,7 @@ const FloorModePage = () => {
     enabled: !!restaurantId,
     queryFn: async () => {
       const { data } = await supabase.from("tables").select("*")
-        .eq("restaurant_id", restaurantId!).eq("is_active", true);
+        .eq("restaurant_id", restaurantId!);
       return (data ?? []) as Table[];
     },
   });
