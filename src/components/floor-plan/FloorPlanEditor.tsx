@@ -53,7 +53,7 @@ export function FloorPlanEditor({ restaurantId }: { restaurantId: string }) {
   const load = useCallback(async () => {
     const [{ data: z }, { data: t }] = await Promise.all([
       supabase.from("zones").select("id, name").eq("restaurant_id", restaurantId).eq("is_active", true).order("sort_order"),
-      supabase.from("tables").select("*").eq("restaurant_id", restaurantId).eq("is_active", true).order("label"),
+      supabase.from("tables").select("*").eq("restaurant_id", restaurantId).order("label"),
     ]);
     setZones((z ?? []) as Zone[]);
     setTables((t ?? []) as Table[]);
