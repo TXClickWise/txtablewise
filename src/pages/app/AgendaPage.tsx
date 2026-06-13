@@ -15,7 +15,7 @@ import {
   CalendarDays, List, LayoutGrid,
 } from "lucide-react";
 import { useRestaurant } from "@/hooks/useRestaurant";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -28,7 +28,11 @@ import { ReservationDatePicker } from "@/components/reservations/ReservationDate
 import { EmptyState } from "@/components/touch/StateViews";
 import { ReservationQuickActionsPopover } from "@/components/reservations/ReservationQuickActionsPopover";
 import { PendingLargeGroupsAlert } from "@/components/large-groups/PendingLargeGroupsAlert";
+import { reservations as resService } from "@/services/reservations";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+
+
 
 const START_HOUR = 11;
 const END_HOUR = 24;
@@ -101,9 +105,34 @@ const AgendaPage = () => {
   const [fullscreen, setFullscreen] = useState(false);
   const [floorZoneId, setFloorZoneId] = useState<string | null>(null);
 
+  // Drag-to-reschedule state
+  const qc = useQueryClient();
+  type DragState = {
+    id: string;
+    sourceTableId: string;
+    startMin: number;
+    durationMin: number;
+    startPointerX: number;
+    startPointerY: number;
+    pointerX: number;
+    pointerY: number;
+    moved: boolean;
+    targetTableId: string | null;
+    targetStartMin: number | null;
+    conflict: boolean;
+  };
+  const [drag, setDrag] = useState<DragState | null>(null);
+  const dragRef = useRef<DragState | null>(null);
+  dragRef.current = drag;
+  // Mark that the most recent pointer interaction was a drag, so the click
+  // event that follows on the button is ignored.
+  const justDraggedRef = useRef(false);
+
+
   const scrollRef = useRef<HTMLDivElement>(null);
   const headerAxisRef = useRef<HTMLDivElement>(null);
   const didInitialScroll = useRef(false);
+
   const dateStr = format(date, "yyyy-MM-dd");
 
   // tick "nu" elke 15 min — synchroon met kwartier
@@ -272,6 +301,135 @@ const AgendaPage = () => {
     const m = total % 60;
     return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
   };
+
+  // -- Drag-to-reschedule helpers --------------------------------------------
+  const computeDropTarget = (clientX: number, clientY: number) => {
+    // Find which table row the pointer is over
+    for (const [tid, el] of Object.entries(rowRefs.current)) {
+      if (!el) continue;
+      const rect = el.getBoundingClientRect();
+      if (clientY < rect.top || clientY > rect.bottom) continue;
+      // Content area starts after the sticky label column
+      const contentLeft = rect.left + TAFEL_COL_W;
+      const xInContent = clientX - contentLeft;
+      const minRaw = xInContent / pxPerMin;
+      const snapped = Math.round(minRaw / QUARTER_MIN) * QUARTER_MIN;
+      return { tableId: tid, startMin: Math.max(0, Math.min(totalMinutes - QUARTER_MIN, snapped)) };
+    }
+    return null;
+  };
+
+  const checkConflict = (tableId: string, startMin: number, durationMin: number, excludeId: string) => {
+    const endMin = startMin + durationMin;
+    const items = (byTable[tableId] ?? []) as any[];
+    return items.some((r) => {
+      if (r.id === excludeId) return false;
+      if (["cancelled", "no_show"].includes(r.status)) return false;
+      const sMin = minutesFromStart(r.start_time);
+      const eMin = minutesFromStart(r.end_time);
+      return sMin < endMin && eMin > startMin;
+    });
+  };
+
+  const onBlockPointerDown = (
+    e: React.PointerEvent<HTMLDivElement>,
+    r: any,
+    sourceTableId: string,
+  ) => {
+    if (e.pointerType === "touch" && pointers.current.size >= 1) return; // don't fight pinch
+    if ((e.target as HTMLElement).closest("[data-no-drag]")) return;
+    if (e.button !== undefined && e.button !== 0) return;
+    const startMin = minutesFromStart(r.start_time);
+    const endMin = minutesFromStart(r.end_time);
+    const durationMin = Math.max(QUARTER_MIN, endMin - startMin);
+    setDrag({
+      id: r.id,
+      sourceTableId,
+      startMin,
+      durationMin,
+      startPointerX: e.clientX,
+      startPointerY: e.clientY,
+      pointerX: e.clientX,
+      pointerY: e.clientY,
+      moved: false,
+      targetTableId: sourceTableId,
+      targetStartMin: startMin,
+      conflict: false,
+    });
+  };
+
+  useEffect(() => {
+    if (!drag) return;
+    const onMove = (e: PointerEvent) => {
+      const d = dragRef.current;
+      if (!d) return;
+      const dx = e.clientX - d.startPointerX;
+      const dy = e.clientY - d.startPointerY;
+      const moved = d.moved || Math.hypot(dx, dy) > 8;
+      let targetTableId = d.targetTableId;
+      let targetStartMin = d.targetStartMin;
+      let conflict = d.conflict;
+      if (moved) {
+        const hit = computeDropTarget(e.clientX, e.clientY);
+        if (hit) {
+          targetTableId = hit.tableId;
+          targetStartMin = hit.startMin;
+          conflict = checkConflict(hit.tableId, hit.startMin, d.durationMin, d.id);
+        } else {
+          targetTableId = null;
+          targetStartMin = null;
+          conflict = false;
+        }
+      }
+      setDrag({ ...d, pointerX: e.clientX, pointerY: e.clientY, moved, targetTableId, targetStartMin, conflict });
+    };
+    const onUp = async () => {
+      const d = dragRef.current;
+      setDrag(null);
+      if (!d || !d.moved) return;
+      justDraggedRef.current = true;
+      window.setTimeout(() => { justDraggedRef.current = false; }, 300);
+      if (!d.targetTableId || d.targetStartMin === null) return;
+
+      if (d.conflict) {
+        toast.error("Tafel is bezet op dit tijdstip.");
+        return;
+      }
+      const sameTable = d.targetTableId === d.sourceTableId;
+      const sameTime = d.targetStartMin === d.startMin;
+      if (sameTable && sameTime) return;
+      const payload: Parameters<typeof resService.update>[1] = {};
+      if (!sameTime) payload.start_time_local = minutesToTime(d.targetStartMin);
+      if (!sameTable) payload.table_id = d.targetTableId;
+      const res = await resService.update(d.id, payload);
+      if (!res.ok) {
+        toast.error(res.error || "Verplaatsen is mislukt.");
+        return;
+      }
+      // Bij tijdwijziging end_time bijwerken zodat duur behouden blijft
+      // (manage_reservation past end_time niet automatisch aan).
+      if (!sameTime) {
+        const newStart = new Date(`${dateStr}T${minutesToTime(d.targetStartMin)}:00`);
+        const newEnd = new Date(newStart.getTime() + d.durationMin * 60000);
+        await supabase.from("reservations")
+          .update({ end_time: newEnd.toISOString() })
+          .eq("id", d.id);
+      }
+      toast.success("Reservering verplaatst.");
+      qc.invalidateQueries({ queryKey: ["agenda-day"] });
+    };
+    document.addEventListener("pointermove", onMove);
+    document.addEventListener("pointerup", onUp);
+    document.addEventListener("pointercancel", onUp);
+    return () => {
+      document.removeEventListener("pointermove", onMove);
+      document.removeEventListener("pointerup", onUp);
+      document.removeEventListener("pointercancel", onUp);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [drag?.id]);
+
+
 
   const isToday = isSameDay(date, now);
   const nowMin = (now.getHours() - START_HOUR) * 60 + now.getMinutes();
@@ -552,7 +710,7 @@ const AgendaPage = () => {
           <>
             {/* Rij 2: tip */}
             <div className="px-3 py-1.5 text-xs text-muted-foreground border-t border-border">
-              Tip: tik op een leeg tijdvak om snel een reservering toe te voegen op die tafel.
+              Tip: tik op een leeg tijdvak om een reservering toe te voegen, of sleep een bestaande reservering naar een andere tafel of tijd.
             </div>
 
             {/* Rij 3: uren-as (horizontaal gesynced met body) */}
@@ -723,18 +881,27 @@ const AgendaPage = () => {
                         const left = Math.max(0, startMin) * pxPerMin;
                         const width = Math.max(20, (endMin - startMin) * pxPerMin - 2);
                         const guestName = `${r.guests?.first_name ?? "Gast"} ${r.guests?.last_name ?? ""}`.trim();
+                        const isDragging = drag?.id === r.id && drag?.moved;
+                        const isLockedStatus = ["completed", "cancelled", "no_show"].includes(r.status);
                         return (
                           <div
                             key={r.id}
-                            className="absolute group z-[2] hover:z-[3]"
+                            className={cn("absolute group z-[2] hover:z-[3]", isDragging && "opacity-30 pointer-events-none")}
                             style={{ left, top: 6, height: rowHeight - 12, width }}
+                            onPointerDown={(e) => { if (!isLockedStatus) onBlockPointerDown(e, r, t.id); }}
                           >
                             <button
                               type="button"
-                              onClick={(e) => { e.stopPropagation(); setSelectedId(r.id); }}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                // suppress click directly after a drag finished
+                                if (justDraggedRef.current) return;
+                                setSelectedId(r.id);
+                              }}
                               className={cn(
                                 "w-full h-full rounded-md px-2 text-left text-xs overflow-hidden transition-all duration-150 hover:shadow-elevated",
                                 STATUS_BG[r.status] ?? "bg-muted border-l-[3px] border-border",
+                                !isLockedStatus && "cursor-grab active:cursor-grabbing",
                               )}
                             >
                               <div className="font-medium truncate pr-5">
@@ -742,16 +909,41 @@ const AgendaPage = () => {
                               </div>
                               <div className="text-[10px] opacity-80">{r.party_size}p</div>
                             </button>
-                            <ReservationQuickActionsPopover
-                              reservationId={r.id}
-                              status={r.status}
-                              title={`${format(new Date(r.start_time), "HH:mm")} · ${guestName}`}
-                              subtitle={`${r.party_size} pers · Tafel ${t.label}`}
-                              onOpenDetails={() => setSelectedId(r.id)}
-                            />
+                            <div data-no-drag>
+                              <ReservationQuickActionsPopover
+                                reservationId={r.id}
+                                status={r.status}
+                                title={`${format(new Date(r.start_time), "HH:mm")} · ${guestName}`}
+                                subtitle={`${r.party_size} pers · Tafel ${t.label}`}
+                                onOpenDetails={() => setSelectedId(r.id)}
+                              />
+                            </div>
                           </div>
                         );
                       })}
+                      {/* Drop preview ghost in this row */}
+                      {drag?.moved && drag?.targetTableId === t.id && drag?.targetStartMin !== null && (
+                        <div
+                          className={cn(
+                            "absolute rounded-md border-2 border-dashed pointer-events-none transition-colors",
+                            drag.conflict
+                              ? "border-destructive bg-destructive/15"
+                              : "border-primary bg-primary/15",
+                          )}
+                          style={{
+                            left: drag.targetStartMin * pxPerMin,
+                            top: 6,
+                            height: rowHeight - 12,
+                            width: Math.max(20, drag.durationMin * pxPerMin - 2),
+                          }}
+                        >
+                          <div className="text-[10px] px-2 pt-1 font-semibold">
+                            {minutesToTime(drag.targetStartMin)}
+                            {drag.conflict && " · bezet"}
+                          </div>
+                        </div>
+                      )}
+
                     </div>
                   </div>
                 </div>

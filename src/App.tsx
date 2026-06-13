@@ -6,6 +6,8 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/hooks/useAuth";
 import { RequireAuth } from "@/components/RequireAuth";
 import { AppShell } from "@/components/AppShell";
+import { KeyboardInsetMount } from "@/hooks/use-keyboard-inset";
+
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { RequireRole } from "@/components/RequireRole";
 import Index from "./pages/Index.tsx";
@@ -64,10 +66,12 @@ const queryClient = new QueryClient();
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
+    <KeyboardInsetMount />
     <TooltipProvider>
       <Toaster />
       <Sonner />
       <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+
         <AuthProvider>
           <Routes>
             <Route path="/" element={<Index />} />
