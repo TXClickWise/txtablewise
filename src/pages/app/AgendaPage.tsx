@@ -895,7 +895,7 @@ const AgendaPage = () => {
                               onClick={(e) => {
                                 e.stopPropagation();
                                 // suppress click directly after a drag finished
-                                if (drag) return;
+                                if (justDraggedRef.current) return;
                                 setSelectedId(r.id);
                               }}
                               className={cn(
