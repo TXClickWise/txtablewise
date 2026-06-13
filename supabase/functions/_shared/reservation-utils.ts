@@ -161,3 +161,175 @@ export async function findAvailableSeating(
   if (!combo) return null;
   return { combinationId: combo.combinationId, tableIds: combo.tableIds, name: combo.name };
 }
+
+/**
+ * Strategie-bewuste zitplaats-picker. Past de vul-strategie toe (zones, fill_priority,
+ * terras-voorkeur, weer-blokkering) wanneer fill_strategy_enabled aanstaat voor het
+ * restaurant. Anders valt terug op findAvailableSeating (eerste passende losse tafel,
+ * dan combinatie).
+ *
+ * Gebruikt door alle herboeking/wijzig-flows zodat een gast die z'n tijd verplaatst
+ * niet ineens in een achterkamer-zone belandt terwijl het terras leeg staat.
+ */
+// deno-lint-ignore no-explicit-any
+export async function pickSeatingWithStrategy(
+  sb: any,
+  opts: {
+    restaurantId: string;
+    partySize: number;
+    startIso: string;
+    endIso: string;
+    timezone: string;
+    date: string; // YYYY-MM-DD voor weather lookup
+    excludeReservationId?: string;
+    excludedTableIds?: Set<string>;
+    prefersTerrace?: boolean;
+  },
+): Promise<
+  | { combinationId: string | null; tableIds: string[]; name: string | null; zoneId: string | null; terracePreferenceUnmet: boolean }
+  | null
+> {
+  const {
+    restaurantId, partySize, startIso, endIso, timezone, date,
+    excludeReservationId, excludedTableIds, prefersTerrace,
+  } = opts;
+
+  // Lees fill_strategy_enabled van het restaurant
+  const { data: rest } = await sb
+    .from("restaurants")
+    .select("fill_strategy_enabled")
+    .eq("id", restaurantId)
+    .maybeSingle();
+  const useFillStrategy = rest?.fill_strategy_enabled === true;
+
+  if (!useFillStrategy) {
+    const legacy = await findAvailableSeating(
+      sb, restaurantId, partySize, startIso, endIso, excludeReservationId, excludedTableIds,
+    );
+    if (!legacy) return null;
+    return { ...legacy, zoneId: null, terracePreferenceUnmet: !!prefersTerrace };
+  }
+
+  // Dynamisch importeren om circulaire imports te vermijden
+  const { resolveActiveZones, pickTableWithFillStrategy, pickCombinationWithFillStrategy } =
+    await import("./zone-fill.ts");
+
+  // Parallel: zones, alle actieve tafels, fitting tafels, weer-row
+  const [zonesRes, allTablesRes, fittingRes, weatherRes] = await Promise.all([
+    sb.from("zones").select("*").eq("restaurant_id", restaurantId),
+    sb.from("tables").select("id, zone_id, is_active, capacity_min, capacity_max, fill_priority, label")
+      .eq("restaurant_id", restaurantId).eq("is_active", true),
+    sb.from("tables").select("id, zone_id, capacity_min, capacity_max, fill_priority, label")
+      .eq("restaurant_id", restaurantId).eq("is_active", true)
+      .lte("capacity_min", partySize).gte("capacity_max", partySize),
+    sb.from("weather_forecasts").select("min_temp_c, max_temp_c, precipitation_mm")
+      .eq("restaurant_id", restaurantId).eq("date", date).maybeSingle(),
+  ]);
+
+  const zones = (zonesRes.data ?? []) as any[];
+  const allTables = (allTablesRes.data ?? []) as Array<{ id: string; zone_id: string | null }>;
+  const fittingTables = (fittingRes.data ?? []) as Array<{
+    id: string; zone_id: string | null; capacity_min: number; capacity_max: number; fill_priority: number; label: string;
+  }>;
+  const weather = (weatherRes.data ?? null) as any;
+
+  const zoneActivity = resolveActiveZones({
+    zones, partySize, startIso, timezone, weather,
+  });
+
+  // Bereken occupancy voor het gewenste tijdvenster
+  const allTableIds = allTables.map((t) => t.id);
+  const occupied = new Set<string>();
+  if (allTableIds.length > 0) {
+    const { data: rtRows } = await sb
+      .from("reservation_tables")
+      .select("table_id, reservation_id, reservations!inner(id, start_time, end_time, status, hold_expires_at)")
+      .in("table_id", allTableIds);
+    const now = new Date();
+    // deno-lint-ignore no-explicit-any
+    for (const row of (rtRows ?? []) as any[]) {
+      const r = row.reservations;
+      if (!r) continue;
+      if (excludeReservationId && r.id === excludeReservationId) continue;
+      if (!ACTIVE_STATUSES.includes(r.status)) continue;
+      if (r.status === "hold" && (!r.hold_expires_at || new Date(r.hold_expires_at) <= now)) continue;
+      if (intervalsOverlap(startIso, endIso, r.start_time, r.end_time)) {
+        occupied.add(row.table_id);
+      }
+    }
+  }
+
+  // Occupancy per zone (op basis van alle actieve tafels)
+  const occupancyByZone = new Map<string, { occupied: number; total: number }>();
+  for (const z of zones) occupancyByZone.set(z.id, { occupied: 0, total: 0 });
+  for (const t of allTables) {
+    if (!t.zone_id) continue;
+    const entry = occupancyByZone.get(t.zone_id);
+    if (!entry) continue;
+    entry.total += 1;
+    if (occupied.has(t.id)) entry.occupied += 1;
+  }
+
+  // Fitting + vrij + niet excluded
+  const freeFitting = fittingTables.filter((t) =>
+    !occupied.has(t.id) && !excludedTableIds?.has(t.id)
+  );
+
+  const picked = pickTableWithFillStrategy({
+    fittingFreeTables: freeFitting,
+    zoneActivity,
+    occupancyByZone,
+    prefersTerrace: !!prefersTerrace,
+    partySize,
+  });
+
+  if (picked) {
+    return {
+      combinationId: null,
+      tableIds: [picked.tableId],
+      name: null,
+      zoneId: picked.zoneId,
+      terracePreferenceUnmet: picked.terrace_preference_unmet,
+    };
+  }
+
+  // Combinatie-fallback
+  const { data: combosRaw } = await sb
+    .from("table_combinations")
+    .select("id, name, table_ids, capacity_min, capacity_max, fill_priority, is_active")
+    .eq("restaurant_id", restaurantId).eq("is_active", true);
+  const combinations = (combosRaw ?? []) as any[];
+  const tablesById = new Map<string, any>();
+  for (const t of fittingTables) tablesById.set(t.id, t);
+  // Aanvullen met overige tafels die in combinaties zitten maar niet "fitting" zijn los
+  const comboTableIds = Array.from(new Set(combinations.flatMap((c) => c.table_ids ?? [])));
+  const missing = comboTableIds.filter((id) => !tablesById.has(id));
+  if (missing.length > 0) {
+    const { data: extra } = await sb
+      .from("tables").select("id, zone_id, capacity_min, capacity_max, fill_priority, label")
+      .in("id", missing);
+    for (const t of (extra ?? []) as any[]) tablesById.set(t.id, t);
+  }
+
+  const filteredCombos = excludedTableIds
+    ? combinations.filter((c) => !(c.table_ids ?? []).some((id: string) => excludedTableIds.has(id)))
+    : combinations;
+
+  const pickedCombo = pickCombinationWithFillStrategy({
+    combinations: filteredCombos,
+    tablesById,
+    occupiedTableIds: occupied,
+    zoneActivity,
+    prefersTerrace: !!prefersTerrace,
+    partySize,
+  });
+  if (!pickedCombo) return null;
+  return {
+    combinationId: pickedCombo.combinationId,
+    tableIds: pickedCombo.tableIds,
+    name: pickedCombo.name,
+    zoneId: null,
+    terracePreferenceUnmet: pickedCombo.terrace_preference_unmet,
+  };
+}
+
