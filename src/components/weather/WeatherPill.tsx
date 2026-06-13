@@ -13,13 +13,14 @@ import {
 type Props = { restaurantId: string };
 
 /** Arrow rotated to wind direction.
- *  Meteorological deg = wind comes FROM that direction, arrow points TO → rotate deg + 180. */
+ *  Meteorological deg = wind comes FROM that direction, arrow points TO → rotate deg + 180.
+ *  Lucide `Navigation` icon points to upper-right (~NE) by default, so we subtract 45° to align 0° = north. */
 function WindArrow({ deg, className = "h-3.5 w-3.5" }: { deg: number | null | undefined; className?: string }) {
   if (deg === null || deg === undefined) return null;
   return (
     <Navigation
       className={className}
-      style={{ transform: `rotate(${(deg + 180) % 360}deg)` }}
+      style={{ transform: `rotate(${(deg + 180 - 45 + 360) % 360}deg)` }}
       aria-hidden
     />
   );

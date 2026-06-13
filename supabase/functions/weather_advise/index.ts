@@ -183,7 +183,24 @@ Deno.serve(async (req) => {
 });
 
 async function polishWithAi(items: Advisory[], apiKey: string): Promise<Advisory[] | null> {
-  const sys = "Je bent een hospitality-copywriter voor een restaurant-OS. Herschrijf elke weer-tip naar maximaal 2 korte Nederlandse zinnen: rustig, concreet, geen jargon, geen emoji. Antwoord uitsluitend met JSON: een array {type, headline_nl, body_nl}.";
+  // Bereken per item de exacte Nederlandse weekdag + datum-label op basis van item.date
+  // zodat de AI niet zelf een weekdag mag verzinnen.
+  const enriched = items.map((it) => {
+    const d = new Date(it.date + "T12:00:00Z");
+    const weekday_nl = new Intl.DateTimeFormat("nl-NL", { weekday: "long", timeZone: "Europe/Amsterdam" }).format(d);
+    const date_label_nl = new Intl.DateTimeFormat("nl-NL", { weekday: "short", day: "numeric", month: "short", timeZone: "Europe/Amsterdam" }).format(d);
+    return { ...it, weekday_nl, date_label_nl };
+  });
+
+  const sys = [
+    "Je bent een hospitality-copywriter voor een restaurant-OS.",
+    "Herschrijf elke weer-tip naar maximaal 2 korte Nederlandse zinnen: rustig, concreet, geen jargon, geen emoji.",
+    "BELANGRIJK over datums: verwijs alléén naar de dag via de meegegeven `weekday_nl` (bv. 'zaterdag') of `date_label_nl`.",
+    "Verzin NOOIT zelf een dag van de week of een datum. Als je niet zeker bent, laat de dag weg.",
+    "Behoud alle cijfers (graden, km/u, tijden) exact zoals in de bron.",
+    "Antwoord uitsluitend met JSON: een array {type, headline_nl, body_nl}.",
+  ].join(" ");
+
   const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
     method: "POST",
     headers: {
@@ -194,7 +211,7 @@ async function polishWithAi(items: Advisory[], apiKey: string): Promise<Advisory
       model: "google/gemini-2.5-flash",
       messages: [
         { role: "system", content: sys },
-        { role: "user", content: JSON.stringify(items) },
+        { role: "user", content: JSON.stringify(enriched) },
       ],
       response_format: { type: "json_object" },
     }),
@@ -207,7 +224,25 @@ async function polishWithAi(items: Advisory[], apiKey: string): Promise<Advisory
     const parsed = JSON.parse(raw);
     const arr = Array.isArray(parsed) ? parsed : parsed.items ?? parsed.advisories ?? null;
     if (!Array.isArray(arr)) return null;
-    return arr;
+
+    // Vangnet: als de AI een andere weekdagnaam noemt dan de verwachte, gooi die polished
+    // versie weg zodat we terugvallen op de rule-based originele tekst.
+    const WEEKDAYS_NL = ["maandag", "dinsdag", "woensdag", "donderdag", "vrijdag", "zaterdag", "zondag"];
+    const validated = arr.filter((p: any) => {
+      if (!p || typeof p !== "object" || !p.type) return false;
+      const source = enriched.find((e) => e.type === p.type);
+      if (!source) return false;
+      const expected = source.weekday_nl.toLowerCase();
+      const combined = `${p.headline_nl ?? ""} ${p.body_nl ?? ""}`.toLowerCase();
+      for (const w of WEEKDAYS_NL) {
+        if (w !== expected && combined.includes(w)) {
+          return false; // verkeerde weekdag genoemd → drop polished, fallback naar rule-based
+        }
+      }
+      return true;
+    });
+
+    return validated;
   } catch {
     return null;
   }
