@@ -24,6 +24,7 @@ type Table = {
   pos_y: number;
   width: number;
   height: number;
+  is_active: boolean;
 };
 
 const CANVAS_W = 900;
