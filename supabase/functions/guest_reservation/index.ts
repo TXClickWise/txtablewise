@@ -508,7 +508,16 @@ async function evaluate(sb: any, reservation: any, restaurant: any, desiredDate:
 
   // 6. Table availability
   const desiredEndIso = addMinutesIso(desiredStartIso, durationMinutes);
-  const combo = await findAvailableSeating(sb, reservation.restaurant_id, desiredParty, desiredStartIso, desiredEndIso, reservation.id);
+  const combo = await pickSeatingWithStrategy(sb, {
+    restaurantId: reservation.restaurant_id,
+    partySize: desiredParty,
+    startIso: desiredStartIso,
+    endIso: desiredEndIso,
+    timezone: restaurant.timezone,
+    date: desiredDate,
+    excludeReservationId: reservation.id,
+    prefersTerrace: !!reservation.prefers_terrace,
+  });
   if (!combo) {
     return { outcome: "rejected", reasonCode: "no_table_available" };
   }
