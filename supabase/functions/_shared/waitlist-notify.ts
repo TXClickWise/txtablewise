@@ -7,18 +7,32 @@
 export async function notifyWaitlistOnCancel(admin: any, cancelled: {
   restaurant_id: string;
   id: string;
-  start_time: string;
+  start_time: string;            // ISO UTC
   party_size: number;
-  reservation_date: string;
+  reservation_date: string;      // YYYY-MM-DD (restaurant-local)
 }) {
-  const startMs = new Date(cancelled.start_time).getTime();
-  const date = cancelled.reservation_date;
+  // Resolve restaurant timezone so we can compare HH:MM correctly.
+  const { data: restaurant } = await admin
+    .from("restaurants")
+    .select("timezone")
+    .eq("id", cancelled.restaurant_id)
+    .maybeSingle();
+  const tz = restaurant?.timezone ?? "Europe/Amsterdam";
+
+  // Convert reservation start_time (UTC) to HH:MM in the restaurant's local timezone.
+  const fmt = new Intl.DateTimeFormat("en-GB", {
+    timeZone: tz, hour: "2-digit", minute: "2-digit", hour12: false,
+  });
+  const parts = fmt.formatToParts(new Date(cancelled.start_time));
+  const hh = Number(parts.find((p) => p.type === "hour")?.value ?? 0);
+  const mm = Number(parts.find((p) => p.type === "minute")?.value ?? 0);
+  const startLocalMin = hh * 60 + mm;
 
   const { data: entries } = await admin
     .from("waitlist_entries")
     .select("id, party_size, desired_time_from, desired_time_to, flexible_minutes, status, notified_at")
     .eq("restaurant_id", cancelled.restaurant_id)
-    .eq("desired_date", date)
+    .eq("desired_date", cancelled.reservation_date)
     .eq("status", "waiting")
     .lte("party_size", cancelled.party_size)
     .order("created_at", { ascending: true })
@@ -29,12 +43,12 @@ export async function notifyWaitlistOnCancel(admin: any, cancelled: {
   const candidates: string[] = [];
   for (const e of entries) {
     if (e.notified_at) continue;
-    const flex = (e.flexible_minutes ?? 30) * 60_000;
+    const flex = e.flexible_minutes ?? 30;
     const [fh, fm] = String(e.desired_time_from).split(":").map(Number);
     const [th, tm] = String(e.desired_time_to).split(":").map(Number);
-    const fromMs = new Date(date).setHours(fh ?? 0, fm ?? 0, 0, 0);
-    const toMs = new Date(date).setHours(th ?? 23, tm ?? 59, 0, 0);
-    if (startMs >= fromMs - flex && startMs <= toMs + flex) {
+    const fromMin = (fh ?? 0) * 60 + (fm ?? 0);
+    const toMin = (th ?? 23) * 60 + (tm ?? 59);
+    if (startLocalMin >= fromMin - flex && startLocalMin <= toMin + flex) {
       candidates.push(e.id);
       if (candidates.length >= 3) break;
     }
