@@ -1319,57 +1319,6 @@ export type Database = {
         }
         Relationships: []
       }
-      reservation_reminders: {
-        Row: {
-          channel: string
-          clickwise_workflow_id: string | null
-          created_at: string
-          error_message: string | null
-          failed_at: string | null
-          id: string
-          metadata: Json
-          reminder_type: string
-          reservation_id: string
-          restaurant_id: string
-          scheduled_for: string
-          sent_at: string | null
-          status: string
-          updated_at: string
-        }
-        Insert: {
-          channel?: string
-          clickwise_workflow_id?: string | null
-          created_at?: string
-          error_message?: string | null
-          failed_at?: string | null
-          id?: string
-          metadata?: Json
-          reminder_type: string
-          reservation_id: string
-          restaurant_id: string
-          scheduled_for: string
-          sent_at?: string | null
-          status?: string
-          updated_at?: string
-        }
-        Update: {
-          channel?: string
-          clickwise_workflow_id?: string | null
-          created_at?: string
-          error_message?: string | null
-          failed_at?: string | null
-          id?: string
-          metadata?: Json
-          reminder_type?: string
-          reservation_id?: string
-          restaurant_id?: string
-          scheduled_for?: string
-          sent_at?: string | null
-          status?: string
-          updated_at?: string
-        }
-        Relationships: []
-      }
       reservation_status_history: {
         Row: {
           changed_by: string | null
