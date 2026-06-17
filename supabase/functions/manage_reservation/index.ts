@@ -209,8 +209,66 @@ async function doStatusChange(
     }
   }
 
+  // Aftercare: na completed automatisch een review_request voorbereiden (idempotent).
+  if (newStatus === "completed") {
+    try {
+      await ensureReviewRequest(admin, updated);
+    } catch (e) {
+      console.error("[manage_reservation] ensureReviewRequest failed", e);
+    }
+  }
+
   return json({ ok: true, reservation: updated });
 }
+
+// deno-lint-ignore no-explicit-any
+async function ensureReviewRequest(admin: any, reservation: any) {
+  if (!reservation || reservation.status !== "completed") return;
+
+  // Skip walk-ins zonder contactgegevens (geen kanaal voor aftercare).
+  if (reservation.channel === "walk_in") {
+    let hasContact = false;
+    if (reservation.guest_id) {
+      const { data: g } = await admin
+        .from("guests").select("email,phone").eq("id", reservation.guest_id).maybeSingle();
+      hasContact = !!(g?.email || g?.phone);
+    }
+    if (!hasContact) return;
+  }
+
+  // Idempotent: één review_request per reservering.
+  const { data: existing } = await admin
+    .from("review_requests").select("id").eq("reservation_id", reservation.id).maybeSingle();
+  if (existing) return;
+
+  const scheduledFor = new Date(Date.now() + 14 * 60 * 60 * 1000).toISOString();
+  const { data: ins, error } = await admin
+    .from("review_requests")
+    .insert({
+      restaurant_id: reservation.restaurant_id,
+      reservation_id: reservation.id,
+      guest_id: reservation.guest_id,
+      status: "ready_to_send",
+      scheduled_for: scheduledFor,
+      source_channel: reservation.channel,
+    })
+    .select("id")
+    .single();
+  if (error || !ins) return;
+
+  await admin.from("integration_events").insert({
+    restaurant_id: reservation.restaurant_id,
+    event_type: "review.requested",
+    payload: {
+      reservation_id: reservation.id,
+      review_request_id: ins.id,
+      guest_id: reservation.guest_id,
+    },
+    status: "pending",
+    target: "clickwise",
+  });
+}
+
 
 // Waitlist auto-match logic moved to ../_shared/waitlist-notify.ts
 

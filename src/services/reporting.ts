@@ -516,19 +516,39 @@ export type ReminderMetrics = {
 export async function getReminderMetrics(restaurantId: string, range: DateRange, cutoffMinutes = 120): Promise<ReminderMetrics> {
   const fromTs = `${range.from}T00:00:00Z`;
   const toTs = `${range.to}T23:59:59Z`;
-  const { data } = await (supabase as unknown as {
-    from: (t: string) => { select: (s: string) => { eq: (c: string, v: unknown) => { gte: (c: string, v: unknown) => { lte: (c: string, v: unknown) => Promise<{ data: Array<{ status: string; reminder_type: string }> }> } } } };
-  }).from("reservation_reminders").select("status,reminder_type").eq("restaurant_id", restaurantId).gte("scheduled_for", fromTs).lte("scheduled_for", toTs);
-  const rows = data ?? [];
+
+  // Reminder pipeline draait volledig op integration_events; reservation_reminders is uitgefaseerd.
+  const REMINDER_EVENTS = [
+    "reservation.reminder_24h_scheduled",
+    "reservation.reminder_2h_scheduled",
+    "reservation.reconfirmation_requested",
+  ];
+  const { data } = await supabase
+    .from("integration_events")
+    .select("event_type,status")
+    .eq("restaurant_id", restaurantId)
+    .in("event_type", REMINDER_EVENTS)
+    .gte("created_at", fromTs)
+    .lte("created_at", toTs);
+
+  const rows = (data ?? []) as Array<{ event_type: string; status: string | null }>;
   const byType: Record<string, number> = {};
   let totalSent = 0, failed = 0, pending = 0, reconf = 0;
   for (const r of rows) {
-    if (r.status === "sent") {
+    const type = r.event_type === "reservation.reminder_24h_scheduled"
+      ? "24h"
+      : r.event_type === "reservation.reminder_2h_scheduled"
+      ? "2h"
+      : "reconfirmation";
+    if (r.status === "sent" || r.status === "delivered" || r.status === "processed") {
       totalSent += 1;
-      byType[r.reminder_type] = (byType[r.reminder_type] ?? 0) + 1;
-      if (r.reminder_type === "reconfirmation") reconf += 1;
-    } else if (r.status === "failed") failed += 1;
-    else if (["pending", "scheduled"].includes(r.status)) pending += 1;
+      byType[type] = (byType[type] ?? 0) + 1;
+      if (type === "reconfirmation") reconf += 1;
+    } else if (r.status === "failed") {
+      failed += 1;
+    } else {
+      pending += 1;
+    }
   }
 
   const { data: cancels } = await (supabase as unknown as {
@@ -542,6 +562,7 @@ export async function getReminderMetrics(restaurantId: string, range: DateRange,
   }
   return { totalSent, byType, failed, pending, reconfirmationsSent: reconf, cancelledOnTime: onTime };
 }
+
 
 // ---------- AI Voice Agent performance ----------
 export type AIPerformanceMetrics = {
