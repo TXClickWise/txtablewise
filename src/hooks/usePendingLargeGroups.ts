@@ -38,7 +38,8 @@ export function usePendingLargeGroups() {
           .from("large_group_requests")
           .select("id", { count: "exact", head: true })
           .eq("restaurant_id", restaurantId!)
-          .eq("status", "new"),
+          .eq("status", "new")
+          .is("reservation_id", null),
       ]);
 
       const a = resvApproval.count ?? 0;

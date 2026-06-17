@@ -127,6 +127,7 @@ const LargeGroupsPage = () => {
       const { data, error } = await supabase.from("large_group_requests")
         .select("*")
         .eq("restaurant_id", restaurantId!)
+        .is("reservation_id", null)
         .order("created_at", { ascending: false })
         .limit(50);
       if (error) throw error;
