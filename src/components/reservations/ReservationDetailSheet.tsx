@@ -77,12 +77,31 @@ export function ReservationDetailSheet({ reservationId, open, onOpenChange, onOp
     queryKey: ["reservation-reminders", reservationId],
     enabled: !!reservationId && open,
     queryFn: async () => {
-      const { data } = await supabase.from("reservation_reminders")
-        .select("id, reminder_type, channel, status, scheduled_for, sent_at, error_message")
-        .eq("reservation_id", reservationId!).order("scheduled_for", { ascending: false }).limit(10);
-      return data ?? [];
+      // Reminder-pipeline draait op integration_events.
+      const { data } = await supabase.from("integration_events")
+        .select("id, event_type, status, created_at, payload, error")
+        .eq("entity_type", "reservation")
+        .eq("entity_id", reservationId!)
+        .in("event_type", [
+          "reservation.reminder_24h_scheduled",
+          "reservation.reminder_2h_scheduled",
+          "reservation.reconfirmation_requested",
+        ])
+        .order("created_at", { ascending: false })
+        .limit(10);
+      return (data ?? []).map((e: any) => ({
+        id: e.id,
+        reminder_type: e.event_type.includes("24h") ? "24h"
+          : e.event_type.includes("2h") ? "2h" : "reconfirmation",
+        channel: "email",
+        status: e.status ?? "pending",
+        scheduled_for: e.created_at,
+        sent_at: null,
+        error_message: e.error ?? null,
+      }));
     },
   });
+
 
   const { data: agentCall } = useQuery({
     queryKey: ["reservation-agent-call", reservationId],
