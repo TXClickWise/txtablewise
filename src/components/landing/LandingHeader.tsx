@@ -105,7 +105,7 @@ export function LandingHeader() {
             <Link to="/auth">Inloggen</Link>
           </Button>
           <Button asChild size="sm" className="h-10 px-4 font-medium">
-            <a href="#contact">Gratis demo</a>
+            <Link to="/auth?mode=signup">Start gratis</Link>
           </Button>
 
           <Sheet open={open} onOpenChange={setOpen}>
@@ -144,9 +144,9 @@ export function LandingHeader() {
                   Inloggen
                 </Link>
                 <Button asChild className="mt-4 h-12 w-full text-base">
-                  <a href="#contact" onClick={() => setOpen(false)}>
-                    Plan een demo
-                  </a>
+                  <Link to="/auth?mode=signup" onClick={() => setOpen(false)}>
+                    Start gratis trial
+                  </Link>
                 </Button>
               </div>
             </SheetContent>

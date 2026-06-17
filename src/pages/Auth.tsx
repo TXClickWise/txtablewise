@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate, Link, useSearchParams } from "react-router-dom";
 import { z } from "zod";
 import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable";
@@ -16,6 +16,8 @@ const passwordSchema = z.string().min(8, { message: "Minimaal 8 tekens" }).max(7
 
 const Auth = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const defaultTab = searchParams.get("mode") === "signup" ? "signup" : "signin";
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState("");
@@ -105,14 +107,20 @@ const Auth = () => {
 
         <Card className="border-border/60 shadow-lg">
           <CardHeader>
-            <CardTitle className="font-display text-2xl">Inloggen</CardTitle>
-            <CardDescription>Toegang tot je restaurant dashboard</CardDescription>
+            <CardTitle className="font-display text-2xl">
+              {defaultTab === "signup" ? "Start je gratis trial" : "Inloggen"}
+            </CardTitle>
+            <CardDescription>
+              {defaultTab === "signup"
+                ? "14 dagen volledige toegang, geen creditcard nodig."
+                : "Toegang tot je restaurant dashboard"}
+            </CardDescription>
           </CardHeader>
           <CardContent>
-            <Tabs defaultValue="signin" className="w-full">
+            <Tabs defaultValue={defaultTab} className="w-full">
               <TabsList className="grid w-full grid-cols-2 mb-6">
                 <TabsTrigger value="signin">Inloggen</TabsTrigger>
-                <TabsTrigger value="signup">Registreren</TabsTrigger>
+                <TabsTrigger value="signup">Gratis trial</TabsTrigger>
               </TabsList>
 
               <TabsContent value="signin">
@@ -165,8 +173,11 @@ const Auth = () => {
                     <p className="text-xs text-muted-foreground">Minimaal 8 tekens</p>
                   </div>
                   <Button type="submit" className="w-full" disabled={loading}>
-                    {loading ? "Bezig…" : "Account aanmaken"}
+                    {loading ? "Bezig…" : "Start gratis trial"}
                   </Button>
+                  <p className="text-xs text-center text-muted-foreground">
+                    Door je aan te melden krijg je 14 dagen volledige toegang tot het Trial plan.
+                  </p>
                 </form>
               </TabsContent>
             </Tabs>
