@@ -646,3 +646,101 @@ async function computeTransferAvailability(
 
   return { allowed: true, phone, hours_label: hoursLabel, reason: null, current_time_local: currentLocal };
 }
+
+/**
+ * Valideer of het gevraagde tijdvenster binnen openingstijden valt.
+ * Special_days override opening_hours; closures (full-day of partial) blokkeren altijd.
+ * Retourneert null als alles ok is, anders een error-object voor json().
+ */
+async function validateOpeningHours(
+  supabase: ReturnType<typeof createClient>,
+  restaurantId: string,
+  tz: string,
+  startIso: string,
+  endIso: string,
+): Promise<Record<string, unknown> | null> {
+  const fmt = new Intl.DateTimeFormat("en-CA", {
+    timeZone: tz, year: "numeric", month: "2-digit", day: "2-digit",
+    hour: "2-digit", minute: "2-digit", hour12: false, weekday: "short",
+  });
+  const localOf = (d: Date) => {
+    const p = fmt.formatToParts(d);
+    const g = (t: string) => p.find((x) => x.type === t)?.value ?? "";
+    return {
+      date: `${g("year")}-${g("month")}-${g("day")}`,
+      time: `${g("hour")}:${g("minute")}`,
+      weekday: g("weekday").toLowerCase().slice(0, 3),
+    };
+  };
+  const sLocal = localOf(new Date(startIso));
+  const eLocal = localOf(new Date(endIso));
+
+  // Closures (date-range; full-day or partial)
+  const { data: closures } = await supabase
+    .from("closures")
+    .select("is_full_day, start_time, end_time, reason")
+    .eq("restaurant_id", restaurantId)
+    .lte("start_date", sLocal.date)
+    .gte("end_date", sLocal.date);
+  for (const c of (closures ?? []) as Array<{ is_full_day: boolean; start_time: string | null; end_time: string | null; reason: string | null }>) {
+    if (c.is_full_day) {
+      return { error: "Restaurant is gesloten op deze datum", error_code: "closed_day", field: "date", reason: c.reason ?? null };
+    }
+    if (c.start_time && c.end_time) {
+      const cs = c.start_time.slice(0, 5);
+      const ce = c.end_time.slice(0, 5);
+      if (sLocal.time < ce && eLocal.time > cs) {
+        return { error: "Restaurant is gesloten op dit tijdstip", error_code: "closed_time", field: "time", closure_start: cs, closure_end: ce };
+      }
+    }
+  }
+
+  // Special day override
+  let openHHMM: string | null = null;
+  let closeHHMM: string | null = null;
+  const { data: special } = await supabase
+    .from("special_days")
+    .select("is_closed, opens_at, closes_at")
+    .eq("restaurant_id", restaurantId)
+    .eq("date", sLocal.date)
+    .maybeSingle();
+  if (special) {
+    if (special.is_closed) {
+      return { error: "Restaurant is gesloten op deze datum", error_code: "closed_day", field: "date" };
+    }
+    if (special.opens_at && special.closes_at) {
+      openHHMM = String(special.opens_at).slice(0, 5);
+      closeHHMM = String(special.closes_at).slice(0, 5);
+    }
+  }
+
+  // Reguliere weekdag-openingstijden
+  if (openHHMM === null || closeHHMM === null) {
+    const { data: oh } = await supabase
+      .from("opening_hours")
+      .select("is_closed, open_time, close_time")
+      .eq("restaurant_id", restaurantId)
+      .eq("weekday", sLocal.weekday)
+      .maybeSingle();
+    if (oh) {
+      if (oh.is_closed) {
+        return { error: "Restaurant is gesloten op deze dag", error_code: "closed_day", field: "date" };
+      }
+      openHHMM = oh.open_time ? String(oh.open_time).slice(0, 5) : null;
+      closeHHMM = oh.close_time ? String(oh.close_time).slice(0, 5) : null;
+    }
+  }
+
+  if (openHHMM && closeHHMM) {
+    if (sLocal.time < openHHMM || sLocal.time >= closeHHMM) {
+      return {
+        error: "Tijdstip valt buiten openingstijden",
+        error_code: "outside_opening_hours",
+        field: "time",
+        open_time: openHHMM,
+        close_time: closeHHMM,
+      };
+    }
+  }
+  return null;
+}
