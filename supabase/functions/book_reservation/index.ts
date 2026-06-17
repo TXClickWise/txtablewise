@@ -117,6 +117,10 @@ Deno.serve(async (req) => {
           }, 400);
         }
       }
+
+      // Opening hours / closures / special days validation
+      const ohErr = await validateOpeningHours(supabase, restaurant.id, tz, start_iso, end_iso);
+      if (ohErr) return json(ohErr, 400);
     }
 
     // For online bookings only: exclude tables in zones that are not bookable online.
