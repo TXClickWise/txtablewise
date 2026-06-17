@@ -18,6 +18,7 @@ import {
   pickSeatingWithStrategy,
   zonedDateTimeToUtcIso,
 } from "../_shared/reservation-utils.ts";
+import { notifyWaitlistOnCancel } from "../_shared/waitlist-notify.ts";
 
 type Action = "view" | "confirm_attendance" | "cancel" | "request_change";
 
