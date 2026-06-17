@@ -7,6 +7,7 @@ import {
   zonedDateTimeToUtcIso, addMinutesIso, intervalsOverlap, ACTIVE_STATUSES,
 } from "../_shared/reservation-utils.ts";
 import { evaluatePacing, durationFor, type PacingReservation } from "../_shared/pacing.ts";
+import { notifyWaitlistOnCancel } from "../_shared/waitlist-notify.ts";
 
 type Action =
   | "update"
