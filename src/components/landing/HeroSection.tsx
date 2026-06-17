@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { ArrowRight } from "lucide-react";
 import heroImage from "@/assets/hero-restaurant.jpg";
@@ -43,10 +44,10 @@ export function HeroSection() {
 
           <div className="mt-10 flex flex-col gap-3 sm:flex-row">
             <Button asChild size="xl">
-              <a href="#contact">
-                Plan een demo
+              <Link to="/auth?mode=signup">
+                Start 14 dagen gratis
                 <ArrowRight className="ml-2 h-4 w-4" />
-              </a>
+              </Link>
             </Button>
             <Button
               asChild
@@ -54,12 +55,12 @@ export function HeroSection() {
               variant="outline"
               className="border-primary-foreground/30 bg-primary-foreground/5 text-primary-foreground backdrop-blur hover:bg-primary-foreground/15 hover:text-primary-foreground hover:border-primary-foreground/50"
             >
-              <a href="#functies">Bekijk wat het kan</a>
+              <a href="#contact">Plan een demo</a>
             </Button>
           </div>
 
           <ul className="mt-12 flex flex-wrap items-center gap-2">
-            {["Commissievrij", "Eigen gastdata", "AI-reserveringen 24/7", "Klaar in 15 minuten"].map((t) => (
+            {["Commissievrij", "Eigen gastdata", "AI-host 24/7 (add-on)", "Geen creditcard nodig"].map((t) => (
               <li key={t} className="trust-pill">
                 <span className="h-1.5 w-1.5 rounded-full bg-accent" />
                 {t}
