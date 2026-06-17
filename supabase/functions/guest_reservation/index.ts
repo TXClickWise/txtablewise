@@ -184,6 +184,18 @@ Deno.serve(async (req) => {
           source: "guest_self_service", reason: (body.reason ?? "").slice(0, 500) || null,
         },
       });
+      // Waitlist auto-match bij guest-cancel (was alleen actief bij operator-cancel — bug).
+      try {
+        await notifyWaitlistOnCancel(supabase, {
+          restaurant_id: reservation.restaurant_id,
+          id: reservation.id,
+          start_time: reservation.start_time,
+          party_size: reservation.party_size,
+          reservation_date: reservation.reservation_date,
+        });
+      } catch (e) {
+        console.error("[guest_reservation] waitlist notify failed", e);
+      }
       return json({ ok: true, reservation: { ...safeReservation, status: "cancelled" }, restaurant: restaurantPublic });
     }
 
