@@ -427,15 +427,19 @@ Deno.serve(async (req) => {
       return json({ error: "Failed to assign table: " + rtErr.message }, 500);
     }
 
-    // Re-check race condition across ALL chosen tables
+    // Re-check race condition across ALL chosen tables.
+    // Bij gelijktijdige inserts moet maar één winnen: gebruik (created_at, id) als
+    // deterministische tiebreaker (vroegste reservering wint). Zonder dit zou
+    // ieder van N parallelle inserts de anderen als "conflict" zien en zichzelf
+    // rollbacken → 0 succesvolle boekingen.
     const { data: doubleCheck } = await supabase
       .from("reservation_tables")
-      .select("reservation_id, table_id, reservations!inner(start_time, end_time, status, hold_expires_at)")
+      .select("reservation_id, table_id, reservations!inner(start_time, end_time, status, hold_expires_at, created_at)")
       .in("table_id", chosenTableIds);
     const conflicts = ((doubleCheck ?? []) as unknown as Array<{
       reservation_id: string;
       table_id: string;
-      reservations: { start_time: string; end_time: string; status: string; hold_expires_at: string | null } | null;
+      reservations: { start_time: string; end_time: string; status: string; hold_expires_at: string | null; created_at: string } | null;
     }>).filter((row) => {
       if (row.reservation_id === reservation.id) return false;
       const r = row.reservations;
@@ -445,9 +449,20 @@ Deno.serve(async (req) => {
       return intervalsOverlap(start_iso, end_iso, r.start_time, r.end_time);
     });
     if (conflicts.length > 0) {
-      await supabase.from("reservation_tables").delete().eq("reservation_id", reservation.id);
-      await supabase.from("reservations").delete().eq("id", reservation.id);
-      return json({ error: "Slot net bezet door een andere reservering, probeer opnieuw", error_code: "slot_unavailable", field: "time", retry: true }, 409);
+      const ourCreated = reservation.created_at as string;
+      const ourId = reservation.id as string;
+      const weLose = conflicts.some((c) => {
+        const oc = c.reservations!.created_at;
+        if (oc < ourCreated) return true;
+        if (oc === ourCreated && c.reservation_id < ourId) return true;
+        return false;
+      });
+      if (weLose) {
+        await supabase.from("reservation_tables").delete().eq("reservation_id", reservation.id);
+        await supabase.from("reservations").delete().eq("id", reservation.id);
+        return json({ error: "Slot net bezet door een andere reservering, probeer opnieuw", error_code: "slot_unavailable", field: "time", retry: true }, 409);
+      }
+      // Wij zijn de winnaar — verliezers rollbacken zichzelf in hun eigen request.
     }
 
     // Emit integration event (fire-and-forget)
