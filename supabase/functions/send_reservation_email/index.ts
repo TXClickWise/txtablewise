@@ -23,6 +23,8 @@ const EVENT_MAP: Record<string, { template: string; settingKey: string }> = {
   'reservation.reminder_2h': { template: 'reservation-reminder', settingKey: 'reminder_2h' },
   'reservation.completed': { template: 'reservation-thankyou', settingKey: 'reservation_completed' },
   'reservation.reconfirmation_requested': { template: 'reservation-reconfirm', settingKey: 'reconfirmation_requested' },
+  'reservation.large_group_approved': { template: 'large-group-approved', settingKey: 'large_group_approved' },
+  'reservation.large_group_declined': { template: 'large-group-rejected', settingKey: 'large_group_declined' },
 }
 
 function isSyntheticEmail(email: string | null | undefined): boolean {
