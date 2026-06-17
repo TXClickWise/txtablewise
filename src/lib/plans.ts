@@ -83,7 +83,7 @@ export const PLANS: Record<SubscriptionPlan, PlanDefinition> = {
     id: "basic",
     name: "Basic",
     tagline: "Alles voor de dagelijkse vloer",
-    priceLabel: "Op aanvraag",
+    priceLabel: "€49 / maand (excl. btw)",
     features: {
       ...noFeatures(),
       reservations: true,
@@ -105,7 +105,7 @@ export const PLANS: Record<SubscriptionPlan, PlanDefinition> = {
     id: "pro",
     name: "Pro",
     tagline: "Volledige automatisering en multi-locatie",
-    priceLabel: "Op aanvraag",
+    priceLabel: "€79 / maand (excl. btw)",
     badge: "Aanbevolen",
     features: {
       ...noFeatures(),

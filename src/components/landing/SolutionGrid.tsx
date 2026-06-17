@@ -35,8 +35,8 @@ const features = [
   },
   {
     icon: PhoneCall,
-    title: "AI-host",
-    body: "Gast belt om 23:00 voor een tafel morgenavond? De AI-host neemt op, checkt beschikbaarheid, boekt de tafel en stuurt de bevestiging. Jij slaapt.",
+    title: "AI-host (add-on)",
+    body: "Gast belt om 23:00 voor morgenavond? De AI-host neemt op, checkt beschikbaarheid, boekt en bevestigt — via de ClickWise add-on, met je eigen telefoonnummer.",
   },
 ];
 
