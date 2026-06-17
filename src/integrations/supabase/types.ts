@@ -855,6 +855,7 @@ export type Database = {
           party_size: number
           preferred_date: string | null
           preferred_time: string | null
+          reservation_id: string | null
           restaurant_id: string
           status: Database["public"]["Enums"]["large_group_status"]
           updated_at: string
@@ -871,6 +872,7 @@ export type Database = {
           party_size: number
           preferred_date?: string | null
           preferred_time?: string | null
+          reservation_id?: string | null
           restaurant_id: string
           status?: Database["public"]["Enums"]["large_group_status"]
           updated_at?: string
@@ -887,11 +889,19 @@ export type Database = {
           party_size?: number
           preferred_date?: string | null
           preferred_time?: string | null
+          reservation_id?: string | null
           restaurant_id?: string
           status?: Database["public"]["Enums"]["large_group_status"]
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "large_group_requests_reservation_id_fkey"
+            columns: ["reservation_id"]
+            isOneToOne: false
+            referencedRelation: "reservations"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "large_group_requests_restaurant_id_fkey"
             columns: ["restaurant_id"]
