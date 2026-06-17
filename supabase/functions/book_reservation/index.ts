@@ -465,6 +465,28 @@ Deno.serve(async (req) => {
       },
     });
 
+    // Spiegel grote-groep-aanvragen ook in large_group_requests zodat rapportages
+    // en de "aanvragen-inbox" deze reserveringen meenemen. Gekoppeld via reservation_id.
+    if (requiresManualApproval && largeGroupStatus === "awaiting_approval") {
+      const contactName = [body.guest.first_name, body.guest.last_name].filter(Boolean).join(" ").trim() || "Onbekend";
+      await supabase.from("large_group_requests").insert({
+        restaurant_id: restaurant.id,
+        reservation_id: reservation.id,
+        contact_name: contactName,
+        contact_phone: body.guest.phone ?? null,
+        contact_email: body.guest.email ?? null,
+        party_size: body.party_size,
+        preferred_date: body.date,
+        preferred_time: body.time,
+        occasion: body.occasion ?? null,
+        message: [
+          body.special_requests ? String(body.special_requests) : null,
+          `[bron: ${channel}]`,
+        ].filter(Boolean).join("\n\n"),
+        status: "new",
+      }).then(() => {}, (e) => console.warn("large_group_requests mirror insert failed", e));
+    }
+
     // Gastvrij bevestigingsmail via TableWise (alleen wanneer aangezet + email aanwezig)
     if (body.guest.email && restaurant.guest_email_enabled !== false && status !== "hold") {
       try {
