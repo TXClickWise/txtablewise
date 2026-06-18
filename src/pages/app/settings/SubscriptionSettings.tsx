@@ -110,10 +110,10 @@ export default function SubscriptionSettings() {
           <Badge variant="secondary" className="capitalize">{plan}</Badge>
         </div>
 
-        {pendingRequest && (
+        {restaurantRow?.clickwise_addon_active && (
           <div className="mt-4 rounded-md border border-primary/30 bg-primary/5 p-3 text-sm flex items-center gap-2">
-            <Sparkles className="h-4 w-4 text-primary" />
-            Je upgrade-aanvraag naar <strong className="capitalize">{pendingRequest.requested_plan}</strong> wordt beoordeeld.
+            <Phone className="h-4 w-4 text-primary" />
+            ClickWise add-on is actief op dit restaurant.
           </div>
         )}
       </Card>
@@ -159,17 +159,19 @@ export default function SubscriptionSettings() {
               <div className="mt-4">
                 {isCurrent ? (
                   <Button variant="outline" disabled className="w-full">Huidig plan</Button>
-                ) : isUpgrade ? (
+                ) : isUpgrade && (p === "basic" || p === "pro") ? (
                   <Button
                     className="w-full"
-                    onClick={() => setRequestPlan(p)}
-                    disabled={!!pendingRequest}
+                    onClick={() => startCheckout(p)}
+                    disabled={checkoutTarget === p}
                   >
-                    Upgraden naar {def.name}
+                    {checkoutTarget === p ? "Doorsturen naar Stripe…" : `Upgraden naar ${def.name}`}
                     <ArrowUpRight className="h-4 w-4 ml-1" />
                   </Button>
                 ) : (
-                  <Button variant="ghost" disabled className="w-full">Lager plan</Button>
+                  <Button variant="ghost" disabled className="w-full">
+                    {isUpgrade ? "Start je proefperiode" : "Lager plan"}
+                  </Button>
                 )}
               </div>
             </Card>
@@ -227,38 +229,40 @@ export default function SubscriptionSettings() {
         </div>
       </Card>
 
-      {/* Upgrade dialog */}
-      <Dialog open={!!requestPlan} onOpenChange={(o) => !o && setRequestPlan(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>
-              Upgraden naar {requestPlan ? PLANS[requestPlan].name : ""}
-            </DialogTitle>
-            <DialogDescription>
-              We ontvangen je aanvraag en activeren het nieuwe plan binnen één werkdag.
-              Je bestaande data en instellingen blijven behouden.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Optionele toelichting</label>
-            <Textarea
-              value={note}
-              onChange={(e) => setNote(e.target.value)}
-              placeholder="Bv. gewenste startdatum, vragen over de migratie…"
-              rows={4}
-            />
+      {/* ClickWise add-on */}
+      <Card className="p-6">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="flex items-start gap-3">
+            <div className="rounded-lg bg-primary/10 p-2.5">
+              <Phone className="h-5 w-5 text-primary" />
+            </div>
+            <div className="max-w-xl">
+              <div className="text-xs uppercase tracking-wide text-muted-foreground">Add-on</div>
+              <h2 className="font-display text-xl mt-0.5">ClickWise — telefonie, WhatsApp & SMS</h2>
+              <p className="text-sm text-muted-foreground mt-1">
+                Nodig voor de Voice AI, SMS- en WhatsApp-functionaliteit. <strong>€79 / maand</strong> incl. telefoonnummer
+                en <strong>€189 eenmalige setup</strong> (excl. btw, excl. variabele gespreks-, SMS- en WhatsApp-verbruikskosten).
+              </p>
+              {restaurantRow?.clickwise_addon_active && (
+                <Badge className="mt-2 bg-status-confirmed/10 text-status-confirmed border-status-confirmed/30">
+                  Actief
+                </Badge>
+              )}
+            </div>
           </div>
-          <DialogFooter>
-            <Button variant="ghost" onClick={() => setRequestPlan(null)}>Annuleren</Button>
-            <Button
-              onClick={() => requestUpgrade.mutate()}
-              disabled={requestUpgrade.isPending}
-            >
-              Aanvraag versturen
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          <Button
+            onClick={() => startCheckout("clickwise")}
+            disabled={checkoutTarget === "clickwise" || !!restaurantRow?.clickwise_addon_active}
+          >
+            {restaurantRow?.clickwise_addon_active
+              ? "Add-on actief"
+              : checkoutTarget === "clickwise"
+              ? "Doorsturen naar Stripe…"
+              : "Add-on activeren"}
+            <ExternalLink className="h-4 w-4 ml-1" />
+          </Button>
+        </div>
+      </Card>
     </div>
   );
 }
