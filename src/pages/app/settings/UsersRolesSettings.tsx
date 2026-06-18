@@ -17,11 +17,11 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
   DropdownMenuLabel, DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
-import { Users, Mail, MoreVertical, Loader2 } from "lucide-react";
+import { Users, Mail, MoreVertical, Loader2, Copy, Check } from "lucide-react";
 import { toast } from "sonner";
 import {
   listMembers, listPendingInvitations, inviteMember, revokeInvitation,
-  resendInvitation, updateMemberRole, removeMember,
+  resendInvitation, updateMemberRole, removeMember, getInvitationLink,
   type AppRole,
 } from "@/services/teamMembers";
 
