@@ -184,6 +184,33 @@ const GuestsPage = () => {
           </Tabs>
         </CardHeader>
         <CardContent>
+          {!readOnly && guests.length > 0 && (
+            <div className="flex items-center gap-3 py-2 border-b mb-1 -mt-1">
+              <Checkbox
+                checked={allOnPageSelected}
+                onCheckedChange={toggleSelectAll}
+                aria-label="Alles selecteren"
+              />
+              <span className="text-xs text-muted-foreground">
+                {selectedIds.size > 0
+                  ? `${selectedIds.size} geselecteerd`
+                  : "Selecteer gasten om te verwijderen"}
+              </span>
+              {selectedIds.size > 0 && (
+                <div className="ml-auto flex items-center gap-2">
+                  <Button variant="ghost" size="sm" onClick={clearSelection}>Wis selectie</Button>
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={() => { setBlockedResult(null); setConfirmOpen(true); }}
+                  >
+                    <Trash2 className="h-4 w-4 mr-1" />
+                    Verwijderen ({selectedIds.size})
+                  </Button>
+                </div>
+              )}
+            </div>
+          )}
           {isLoading ? (
             <LoadingState label="Gasten laden…" />
           ) : guests.length === 0 ? (
@@ -201,37 +228,48 @@ const GuestsPage = () => {
             />
           ) : (
             <ul className="divide-y">
-              {guests.map((g) => (
-                <li key={g.id}>
-                  <button
-                    type="button"
-                    onClick={() => setSelectedId(g.id)}
-                    className="w-full text-left py-3 flex items-center gap-3 hover:bg-muted/40 -mx-3 px-3 rounded-md transition-colors"
-                  >
-                    <div className="h-10 w-10 rounded-full bg-secondary flex items-center justify-center font-display text-sm shrink-0">
-                      {(g.first_name?.[0] ?? g.last_name?.[0] ?? "G").toUpperCase()}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-medium truncate">
-                          {g.first_name ?? ""} {g.last_name ?? ""}
-                          {!g.first_name && !g.last_name && "Onbekende gast"}
-                        </span>
+              {guests.map((g) => {
+                const checked = selectedIds.has(g.id);
+                return (
+                  <li key={g.id} className="flex items-center gap-2">
+                    {!readOnly && (
+                      <Checkbox
+                        checked={checked}
+                        onCheckedChange={() => toggleSelect(g.id)}
+                        aria-label="Selecteer gast"
+                        className="ml-1"
+                      />
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => setSelectedId(g.id)}
+                      className="flex-1 text-left py-3 flex items-center gap-3 hover:bg-muted/40 -mx-3 px-3 rounded-md transition-colors"
+                    >
+                      <div className="h-10 w-10 rounded-full bg-secondary flex items-center justify-center font-display text-sm shrink-0">
+                        {(g.first_name?.[0] ?? g.last_name?.[0] ?? "G").toUpperCase()}
                       </div>
-                      <div className="text-xs text-muted-foreground truncate">
-                        {g.email ?? ""}{g.email && g.phone ? " · " : ""}{g.phone ?? ""}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-medium truncate">
+                            {g.first_name ?? ""} {g.last_name ?? ""}
+                            {!g.first_name && !g.last_name && "Onbekende gast"}
+                          </span>
+                        </div>
+                        <div className="text-xs text-muted-foreground truncate">
+                          {g.email ?? ""}{g.email && g.phone ? " · " : ""}{g.phone ?? ""}
+                        </div>
+                        <GuestBadges guest={g} max={4} className="mt-1" />
                       </div>
-                      <GuestBadges guest={g} max={4} className="mt-1" />
-                    </div>
-                    <div className="text-right text-xs text-muted-foreground shrink-0">
-                      <div>{g.total_visits ?? 0} bezoeken</div>
-                      {g.last_visit_at && (
-                        <div>laatste {format(new Date(g.last_visit_at), "d MMM", { locale: nl })}</div>
-                      )}
-                    </div>
-                  </button>
-                </li>
-              ))}
+                      <div className="text-right text-xs text-muted-foreground shrink-0">
+                        <div>{g.total_visits ?? 0} bezoeken</div>
+                        {g.last_visit_at && (
+                          <div>laatste {format(new Date(g.last_visit_at), "d MMM", { locale: nl })}</div>
+                        )}
+                      </div>
+                    </button>
+                  </li>
+                );
+              })}
             </ul>
           )}
         </CardContent>
@@ -245,6 +283,7 @@ const GuestsPage = () => {
         onOpenEdit={(g) => setEditing(g)}
         onOpenReservation={(id) => setReservationOpen(id)}
         onClose={() => setSelectedId(null)}
+        onDelete={(id) => { setBlockedResult(null); setSelectedIds(new Set([id])); setConfirmOpen(true); }}
       />
 
       {!readOnly && (
@@ -271,6 +310,65 @@ const GuestsPage = () => {
         open={!!reservationOpen}
         onOpenChange={(o) => !o && setReservationOpen(null)}
       />
+
+      {/* Verwijder-bevestiging + geblokkeerde uitleg */}
+      <AlertDialog
+        open={confirmOpen}
+        onOpenChange={(o) => { if (!o) { setConfirmOpen(false); setBlockedResult(null); } }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {blockedResult
+                ? "Sommige gasten konden niet verwijderd worden"
+                : `${selectedIds.size} gast${selectedIds.size === 1 ? "" : "en"} verwijderen?`}
+            </AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              {blockedResult ? (
+                <div className="space-y-2">
+                  <p>
+                    Deze gasten hebben nog actieve of toekomstige reserveringen. Annuleer eerst de
+                    openstaande reservering(en) en verwijder daarna opnieuw.
+                  </p>
+                  <ul className="text-sm border rounded-md divide-y">
+                    {blockedResult.map((b) => (
+                      <li key={b.guest_id} className="flex justify-between gap-3 px-3 py-2">
+                        <span className="truncate">{b.name || "Onbekende gast"}</span>
+                        <span className="text-muted-foreground shrink-0">
+                          {b.active_reservations} actieve reservering{b.active_reservations === 1 ? "" : "en"}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : (
+                <span>
+                  Persoonsgegevens en notities worden definitief gewist. Historische reserveringen
+                  blijven bestaan (zonder naam-koppeling) zodat rapportages kloppen.
+                </span>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            {blockedResult ? (
+              <AlertDialogAction onClick={() => { setConfirmOpen(false); setBlockedResult(null); }}>
+                Begrepen
+              </AlertDialogAction>
+            ) : (
+              <>
+                <AlertDialogCancel disabled={deleting}>Annuleren</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={(e) => { e.preventDefault(); handleDeleteSelected(Array.from(selectedIds)); }}
+                  disabled={deleting}
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                >
+                  {deleting ? "Verwijderen…" : "Definitief verwijderen"}
+                </AlertDialogAction>
+              </>
+            )}
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
