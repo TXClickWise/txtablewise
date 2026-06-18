@@ -63,6 +63,12 @@ const GuestsPage = () => {
   const [createOpen, setCreateOpen] = useState(false);
   const [reservationOpen, setReservationOpen] = useState<string | null>(null);
 
+  // Bulk-selectie voor verwijderen
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [blockedResult, setBlockedResult] = useState<DeleteGuestsResult["blocked"] | null>(null);
+
   const { data: kpis } = useQuery({
     queryKey: ["guest-kpis", restaurantId],
     enabled: !!restaurantId,
@@ -79,6 +85,52 @@ const GuestsPage = () => {
     qc.invalidateQueries({ queryKey: ["guests-list"] });
     qc.invalidateQueries({ queryKey: ["guest-kpis"] });
     qc.invalidateQueries({ queryKey: ["guest", selectedId] });
+  };
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+  const allOnPageSelected = guests.length > 0 && guests.every((g) => selectedIds.has(g.id));
+  const toggleSelectAll = () => {
+    if (allOnPageSelected) setSelectedIds(new Set());
+    else setSelectedIds(new Set(guests.map((g) => g.id)));
+  };
+  const clearSelection = () => setSelectedIds(new Set());
+
+  const handleDeleteSelected = async (ids: string[]) => {
+    setDeleting(true);
+    try {
+      const res = await deleteGuests(ids);
+      if (res.deleted.length > 0) {
+        toast.success(
+          res.deleted.length === 1
+            ? "Gast verwijderd."
+            : `${res.deleted.length} gasten verwijderd.`,
+        );
+      }
+      if (res.blocked.length > 0) {
+        setBlockedResult(res.blocked);
+      } else {
+        setConfirmOpen(false);
+      }
+      setSelectedIds((prev) => {
+        const next = new Set(prev);
+        res.deleted.forEach((id) => next.delete(id));
+        return next;
+      });
+      // Sluit detail-sheet als de geopende gast weg is
+      if (selectedId && res.deleted.includes(selectedId)) setSelectedId(null);
+      refreshAll();
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : "Verwijderen mislukt.";
+      toast.error(msg);
+    } finally {
+      setDeleting(false);
+    }
   };
 
   if (!restaurantId) {
