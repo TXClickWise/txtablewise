@@ -26,28 +26,28 @@ import { usePendingLargeGroups } from "@/hooks/usePendingLargeGroups";
 import { usePendingGuestChanges } from "@/hooks/usePendingGuestChanges";
 
 type Role = "owner" | "manager" | "host" | "staff";
-type Item = { title: string; url: string; icon: typeof LayoutDashboard; end?: boolean; advanced?: boolean; roles?: Role[] };
+type Item = { title: string; titleKey?: string; url: string; icon: typeof LayoutDashboard; end?: boolean; advanced?: boolean; roles?: Role[] };
 
 const quickAccess: Item[] = [
-  { title: "Dashboard", url: "/app", icon: LayoutDashboard, end: true, roles: ["owner","manager","host","staff"] },
-  { title: "Grote groepen", url: "/app/gasten?tab=grote-groepen", icon: Users, roles: ["owner","manager","host"] },
+  { title: "Dashboard", titleKey: "nav.dashboard", url: "/app", icon: LayoutDashboard, end: true, roles: ["owner","manager","host","staff"] },
+  { title: "Grote groepen", titleKey: "nav.largeGroups", url: "/app/gasten?tab=grote-groepen", icon: Users, roles: ["owner","manager","host"] },
 ];
 
 const hospitality: Item[] = [
-  { title: "Gastcommunicatie", url: "/app/gastcommunicatie", icon: MessageSquare, roles: ["owner","manager"] },
+  { title: "Gastcommunicatie", titleKey: "nav.guestComm", url: "/app/gastcommunicatie", icon: MessageSquare, roles: ["owner","manager"] },
 ];
 
 const beheer: Item[] = [
-  { title: "Rapportages", url: "/app/rapportages", icon: BarChart3, roles: ["owner","manager"] },
+  { title: "Rapportages", titleKey: "nav.reports", url: "/app/rapportages", icon: BarChart3, roles: ["owner","manager"] },
 ];
 
 // System admin only
 const admin: Item[] = [
-  { title: "Restaurants", url: "/app/admin/restaurants", icon: Store },
-  { title: "Plan-aanvragen", url: "/app/admin/plan-requests", icon: Crown },
-  { title: "Integratiebeheer", url: "/app/admin/integraties", icon: Database },
-  { title: "Integratie-logs", url: "/app/admin/logs", icon: FileText },
-  { title: "ClickWise beheer", url: "/app/admin/clickwise", icon: Plug },
+  { title: "Restaurants", titleKey: "admin.restaurants", url: "/app/admin/restaurants", icon: Store },
+  { title: "Plan-aanvragen", titleKey: "admin.planRequests", url: "/app/admin/plan-requests", icon: Crown },
+  { title: "Integratiebeheer", titleKey: "admin.integrations", url: "/app/admin/integraties", icon: Database },
+  { title: "Integratie-logs", titleKey: "admin.logs", url: "/app/admin/logs", icon: FileText },
+  { title: "ClickWise beheer", titleKey: "admin.clickwise", url: "/app/admin/clickwise", icon: Plug },
   { title: "POS-beheer", url: "/app/admin/pos", icon: CreditCard },
   { title: "Voice Agent debug", url: "/app/admin/voice-agent", icon: Bot },
   { title: "ClickWise Voice setup", url: "/app/admin/clickwise-voice-setup", icon: GraduationCap },
