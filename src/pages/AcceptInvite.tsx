@@ -57,13 +57,35 @@ export default function AcceptInvite() {
 
   const loading = authLoading || (!preview && !previewError);
 
+  const restaurantName = preview && preview.valid ? preview.restaurant_name : "het restaurant";
+  const roleLabel = preview && preview.valid ? (ROLE_LABEL[preview.role] || preview.role) : "";
+  const inviteEmail = preview && preview.valid ? preview.email : "";
+
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-background">
-      <Helmet><title>Uitnodiging — TableWise</title></Helmet>
+      <Helmet><title>Uitnodiging — {restaurantName}</title></Helmet>
       <Card className="w-full max-w-md">
         <CardHeader>
-          <CardTitle>Uitnodiging</CardTitle>
-          <CardDescription>Word lid van een restaurant op TableWise.</CardDescription>
+          {preview && preview.valid ? (
+            <>
+              <CardTitle className="text-xl">
+                Je bent uitgenodigd bij <span className="text-primary">{restaurantName}</span>
+              </CardTitle>
+              <CardDescription>
+                {!user
+                  ? <>Maak een account aan met <strong>{inviteEmail}</strong> om als <strong>{roleLabel}</strong> mee te werken.</>
+                  : emailMatches
+                    ? <>Bevestig hieronder om als <strong>{roleLabel}</strong> toe te treden.</>
+                    : <>Deze uitnodiging is voor <strong>{inviteEmail}</strong>.</>
+                }
+              </CardDescription>
+            </>
+          ) : (
+            <>
+              <CardTitle>Uitnodiging</CardTitle>
+              <CardDescription>Even kijken of deze uitnodiging nog geldig is…</CardDescription>
+            </>
+          )}
         </CardHeader>
         <CardContent className="space-y-4">
           {loading && (
@@ -88,7 +110,7 @@ export default function AcceptInvite() {
                   {reason === "not_found" && "We kunnen deze uitnodiging niet vinden."}
                 </p>
                 <p className="text-muted-foreground mt-2">
-                  Vraag het restaurant om een nieuwe uitnodiging.
+                  Vraag het restaurant gerust om een nieuwe uitnodiging.
                 </p>
               </div>
             );
@@ -96,34 +118,27 @@ export default function AcceptInvite() {
 
           {preview && preview.valid && (
             <>
-              <div className="rounded-lg border border-border p-4 text-sm space-y-1">
-                <div><span className="text-muted-foreground">Restaurant:</span> <strong>{preview.restaurant_name}</strong></div>
-                <div><span className="text-muted-foreground">Rol:</span> <strong>{ROLE_LABEL[preview.role] || preview.role}</strong></div>
-                <div><span className="text-muted-foreground">Voor:</span> {preview.email}</div>
-              </div>
-
               {!user && (
-                <div className="space-y-2">
-                  <p className="text-sm text-muted-foreground">
-                    Log in of maak een account met <strong>{preview.email}</strong> om te accepteren.
+                <div className="space-y-3">
+                  <Button asChild size="lg" className="w-full">
+                    <Link to={`/app/login?mode=signup&email=${encodeURIComponent(preview.email)}&invite=${token}`}>
+                      Account aanmaken
+                    </Link>
+                  </Button>
+                  <p className="text-sm text-muted-foreground text-center">
+                    Heb je al een account?{" "}
+                    <Link
+                      to={`/app/login?email=${encodeURIComponent(preview.email)}&invite=${token}`}
+                      className="text-primary hover:underline font-medium"
+                    >
+                      Inloggen
+                    </Link>
                   </p>
-                  <div className="flex gap-2">
-                    <Button asChild className="flex-1">
-                      <Link to={`/app/login?mode=signup&email=${encodeURIComponent(preview.email)}&invite=${token}`}>
-                        Account aanmaken
-                      </Link>
-                    </Button>
-                    <Button asChild variant="outline" className="flex-1">
-                      <Link to={`/app/login?email=${encodeURIComponent(preview.email)}&invite=${token}`}>
-                        Inloggen
-                      </Link>
-                    </Button>
-                  </div>
                 </div>
               )}
 
               {user && emailMatches && (
-                <Button className="w-full" onClick={handleAccept} disabled={accepting}>
+                <Button className="w-full" size="lg" onClick={handleAccept} disabled={accepting}>
                   {accepting && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
                   Word lid van {preview.restaurant_name}
                 </Button>
@@ -132,8 +147,8 @@ export default function AcceptInvite() {
               {user && !emailMatches && (
                 <div className="space-y-2">
                   <p className="text-sm text-muted-foreground">
-                    Je bent ingelogd als <strong>{user.email}</strong>, maar deze uitnodiging is voor
-                    {' '}<strong>{preview.email}</strong>. Log uit en log opnieuw in met dat adres.
+                    Je bent ingelogd als <strong>{user.email}</strong>. Log uit en log opnieuw in met
+                    {' '}<strong>{preview.email}</strong> om deze uitnodiging te accepteren.
                   </p>
                   <Button variant="outline" className="w-full" onClick={handleSignOut}>
                     Uitloggen
