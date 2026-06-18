@@ -11,7 +11,8 @@ import {
   SidebarHeader, SidebarFooter, useSidebar,
 } from "@/components/ui/sidebar";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { SETTINGS_ITEMS } from "@/components/settings-nav";
+import { useSettingsItems } from "@/components/settings-nav";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "@/hooks/useAuth";
 import { useRestaurant } from "@/hooks/useRestaurant";
 import { useIsSystemAdmin } from "@/hooks/useIsSystemAdmin";
