@@ -226,6 +226,8 @@ const Auth = () => {
             </Tabs>
             )}
 
+            {!signupSent && (
+              <>
             <div className="relative my-6">
               <div className="absolute inset-0 flex items-center">
                 <span className="w-full border-t border-border" />
@@ -244,6 +246,8 @@ const Auth = () => {
               </svg>
               Inloggen met Google
             </Button>
+              </>
+            )}
           </CardContent>
         </Card>
 
