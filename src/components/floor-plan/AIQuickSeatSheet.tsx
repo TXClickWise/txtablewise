@@ -127,7 +127,16 @@ export function AIQuickSeatSheet({
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="bottom" className="rounded-t-2xl max-h-[90dvh] overflow-y-auto pb-[env(safe-area-inset-bottom)]">
+      <SheetContent
+        side={sideSheet ? "right" : "bottom"}
+        className={cn(
+          "overflow-y-auto pb-[env(safe-area-inset-bottom)]",
+          sideSheet
+            ? "w-[min(440px,90vw)] sm:max-w-[440px] h-[100dvh]"
+            : "rounded-t-2xl max-h-[90dvh]",
+        )}
+      >
+
         <SheetHeader className="text-left">
           <SheetTitle className="font-display text-2xl flex items-center gap-2">
             <Sparkles className="h-6 w-6 text-primary" /> AI Quick Seat
