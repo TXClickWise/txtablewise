@@ -54,14 +54,50 @@ const Onboarding = () => {
       _slug: parsed.data.slug,
       _timezone: "Europe/Amsterdam",
     });
-    setSubmitting(false);
     if (error) {
+      setSubmitting(false);
       toast.error(error.message.includes("duplicate") || error.message.includes("unique")
         ? "Deze slug is al in gebruik"
         : error.message);
       return;
     }
     toast.success("Restaurant aangemaakt");
+
+    // Als gebruiker via "Start met Basic/Pro" op de landing kwam → direct Stripe-checkout starten
+    let pendingPlan: string | null = null;
+    try {
+      pendingPlan = localStorage.getItem("pending_checkout_plan");
+    } catch {
+      /* ignore */
+    }
+    const restaurantId = data as unknown as string;
+    if ((pendingPlan === "basic" || pendingPlan === "pro") && restaurantId) {
+      try {
+        const { data: checkoutData, error: checkoutErr } = await supabase.functions.invoke(
+          "stripe-checkout",
+          { body: { target: pendingPlan, restaurant_id: restaurantId } },
+        );
+        try {
+          localStorage.removeItem("pending_checkout_plan");
+        } catch {
+          /* ignore */
+        }
+        if (!checkoutErr && checkoutData?.url) {
+          window.location.href = checkoutData.url as string;
+          return;
+        }
+        toast.error("Checkout kon niet worden gestart. Je trial is wel actief — je kunt later upgraden vanuit de instellingen.");
+      } catch {
+        try {
+          localStorage.removeItem("pending_checkout_plan");
+        } catch {
+          /* ignore */
+        }
+        toast.error("Checkout kon niet worden gestart. Je trial is wel actief.");
+      }
+    }
+
+    setSubmitting(false);
     navigate("/app", { replace: true });
   };
 

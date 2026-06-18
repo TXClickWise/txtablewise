@@ -18,11 +18,22 @@ const Auth = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const defaultTab = searchParams.get("mode") === "signup" ? "signup" : "signin";
+  const planParam = searchParams.get("plan");
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [displayName, setDisplayName] = useState("");
+
+  useEffect(() => {
+    if (planParam === "basic" || planParam === "pro") {
+      try {
+        localStorage.setItem("pending_checkout_plan", planParam);
+      } catch {
+        /* ignore */
+      }
+    }
+  }, [planParam]);
 
   useEffect(() => {
     if (user) navigate("/app", { replace: true });

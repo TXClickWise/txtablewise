@@ -8,15 +8,15 @@ const tiers = [
     name: "Trial",
     price: "Gratis",
     priceSuffix: "",
-    period: "14 dagen volledige toegang",
-    description: "Probeer alles uit. Geen creditcard nodig.",
+    period: "14 dagen, alles inbegrepen",
+    description: "Even rustig zelf uitproberen. Geen creditcard nodig.",
     features: [
-      "Tot 50 reserveringen tijdens trial",
-      "Tafelplan, zones en Floor mode",
+      "Tot 50 reserveringen om te proberen",
+      "Tafelplan, zones en bediening op tablet",
       "Walk-ins en wachtlijst",
-      "Bevestigingen en reminders per e-mail",
-      "Gastprofielen (CRM-basis)",
-      "Basis-rapportages",
+      "Bevestigingen en herinneringen per e-mail",
+      "Gastenboek met allergieën en voorkeuren",
+      "Heldere dagrapportages",
     ],
     ctaLabel: "Start gratis trial",
     ctaTo: "/auth?mode=signup",
@@ -27,21 +27,23 @@ const tiers = [
     price: "€49",
     priceSuffix: "/maand",
     period: "excl. 21% btw",
-    description: "Alles wat je dagelijks nodig hebt om de vloer rustig te runnen.",
+    description: "Alles wat je nodig hebt om je service rustig te draaien.",
     features: [
       "Onbeperkt reserveringen",
-      "Tafelplan met zones, combinaties en vul-strategie",
+      "Slim tafelplan dat zelf de beste plek voorstelt",
       "Walk-ins, wachtlijst en grote groepen",
-      "No-show preventie: bevestiging + 24u-reminder + herbevestiging",
-      "Gastprofielen, allergieën, VIP-tags",
-      "Reviews & aftercare (na bezoek)",
-      "Weer-inzichten en stille AI-tips",
-      "POS-koppeling (Loyverse) — basis",
+      "Minder no-shows: bevestiging, herinnering en herbevestiging",
+      "Eigen gastenboek met allergieën, voorkeuren en VIP-gasten",
+      "Bedankjes en reviews na het bezoek",
+      "Weersverwachting met tips voor jouw service",
+      "Werkt samen met je kassa (Loyverse) zodat je weet wat er op tafel staat",
       "E-mail support",
     ],
-    addon: "WhatsApp, SMS en AI-telefonie vereisen de ClickWise add-on (zie hieronder).",
-    ctaLabel: "Plan een demo",
-    ctaHref: "#contact",
+    addon: "WhatsApp, SMS en een AI-gastvrouw aan de telefoon? Dat regelt de optionele ClickWise add-on hieronder.",
+    ctaLabel: "Start met Basic",
+    ctaTo: "/auth?mode=signup&plan=basic",
+    secondaryHref: "#contact",
+    secondaryLabel: "of plan eerst een rondleiding",
     highlight: false,
   },
   {
@@ -49,30 +51,32 @@ const tiers = [
     price: "€79",
     priceSuffix: "/maand",
     period: "excl. 21% btw",
-    description: "Volledige automatisering, multi-locatie en API.",
+    description: "Voor zaken die alles op de automatische piloot willen — en meerdere locaties.",
     features: [
       "Alles van Basic",
-      "AI-host voor telefoon, WhatsApp en webchat (1 agent)",
-      "Slimme herbevestiging + risicoscores per gast",
-      "Wachtlijst met automatische matching bij annulering",
-      "Volledige rapportages + export",
-      "POS-koppeling met artikelen + AI-koppeling",
-      "Publieke API & webhooks (live)",
-      "Multi-locatie",
-      "Prioriteit support en onboarding",
+      "AI-gastvrouw die 24/7 telefoon, WhatsApp en webchat aanneemt",
+      "Slimme herbevestiging en signaal bij gasten met no-show risico",
+      "Wachtlijst die zelf gasten matcht bij een annulering",
+      "Volledige rapportages, ook om te exporteren",
+      "Volledige kassa-koppeling, inclusief gerechten en slimme suggesties",
+      "Werkt voor één zaak of meerdere locaties",
+      "Koppelt met je bestaande software (boekhouding, marketing, kassa)",
+      "Voorrang bij support en persoonlijke onboarding",
     ],
-    addon: "AI-telefonie, WhatsApp en SMS lopen via de ClickWise add-on (zie hieronder).",
-    ctaLabel: "Plan een demo",
-    ctaHref: "#contact",
+    addon: "AI aan de telefoon, WhatsApp en SMS lopen via de ClickWise add-on hieronder.",
+    ctaLabel: "Start met Pro",
+    ctaTo: "/auth?mode=signup&plan=pro",
+    secondaryHref: "#contact",
+    secondaryLabel: "of plan eerst een rondleiding",
     highlight: true,
     badge: "Aanbevolen",
   },
 ];
 
 const clickwiseFeatures = [
-  { icon: Phone, label: "AI-telefonie 24/7 met eigen nummer" },
-  { icon: MessageSquare, label: "WhatsApp Business + SMS-bevestigingen" },
-  { icon: Sparkles, label: "Automation-flows: herbevestiging, reviews, no-show opvolging" },
+  { icon: Phone, label: "AI-gastvrouw 24/7 aan je eigen telefoonnummer" },
+  { icon: MessageSquare, label: "Bevestigingen en herinneringen via WhatsApp en SMS" },
+  { icon: Sparkles, label: "Automatische herbevestiging, reviews en opvolging na no-show" },
 ];
 
 export function PricingSection() {
@@ -87,7 +91,7 @@ export function PricingSection() {
             Eenvoudig en eerlijk.
           </h2>
           <p className="mt-4 text-base text-muted-foreground md:text-lg">
-            Vaste maandprijs, géén commissie per couvert, maandelijks opzegbaar.
+            Vaste maandprijs, géén commissie per gast, maandelijks opzegbaar.
             <br className="hidden md:block" />
             Alle prijzen zijn <strong>exclusief 21% btw</strong>.
           </p>
@@ -151,15 +155,20 @@ export function PricingSection() {
                   </p>
                 )}
 
-                <div className="mt-6">
-                  {t.ctaTo ? (
-                    <Button asChild size="lg" className="h-12 w-full text-base" variant={isPro ? "default" : "outline"}>
-                      <Link to={t.ctaTo}>{t.ctaLabel}</Link>
-                    </Button>
-                  ) : (
-                    <Button asChild size="lg" className="h-12 w-full text-base" variant={isPro ? "default" : "outline"}>
-                      <a href={t.ctaHref}>{t.ctaLabel}</a>
-                    </Button>
+                <div className="mt-6 space-y-2">
+                  <Button asChild size="lg" className="h-12 w-full text-base" variant={isPro ? "default" : "outline"}>
+                    <Link to={t.ctaTo}>{t.ctaLabel}</Link>
+                  </Button>
+                  {t.secondaryHref && (
+                    <a
+                      href={t.secondaryHref}
+                      className={cn(
+                        "block text-center text-xs underline-offset-4 hover:underline",
+                        isPro ? "text-primary-foreground/80" : "text-muted-foreground",
+                      )}
+                    >
+                      {t.secondaryLabel}
+                    </a>
                   )}
                 </div>
               </div>
@@ -175,12 +184,13 @@ export function PricingSection() {
                 Optionele add-on
               </span>
               <h3 className="mt-3 font-display text-2xl font-bold md:text-3xl">
-                ClickWise voor AI-telefonie, WhatsApp & SMS
+                ClickWise: telefoon, WhatsApp en SMS in één
               </h3>
               <p className="mt-3 text-sm leading-relaxed text-muted-foreground md:text-base">
-                Wil je dat een AI-host gasten 24/7 te woord staat, of bevestigingen en reminders via
-                WhatsApp en SMS sturen? Dan heb je een actief <strong>ClickWise account-abonnement</strong> nodig.
-                TableWise stuurt de events, ClickWise levert de communicatiekanalen en het telefoonnummer.
+                Wil je dat een vriendelijke AI-gastvrouw je gasten dag en nacht te woord staat — of
+                bevestigingen en herinneringen via WhatsApp en SMS sturen? Dan zet je de
+                <strong> ClickWise add-on </strong>aan. Je eigen telefoonnummer, alle berichten op één plek,
+                rechtstreeks gekoppeld aan TX TableWise.
               </p>
               <ul className="mt-5 space-y-2.5">
                 {clickwiseFeatures.map((f) => (
@@ -205,20 +215,20 @@ export function PricingSection() {
               <ul className="mt-4 space-y-2 text-sm text-foreground/85">
                 <li className="flex items-start gap-2">
                   <Check className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
-                  <span>Inclusief eigen telefoonnummer</span>
+                  <span>Inclusief je eigen telefoonnummer</span>
                 </li>
                 <li className="flex items-start gap-2">
                   <Check className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
-                  <span>Eenmalige setup: <strong>€189</strong> (excl. btw)</span>
+                  <span>Eenmalige opstart: <strong>€189</strong> (excl. btw)</span>
                 </li>
                 <li className="flex items-start gap-2">
                   <Check className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
-                  <span>Variabele kosten voor telefoon-, SMS- en WhatsApp-verkeer</span>
+                  <span>Belminuten en berichten op gebruik</span>
                 </li>
               </ul>
 
               <Button asChild size="lg" className="mt-5 h-12 w-full">
-                <a href="#contact">Vraag ClickWise add-on aan</a>
+                <a href="#contact">Vraag ClickWise aan</a>
               </Button>
             </div>
           </div>

@@ -10,33 +10,33 @@ import {
 const features = [
   {
     icon: CalendarCheck,
-    title: "Reserveringen",
-    body: "Online, telefoon, WhatsApp, walk-in en AI — elk kanaal direct in je dashboard. Nooit meer dubbel boeken.",
+    title: "Alle reserveringen op één plek",
+    body: "Of een gast nu via je website, telefoon, WhatsApp of binnenloopt — alles komt overzichtelijk samen. Geen briefjes meer, geen dubbele boekingen.",
   },
   {
     icon: Tablet,
-    title: "Tafelplan op tablet",
-    body: "Grote knoppen, kleurcodes, één tik per actie. Zie in een oogopslag welke tafel vrij is, wie bijna klaar is en waar de walk-in kan zitten.",
+    title: "Eén tablet voor de hele service",
+    body: "Grote knoppen, duidelijke kleuren, in één tik een tafel verzetten of afsluiten. Zelfs op het drukste moment van de avond houd je overzicht.",
   },
   {
     icon: BellRing,
-    title: "No-show preventie",
-    body: "Automatische bevestiging, herinnering 24 uur van tevoren, herbevestiging via WhatsApp. Bij risicogasten of grote groepen: een vriendelijke aanbetaling.",
+    title: "Minder lege tafels door no-shows",
+    body: "Gasten krijgen automatisch een bevestiging en een vriendelijke herinnering. Bij grote groepen of risicogasten: een nette vraag om een kleine aanbetaling.",
   },
   {
     icon: ListChecks,
-    title: "Wachtlijst",
-    body: "Annulering? Het systeem matcht automatisch met wachtende gasten en stuurt een uitnodiging. Lege tafels worden weer volle tafels.",
+    title: "Wachtlijst die zichzelf invult",
+    body: "Wordt er last-minute afgezegd? TX TableWise nodigt automatisch de eerstvolgende gast op de wachtlijst uit. Lege plekken worden weer volle tafels.",
   },
   {
     icon: Users,
-    title: "Gastprofielen",
-    body: "Weet bij elk bezoek wie er komt. Allergieën, tafelvoorkeuren, VIP-status, bezoekhistorie — automatisch opgebouwd, altijd bij de hand.",
+    title: "Je gasten écht kennen",
+    body: "Allergieën, lievelingstafel, eerdere bezoeken, jubileum — alles bij de hand. Zo verras je gasten zonder dat je het hoeft te onthouden.",
   },
   {
     icon: PhoneCall,
-    title: "AI-host (add-on)",
-    body: "Gast belt om 23:00 voor morgenavond? De AI-host neemt op, checkt beschikbaarheid, boekt en bevestigt — via de ClickWise add-on, met je eigen telefoonnummer.",
+    title: "AI-gastvrouw aan de telefoon",
+    body: "Belt iemand om elf uur 's avonds voor morgen? De AI-gastvrouw neemt op, checkt of er plek is, boekt de tafel en stuurt de bevestiging. Met je eigen telefoonnummer.",
   },
 ];
 
@@ -49,10 +49,10 @@ export function SolutionGrid() {
             De oplossing
           </span>
           <h2 className="mt-3 font-display text-3xl font-bold leading-tight md:text-5xl">
-            Eén systeem, alles op orde.
+            Eén systeem. Heel je service op orde.
           </h2>
           <p className="mt-4 text-base text-muted-foreground md:text-lg">
-            Geen losse tools meer. Geen dubbele boekingen. Geen briefjes meer aan de bar.
+            Geen losse tools meer. Geen dubbele boekingen. Geen kladblok aan de bar.
           </p>
         </div>
 
