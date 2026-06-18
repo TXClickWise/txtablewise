@@ -1,0 +1,170 @@
+{
+  "loading": "Loading…",
+  "signOut": "Sign out",
+  "nav": {
+    "quickAccess": "Quick access",
+    "hospitality": "Hospitality",
+    "management": "Management",
+    "settings": "Settings",
+    "admin": "Admin",
+    "dashboard": "Dashboard",
+    "largeGroups": "Large groups",
+    "guestComm": "Guest communication",
+    "reports": "Reports",
+    "advanced": "adv"
+  },
+  "admin": {
+    "restaurants": "Restaurants",
+    "planRequests": "Plan requests",
+    "integrations": "Integrations",
+    "logs": "Integration logs",
+    "clickwise": "ClickWise admin",
+    "pos": "POS admin",
+    "voiceAgent": "Voice Agent debug",
+    "clickwiseVoiceSetup": "ClickWise Voice setup",
+    "clickwiseProvisioning": "ClickWise provisioning",
+    "pilotReadiness": "Pilot readiness"
+  },
+  "settingsNav": {
+    "general": "General",
+    "hours": "Opening hours",
+    "reservations": "Reservations",
+    "widget": "Online booking",
+    "zones": "Tables & zones",
+    "guests": "Guests",
+    "messages": "Messages",
+    "preOrders": "Pre-order drinks",
+    "aiVoice": "AI & Voice",
+    "integrations": "Integrations (advanced)",
+    "api": "API & webhooks",
+    "users": "Users & roles",
+    "subscription": "Subscription",
+    "pilotLaunch": "Pilot launch"
+  },
+  "common": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "close": "Close",
+    "confirm": "Confirm",
+    "back": "Back",
+    "next": "Next",
+    "loading": "Loading…",
+    "search": "Search",
+    "filter": "Filter",
+    "all": "All",
+    "today": "Today",
+    "tomorrow": "Tomorrow",
+    "yesterday": "Yesterday",
+    "guests": "guests",
+    "people": "people",
+    "newReservation": "New reservation",
+    "walkIn": "Walk-in",
+    "noData": "No data",
+    "tryAgain": "Try again",
+    "loadingError": "Failed to load"
+  },
+  "status": {
+    "hold": "On hold",
+    "pending": "Expected",
+    "confirmed": "Confirmed",
+    "seated": "Seated",
+    "completed": "Left",
+    "cancelled": "Cancelled",
+    "no_show": "No-show",
+    "request_received": "Request received",
+    "awaiting_approval": "Awaiting approval",
+    "awaiting_deposit": "Awaiting deposit",
+    "approved": "Approved",
+    "declined": "Declined"
+  },
+  "channel": {
+    "online": "Online",
+    "phone": "Phone",
+    "whatsapp": "WhatsApp",
+    "sms": "SMS",
+    "webchat": "Web chat",
+    "walk_in": "Walk-in",
+    "manual": "Manual",
+    "ai_agent": "AI Host"
+  },
+  "languageSwitcher": {
+    "label": "Language",
+    "nl": "Dutch",
+    "en": "English"
+  },
+  "today": {
+    "title": "Today",
+    "subtitle": "Today's overview",
+    "noReservations": "No reservations today",
+    "arrivals": "Expected arrivals",
+    "seated": "Seated",
+    "completed": "Left"
+  },
+  "agenda": {
+    "title": "Agenda",
+    "newReservation": "New reservation",
+    "walkIn": "Walk-in",
+    "noReservations": "No reservations"
+  },
+  "reservations": {
+    "title": "Reservations",
+    "newReservation": "New reservation",
+    "noReservations": "No reservations found",
+    "guest": "Guest",
+    "date": "Date",
+    "time": "Time",
+    "size": "Size",
+    "table": "Table",
+    "status": "Status",
+    "channel": "Channel"
+  },
+  "guests": {
+    "title": "Guests",
+    "newGuest": "New guest",
+    "noGuests": "No guests found",
+    "name": "Name",
+    "email": "Email",
+    "phone": "Phone",
+    "visits": "Visits",
+    "lastVisit": "Last visit"
+  },
+  "reports": {
+    "title": "Reports",
+    "subtitle": "Performance, channels and revenue insights",
+    "period": "Period",
+    "channels": "Channels",
+    "revenue": "Revenue",
+    "reservations": "Reservations",
+    "noShows": "No-shows",
+    "cancellations": "Cancellations"
+  },
+  "settings": {
+    "title": "Settings",
+    "subtitle": "Configure your restaurant and subscription"
+  },
+  "dialogs": {
+    "reservation": {
+      "title": "Reservation",
+      "edit": "Edit",
+      "details": "Details",
+      "guest": "Guest",
+      "notes": "Notes",
+      "tables": "Tables",
+      "history": "History",
+      "markSeated": "Seated",
+      "markCompleted": "Left",
+      "markNoShow": "No-show",
+      "cancel": "Cancel"
+    },
+    "walkIn": {
+      "title": "Add walk-in",
+      "size": "Party size",
+      "table": "Table",
+      "duration": "Duration (minutes)",
+      "name": "Name (optional)",
+      "create": "Place walk-in"
+    }
+  }
+}

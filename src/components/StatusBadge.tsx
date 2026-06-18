@@ -1,5 +1,6 @@
 import * as React from "react";
 import { cva, type VariantProps } from "class-variance-authority";
+import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 
 const statusBadgeVariants = cva(
@@ -51,6 +52,8 @@ export interface StatusBadgeProps
 export function StatusBadge({ status, label, className, ...props }: StatusBadgeProps) {
   const key = status ?? "pending";
   const pulse = PULSE_STATUSES.has(key);
+  const { t } = useTranslation("app");
+  const translated = t(`status.${key}`, { defaultValue: STATUS_LABELS[key] ?? key });
   return (
     <span className={cn(statusBadgeVariants({ status }), className)} {...props}>
       <span
@@ -59,7 +62,7 @@ export function StatusBadge({ status, label, className, ...props }: StatusBadgeP
           pulse && "status-dot-active"
         )}
       />
-      {label ?? STATUS_LABELS[key] ?? key}
+      {label ?? translated}
     </span>
   );
 }

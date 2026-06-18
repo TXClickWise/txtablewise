@@ -11,7 +11,8 @@ import {
   SidebarHeader, SidebarFooter, useSidebar,
 } from "@/components/ui/sidebar";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { SETTINGS_ITEMS } from "@/components/settings-nav";
+import { useSettingsItems } from "@/components/settings-nav";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "@/hooks/useAuth";
 import { useRestaurant } from "@/hooks/useRestaurant";
 import { useIsSystemAdmin } from "@/hooks/useIsSystemAdmin";
@@ -25,33 +26,33 @@ import { usePendingLargeGroups } from "@/hooks/usePendingLargeGroups";
 import { usePendingGuestChanges } from "@/hooks/usePendingGuestChanges";
 
 type Role = "owner" | "manager" | "host" | "staff";
-type Item = { title: string; url: string; icon: typeof LayoutDashboard; end?: boolean; advanced?: boolean; roles?: Role[] };
+type Item = { title: string; titleKey?: string; url: string; icon: typeof LayoutDashboard; end?: boolean; advanced?: boolean; roles?: Role[] };
 
 const quickAccess: Item[] = [
-  { title: "Dashboard", url: "/app", icon: LayoutDashboard, end: true, roles: ["owner","manager","host","staff"] },
-  { title: "Grote groepen", url: "/app/gasten?tab=grote-groepen", icon: Users, roles: ["owner","manager","host"] },
+  { title: "Dashboard", titleKey: "nav.dashboard", url: "/app", icon: LayoutDashboard, end: true, roles: ["owner","manager","host","staff"] },
+  { title: "Grote groepen", titleKey: "nav.largeGroups", url: "/app/gasten?tab=grote-groepen", icon: Users, roles: ["owner","manager","host"] },
 ];
 
 const hospitality: Item[] = [
-  { title: "Gastcommunicatie", url: "/app/gastcommunicatie", icon: MessageSquare, roles: ["owner","manager"] },
+  { title: "Gastcommunicatie", titleKey: "nav.guestComm", url: "/app/gastcommunicatie", icon: MessageSquare, roles: ["owner","manager"] },
 ];
 
 const beheer: Item[] = [
-  { title: "Rapportages", url: "/app/rapportages", icon: BarChart3, roles: ["owner","manager"] },
+  { title: "Rapportages", titleKey: "nav.reports", url: "/app/rapportages", icon: BarChart3, roles: ["owner","manager"] },
 ];
 
 // System admin only
 const admin: Item[] = [
-  { title: "Restaurants", url: "/app/admin/restaurants", icon: Store },
-  { title: "Plan-aanvragen", url: "/app/admin/plan-requests", icon: Crown },
-  { title: "Integratiebeheer", url: "/app/admin/integraties", icon: Database },
-  { title: "Integratie-logs", url: "/app/admin/logs", icon: FileText },
-  { title: "ClickWise beheer", url: "/app/admin/clickwise", icon: Plug },
-  { title: "POS-beheer", url: "/app/admin/pos", icon: CreditCard },
-  { title: "Voice Agent debug", url: "/app/admin/voice-agent", icon: Bot },
-  { title: "ClickWise Voice setup", url: "/app/admin/clickwise-voice-setup", icon: GraduationCap },
-  { title: "ClickWise provisioning", url: "/app/admin/clickwise-provisioning", icon: Rocket },
-  { title: "Pilot readiness", url: "/app/admin/pilot-readiness", icon: ShieldCheck },
+  { title: "Restaurants", titleKey: "admin.restaurants", url: "/app/admin/restaurants", icon: Store },
+  { title: "Plan-aanvragen", titleKey: "admin.planRequests", url: "/app/admin/plan-requests", icon: Crown },
+  { title: "Integratiebeheer", titleKey: "admin.integrations", url: "/app/admin/integraties", icon: Database },
+  { title: "Integratie-logs", titleKey: "admin.logs", url: "/app/admin/logs", icon: FileText },
+  { title: "ClickWise beheer", titleKey: "admin.clickwise", url: "/app/admin/clickwise", icon: Plug },
+  { title: "POS-beheer", titleKey: "admin.pos", url: "/app/admin/pos", icon: CreditCard },
+  { title: "Voice Agent debug", titleKey: "admin.voiceAgent", url: "/app/admin/voice-agent", icon: Bot },
+  { title: "ClickWise Voice setup", titleKey: "admin.clickwiseVoiceSetup", url: "/app/admin/clickwise-voice-setup", icon: GraduationCap },
+  { title: "ClickWise provisioning", titleKey: "admin.clickwiseProvisioning", url: "/app/admin/clickwise-provisioning", icon: Rocket },
+  { title: "Pilot readiness", titleKey: "admin.pilotReadiness", url: "/app/admin/pilot-readiness", icon: ShieldCheck },
 ];
 
 function Group({
@@ -61,6 +62,7 @@ function Group({
   accent?: boolean; onNavigate?: () => void; canSeeAdvanced: boolean; role: Role | null;
   badges?: Record<string, number>; storageKey: string;
 }) {
+  const { t } = useTranslation("app");
   const visible = items.filter((i) => (!i.advanced || canSeeAdvanced) && (!i.roles || (role && i.roles.includes(role))));
   const { open, setOpen } = useCollapsibleGroup(`sidebar.${storageKey}`, true);
   if (visible.length === 0) return null;
@@ -86,8 +88,8 @@ function Group({
                 </span>
                 {!collapsed && (
                   <span className="flex items-center gap-1.5">
-                    {item.title}
-                    {item.advanced && <span className="text-[9px] uppercase tracking-wide text-sidebar-foreground/60">adv</span>}
+                    {item.titleKey ? t(item.titleKey, { defaultValue: item.title }) : item.title}
+                    {item.advanced && <span className="text-[9px] uppercase tracking-wide text-sidebar-foreground/60">{t("nav.advanced", { defaultValue: "adv" })}</span>}
                   </span>
                 )}
                 {!collapsed && badgeCount > 0 && <PendingBadge count={badgeCount} variant="sidebar" />}
@@ -145,6 +147,7 @@ export function AppSidebar() {
   const { isSystemAdmin } = useIsSystemAdmin();
   const { canSeeAdvanced } = useAdvancedMode();
   const location = useLocation();
+  const { t } = useTranslation("app");
 
   const handleNavigate = isMobile ? () => setOpenMobile(false) : undefined;
   const { count: pendingLargeGroups } = usePendingLargeGroups();
@@ -179,9 +182,9 @@ export function AppSidebar() {
           const canBeheer = role === "owner" || role === "manager";
           return (
             <>
-              <Group storageKey="snel" label="Snel naar" items={quickAccess} collapsed={collapsed} pathname={location.pathname} search={location.search} onNavigate={handleNavigate} canSeeAdvanced={canSeeAdvanced} role={role} badges={quickAccessBadges} />
-              <Group storageKey="hospitality" label="Hospitality" items={hospitality} collapsed={collapsed} pathname={location.pathname} search={location.search} onNavigate={handleNavigate} canSeeAdvanced={canSeeAdvanced} role={role} />
-              <Group storageKey="beheer" label="Beheer" items={beheer} collapsed={collapsed} pathname={location.pathname} search={location.search} onNavigate={handleNavigate} canSeeAdvanced={canSeeAdvanced} role={role} />
+              <Group storageKey="snel" label={t("nav.quickAccess")} items={quickAccess} collapsed={collapsed} pathname={location.pathname} search={location.search} onNavigate={handleNavigate} canSeeAdvanced={canSeeAdvanced} role={role} badges={quickAccessBadges} />
+              <Group storageKey="hospitality" label={t("nav.hospitality")} items={hospitality} collapsed={collapsed} pathname={location.pathname} search={location.search} onNavigate={handleNavigate} canSeeAdvanced={canSeeAdvanced} role={role} />
+              <Group storageKey="beheer" label={t("nav.management")} items={beheer} collapsed={collapsed} pathname={location.pathname} search={location.search} onNavigate={handleNavigate} canSeeAdvanced={canSeeAdvanced} role={role} />
               {canBeheer && (
                 <SettingsCollapsibleGroup
                   collapsed={collapsed}
@@ -191,7 +194,7 @@ export function AppSidebar() {
                 />
               )}
               {isSystemAdmin && (
-                <Group storageKey="admin" label="Admin" items={admin} collapsed={collapsed} pathname={location.pathname} search={location.search} accent onNavigate={handleNavigate} canSeeAdvanced={canSeeAdvanced} role={role} />
+                <Group storageKey="admin" label={t("nav.admin")} items={admin} collapsed={collapsed} pathname={location.pathname} search={location.search} accent onNavigate={handleNavigate} canSeeAdvanced={canSeeAdvanced} role={role} />
               )}
             </>
           );
@@ -211,7 +214,7 @@ export function AppSidebar() {
             collapsed && "justify-center",
           )}
         >
-          {collapsed ? "↩" : "Uitloggen"}
+          {collapsed ? "↩" : t("signOut")}
         </Button>
         {!collapsed && (
           <div className="px-2 pt-2 pb-1 text-xs leading-snug text-sidebar-foreground/85 text-center whitespace-nowrap">
@@ -236,10 +239,12 @@ function SettingsCollapsibleGroup({
 }: {
   collapsed: boolean; pathname: string; onNavigate?: () => void; isOwner: boolean;
 }) {
+  const { t } = useTranslation("app");
   const settingsActive = pathname.startsWith("/app/instellingen");
   const { open, setOpen } = useCollapsibleGroup("sidebar.settings", settingsActive);
   const { canSeeAdvanced } = useAdvancedMode();
-  const items = SETTINGS_ITEMS
+  const allItems = useSettingsItems();
+  const items = allItems
     .filter((i) => !i.ownerOnly || isOwner)
     .filter((i) => !i.advanced || canSeeAdvanced);
 
@@ -270,7 +275,7 @@ function SettingsCollapsibleGroup({
               <CollapsibleTrigger asChild>
                 <SidebarMenuButton isActive={settingsActive && pathname === "/app/instellingen"}>
                   <Settings className="h-4 w-4 shrink-0" />
-                  <span>Instellingen</span>
+                  <span>{t("nav.settings")}</span>
                   <ChevronDown
                     className={cn(
                       "ml-auto h-3.5 w-3.5 transition-transform opacity-70",

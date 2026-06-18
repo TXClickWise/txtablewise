@@ -1,0 +1,170 @@
+{
+  "loading": "Laden…",
+  "signOut": "Uitloggen",
+  "nav": {
+    "quickAccess": "Snel naar",
+    "hospitality": "Hospitality",
+    "management": "Beheer",
+    "settings": "Instellingen",
+    "admin": "Admin",
+    "dashboard": "Dashboard",
+    "largeGroups": "Grote groepen",
+    "guestComm": "Gastcommunicatie",
+    "reports": "Rapportages",
+    "advanced": "adv"
+  },
+  "admin": {
+    "restaurants": "Restaurants",
+    "planRequests": "Plan-aanvragen",
+    "integrations": "Integratiebeheer",
+    "logs": "Integratie-logs",
+    "clickwise": "ClickWise beheer",
+    "pos": "POS-beheer",
+    "voiceAgent": "Voice Agent debug",
+    "clickwiseVoiceSetup": "ClickWise Voice setup",
+    "clickwiseProvisioning": "ClickWise provisioning",
+    "pilotReadiness": "Pilot readiness"
+  },
+  "settingsNav": {
+    "general": "Algemeen",
+    "hours": "Openingstijden",
+    "reservations": "Reserveringen",
+    "widget": "Online reserveren",
+    "zones": "Tafels & zones",
+    "guests": "Gasten",
+    "messages": "Berichten",
+    "preOrders": "Drankjes vooraf",
+    "aiVoice": "AI & Voice",
+    "integrations": "Integraties (geavanceerd)",
+    "api": "API & webhooks",
+    "users": "Gebruikers & rollen",
+    "subscription": "Abonnement",
+    "pilotLaunch": "Pilot lancering"
+  },
+  "common": {
+    "save": "Opslaan",
+    "cancel": "Annuleren",
+    "delete": "Verwijderen",
+    "edit": "Bewerken",
+    "close": "Sluiten",
+    "confirm": "Bevestigen",
+    "back": "Terug",
+    "next": "Volgende",
+    "loading": "Laden…",
+    "search": "Zoeken",
+    "filter": "Filter",
+    "all": "Alle",
+    "today": "Vandaag",
+    "tomorrow": "Morgen",
+    "yesterday": "Gisteren",
+    "guests": "gasten",
+    "people": "personen",
+    "newReservation": "Nieuwe reservering",
+    "walkIn": "Walk-in",
+    "noData": "Geen gegevens",
+    "tryAgain": "Opnieuw proberen",
+    "loadingError": "Laden mislukt"
+  },
+  "status": {
+    "hold": "Tijdelijk vast",
+    "pending": "Verwacht",
+    "confirmed": "Bevestigd",
+    "seated": "Aan tafel",
+    "completed": "Vertrokken",
+    "cancelled": "Geannuleerd",
+    "no_show": "No-show",
+    "request_received": "Aanvraag ontvangen",
+    "awaiting_approval": "Wacht op goedkeuring",
+    "awaiting_deposit": "Wacht op aanbetaling",
+    "approved": "Goedgekeurd",
+    "declined": "Afgewezen"
+  },
+  "channel": {
+    "online": "Online",
+    "phone": "Telefoon",
+    "whatsapp": "WhatsApp",
+    "sms": "SMS",
+    "webchat": "Webchat",
+    "walk_in": "Walk-in",
+    "manual": "Handmatig",
+    "ai_agent": "AI Host"
+  },
+  "languageSwitcher": {
+    "label": "Taal",
+    "nl": "Nederlands",
+    "en": "Engels"
+  },
+  "today": {
+    "title": "Vandaag",
+    "subtitle": "Overzicht van vandaag",
+    "noReservations": "Geen reserveringen vandaag",
+    "arrivals": "Verwachte aankomsten",
+    "seated": "Aan tafel",
+    "completed": "Vertrokken"
+  },
+  "agenda": {
+    "title": "Agenda",
+    "newReservation": "Nieuwe reservering",
+    "walkIn": "Walk-in",
+    "noReservations": "Geen reserveringen"
+  },
+  "reservations": {
+    "title": "Reserveringen",
+    "newReservation": "Nieuwe reservering",
+    "noReservations": "Geen reserveringen gevonden",
+    "guest": "Gast",
+    "date": "Datum",
+    "time": "Tijd",
+    "size": "Aantal",
+    "table": "Tafel",
+    "status": "Status",
+    "channel": "Kanaal"
+  },
+  "guests": {
+    "title": "Gasten",
+    "newGuest": "Nieuwe gast",
+    "noGuests": "Geen gasten gevonden",
+    "name": "Naam",
+    "email": "E-mail",
+    "phone": "Telefoon",
+    "visits": "Bezoeken",
+    "lastVisit": "Laatste bezoek"
+  },
+  "reports": {
+    "title": "Rapportages",
+    "subtitle": "Inzicht in prestaties, kanalen en omzet",
+    "period": "Periode",
+    "channels": "Kanalen",
+    "revenue": "Omzet",
+    "reservations": "Reserveringen",
+    "noShows": "No-shows",
+    "cancellations": "Annuleringen"
+  },
+  "settings": {
+    "title": "Instellingen",
+    "subtitle": "Configureer je restaurant en abonnement"
+  },
+  "dialogs": {
+    "reservation": {
+      "title": "Reservering",
+      "edit": "Bewerken",
+      "details": "Details",
+      "guest": "Gast",
+      "notes": "Notities",
+      "tables": "Tafels",
+      "history": "Historie",
+      "markSeated": "Aan tafel",
+      "markCompleted": "Vertrokken",
+      "markNoShow": "No-show",
+      "cancel": "Annuleren"
+    },
+    "walkIn": {
+      "title": "Walk-in toevoegen",
+      "size": "Aantal personen",
+      "table": "Tafel",
+      "duration": "Duur (minuten)",
+      "name": "Naam (optioneel)",
+      "create": "Walk-in plaatsen"
+    }
+  }
+}
