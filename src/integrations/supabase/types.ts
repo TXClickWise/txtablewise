@@ -2899,6 +2899,7 @@ export type Database = {
         Args: { payload: Json; queue_name: string }
         Returns: number
       }
+      get_invitation_link: { Args: { _invitation_id: string }; Returns: Json }
       get_invitation_preview: { Args: { _token: string }; Returns: Json }
       has_restaurant_role: {
         Args: {

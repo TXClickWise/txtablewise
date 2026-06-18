@@ -17,11 +17,11 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
   DropdownMenuLabel, DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
-import { Users, Mail, MoreVertical, Loader2 } from "lucide-react";
+import { Users, Mail, MoreVertical, Loader2, Copy, Check } from "lucide-react";
 import { toast } from "sonner";
 import {
   listMembers, listPendingInvitations, inviteMember, revokeInvitation,
-  resendInvitation, updateMemberRole, removeMember,
+  resendInvitation, updateMemberRole, removeMember, getInvitationLink,
   type AppRole,
 } from "@/services/teamMembers";
 
@@ -53,6 +53,28 @@ export default function UsersRolesSettings() {
   const [inviteOpen, setInviteOpen] = useState(false);
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteRole, setInviteRole] = useState<Exclude<AppRole, "owner">>("staff");
+  const [lastInviteLink, setLastInviteLink] = useState<{ email: string; url: string } | null>(null);
+  const [copiedKey, setCopiedKey] = useState<string | null>(null);
+
+  async function copyToClipboard(text: string, key: string) {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedKey(key);
+      toast.success("Link gekopieerd");
+      setTimeout(() => setCopiedKey((k) => (k === key ? null : k)), 1800);
+    } catch {
+      toast.error("Kon link niet kopiëren");
+    }
+  }
+
+  async function copyInviteLink(invitationId: string) {
+    try {
+      const url = await getInvitationLink(invitationId);
+      await copyToClipboard(url, invitationId);
+    } catch (e: any) {
+      toast.error(e?.message || "Kon link niet ophalen");
+    }
+  }
 
   const membersQ = useQuery({
     queryKey: ["team-members", restaurantId],
@@ -73,8 +95,15 @@ export default function UsersRolesSettings() {
 
   const inviteMut = useMutation({
     mutationFn: async () => inviteMember(restaurantId!, inviteEmail.trim(), inviteRole),
-    onSuccess: () => {
-      toast.success(`Uitnodiging verstuurd naar ${inviteEmail.trim()}`);
+    onSuccess: async (res) => {
+      const email = inviteEmail.trim();
+      toast.success(`Uitnodiging verstuurd naar ${email}`);
+      try {
+        const url = await getInvitationLink(res.invitation_id);
+        setLastInviteLink({ email, url });
+      } catch {
+        setLastInviteLink(null);
+      }
       setInviteOpen(false);
       setInviteEmail("");
       setInviteRole("staff");
@@ -116,6 +145,38 @@ export default function UsersRolesSettings() {
           Beheer wie toegang heeft tot dit restaurant en nodig nieuwe teamleden uit.
         </p>
       </div>
+
+      {lastInviteLink && (
+        <Card className="p-4 border-primary/40 bg-primary/5">
+          <div className="flex items-start gap-3">
+            <Mail className="h-5 w-5 text-primary mt-0.5 shrink-0" />
+            <div className="min-w-0 flex-1 space-y-2">
+              <div className="text-sm">
+                Uitnodiging verstuurd naar <strong>{lastInviteLink.email}</strong>.
+                Komt de mail niet aan (check eerst spam)? Deel deze persoonlijke link direct:
+              </div>
+              <div className="flex items-center gap-2">
+                <Input readOnly value={lastInviteLink.url} className="font-mono text-xs" />
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => copyToClipboard(lastInviteLink.url, "last")}
+                >
+                  {copiedKey === "last" ? (
+                    <><Check className="h-4 w-4 mr-1" /> Gekopieerd</>
+                  ) : (
+                    <><Copy className="h-4 w-4 mr-1" /> Kopieer</>
+                  )}
+                </Button>
+                <Button size="sm" variant="ghost" onClick={() => setLastInviteLink(null)}>
+                  Sluiten
+                </Button>
+              </div>
+            </div>
+          </div>
+        </Card>
+      )}
+
 
       <Card className="p-6">
         <div className="flex items-center justify-between mb-4">
@@ -214,6 +275,13 @@ export default function UsersRolesSettings() {
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
                     <Badge variant="outline">{ROLE_LABEL[inv.role]}</Badge>
+                    <Button variant="ghost" size="sm" onClick={() => copyInviteLink(inv.id)}>
+                      {copiedKey === inv.id ? (
+                        <><Check className="h-4 w-4 mr-1" /> Gekopieerd</>
+                      ) : (
+                        <><Copy className="h-4 w-4 mr-1" /> Kopieer link</>
+                      )}
+                    </Button>
                     <Button variant="ghost" size="sm" onClick={() => resendMut.mutate(inv.id)}>
                       Opnieuw versturen
                     </Button>
