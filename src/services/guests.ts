@@ -217,6 +217,21 @@ export async function linkGuestToReservation(
   await logEvent(restaurantId, "guest.reservation_linked", { guest_id: guestId, reservation_id: reservationId });
 }
 
+// ----- delete -----
+
+export type DeleteGuestsResult = {
+  deleted: string[];
+  blocked: Array<{ guest_id: string; name: string | null; active_reservations: number }>;
+};
+
+export async function deleteGuests(guestIds: string[]): Promise<DeleteGuestsResult> {
+  if (guestIds.length === 0) return { deleted: [], blocked: [] };
+  const { data, error } = await supabase.rpc("delete_guests_safe", { _guest_ids: guestIds });
+  if (error) throw error;
+  const r = (data ?? {}) as { deleted?: string[]; blocked?: DeleteGuestsResult["blocked"] };
+  return { deleted: r.deleted ?? [], blocked: r.blocked ?? [] };
+}
+
 // ----- notes -----
 
 export async function listGuestNotes(guestId: string) {

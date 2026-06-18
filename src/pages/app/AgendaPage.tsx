@@ -254,7 +254,8 @@ const AgendaPage = () => {
     queryFn: async () => {
       const { data } = await supabase.from("reservations")
         .select("id, start_time, end_time, status, party_size, channel, occasion, dietary_notes, large_group_status, requires_manual_approval, reminder_confirmed_at, guest_first_name, guest_last_name, guests(first_name, last_name, is_vip, allergies), reservation_tables(table_id, tables(label)), pre_orders(id)")
-        .eq("restaurant_id", rid!).eq("reservation_date", dateStr);
+        .eq("restaurant_id", rid!).eq("reservation_date", dateStr)
+        .neq("status", "cancelled");
       return data ?? [];
     },
   });

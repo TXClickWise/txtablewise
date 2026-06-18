@@ -5,14 +5,20 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { nl } from "date-fns/locale";
 import {
-  Search, Plus, Mail, Phone, RefreshCw, Users, Crown, AlertTriangle, UserPlus, MailCheck,
+  Search, Plus, Mail, Phone, RefreshCw, Users, Crown, AlertTriangle, UserPlus, MailCheck, Trash2,
 } from "lucide-react";
+import { toast } from "sonner";
 import { useRestaurant } from "@/hooks/useRestaurant";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { KpiCard } from "@/components/KpiCard";
 import { PageHeader } from "@/components/PageHeader";
@@ -26,8 +32,8 @@ import { GuestClickWisePreview } from "@/components/guests/GuestClickWisePreview
 import { GuestPOSPanel } from "@/components/pos/GuestPOSPanel";
 import { ReservationDetailDialog } from "@/components/ReservationDetailDialog";
 import {
-  getClickWiseGuestMappingPreview, getGuest, getGuestKpis, getReservationHistory,
-  listGuests, type Guest, type GuestFilter,
+  deleteGuests, getClickWiseGuestMappingPreview, getGuest, getGuestKpis, getReservationHistory,
+  listGuests, type DeleteGuestsResult, type Guest, type GuestFilter,
 } from "@/services/guests";
 
 const FILTERS: { value: GuestFilter; label: string }[] = [
@@ -57,6 +63,12 @@ const GuestsPage = () => {
   const [createOpen, setCreateOpen] = useState(false);
   const [reservationOpen, setReservationOpen] = useState<string | null>(null);
 
+  // Bulk-selectie voor verwijderen
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [blockedResult, setBlockedResult] = useState<DeleteGuestsResult["blocked"] | null>(null);
+
   const { data: kpis } = useQuery({
     queryKey: ["guest-kpis", restaurantId],
     enabled: !!restaurantId,
@@ -73,6 +85,52 @@ const GuestsPage = () => {
     qc.invalidateQueries({ queryKey: ["guests-list"] });
     qc.invalidateQueries({ queryKey: ["guest-kpis"] });
     qc.invalidateQueries({ queryKey: ["guest", selectedId] });
+  };
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+  const allOnPageSelected = guests.length > 0 && guests.every((g) => selectedIds.has(g.id));
+  const toggleSelectAll = () => {
+    if (allOnPageSelected) setSelectedIds(new Set());
+    else setSelectedIds(new Set(guests.map((g) => g.id)));
+  };
+  const clearSelection = () => setSelectedIds(new Set());
+
+  const handleDeleteSelected = async (ids: string[]) => {
+    setDeleting(true);
+    try {
+      const res = await deleteGuests(ids);
+      if (res.deleted.length > 0) {
+        toast.success(
+          res.deleted.length === 1
+            ? "Gast verwijderd."
+            : `${res.deleted.length} gasten verwijderd.`,
+        );
+      }
+      if (res.blocked.length > 0) {
+        setBlockedResult(res.blocked);
+      } else {
+        setConfirmOpen(false);
+      }
+      setSelectedIds((prev) => {
+        const next = new Set(prev);
+        res.deleted.forEach((id) => next.delete(id));
+        return next;
+      });
+      // Sluit detail-sheet als de geopende gast weg is
+      if (selectedId && res.deleted.includes(selectedId)) setSelectedId(null);
+      refreshAll();
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : "Verwijderen mislukt.";
+      toast.error(msg);
+    } finally {
+      setDeleting(false);
+    }
   };
 
   if (!restaurantId) {
@@ -126,6 +184,33 @@ const GuestsPage = () => {
           </Tabs>
         </CardHeader>
         <CardContent>
+          {!readOnly && guests.length > 0 && (
+            <div className="flex items-center gap-3 py-2 border-b mb-1 -mt-1">
+              <Checkbox
+                checked={allOnPageSelected}
+                onCheckedChange={toggleSelectAll}
+                aria-label="Alles selecteren"
+              />
+              <span className="text-xs text-muted-foreground">
+                {selectedIds.size > 0
+                  ? `${selectedIds.size} geselecteerd`
+                  : "Selecteer gasten om te verwijderen"}
+              </span>
+              {selectedIds.size > 0 && (
+                <div className="ml-auto flex items-center gap-2">
+                  <Button variant="ghost" size="sm" onClick={clearSelection}>Wis selectie</Button>
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={() => { setBlockedResult(null); setConfirmOpen(true); }}
+                  >
+                    <Trash2 className="h-4 w-4 mr-1" />
+                    Verwijderen ({selectedIds.size})
+                  </Button>
+                </div>
+              )}
+            </div>
+          )}
           {isLoading ? (
             <LoadingState label="Gasten laden…" />
           ) : guests.length === 0 ? (
@@ -143,37 +228,48 @@ const GuestsPage = () => {
             />
           ) : (
             <ul className="divide-y">
-              {guests.map((g) => (
-                <li key={g.id}>
-                  <button
-                    type="button"
-                    onClick={() => setSelectedId(g.id)}
-                    className="w-full text-left py-3 flex items-center gap-3 hover:bg-muted/40 -mx-3 px-3 rounded-md transition-colors"
-                  >
-                    <div className="h-10 w-10 rounded-full bg-secondary flex items-center justify-center font-display text-sm shrink-0">
-                      {(g.first_name?.[0] ?? g.last_name?.[0] ?? "G").toUpperCase()}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-medium truncate">
-                          {g.first_name ?? ""} {g.last_name ?? ""}
-                          {!g.first_name && !g.last_name && "Onbekende gast"}
-                        </span>
+              {guests.map((g) => {
+                const checked = selectedIds.has(g.id);
+                return (
+                  <li key={g.id} className="flex items-center gap-2">
+                    {!readOnly && (
+                      <Checkbox
+                        checked={checked}
+                        onCheckedChange={() => toggleSelect(g.id)}
+                        aria-label="Selecteer gast"
+                        className="ml-1"
+                      />
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => setSelectedId(g.id)}
+                      className="flex-1 text-left py-3 flex items-center gap-3 hover:bg-muted/40 -mx-3 px-3 rounded-md transition-colors"
+                    >
+                      <div className="h-10 w-10 rounded-full bg-secondary flex items-center justify-center font-display text-sm shrink-0">
+                        {(g.first_name?.[0] ?? g.last_name?.[0] ?? "G").toUpperCase()}
                       </div>
-                      <div className="text-xs text-muted-foreground truncate">
-                        {g.email ?? ""}{g.email && g.phone ? " · " : ""}{g.phone ?? ""}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-medium truncate">
+                            {g.first_name ?? ""} {g.last_name ?? ""}
+                            {!g.first_name && !g.last_name && "Onbekende gast"}
+                          </span>
+                        </div>
+                        <div className="text-xs text-muted-foreground truncate">
+                          {g.email ?? ""}{g.email && g.phone ? " · " : ""}{g.phone ?? ""}
+                        </div>
+                        <GuestBadges guest={g} max={4} className="mt-1" />
                       </div>
-                      <GuestBadges guest={g} max={4} className="mt-1" />
-                    </div>
-                    <div className="text-right text-xs text-muted-foreground shrink-0">
-                      <div>{g.total_visits ?? 0} bezoeken</div>
-                      {g.last_visit_at && (
-                        <div>laatste {format(new Date(g.last_visit_at), "d MMM", { locale: nl })}</div>
-                      )}
-                    </div>
-                  </button>
-                </li>
-              ))}
+                      <div className="text-right text-xs text-muted-foreground shrink-0">
+                        <div>{g.total_visits ?? 0} bezoeken</div>
+                        {g.last_visit_at && (
+                          <div>laatste {format(new Date(g.last_visit_at), "d MMM", { locale: nl })}</div>
+                        )}
+                      </div>
+                    </button>
+                  </li>
+                );
+              })}
             </ul>
           )}
         </CardContent>
@@ -187,6 +283,7 @@ const GuestsPage = () => {
         onOpenEdit={(g) => setEditing(g)}
         onOpenReservation={(id) => setReservationOpen(id)}
         onClose={() => setSelectedId(null)}
+        onDelete={(id) => { setBlockedResult(null); setSelectedIds(new Set([id])); setConfirmOpen(true); }}
       />
 
       {!readOnly && (
@@ -213,18 +310,78 @@ const GuestsPage = () => {
         open={!!reservationOpen}
         onOpenChange={(o) => !o && setReservationOpen(null)}
       />
+
+      {/* Verwijder-bevestiging + geblokkeerde uitleg */}
+      <AlertDialog
+        open={confirmOpen}
+        onOpenChange={(o) => { if (!o) { setConfirmOpen(false); setBlockedResult(null); } }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {blockedResult
+                ? "Sommige gasten konden niet verwijderd worden"
+                : `${selectedIds.size} gast${selectedIds.size === 1 ? "" : "en"} verwijderen?`}
+            </AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              {blockedResult ? (
+                <div className="space-y-2">
+                  <p>
+                    Deze gasten hebben nog actieve of toekomstige reserveringen. Annuleer eerst de
+                    openstaande reservering(en) en verwijder daarna opnieuw.
+                  </p>
+                  <ul className="text-sm border rounded-md divide-y">
+                    {blockedResult.map((b) => (
+                      <li key={b.guest_id} className="flex justify-between gap-3 px-3 py-2">
+                        <span className="truncate">{b.name || "Onbekende gast"}</span>
+                        <span className="text-muted-foreground shrink-0">
+                          {b.active_reservations} actieve reservering{b.active_reservations === 1 ? "" : "en"}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : (
+                <span>
+                  Persoonsgegevens en notities worden definitief gewist. Historische reserveringen
+                  blijven bestaan (zonder naam-koppeling) zodat rapportages kloppen.
+                </span>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            {blockedResult ? (
+              <AlertDialogAction onClick={() => { setConfirmOpen(false); setBlockedResult(null); }}>
+                Begrepen
+              </AlertDialogAction>
+            ) : (
+              <>
+                <AlertDialogCancel disabled={deleting}>Annuleren</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={(e) => { e.preventDefault(); handleDeleteSelected(Array.from(selectedIds)); }}
+                  disabled={deleting}
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                >
+                  {deleting ? "Verwijderen…" : "Definitief verwijderen"}
+                </AlertDialogAction>
+              </>
+            )}
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
 
 function GuestDetailSheet({
-  guestId, restaurantId, onClose, onOpenEdit, onOpenReservation, readOnly = false,
+  guestId, restaurantId, onClose, onOpenEdit, onOpenReservation, onDelete, readOnly = false,
 }: {
   guestId: string | null;
   restaurantId: string;
   onClose: () => void;
   onOpenEdit: (g: Guest) => void;
   onOpenReservation: (id: string) => void;
+  onDelete?: (id: string) => void;
   readOnly?: boolean;
 }) {
   const [guest, setGuest] = useState<Guest | null>(null);
@@ -287,11 +444,23 @@ function GuestDetailSheet({
                   <div className="text-muted-foreground">Marketing toegestaan</div>
                   <div>{guest.marketing_consent ? "Ja" : "Nee"}</div>
                 </div>
-                <div className="flex gap-2 pt-2">
+                <div className="flex gap-2 pt-2 flex-wrap">
                   {guest.email && <Button variant="outline" size="sm" asChild><a href={`mailto:${guest.email}`}><Mail className="h-3.5 w-3.5 mr-1" /> Mail</a></Button>}
                   {guest.phone && <Button variant="outline" size="sm" asChild><a href={`tel:${guest.phone}`}><Phone className="h-3.5 w-3.5 mr-1" /> Bel</a></Button>}
                   {!readOnly && (
-                    <Button size="sm" className="ml-auto" onClick={() => onOpenEdit(guest)}>Wijzigen</Button>
+                    <>
+                      <Button size="sm" className="ml-auto" onClick={() => onOpenEdit(guest)}>Wijzigen</Button>
+                      {onDelete && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="text-destructive hover:text-destructive"
+                          onClick={() => onDelete(guest.id)}
+                        >
+                          <Trash2 className="h-3.5 w-3.5 mr-1" /> Verwijderen
+                        </Button>
+                      )}
+                    </>
                   )}
                 </div>
               </CardContent>
