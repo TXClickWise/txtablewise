@@ -24,6 +24,7 @@ const Auth = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [displayName, setDisplayName] = useState("");
+  const [signupSent, setSignupSent] = useState(false);
 
   useEffect(() => {
     if (planParam === "basic" || planParam === "pro") {
@@ -87,7 +88,15 @@ const Auth = () => {
     if (error) {
       toast.error(error.message.includes("already")
         ? "Dit e-mailadres is al geregistreerd"
+        : error.message.includes("Pwned") || error.message.includes("compromised")
+        ? "Dit wachtwoord komt voor in bekende datalekken. Kies een ander wachtwoord."
         : error.message);
+      return;
+    }
+    // Als e-mailverificatie aan staat is er nog geen sessie → toon "check je inbox"
+    const { data: sessionData } = await supabase.auth.getSession();
+    if (!sessionData.session) {
+      setSignupSent(true);
       return;
     }
     toast.success("Account aangemaakt");
@@ -128,6 +137,24 @@ const Auth = () => {
             </CardDescription>
           </CardHeader>
           <CardContent>
+            {signupSent ? (
+              <div className="space-y-4 text-center py-4">
+                <div className="mx-auto w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-2xl">
+                  ✉️
+                </div>
+                <h3 className="font-display text-xl">Check je inbox</h3>
+                <p className="text-sm text-muted-foreground">
+                  We hebben een bevestigingslink gestuurd naar <strong>{email}</strong>.
+                  Klik op de link in de mail om je account te activeren en aan de slag te gaan.
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Geen mail ontvangen? Controleer je spam-map.
+                </p>
+                <Button variant="outline" className="w-full" onClick={() => { setSignupSent(false); setPassword(""); }}>
+                  Terug
+                </Button>
+              </div>
+            ) : (
             <Tabs defaultValue={defaultTab} className="w-full">
               <TabsList className="grid w-full grid-cols-2 mb-6">
                 <TabsTrigger value="signin">Inloggen</TabsTrigger>
@@ -145,7 +172,12 @@ const Auth = () => {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="signin-password">Wachtwoord</Label>
+                    <div className="flex items-center justify-between">
+                      <Label htmlFor="signin-password">Wachtwoord</Label>
+                      <Link to="/forgot-password" className="text-xs text-muted-foreground hover:text-foreground">
+                        Wachtwoord vergeten?
+                      </Link>
+                    </div>
                     <Input
                       id="signin-password" type="password" required autoComplete="current-password"
                       value={password} onChange={(e) => setPassword(e.target.value)}
@@ -192,7 +224,10 @@ const Auth = () => {
                 </form>
               </TabsContent>
             </Tabs>
+            )}
 
+            {!signupSent && (
+              <>
             <div className="relative my-6">
               <div className="absolute inset-0 flex items-center">
                 <span className="w-full border-t border-border" />
@@ -211,6 +246,8 @@ const Auth = () => {
               </svg>
               Inloggen met Google
             </Button>
+              </>
+            )}
           </CardContent>
         </Card>
 
