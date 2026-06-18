@@ -5,14 +5,20 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { nl } from "date-fns/locale";
 import {
-  Search, Plus, Mail, Phone, RefreshCw, Users, Crown, AlertTriangle, UserPlus, MailCheck,
+  Search, Plus, Mail, Phone, RefreshCw, Users, Crown, AlertTriangle, UserPlus, MailCheck, Trash2,
 } from "lucide-react";
+import { toast } from "sonner";
 import { useRestaurant } from "@/hooks/useRestaurant";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { KpiCard } from "@/components/KpiCard";
 import { PageHeader } from "@/components/PageHeader";
@@ -26,8 +32,8 @@ import { GuestClickWisePreview } from "@/components/guests/GuestClickWisePreview
 import { GuestPOSPanel } from "@/components/pos/GuestPOSPanel";
 import { ReservationDetailDialog } from "@/components/ReservationDetailDialog";
 import {
-  getClickWiseGuestMappingPreview, getGuest, getGuestKpis, getReservationHistory,
-  listGuests, type Guest, type GuestFilter,
+  deleteGuests, getClickWiseGuestMappingPreview, getGuest, getGuestKpis, getReservationHistory,
+  listGuests, type DeleteGuestsResult, type Guest, type GuestFilter,
 } from "@/services/guests";
 
 const FILTERS: { value: GuestFilter; label: string }[] = [
