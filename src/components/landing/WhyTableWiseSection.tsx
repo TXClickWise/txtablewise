@@ -5,6 +5,7 @@ import {
   Hand,
   ShieldCheck,
   Lock,
+  Users,
 } from "lucide-react";
 
 const usps = [
@@ -22,6 +23,11 @@ const usps = [
     icon: LayoutDashboard,
     title: "Eén overzicht voor alles",
     body: "Telefoon, WhatsApp, website, walk-in, Instagram — bij de meeste systemen verlies je het overzicht. TX TableWise brengt alle gasten samen in één scherm.",
+  },
+  {
+    icon: Users,
+    title: "Grote groepen, slim geregeld",
+    body: "Vanaf het aantal gasten dat jij kiest, gaat TX TableWise extra opletten: het systeem vraagt netjes om jouw goedkeuring en stelt automatisch een passende aanbetaling voor. Geen verrassingen meer met een tafel voor zestien die eigenlijk nooit had gepast.",
   },
   {
     icon: Hand,
