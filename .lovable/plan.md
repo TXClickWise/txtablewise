@@ -1,33 +1,31 @@
-## Diagnose
+## Wat ik ga aanpassen
 
-De uitnodiging naar `bediening@eigeweis.com` is wél verstuurd. In `email_send_log`:
+### 1. `src/pages/AcceptInvite.tsx` — duidelijker scherm
 
-- 14:31:24 — `pending`
-- 14:31:28 — **`sent`** (geaccepteerd door Mailgun, geen error)
-- Geen rij in `suppressed_emails`, geen bounce, geen complaint.
+Nu staat er een generieke kaart met "Uitnodiging / Word lid van een restaurant op TableWise" gevolgd door een blokje met labels (Restaurant / Rol / Voor). Dat leest als een formulier in plaats van een uitnodiging.
 
-Hele flow werkt correct:
-`invite_member` RPC → `send-member-invite` edge function → `send-transactional-email` → queue → Mailgun = `sent`.
+Nieuwe opzet voor een uitgelogde gebruiker (zoals `bediening@eigeweis.com`):
 
-Het probleem zit dus **na** de mailprovider (spamfilter van eigeweis.com, greylisting, of typo in adres) — niet in onze code.
+- **Titel**: "Je bent uitgenodigd bij **Texels Restaurant Eigeweis**"
+- **Subtekst**: "Maak een account aan met **bediening@eigeweis.com** om als **Manager** mee te werken."
+- Het labelblokje (Restaurant / Rol / Voor) verdwijnt — de informatie staat al in de titel/subtekst.
+- Eén primaire knop: **"Account aanmaken"** → gaat direct naar het signup-scherm met e-mail én rolcontext vooringevuld.
+- Secundaire link eronder (klein): "Heb je al een account? **Inloggen**".
+- Geen TableWise-merkruis op deze pagina nodig; restaurantnaam staat centraal (later eventueel restaurant-logo als we dat per uitnodiging meesturen).
 
-## Wat de gebruiker nu kan doen
+Voor de andere toestanden (ongeldig / verlopen / al ingelogd met verkeerd adres / al ingelogd met juist adres) hou ik de bestaande logica, maar herschrijf ik de teksten in dezelfde gastvrije toon:
+- Juist ingelogd: één grote knop "Word lid van Texels Restaurant Eigeweis".
+- Verkeerd adres: "Je bent ingelogd als X. Log uit om de uitnodiging voor Y te accepteren." + Uitloggen-knop.
+- Ongeldig/verlopen/ingetrokken/al geaccepteerd: korte, vriendelijke uitleg + suggestie om het restaurant om een nieuwe uitnodiging te vragen.
 
-1. Spam/Junk-folder van `bediening@eigeweis.com` checken.
-2. Verifiëren dat het adres correct is (geen `eigenwijs` etc.).
-3. Eventueel `noreply@…` whitelisten bij hun mailprovider.
+Geen wijzigingen aan de RPC's of `teamMembers.ts` — alleen UI/copy.
 
-## Voorgestelde verbetering (code)
+### 2. Lovable-logo in de browser verbergen
 
-Voeg een **manager-fallback** toe zodat een uitnodiging nooit "vast" zit op mail-aflevering:
+Het korte logo dat je zag is de **"Edit with Lovable"-badge** die Lovable standaard op gepubliceerde apps toont. Die zit niet in onze code; het is een publish-instelling. Verbergen kan alleen op een betaald plan via de publish-settings (`set_badge_visibility`). Zodra je dit goedkeurt probeer ik 'm uit te zetten; lukt dat niet vanwege je plan, dan meld ik dat en blijft de badge zichtbaar tot je upgrade.
 
-1. **`UsersRolesSettings.tsx`** — bij openstaande uitnodigingen: voeg knop **"Kopieer uitnodigingslink"** toe naast "Opnieuw versturen" / "Intrekken".
-2. **`teamMembers.ts`** — nieuwe helper `getInvitationLink(invitationId)` die de `token` ophaalt via een nieuwe lichte RPC `get_invitation_link(_invitation_id uuid)` (alleen voor managers van het restaurant of system admin). Retourneert `{ token }`. UI bouwt `${window.location.origin}/invite?token=…`.
-3. **Invite-dialoog** — na succesvol versturen direct de link tonen met copy-knop + toast "Uitnodiging verstuurd. Komt de mail niet aan? Deel deze link direct."
+## Wat NIET verandert
 
-Geen wijzigingen aan email-infra nodig. Klein, focused, lost dit type situatie permanent op.
-
-### Bestanden
-- nieuw: `supabase/migrations/<timestamp>_invitation_link_rpc.sql` — `get_invitation_link` RPC + grants
-- edit: `src/services/teamMembers.ts` — `getInvitationLink()` helper
-- edit: `src/pages/app/settings/UsersRolesSettings.tsx` — copy-link knop in lijst + na uitnodigen
+- De uitnodigingsmail en token-flow.
+- Backend RPC's, edge functions, database.
+- De rest van de auth-flow / `/app/login`.
