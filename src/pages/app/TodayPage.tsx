@@ -63,6 +63,7 @@ const TodayPage = () => {
         `)
         .eq("restaurant_id", restaurantId!)
         .eq("reservation_date", today)
+        .neq("status", "cancelled")
         .order("start_time", { ascending: true });
       if (error) throw error;
       return (data ?? []) as unknown as CardReservation[];

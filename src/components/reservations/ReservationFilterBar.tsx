@@ -11,20 +11,21 @@ import { Slider } from "@/components/ui/slider";
 import { cn } from "@/lib/utils";
 
 export type StatusFilter =
-  | "all" | "pending" | "confirmed" | "seated" | "completed" | "cancelled" | "no_show";
+  | "all" | "pending" | "confirmed" | "seated" | "completed" | "no_show";
 
 export type SignalFilter = null | "walk_in" | "large_group" | "allergy" | "preorder" | "approval";
 
 export type TimeBand = "all" | "morning" | "lunch" | "afternoon" | "dinner" | "late";
 export type RiskFilter = "all" | "low" | "medium" | "high";
 
+// Geannuleerde reserveringen worden niet meer getoond in operationele overzichten —
+// alleen nog zichtbaar in Rapportages en gasthistorie. Daarom geen "cancelled"-chip hier.
 export const STATUS_CHIPS: Array<{ key: StatusFilter; label: string }> = [
   { key: "all",       label: "Alle" },
   { key: "pending",   label: "Verwacht" },
   { key: "confirmed", label: "Bevestigd" },
   { key: "seated",    label: "Aan tafel" },
   { key: "completed", label: "Vertrokken" },
-  { key: "cancelled", label: "Geannuleerd" },
   { key: "no_show",   label: "No-show" },
 ];
 

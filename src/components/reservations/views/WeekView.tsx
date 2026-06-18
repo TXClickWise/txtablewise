@@ -47,6 +47,7 @@ export function WeekView({
         .eq("restaurant_id", restaurantId)
         .gte("reservation_date", fromStr)
         .lte("reservation_date", toStr)
+        .neq("status", "cancelled")
         .order("start_time");
       if (error) throw error;
       return (data ?? []) as unknown as Array<CardReservation & { reservation_date: string }>;

@@ -64,7 +64,8 @@ export function TableGridView({
     queryFn: async () => {
       const { data } = await supabase.from("reservations")
         .select("id, start_time, end_time, status, party_size, guest_first_name, guest_last_name, guests(first_name, last_name), reservation_tables(table_id)")
-        .eq("restaurant_id", restaurantId).eq("reservation_date", dateStr);
+        .eq("restaurant_id", restaurantId).eq("reservation_date", dateStr)
+        .neq("status", "cancelled");
       return data ?? [];
     },
   });
