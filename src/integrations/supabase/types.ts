@@ -911,6 +911,59 @@ export type Database = {
           },
         ]
       }
+      member_invitations: {
+        Row: {
+          accepted_at: string | null
+          accepted_by: string | null
+          created_at: string
+          email: string
+          expires_at: string
+          id: string
+          invited_by: string | null
+          restaurant_id: string
+          role: Database["public"]["Enums"]["app_role"]
+          status: string
+          token: string
+          updated_at: string
+        }
+        Insert: {
+          accepted_at?: string | null
+          accepted_by?: string | null
+          created_at?: string
+          email: string
+          expires_at?: string
+          id?: string
+          invited_by?: string | null
+          restaurant_id: string
+          role: Database["public"]["Enums"]["app_role"]
+          status?: string
+          token?: string
+          updated_at?: string
+        }
+        Update: {
+          accepted_at?: string | null
+          accepted_by?: string | null
+          created_at?: string
+          email?: string
+          expires_at?: string
+          id?: string
+          invited_by?: string | null
+          restaurant_id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          status?: string
+          token?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "member_invitations_restaurant_id_fkey"
+            columns: ["restaurant_id"]
+            isOneToOne: false
+            referencedRelation: "restaurants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       opening_hours: {
         Row: {
           close_time: string
@@ -2832,6 +2885,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      accept_member_invitation: { Args: { _token: string }; Returns: Json }
       create_restaurant_with_owner: {
         Args: { _name: string; _slug: string; _timezone?: string }
         Returns: string
@@ -2845,12 +2899,21 @@ export type Database = {
         Args: { payload: Json; queue_name: string }
         Returns: number
       }
+      get_invitation_preview: { Args: { _token: string }; Returns: Json }
       has_restaurant_role: {
         Args: {
           _restaurant_id: string
           _role: Database["public"]["Enums"]["app_role"]
         }
         Returns: boolean
+      }
+      invite_member: {
+        Args: {
+          _email: string
+          _restaurant_id: string
+          _role: Database["public"]["Enums"]["app_role"]
+        }
+        Returns: Json
       }
       is_restaurant_manager: {
         Args: { _restaurant_id: string }
@@ -2861,6 +2924,17 @@ export type Database = {
         Returns: boolean
       }
       is_system_admin: { Args: never; Returns: boolean }
+      list_restaurant_members: {
+        Args: { _restaurant_id: string }
+        Returns: {
+          created_at: string
+          display_name: string
+          email: string
+          member_id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }[]
+      }
       move_to_dlq: {
         Args: {
           dlq_name: string
@@ -2882,9 +2956,25 @@ export type Database = {
           read_ct: number
         }[]
       }
+      remove_member: { Args: { _member_id: string }; Returns: undefined }
+      resend_member_invitation: {
+        Args: { _invitation_id: string }
+        Returns: Json
+      }
       restaurant_plan: {
         Args: { _restaurant_id: string }
         Returns: Database["public"]["Enums"]["subscription_plan"]
+      }
+      revoke_member_invitation: {
+        Args: { _invitation_id: string }
+        Returns: undefined
+      }
+      update_member_role: {
+        Args: {
+          _member_id: string
+          _role: Database["public"]["Enums"]["app_role"]
+        }
+        Returns: undefined
       }
     }
     Enums: {
