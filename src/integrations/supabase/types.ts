@@ -1738,6 +1738,7 @@ export type Database = {
           brand_accent: string | null
           brand_primary: string | null
           city: string | null
+          clickwise_addon_active: boolean
           country: string
           created_at: string
           custom_widget_domain: string | null
@@ -1814,6 +1815,9 @@ export type Database = {
           public_base_url: string | null
           slot_duration_minutes: number
           slug: string
+          stripe_clickwise_subscription_id: string | null
+          stripe_customer_id: string | null
+          stripe_subscription_id: string | null
           timezone: string
           transfer_hours_end: string | null
           transfer_hours_start: string | null
@@ -1848,6 +1852,7 @@ export type Database = {
           brand_accent?: string | null
           brand_primary?: string | null
           city?: string | null
+          clickwise_addon_active?: boolean
           country?: string
           created_at?: string
           custom_widget_domain?: string | null
@@ -1924,6 +1929,9 @@ export type Database = {
           public_base_url?: string | null
           slot_duration_minutes?: number
           slug: string
+          stripe_clickwise_subscription_id?: string | null
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
           timezone?: string
           transfer_hours_end?: string | null
           transfer_hours_start?: string | null
@@ -1958,6 +1966,7 @@ export type Database = {
           brand_accent?: string | null
           brand_primary?: string | null
           city?: string | null
+          clickwise_addon_active?: boolean
           country?: string
           created_at?: string
           custom_widget_domain?: string | null
@@ -2034,6 +2043,9 @@ export type Database = {
           public_base_url?: string | null
           slot_duration_minutes?: number
           slug?: string
+          stripe_clickwise_subscription_id?: string | null
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
           timezone?: string
           transfer_hours_end?: string | null
           transfer_hours_start?: string | null
