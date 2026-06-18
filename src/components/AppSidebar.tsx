@@ -181,9 +181,9 @@ export function AppSidebar() {
           const canBeheer = role === "owner" || role === "manager";
           return (
             <>
-              <Group storageKey="snel" label="Snel naar" items={quickAccess} collapsed={collapsed} pathname={location.pathname} search={location.search} onNavigate={handleNavigate} canSeeAdvanced={canSeeAdvanced} role={role} badges={quickAccessBadges} />
-              <Group storageKey="hospitality" label="Hospitality" items={hospitality} collapsed={collapsed} pathname={location.pathname} search={location.search} onNavigate={handleNavigate} canSeeAdvanced={canSeeAdvanced} role={role} />
-              <Group storageKey="beheer" label="Beheer" items={beheer} collapsed={collapsed} pathname={location.pathname} search={location.search} onNavigate={handleNavigate} canSeeAdvanced={canSeeAdvanced} role={role} />
+              <Group storageKey="snel" label={t("nav.quickAccess")} items={quickAccess} collapsed={collapsed} pathname={location.pathname} search={location.search} onNavigate={handleNavigate} canSeeAdvanced={canSeeAdvanced} role={role} badges={quickAccessBadges} />
+              <Group storageKey="hospitality" label={t("nav.hospitality")} items={hospitality} collapsed={collapsed} pathname={location.pathname} search={location.search} onNavigate={handleNavigate} canSeeAdvanced={canSeeAdvanced} role={role} />
+              <Group storageKey="beheer" label={t("nav.management")} items={beheer} collapsed={collapsed} pathname={location.pathname} search={location.search} onNavigate={handleNavigate} canSeeAdvanced={canSeeAdvanced} role={role} />
               {canBeheer && (
                 <SettingsCollapsibleGroup
                   collapsed={collapsed}
@@ -193,7 +193,7 @@ export function AppSidebar() {
                 />
               )}
               {isSystemAdmin && (
-                <Group storageKey="admin" label="Admin" items={admin} collapsed={collapsed} pathname={location.pathname} search={location.search} accent onNavigate={handleNavigate} canSeeAdvanced={canSeeAdvanced} role={role} />
+                <Group storageKey="admin" label={t("nav.admin")} items={admin} collapsed={collapsed} pathname={location.pathname} search={location.search} accent onNavigate={handleNavigate} canSeeAdvanced={canSeeAdvanced} role={role} />
               )}
             </>
           );
