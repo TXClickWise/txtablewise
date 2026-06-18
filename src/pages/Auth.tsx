@@ -24,6 +24,7 @@ const Auth = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [displayName, setDisplayName] = useState("");
+  const [signupSent, setSignupSent] = useState(false);
 
   useEffect(() => {
     if (planParam === "basic" || planParam === "pro") {
@@ -87,7 +88,15 @@ const Auth = () => {
     if (error) {
       toast.error(error.message.includes("already")
         ? "Dit e-mailadres is al geregistreerd"
+        : error.message.includes("Pwned") || error.message.includes("compromised")
+        ? "Dit wachtwoord komt voor in bekende datalekken. Kies een ander wachtwoord."
         : error.message);
+      return;
+    }
+    // Als e-mailverificatie aan staat is er nog geen sessie → toon "check je inbox"
+    const { data: sessionData } = await supabase.auth.getSession();
+    if (!sessionData.session) {
+      setSignupSent(true);
       return;
     }
     toast.success("Account aangemaakt");
