@@ -43,6 +43,7 @@ const FILTERS: { value: GuestFilter; label: string }[] = [
 ];
 
 const GuestsPage = () => {
+  const { t } = useTranslation("app");
   const { current } = useRestaurant();
   const restaurantId = current?.restaurant_id;
   const role = current?.role;
@@ -81,16 +82,16 @@ const GuestsPage = () => {
   return (
     <div className="px-3 lg:px-4 py-3 space-y-5">
       <PageHeader
-        title="Gasten"
+        title={t("guests.title")}
         description="Bewaar alleen informatie die helpt om gasten beter te ontvangen."
         actions={
           <>
-            <Button variant="outline" size="icon" className="h-11 w-11" onClick={() => refetch()} disabled={isLoading} aria-label="Vernieuwen">
+            <Button variant="outline" size="icon" className="h-11 w-11" onClick={() => refetch()} disabled={isLoading} aria-label={t("common.tryAgain")}>
               <RefreshCw className={isLoading ? "h-4 w-4 animate-spin" : "h-4 w-4"} />
             </Button>
             {!readOnly && (
               <Button size="lg" className="h-11" onClick={() => setCreateOpen(true)}>
-                <Plus className="mr-1 h-4 w-4" /> Gast
+                <Plus className="mr-1 h-4 w-4" /> {t("guests.newGuest")}
               </Button>
             )}
           </>

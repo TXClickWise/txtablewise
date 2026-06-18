@@ -2,6 +2,7 @@
 // grote groepen, pre-orders, reviews, gasten, POS-omzet en pacing met insight cards.
 // Rolbewust: omzetkaarten alleen voor owner/manager.
 import { useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useRestaurant } from "@/hooks/useRestaurant";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { ReportDateRangePicker } from "@/components/reports/ReportDateRangePicker";
