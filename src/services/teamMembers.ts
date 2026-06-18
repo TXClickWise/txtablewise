@@ -79,6 +79,16 @@ export async function resendInvitation(invitationId: string) {
   if (sendErr) throw sendErr;
 }
 
+export async function getInvitationLink(invitationId: string): Promise<string> {
+  const { data, error } = await supabase.rpc("get_invitation_link", {
+    _invitation_id: invitationId,
+  });
+  if (error) throw error;
+  const token = (data as any)?.token;
+  if (!token) throw new Error("Geen token gevonden");
+  return `${window.location.origin}/invite?token=${token}`;
+}
+
 export async function updateMemberRole(memberId: string, role: Exclude<AppRole, "owner">) {
   const { error } = await supabase.rpc("update_member_role", {
     _member_id: memberId,
