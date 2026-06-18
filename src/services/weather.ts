@@ -66,7 +66,7 @@ export async function fetchActiveAdvisories(restaurantId: string): Promise<Weath
     .from("weather_advisories")
     .select("*")
     .eq("restaurant_id", restaurantId)
-    .gte("date", today)
+    .eq("date", today)
     .is("dismissed_at", null)
     .order("date");
   return (data as any) ?? [];
