@@ -61,7 +61,8 @@ const AppShellInner = ({ children }: { children?: ReactNode }) => {
                 {current.restaurants.name}
               </div>
             )}
-            <div className="ml-auto xl:ml-2">
+            <div className="ml-auto xl:ml-2 flex items-center gap-1">
+              <UiLocaleSwitcher />
               <ThemeToggle />
             </div>
           </header>
@@ -83,7 +84,7 @@ const AppShellInner = ({ children }: { children?: ReactNode }) => {
 
 export const AppShell = ({ children }: { children?: ReactNode }) => {
   const { isLoading } = useMyRestaurants();
-  if (isLoading) return <div className="min-h-screen flex items-center justify-center text-muted-foreground">Laden…</div>;
+  if (isLoading) return <div className="min-h-screen flex items-center justify-center text-muted-foreground">Laden… / Loading…</div>;
   return (
     <RestaurantProvider>
       <AppShellInner>{children}</AppShellInner>
