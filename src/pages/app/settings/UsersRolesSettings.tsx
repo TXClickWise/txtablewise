@@ -243,6 +243,13 @@ export default function UsersRolesSettings() {
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
                     <Badge variant="outline">{ROLE_LABEL[inv.role]}</Badge>
+                    <Button variant="ghost" size="sm" onClick={() => copyInviteLink(inv.id)}>
+                      {copiedKey === inv.id ? (
+                        <><Check className="h-4 w-4 mr-1" /> Gekopieerd</>
+                      ) : (
+                        <><Copy className="h-4 w-4 mr-1" /> Kopieer link</>
+                      )}
+                    </Button>
                     <Button variant="ghost" size="sm" onClick={() => resendMut.mutate(inv.id)}>
                       Opnieuw versturen
                     </Button>
