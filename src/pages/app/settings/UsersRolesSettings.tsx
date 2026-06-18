@@ -146,6 +146,38 @@ export default function UsersRolesSettings() {
         </p>
       </div>
 
+      {lastInviteLink && (
+        <Card className="p-4 border-primary/40 bg-primary/5">
+          <div className="flex items-start gap-3">
+            <Mail className="h-5 w-5 text-primary mt-0.5 shrink-0" />
+            <div className="min-w-0 flex-1 space-y-2">
+              <div className="text-sm">
+                Uitnodiging verstuurd naar <strong>{lastInviteLink.email}</strong>.
+                Komt de mail niet aan (check eerst spam)? Deel deze persoonlijke link direct:
+              </div>
+              <div className="flex items-center gap-2">
+                <Input readOnly value={lastInviteLink.url} className="font-mono text-xs" />
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => copyToClipboard(lastInviteLink.url, "last")}
+                >
+                  {copiedKey === "last" ? (
+                    <><Check className="h-4 w-4 mr-1" /> Gekopieerd</>
+                  ) : (
+                    <><Copy className="h-4 w-4 mr-1" /> Kopieer</>
+                  )}
+                </Button>
+                <Button size="sm" variant="ghost" onClick={() => setLastInviteLink(null)}>
+                  Sluiten
+                </Button>
+              </div>
+            </div>
+          </div>
+        </Card>
+      )}
+
+
       <Card className="p-6">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
