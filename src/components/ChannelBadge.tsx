@@ -1,5 +1,6 @@
 import * as React from "react";
 import { cva, type VariantProps } from "class-variance-authority";
+import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import { Globe, Phone, MessageCircle, MessageSquare, Bot, UserPlus, Pencil, Sparkles } from "lucide-react";
 
@@ -51,10 +52,11 @@ export interface ChannelBadgeProps
 export function ChannelBadge({ channel, className, ...props }: ChannelBadgeProps) {
   const key = channel ?? "online";
   const Icon = CHANNEL_ICONS[key] ?? Sparkles;
+  const { t } = useTranslation("app");
   return (
     <span className={cn(channelBadgeVariants({ channel }), className)} {...props}>
       <Icon className="h-3 w-3" />
-      {CHANNEL_LABELS[key] ?? key}
+      {t(`channel.${key}`, { defaultValue: CHANNEL_LABELS[key] ?? key })}
     </span>
   );
 }
