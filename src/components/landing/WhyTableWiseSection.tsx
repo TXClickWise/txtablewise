@@ -10,33 +10,33 @@ import {
 const usps = [
   {
     icon: Wallet,
-    title: "Geen commissie. Nooit.",
-    body: "Bij sommige systemen betaal je tot €2 per couvert — dat kan oplopen tot honderden euro's per maand. Bij TX TableWise betaal je een vaste maandprijs. Wat jouw tafels opbrengen, blijft van jou.",
+    title: "Geen euro commissie per gast",
+    body: "Bij sommige platforms betaal je tot €2 per couvert — al snel honderden euro's per maand. Bij TX TableWise betaal je één vaste maandprijs. Wat jouw tafels opbrengen, blijft van jou.",
   },
   {
     icon: Sparkles,
-    title: "AI die écht reserveert",
-    body: "Niet een chatbot die doorverwijst naar een formulier. Onze AI-host controleert de werkelijke beschikbaarheid, boekt de juiste tafel en bevestigt — ook om 2 uur 's nachts.",
+    title: "Een AI-gastvrouw die écht boekt",
+    body: "Geen chatbot die mensen wegstuurt naar een formulier. Onze AI-gastvrouw kijkt of er plek is, kiest de juiste tafel en stuurt netjes de bevestiging — ook om twee uur 's nachts.",
   },
   {
     icon: LayoutDashboard,
-    title: "Eén dashboard voor alles",
-    body: "Telefoon, WhatsApp, website, walk-in, Instagram — bij de meeste systemen raak je het overzicht kwijt. TX TableWise brengt elk kanaal samen in één scherm.",
+    title: "Eén overzicht voor alles",
+    body: "Telefoon, WhatsApp, website, walk-in, Instagram — bij de meeste systemen verlies je het overzicht. TX TableWise brengt alle gasten samen in één scherm.",
   },
   {
     icon: Hand,
-    title: "Gemaakt voor de vloer",
-    body: "Geen ingewikkelde menu's. Grote knoppen, één tik per actie. Ontworpen voor een host die met één hand een tablet vasthoudt terwijl de zaak volloopt.",
+    title: "Gemaakt voor op de vloer",
+    body: "Geen ingewikkelde menu's. Grote knoppen, één tik per actie. Ontworpen voor een gastvrouw die de tablet in één hand vasthoudt terwijl de zaak vol begint te lopen.",
   },
   {
     icon: ShieldCheck,
-    title: "Slimme no-show preventie",
-    body: "Niet alleen een herinnering sturen. TX TableWise combineert automatische bevestiging, herbevestiging via WhatsApp, risicoscores per gast en aanbetalingen alleen wanneer het echt nodig is.",
+    title: "Eerlijke no-show preventie",
+    body: "Vriendelijke bevestiging, slimme herinnering, herbevestiging via WhatsApp en — alleen wanneer nodig — een nette vraag om een aanbetaling. Zonder je gasten af te schrikken.",
   },
   {
     icon: Lock,
-    title: "Jouw gasten, jouw data",
-    body: "Geen extern platform dat jouw gastrelaties beheert. Geen marktplaats die jouw gasten naar de concurrent stuurt. Jouw gastdata is van jou — altijd.",
+    title: "Jouw gasten, jouw relatie",
+    body: "Geen platform dat tussen jou en je gast staat. Geen marktplaats die jouw vaste gast morgen naar de concurrent stuurt. Je gastenboek is en blijft van jou.",
   },
 ];
 
@@ -52,7 +52,7 @@ export function WhyTableWiseSection() {
             Wat maakt TX TableWise anders?
           </h2>
           <p className="mt-4 text-base text-muted-foreground md:text-lg">
-            Gebouwd met alles wat we misten bij bestaande systemen.
+            Gebouwd met alles wat we misten bij bestaande systemen — vanuit de horeca zelf.
           </p>
         </div>
 

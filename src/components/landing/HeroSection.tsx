@@ -28,24 +28,24 @@ export function HeroSection() {
             Vanaf Texel, voor heel Nederland
           </div>
           <h1 className="font-display text-5xl font-extrabold leading-[1.02] text-primary-foreground md:text-7xl">
-            Minder no-shows.
+            Vollere zaak.
             <br />
-            Vollere tafels.
+            Rustigere avonden.
             <br />
             <span className="bg-gradient-to-r from-accent to-[hsl(36,80%,62%)] bg-clip-text text-transparent">
-              Rustiger team.
+              Geen commissie per gast.
             </span>
           </h1>
 
           <p className="mt-6 max-w-xl text-lg leading-relaxed text-primary-foreground/80 md:text-xl">
-            Het premium reserveringssysteem dat meedenkt. Van slimme tafelverdeling tot
-            AI-reserveringen — zonder commissie, zonder extern platform.
+            TX TableWise neemt de reserveringen, herinneringen en no-shows uit handen —
+            zodat jij en je team je weer volledig op de gasten kunnen richten.
           </p>
 
           <div className="mt-10 flex flex-col gap-3 sm:flex-row">
             <Button asChild size="xl">
               <Link to="/auth?mode=signup">
-                Start 14 dagen gratis
+                Probeer 14 dagen gratis
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Link>
             </Button>
@@ -55,12 +55,12 @@ export function HeroSection() {
               variant="outline"
               className="border-primary-foreground/30 bg-primary-foreground/5 text-primary-foreground backdrop-blur hover:bg-primary-foreground/15 hover:text-primary-foreground hover:border-primary-foreground/50"
             >
-              <a href="#contact">Plan een demo</a>
+              <a href="#contact">Plan een rondleiding</a>
             </Button>
           </div>
 
           <ul className="mt-12 flex flex-wrap items-center gap-2">
-            {["Commissievrij", "Eigen gastdata", "AI-host 24/7 (add-on)", "Geen creditcard nodig"].map((t) => (
+            {["Geen commissie per gast", "Jouw gastenboek blijft van jou", "AI-gastvrouw 24/7 (add-on)", "Geen creditcard nodig"].map((t) => (
               <li key={t} className="trust-pill">
                 <span className="h-1.5 w-1.5 rounded-full bg-accent" />
                 {t}

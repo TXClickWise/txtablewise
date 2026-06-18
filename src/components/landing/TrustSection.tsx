@@ -3,27 +3,27 @@ import { Check } from "lucide-react";
 const points = [
   {
     title: "Nederlands systeem, Nederlandse support",
-    body: "Gebouwd in Nederland, in dialoog met horecaondernemers. Korte lijntjes als er iets is.",
+    body: "Gebouwd in Nederland, samen met horecaondernemers. Korte lijntjes als je een vraag hebt.",
   },
   {
-    title: "Geen commissie, geen verborgen kosten",
-    body: "Eén transparante maandprijs. Wat je tafels opbrengen, blijft van jou.",
+    title: "Geen commissie, geen verrassingen",
+    body: "Eén heldere maandprijs. Wat je tafels opbrengen, blijft volledig van jou.",
   },
   {
-    title: "Jij bent eigenaar van je gastdata",
-    body: "Geen externe marktplaats die meekijkt. Jouw gasten, jouw relaties.",
+    title: "Jouw gastenboek is van jou",
+    body: "Geen platform dat meekijkt of meeverdient aan jouw vaste gasten.",
   },
   {
-    title: "Direct live, geen lange implementatie",
-    body: "In 15 minuten ingericht. We helpen je persoonlijk bij de eerste service.",
+    title: "In een kwartier live",
+    body: "Snel ingericht. We bellen mee tijdens je eerste service zodat alles soepel loopt.",
   },
   {
-    title: "Geen marketplace, geen vergelijkingssite",
-    body: "TX TableWise stuurt jouw gasten niet naar de concurrent. Het is jouw systeem, op jouw website, onder jouw naam.",
+    title: "Op jouw eigen website, onder jouw naam",
+    body: "TX TableWise stuurt je gasten niet naar de concurrent. Jouw zaak blijft het visitekaartje.",
   },
   {
     title: "Groeit mee met je zaak",
-    body: "Start simpel met reserveringen. Voeg later AI, wachtlijst, gastprofielen en rapportages toe wanneer jij er klaar voor bent.",
+    body: "Start met de basis. Zet AI, wachtlijst en uitgebreide rapportages aan wanneer jij er klaar voor bent.",
   },
 ];
 
