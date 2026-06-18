@@ -76,20 +76,23 @@ export default function AcceptInvite() {
             <p className="text-sm text-destructive">{previewError}</p>
           )}
 
-          {preview && !preview.valid && (
-            <div className="text-sm">
-              <p className="font-medium mb-1">Deze uitnodiging is niet meer geldig.</p>
-              <p className="text-muted-foreground">
-                {preview.reason === "expired" && "De uitnodiging is verlopen."}
-                {preview.reason === "revoked" && "De uitnodiging is ingetrokken."}
-                {preview.reason === "accepted" && "De uitnodiging is al geaccepteerd."}
-                {preview.reason === "not_found" && "We kunnen deze uitnodiging niet vinden."}
-              </p>
-              <p className="text-muted-foreground mt-2">
-                Vraag het restaurant om een nieuwe uitnodiging.
-              </p>
-            </div>
-          )}
+          {preview && !preview.valid && (() => {
+            const reason = (preview as { valid: false; reason: string }).reason;
+            return (
+              <div className="text-sm">
+                <p className="font-medium mb-1">Deze uitnodiging is niet meer geldig.</p>
+                <p className="text-muted-foreground">
+                  {reason === "expired" && "De uitnodiging is verlopen."}
+                  {reason === "revoked" && "De uitnodiging is ingetrokken."}
+                  {reason === "accepted" && "De uitnodiging is al geaccepteerd."}
+                  {reason === "not_found" && "We kunnen deze uitnodiging niet vinden."}
+                </p>
+                <p className="text-muted-foreground mt-2">
+                  Vraag het restaurant om een nieuwe uitnodiging.
+                </p>
+              </div>
+            );
+          })()}
 
           {preview && preview.valid && (
             <>
