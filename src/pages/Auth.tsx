@@ -20,9 +20,12 @@ const Auth = () => {
   const [searchParams] = useSearchParams();
   const defaultTab = searchParams.get("mode") === "signup" ? "signup" : "signin";
   const planParam = searchParams.get("plan");
+  const emailParam = searchParams.get("email") || "";
+  const inviteToken = searchParams.get("invite") || "";
+  const postAuthPath = inviteToken ? `/invite?token=${inviteToken}` : "/app";
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(emailParam);
   const [password, setPassword] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [signupSent, setSignupSent] = useState(false);
@@ -38,8 +41,8 @@ const Auth = () => {
   }, [planParam]);
 
   useEffect(() => {
-    if (user) navigate("/app", { replace: true });
-  }, [user, navigate]);
+    if (user) navigate(postAuthPath, { replace: true });
+  }, [user, navigate, postAuthPath]);
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -62,7 +65,7 @@ const Auth = () => {
       return;
     }
     toast.success("Welkom terug");
-    navigate("/app", { replace: true });
+    navigate(postAuthPath, { replace: true });
   };
 
   const handleSignUp = async (e: React.FormEvent) => {
@@ -81,7 +84,7 @@ const Auth = () => {
       email,
       password,
       options: {
-        emailRedirectTo: `${window.location.origin}/app`,
+        emailRedirectTo: `${window.location.origin}${postAuthPath}`,
         data: { display_name: displayName || email.split("@")[0] },
       },
     });
@@ -101,13 +104,13 @@ const Auth = () => {
       return;
     }
     toast.success("Account aangemaakt");
-    navigate("/app", { replace: true });
+    navigate(postAuthPath, { replace: true });
   };
 
   const handleGoogle = async () => {
     setLoading(true);
     const result = await lovable.auth.signInWithOAuth("google", {
-      redirect_uri: window.location.origin + "/app",
+      redirect_uri: window.location.origin + postAuthPath,
     });
     if (result.error) {
       setLoading(false);
