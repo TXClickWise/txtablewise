@@ -20,9 +20,12 @@ const Auth = () => {
   const [searchParams] = useSearchParams();
   const defaultTab = searchParams.get("mode") === "signup" ? "signup" : "signin";
   const planParam = searchParams.get("plan");
+  const emailParam = searchParams.get("email") || "";
+  const inviteToken = searchParams.get("invite") || "";
+  const postAuthPath = inviteToken ? `/invite?token=${inviteToken}` : "/app";
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(emailParam);
   const [password, setPassword] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [signupSent, setSignupSent] = useState(false);
@@ -38,8 +41,8 @@ const Auth = () => {
   }, [planParam]);
 
   useEffect(() => {
-    if (user) navigate("/app", { replace: true });
-  }, [user, navigate]);
+    if (user) navigate(postAuthPath, { replace: true });
+  }, [user, navigate, postAuthPath]);
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
