@@ -1,0 +1,1 @@
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS ui_locale text NOT NULL DEFAULT 'nl' CHECK (ui_locale IN ('nl','en','de','fr'));
