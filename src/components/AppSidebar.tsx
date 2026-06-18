@@ -48,11 +48,11 @@ const admin: Item[] = [
   { title: "Integratiebeheer", titleKey: "admin.integrations", url: "/app/admin/integraties", icon: Database },
   { title: "Integratie-logs", titleKey: "admin.logs", url: "/app/admin/logs", icon: FileText },
   { title: "ClickWise beheer", titleKey: "admin.clickwise", url: "/app/admin/clickwise", icon: Plug },
-  { title: "POS-beheer", url: "/app/admin/pos", icon: CreditCard },
-  { title: "Voice Agent debug", url: "/app/admin/voice-agent", icon: Bot },
-  { title: "ClickWise Voice setup", url: "/app/admin/clickwise-voice-setup", icon: GraduationCap },
-  { title: "ClickWise provisioning", url: "/app/admin/clickwise-provisioning", icon: Rocket },
-  { title: "Pilot readiness", url: "/app/admin/pilot-readiness", icon: ShieldCheck },
+  { title: "POS-beheer", titleKey: "admin.pos", url: "/app/admin/pos", icon: CreditCard },
+  { title: "Voice Agent debug", titleKey: "admin.voiceAgent", url: "/app/admin/voice-agent", icon: Bot },
+  { title: "ClickWise Voice setup", titleKey: "admin.clickwiseVoiceSetup", url: "/app/admin/clickwise-voice-setup", icon: GraduationCap },
+  { title: "ClickWise provisioning", titleKey: "admin.clickwiseProvisioning", url: "/app/admin/clickwise-provisioning", icon: Rocket },
+  { title: "Pilot readiness", titleKey: "admin.pilotReadiness", url: "/app/admin/pilot-readiness", icon: ShieldCheck },
 ];
 
 function Group({
