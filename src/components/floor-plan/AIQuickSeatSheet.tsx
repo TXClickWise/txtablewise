@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { differenceInMinutes, format } from "date-fns";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
@@ -7,6 +7,22 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Sparkles, Users, Clock, Check, MapPin } from "lucide-react";
 import { cn } from "@/lib/utils";
+
+/** True wanneer het scherm landscape is én breed genoeg voor een side sheet (tablet liggend / desktop). */
+function useLandscapeSideSheet() {
+  const [isSide, setIsSide] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return window.matchMedia("(orientation: landscape) and (min-width: 768px)").matches;
+  });
+  useEffect(() => {
+    const mq = window.matchMedia("(orientation: landscape) and (min-width: 768px)");
+    const handler = (e: MediaQueryListEvent) => setIsSide(e.matches);
+    mq.addEventListener("change", handler);
+    return () => mq.removeEventListener("change", handler);
+  }, []);
+  return isSide;
+}
+
 
 type Zone = { id: string; name: string };
 type Table = {
@@ -46,6 +62,8 @@ export function AIQuickSeatSheet({
 }: Props) {
   const [partySize, setPartySize] = useState(2);
   const [zoneId, setZoneId] = useState<string>("any");
+  const sideSheet = useLandscapeSideSheet();
+
 
   const duration = partySize >= largeGroupThreshold ? largeGroupMinutes : defaultDurationMinutes;
   const now = new Date();
@@ -109,7 +127,16 @@ export function AIQuickSeatSheet({
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="bottom" className="rounded-t-2xl max-h-[90dvh] overflow-y-auto pb-[env(safe-area-inset-bottom)]">
+      <SheetContent
+        side={sideSheet ? "right" : "bottom"}
+        className={cn(
+          "overflow-y-auto pb-[env(safe-area-inset-bottom)]",
+          sideSheet
+            ? "w-[min(440px,90vw)] sm:max-w-[440px] h-[100dvh]"
+            : "rounded-t-2xl max-h-[90dvh]",
+        )}
+      >
+
         <SheetHeader className="text-left">
           <SheetTitle className="font-display text-2xl flex items-center gap-2">
             <Sparkles className="h-6 w-6 text-primary" /> AI Quick Seat
