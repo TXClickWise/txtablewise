@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { differenceInMinutes, format } from "date-fns";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
@@ -7,6 +7,22 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Sparkles, Users, Clock, Check, MapPin } from "lucide-react";
 import { cn } from "@/lib/utils";
+
+/** True wanneer het scherm landscape is én breed genoeg voor een side sheet (tablet liggend / desktop). */
+function useLandscapeSideSheet() {
+  const [isSide, setIsSide] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return window.matchMedia("(orientation: landscape) and (min-width: 768px)").matches;
+  });
+  useEffect(() => {
+    const mq = window.matchMedia("(orientation: landscape) and (min-width: 768px)");
+    const handler = (e: MediaQueryListEvent) => setIsSide(e.matches);
+    mq.addEventListener("change", handler);
+    return () => mq.removeEventListener("change", handler);
+  }, []);
+  return isSide;
+}
+
 
 type Zone = { id: string; name: string };
 type Table = {
