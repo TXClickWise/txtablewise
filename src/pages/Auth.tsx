@@ -65,7 +65,7 @@ const Auth = () => {
       return;
     }
     toast.success("Welkom terug");
-    navigate("/app", { replace: true });
+    navigate(postAuthPath, { replace: true });
   };
 
   const handleSignUp = async (e: React.FormEvent) => {
@@ -84,7 +84,7 @@ const Auth = () => {
       email,
       password,
       options: {
-        emailRedirectTo: `${window.location.origin}/app`,
+        emailRedirectTo: `${window.location.origin}${postAuthPath}`,
         data: { display_name: displayName || email.split("@")[0] },
       },
     });
@@ -104,13 +104,13 @@ const Auth = () => {
       return;
     }
     toast.success("Account aangemaakt");
-    navigate("/app", { replace: true });
+    navigate(postAuthPath, { replace: true });
   };
 
   const handleGoogle = async () => {
     setLoading(true);
     const result = await lovable.auth.signInWithOAuth("google", {
-      redirect_uri: window.location.origin + "/app",
+      redirect_uri: window.location.origin + postAuthPath,
     });
     if (result.error) {
       setLoading(false);
