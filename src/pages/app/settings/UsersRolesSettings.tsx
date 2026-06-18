@@ -95,8 +95,15 @@ export default function UsersRolesSettings() {
 
   const inviteMut = useMutation({
     mutationFn: async () => inviteMember(restaurantId!, inviteEmail.trim(), inviteRole),
-    onSuccess: () => {
-      toast.success(`Uitnodiging verstuurd naar ${inviteEmail.trim()}`);
+    onSuccess: async (res) => {
+      const email = inviteEmail.trim();
+      toast.success(`Uitnodiging verstuurd naar ${email}`);
+      try {
+        const url = await getInvitationLink(res.invitation_id);
+        setLastInviteLink({ email, url });
+      } catch {
+        setLastInviteLink(null);
+      }
       setInviteOpen(false);
       setInviteEmail("");
       setInviteRole("staff");
