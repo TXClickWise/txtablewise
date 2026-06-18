@@ -16,6 +16,9 @@ import enCommon from "./locales/en/common.json";
 import deCommon from "./locales/de/common.json";
 import frCommon from "./locales/fr/common.json";
 
+import nlApp from "./locales/nl/app.json";
+import enApp from "./locales/en/app.json";
+
 import type { Locale } from "./detectLocale";
 
 if (!i18n.isInitialized) {
@@ -23,15 +26,16 @@ if (!i18n.isInitialized) {
     .use(initReactI18next)
     .init({
       resources: {
-        nl: { widget: nlWidget, manage: nlManage, common: nlCommon },
-        en: { widget: enWidget, manage: enManage, common: enCommon },
-        de: { widget: deWidget, manage: deManage, common: deCommon },
-        fr: { widget: frWidget, manage: frManage, common: frCommon },
+        nl: { widget: nlWidget, manage: nlManage, common: nlCommon, app: nlApp },
+        en: { widget: enWidget, manage: enManage, common: enCommon, app: enApp },
+        // Operator-UI EN/NL only — DE/FR fall back to NL for the `app` namespace
+        de: { widget: deWidget, manage: deManage, common: deCommon, app: nlApp },
+        fr: { widget: frWidget, manage: frManage, common: frCommon, app: nlApp },
       },
       lng: "nl",
       fallbackLng: "nl",
       defaultNS: "widget",
-      ns: ["widget", "manage", "common"],
+      ns: ["widget", "manage", "common", "app"],
       interpolation: { escapeValue: false },
       react: { useSuspense: false },
     });
