@@ -48,6 +48,7 @@ type AllMetrics = {
 };
 
 const ReportsPage = () => {
+  const { t } = useTranslation("app");
   const { current } = useRestaurant();
   const restaurantId = current?.restaurant_id;
   const role = current?.role;
@@ -95,10 +96,9 @@ const ReportsPage = () => {
   return (
     <div className="px-3 sm:px-4 py-4 space-y-6">
       <header className="space-y-1">
-        <h1 className="font-display text-3xl">Rapportages</h1>
+        <h1 className="font-display text-3xl">{t("reports.title")}</h1>
         <p className="text-muted-foreground max-w-3xl">
-          Wat gebeurde er, waar bleven tafels leeg, welke kanalen werken en waar kun je morgen beter op sturen?
-          Data kan onvolledig zijn zolang integraties nog niet actief zijn.
+          {t("reports.subtitle")}
         </p>
       </header>
 
