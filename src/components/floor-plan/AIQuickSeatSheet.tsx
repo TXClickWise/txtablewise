@@ -62,6 +62,8 @@ export function AIQuickSeatSheet({
 }: Props) {
   const [partySize, setPartySize] = useState(2);
   const [zoneId, setZoneId] = useState<string>("any");
+  const sideSheet = useLandscapeSideSheet();
+
 
   const duration = partySize >= largeGroupThreshold ? largeGroupMinutes : defaultDurationMinutes;
   const now = new Date();
