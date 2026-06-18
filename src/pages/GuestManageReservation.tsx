@@ -198,6 +198,14 @@ export default function GuestManageReservation() {
   };
 
   return (
+    <>
+      <Helmet>
+        <title>{`Beheer uw reservering bij ${restaurant.name} — TX TableWise`}</title>
+        <meta name="description" content={`Bekijk, bevestig, wijzig of annuleer uw reservering bij ${restaurant.name}.`} />
+        <meta name="robots" content="noindex" />
+        <meta property="og:title" content={`Beheer uw reservering bij ${restaurant.name}`} />
+        <meta property="og:description" content={`Bekijk, bevestig, wijzig of annuleer uw reservering bij ${restaurant.name}.`} />
+      </Helmet>
     <div className="min-h-screen bg-muted/20 py-8 px-4">
       <div className="max-w-xl mx-auto space-y-4">
         <header className="flex items-start justify-between gap-3">
@@ -378,5 +386,6 @@ export default function GuestManageReservation() {
         </AlertDialogContent>
       </AlertDialog>
     </div>
+    </>
   );
 }

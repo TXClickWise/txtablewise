@@ -80,6 +80,16 @@ const Unsubscribe = () => {
   };
 
   return (
+    <>
+      <Helmet>
+        <title>Afmelden voor e-mails — TX TableWise</title>
+        <meta name="description" content="Beheer je e-mailvoorkeuren of meld je af voor TX TableWise-mailings." />
+        <meta name="robots" content="noindex" />
+        <link rel="canonical" href="https://txtablewise.nl/unsubscribe" />
+        <meta property="og:title" content="Afmelden voor e-mails — TX TableWise" />
+        <meta property="og:description" content="Beheer je e-mailvoorkeuren of meld je af voor TX TableWise-mailings." />
+        <meta property="og:url" content="https://txtablewise.nl/unsubscribe" />
+      </Helmet>
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
       <div className="absolute top-4 right-4">
         <LanguageSwitcher value={locale} onChange={handleLocaleChange} />
@@ -118,6 +128,7 @@ const Unsubscribe = () => {
         )}
       </Card>
     </div>
+    </>
   );
 };
 
