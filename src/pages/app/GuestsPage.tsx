@@ -374,13 +374,14 @@ const GuestsPage = () => {
 };
 
 function GuestDetailSheet({
-  guestId, restaurantId, onClose, onOpenEdit, onOpenReservation, readOnly = false,
+  guestId, restaurantId, onClose, onOpenEdit, onOpenReservation, onDelete, readOnly = false,
 }: {
   guestId: string | null;
   restaurantId: string;
   onClose: () => void;
   onOpenEdit: (g: Guest) => void;
   onOpenReservation: (id: string) => void;
+  onDelete?: (id: string) => void;
   readOnly?: boolean;
 }) {
   const [guest, setGuest] = useState<Guest | null>(null);
@@ -443,11 +444,23 @@ function GuestDetailSheet({
                   <div className="text-muted-foreground">Marketing toegestaan</div>
                   <div>{guest.marketing_consent ? "Ja" : "Nee"}</div>
                 </div>
-                <div className="flex gap-2 pt-2">
+                <div className="flex gap-2 pt-2 flex-wrap">
                   {guest.email && <Button variant="outline" size="sm" asChild><a href={`mailto:${guest.email}`}><Mail className="h-3.5 w-3.5 mr-1" /> Mail</a></Button>}
                   {guest.phone && <Button variant="outline" size="sm" asChild><a href={`tel:${guest.phone}`}><Phone className="h-3.5 w-3.5 mr-1" /> Bel</a></Button>}
                   {!readOnly && (
-                    <Button size="sm" className="ml-auto" onClick={() => onOpenEdit(guest)}>Wijzigen</Button>
+                    <>
+                      <Button size="sm" className="ml-auto" onClick={() => onOpenEdit(guest)}>Wijzigen</Button>
+                      {onDelete && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="text-destructive hover:text-destructive"
+                          onClick={() => onDelete(guest.id)}
+                        >
+                          <Trash2 className="h-3.5 w-3.5 mr-1" /> Verwijderen
+                        </Button>
+                      )}
+                    </>
                   )}
                 </div>
               </CardContent>
