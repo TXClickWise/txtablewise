@@ -1,5 +1,6 @@
 import { ReactNode } from "react";
 import { Outlet, useLocation } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
 import { RestaurantProvider, useRestaurant } from "@/hooks/useRestaurant";
@@ -13,16 +14,23 @@ import { PilotWarningBanner } from "./pilot/PilotWarningBanner";
 import { AdminOverrideBanner } from "./admin/AdminOverrideBanner";
 import { InstallPrompt } from "./pwa/InstallPrompt";
 import { ThemeToggle } from "./ThemeToggle";
+import { UiLocaleSwitcher } from "./UiLocaleSwitcher";
+import { useUiLocale } from "@/hooks/useUiLocale";
 import { useIsCompact } from "@/hooks/use-breakpoint";
 import { cn } from "@/lib/utils";
+// Ensure i18n is initialised for the operator-UI
+import "@/lib/i18n";
 
 const AppShellInner = ({ children }: { children?: ReactNode }) => {
   const { current, loading } = useRestaurant();
   const location = useLocation();
   const isCompact = useIsCompact();
+  const { t } = useTranslation("app");
+  // Initialise operator-UI language from profile / localStorage
+  useUiLocale();
 
   if (loading) {
-    return <div className="min-h-screen flex items-center justify-center text-muted-foreground">Laden…</div>;
+    return <div className="min-h-screen flex items-center justify-center text-muted-foreground">{t("loading")}</div>;
   }
   const isAdminRoute = location.pathname.startsWith("/app/admin");
   if (!current && !isAdminRoute) {
