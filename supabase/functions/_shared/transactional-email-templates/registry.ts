@@ -23,6 +23,7 @@ import { template as reservationChangeRejected } from './reservation-change-reje
 import { template as largeGroupMessage } from './large-group-message.tsx'
 import { template as largeGroupApproved } from './large-group-approved.tsx'
 import { template as largeGroupRejected } from './large-group-rejected.tsx'
+import { template as memberInvitation } from './member-invitation.tsx'
 
 export const TEMPLATES: Record<string, TemplateEntry> = {
   'reservation-confirmation': reservationConfirmation,
@@ -36,4 +37,5 @@ export const TEMPLATES: Record<string, TemplateEntry> = {
   'large-group-message': largeGroupMessage,
   'large-group-approved': largeGroupApproved,
   'large-group-rejected': largeGroupRejected,
+  'member-invitation': memberInvitation,
 }
