@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
+import { Helmet } from "react-helmet-async";
 import { z } from "zod";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -38,6 +39,15 @@ const ForgotPassword = () => {
   };
 
   return (
+    <>
+      <Helmet>
+        <title>Wachtwoord vergeten — TX TableWise</title>
+        <meta name="description" content="Vraag een resetlink aan om je TX TableWise wachtwoord opnieuw in te stellen." />
+        <link rel="canonical" href="https://txtablewise.nl/forgot-password" />
+        <meta property="og:title" content="Wachtwoord vergeten — TX TableWise" />
+        <meta property="og:description" content="Vraag een resetlink aan om je TX TableWise wachtwoord opnieuw in te stellen." />
+        <meta property="og:url" content="https://txtablewise.nl/forgot-password" />
+      </Helmet>
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <div className="w-full max-w-md">
         <Link to="/" className="block text-center mb-8">
@@ -85,6 +95,7 @@ const ForgotPassword = () => {
         </Card>
       </div>
     </div>
+    </>
   );
 };
 

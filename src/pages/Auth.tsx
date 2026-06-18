@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate, Link, useSearchParams } from "react-router-dom";
+import { Helmet } from "react-helmet-async";
 import { z } from "zod";
 import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable";
@@ -118,6 +119,15 @@ const Auth = () => {
   };
 
   return (
+    <>
+      <Helmet>
+        <title>Inloggen of account aanmaken — TX TableWise</title>
+        <meta name="description" content="Log in op TX TableWise of maak een gratis account aan en start je commissievrije reserveringssysteem voor restaurants." />
+        <link rel="canonical" href="https://txtablewise.nl/auth" />
+        <meta property="og:title" content="Inloggen of account aanmaken — TX TableWise" />
+        <meta property="og:description" content="Log in op TX TableWise of maak een gratis account aan en start je commissievrije reserveringssysteem voor restaurants." />
+        <meta property="og:url" content="https://txtablewise.nl/auth" />
+      </Helmet>
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <div className="w-full max-w-md">
         <Link to="/" className="block text-center mb-8">
@@ -256,6 +266,7 @@ const Auth = () => {
         </p>
       </div>
     </div>
+    </>
   );
 };
 

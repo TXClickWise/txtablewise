@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { Helmet } from "react-helmet-async";
 import { z } from "zod";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -69,6 +70,16 @@ const ResetPassword = () => {
   };
 
   return (
+    <>
+      <Helmet>
+        <title>Nieuw wachtwoord instellen — TX TableWise</title>
+        <meta name="description" content="Stel een nieuw wachtwoord in voor je TX TableWise account." />
+        <meta name="robots" content="noindex" />
+        <link rel="canonical" href="https://txtablewise.nl/reset-password" />
+        <meta property="og:title" content="Nieuw wachtwoord instellen — TX TableWise" />
+        <meta property="og:description" content="Stel een nieuw wachtwoord in voor je TX TableWise account." />
+        <meta property="og:url" content="https://txtablewise.nl/reset-password" />
+      </Helmet>
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
@@ -117,6 +128,7 @@ const ResetPassword = () => {
         </Card>
       </div>
     </div>
+    </>
   );
 };
 
