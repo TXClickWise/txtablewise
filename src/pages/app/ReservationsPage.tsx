@@ -42,6 +42,7 @@ type DayReservation = CardReservation & {
 };
 
 const ReservationsPage = () => {
+  const { t } = useTranslation("app");
   const { current } = useRestaurant();
   const restaurantId = current?.restaurant_id;
 
@@ -258,7 +259,7 @@ const ReservationsPage = () => {
     <div className="px-3 sm:px-4 py-3 space-y-4 sm:space-y-6">
       {/* Header */}
       <PageHeader
-        title="Reserveringen"
+        title={t("reservations.title")}
         description={
           <span className="capitalize">
             {format(date, "EEEE d MMMM yyyy", { locale: nl })}
@@ -267,19 +268,19 @@ const ReservationsPage = () => {
         actions={
           <>
             <div className="flex items-center gap-1">
-              <Button variant="outline" size="icon" className="h-11 w-11" onClick={() => setDate(subDays(date, 1))} aria-label="Vorige dag">
+              <Button variant="outline" size="icon" className="h-11 w-11" onClick={() => setDate(subDays(date, 1))} aria-label={t("common.back")}>
                 <ChevronLeft className="h-4 w-4" />
               </Button>
               <ReservationDatePicker value={date} onChange={setDate} restaurantId={restaurantId} buttonClassName="h-11" />
-              <Button variant="outline" size="icon" className="h-11 w-11" onClick={() => setDate(addDays(date, 1))} aria-label="Volgende dag">
+              <Button variant="outline" size="icon" className="h-11 w-11" onClick={() => setDate(addDays(date, 1))} aria-label={t("common.next")}>
                 <ChevronRight className="h-4 w-4" />
               </Button>
             </div>
             <Button variant="outline" className="h-11" onClick={() => setWalkInOpen(true)}>
-              <UserPlus className="mr-2 h-4 w-4" /> Walk-in
+              <UserPlus className="mr-2 h-4 w-4" /> {t("common.walkIn")}
             </Button>
             <Button className="h-11" onClick={() => setCreateOpen(true)}>
-              <CalendarPlus className="mr-2 h-4 w-4" /> Reservering
+              <CalendarPlus className="mr-2 h-4 w-4" /> {t("common.newReservation")}
             </Button>
           </>
         }
