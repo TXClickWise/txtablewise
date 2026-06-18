@@ -147,6 +147,7 @@ export function AppSidebar() {
   const { isSystemAdmin } = useIsSystemAdmin();
   const { canSeeAdvanced } = useAdvancedMode();
   const location = useLocation();
+  const { t } = useTranslation("app");
 
   const handleNavigate = isMobile ? () => setOpenMobile(false) : undefined;
   const { count: pendingLargeGroups } = usePendingLargeGroups();
@@ -213,7 +214,7 @@ export function AppSidebar() {
             collapsed && "justify-center",
           )}
         >
-          {collapsed ? "↩" : "Uitloggen"}
+          {collapsed ? "↩" : t("signOut")}
         </Button>
         {!collapsed && (
           <div className="px-2 pt-2 pb-1 text-xs leading-snug text-sidebar-foreground/85 text-center whitespace-nowrap">
@@ -238,10 +239,12 @@ function SettingsCollapsibleGroup({
 }: {
   collapsed: boolean; pathname: string; onNavigate?: () => void; isOwner: boolean;
 }) {
+  const { t } = useTranslation("app");
   const settingsActive = pathname.startsWith("/app/instellingen");
   const { open, setOpen } = useCollapsibleGroup("sidebar.settings", settingsActive);
   const { canSeeAdvanced } = useAdvancedMode();
-  const items = SETTINGS_ITEMS
+  const allItems = useSettingsItems();
+  const items = allItems
     .filter((i) => !i.ownerOnly || isOwner)
     .filter((i) => !i.advanced || canSeeAdvanced);
 
@@ -272,7 +275,7 @@ function SettingsCollapsibleGroup({
               <CollapsibleTrigger asChild>
                 <SidebarMenuButton isActive={settingsActive && pathname === "/app/instellingen"}>
                   <Settings className="h-4 w-4 shrink-0" />
-                  <span>Instellingen</span>
+                  <span>{t("nav.settings")}</span>
                   <ChevronDown
                     className={cn(
                       "ml-auto h-3.5 w-3.5 transition-transform opacity-70",
