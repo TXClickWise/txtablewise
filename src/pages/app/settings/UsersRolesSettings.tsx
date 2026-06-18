@@ -53,6 +53,28 @@ export default function UsersRolesSettings() {
   const [inviteOpen, setInviteOpen] = useState(false);
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteRole, setInviteRole] = useState<Exclude<AppRole, "owner">>("staff");
+  const [lastInviteLink, setLastInviteLink] = useState<{ email: string; url: string } | null>(null);
+  const [copiedKey, setCopiedKey] = useState<string | null>(null);
+
+  async function copyToClipboard(text: string, key: string) {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedKey(key);
+      toast.success("Link gekopieerd");
+      setTimeout(() => setCopiedKey((k) => (k === key ? null : k)), 1800);
+    } catch {
+      toast.error("Kon link niet kopiëren");
+    }
+  }
+
+  async function copyInviteLink(invitationId: string) {
+    try {
+      const url = await getInvitationLink(invitationId);
+      await copyToClipboard(url, invitationId);
+    } catch (e: any) {
+      toast.error(e?.message || "Kon link niet ophalen");
+    }
+  }
 
   const membersQ = useQuery({
     queryKey: ["team-members", restaurantId],
