@@ -16,7 +16,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Crown, Check, X, Sparkles, Clock, ArrowUpRight } from "lucide-react";
+import { Crown, Check, X, Sparkles, Clock, ArrowUpRight, Phone, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
 import {
   PLANS,
@@ -35,45 +35,39 @@ export default function SubscriptionSettings() {
   const { plan, trialDaysLeft, isTrial, trialExpired } = usePlan();
   const qc = useQueryClient();
 
-  const [requestPlan, setRequestPlan] = useState<SubscriptionPlan | null>(null);
-  const [note, setNote] = useState("");
+  const [checkoutTarget, setCheckoutTarget] = useState<"basic" | "pro" | "clickwise" | null>(null);
 
-  const { data: pendingRequest } = useQuery({
-    queryKey: ["plan-upgrade-request", restaurantId],
+  const { data: restaurantRow } = useQuery({
+    queryKey: ["restaurant-billing", restaurantId],
     enabled: !!restaurantId,
     queryFn: async () => {
       const { data } = await supabase
-        .from("plan_upgrade_requests")
-        .select("id, requested_plan, status, created_at")
-        .eq("restaurant_id", restaurantId!)
-        .eq("status", "pending")
-        .order("created_at", { ascending: false })
-        .limit(1)
+        .from("restaurants")
+        .select("clickwise_addon_active, stripe_customer_id, stripe_subscription_id")
+        .eq("id", restaurantId!)
         .maybeSingle();
-      return data;
+      return data as { clickwise_addon_active: boolean | null; stripe_customer_id: string | null; stripe_subscription_id: string | null } | null;
     },
   });
 
-  const requestUpgrade = useMutation({
-    mutationFn: async () => {
-      if (!restaurantId || !requestPlan || !user) throw new Error("missing");
-      const { error } = await supabase.from("plan_upgrade_requests").insert({
-        restaurant_id: restaurantId,
-        requested_by: user.id,
-        current_plan: plan,
-        requested_plan: requestPlan,
-        requester_note: note || null,
+  const startCheckout = async (target: "basic" | "pro" | "clickwise") => {
+    if (!restaurantId) return;
+    setCheckoutTarget(target);
+    try {
+      const { data, error } = await supabase.functions.invoke("stripe-checkout", {
+        body: { target, restaurant_id: restaurantId },
       });
       if (error) throw error;
-    },
-    onSuccess: () => {
-      toast.success("Upgrade-aanvraag verstuurd. We nemen snel contact op.");
-      setRequestPlan(null);
-      setNote("");
-      qc.invalidateQueries({ queryKey: ["plan-upgrade-request", restaurantId] });
-    },
-    onError: (e: Error) => toast.error(e.message),
-  });
+      if (data?.url) {
+        window.location.href = data.url as string;
+      } else {
+        throw new Error("Geen checkout URL ontvangen");
+      }
+    } catch (e) {
+      toast.error((e as Error).message);
+      setCheckoutTarget(null);
+    }
+  };
 
   const currentRank = planRank(plan);
 
