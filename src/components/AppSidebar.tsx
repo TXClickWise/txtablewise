@@ -62,6 +62,7 @@ function Group({
   accent?: boolean; onNavigate?: () => void; canSeeAdvanced: boolean; role: Role | null;
   badges?: Record<string, number>; storageKey: string;
 }) {
+  const { t } = useTranslation("app");
   const visible = items.filter((i) => (!i.advanced || canSeeAdvanced) && (!i.roles || (role && i.roles.includes(role))));
   const { open, setOpen } = useCollapsibleGroup(`sidebar.${storageKey}`, true);
   if (visible.length === 0) return null;
@@ -87,8 +88,8 @@ function Group({
                 </span>
                 {!collapsed && (
                   <span className="flex items-center gap-1.5">
-                    {item.title}
-                    {item.advanced && <span className="text-[9px] uppercase tracking-wide text-sidebar-foreground/60">adv</span>}
+                    {item.titleKey ? t(item.titleKey, { defaultValue: item.title }) : item.title}
+                    {item.advanced && <span className="text-[9px] uppercase tracking-wide text-sidebar-foreground/60">{t("nav.advanced", { defaultValue: "adv" })}</span>}
                   </span>
                 )}
                 {!collapsed && badgeCount > 0 && <PendingBadge count={badgeCount} variant="sidebar" />}
