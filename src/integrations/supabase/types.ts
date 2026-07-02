@@ -2895,6 +2895,7 @@ export type Database = {
         Returns: boolean
       }
       delete_guests_safe: { Args: { _guest_ids: string[] }; Returns: Json }
+      email_queue_dispatch: { Args: never; Returns: undefined }
       enqueue_email: {
         Args: { payload: Json; queue_name: string }
         Returns: number
