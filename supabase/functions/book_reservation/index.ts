@@ -34,6 +34,8 @@ type BookRequest = {
   hold_only?: boolean;   // if true, create as hold (default false → confirmed)
   source_metadata?: Record<string, unknown>;
   prefers_terrace?: boolean; // soft hint — used by fill strategy when enabled
+  /** Operator-only (walk_in / manager): force a specific table instead of engine pick. */
+  preselected_table_id?: string;
 };
 
 Deno.serve(async (req) => {
@@ -181,7 +183,22 @@ Deno.serve(async (req) => {
 
     let pickedZoneId: string | null = null;
 
-    if (fillStrategyOn) {
+    // Operator override: honor preselected table for walk_in / manager.
+    const preselectedTableId = body.preselected_table_id;
+    const isOperatorChannel = channel === "walk_in" || channel === "manager";
+    if (preselectedTableId && isOperatorChannel) {
+      const { data: pt } = await supabase.from("tables")
+        .select("id, is_active, restaurant_id")
+        .eq("id", preselectedTableId).maybeSingle();
+      if (!pt || pt.restaurant_id !== restaurant.id || !pt.is_active) {
+        return json({ error: "Gekozen tafel niet beschikbaar", error_code: "preselected_table_unavailable", field: "table_id" }, 409);
+      }
+      if (occupied.has(preselectedTableId)) {
+        return json({ error: "Deze tafel is net bezet — kies een andere.", error_code: "preselected_table_unavailable", field: "table_id" }, 409);
+      }
+      chosenTableIds = [preselectedTableId];
+      terracePreferenceUnmet = !!body.prefers_terrace;
+    } else if (fillStrategyOn) {
       // Haal zones + alle actieve tafels (voor zone-bezetting) + weer (optioneel)
       const [{ data: zonesRaw }, { data: allTables }, { data: weatherRow }] = await Promise.all([
         supabase.from("zones").select("*").eq("restaurant_id", restaurant.id),
