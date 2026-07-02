@@ -34,6 +34,8 @@ type BookRequest = {
   hold_only?: boolean;   // if true, create as hold (default false → confirmed)
   source_metadata?: Record<string, unknown>;
   prefers_terrace?: boolean; // soft hint — used by fill strategy when enabled
+  /** Operator-only (walk_in / manager): force a specific table instead of engine pick. */
+  preselected_table_id?: string;
 };
 
 Deno.serve(async (req) => {
