@@ -105,7 +105,7 @@ export async function createWalkIn(raw: WalkInInput): Promise<WalkInResult> {
       error?.message ||
       "Walk-in plaatsen mislukt. Probeer het opnieuw.";
     const reason: WalkInResult["reason_code"] =
-      /tafel/i.test(msg) || /no_table/i.test(msg) ? "no_table"
+      /preselected_table_unavailable/i.test(msg) || /tafel/i.test(msg) || /no_table/i.test(msg) ? "no_table"
       : /pacing/i.test(msg) ? "pacing_full"
       : "unknown";
     return { ok: false, error: msg, reason_code: reason };
@@ -118,17 +118,7 @@ export async function createWalkIn(raw: WalkInInput): Promise<WalkInResult> {
     return { ok: false, error: "Geen reservering teruggegeven.", reason_code: "unknown" };
   }
 
-  // If operator pre-selected a different table than the engine picked, link it.
-  // We never override conflicts; we just add the link if it's the chosen table.
-  if (v.tableId && reservation.table_id && v.tableId !== reservation.table_id) {
-    const { error: linkErr } = await supabase
-      .from("reservation_tables")
-      .insert({ reservation_id: reservation.id, table_id: v.tableId });
-    if (linkErr) {
-      // Non-fatal — engine already linked a valid table.
-      console.warn("walkIn: failed to link operator-chosen table", linkErr.message);
-    }
-  }
+  // Engine honors preselected_table_id for walk-in — no extra linking needed.
 
   return {
     ok: true,
