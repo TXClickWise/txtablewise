@@ -79,6 +79,7 @@ export async function createWalkIn(raw: WalkInInput): Promise<WalkInResult> {
     time: format(now, "HH:mm"),
     party_size: v.partySize,
     channel: "walk_in",
+    preselected_table_id: v.tableId ?? undefined,
     guest: {
       first_name: guestFirstName,
       email: guestEmail,
