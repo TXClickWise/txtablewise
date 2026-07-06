@@ -147,18 +147,48 @@ export function WalkInQuickSheet({ open, onOpenChange, prefill, onPlaced }: Prop
     largeGroupThreshold,
   }), [tables, reservations, effectivePartySize, effectiveZoneId, duration, largeGroupThreshold]);
 
-  const availableSuggestions = allSuggestions.filter(s => !s.blockReason);
-  const recommended = availableSuggestions.slice(0, 3);
-  const noTablesAvailable = !resLoading && availableSuggestions.length === 0;
+  const allComboSuggestions = useMemo(() => recommendCombinations(combinations, tables, reservations, {
+    partySize: effectivePartySize,
+    zoneId: effectiveZoneId,
+    durationMinutes: duration,
+    includeBlocked: true,
+    largeGroupThreshold,
+  }), [combinations, tables, reservations, effectivePartySize, effectiveZoneId, duration, largeGroupThreshold]);
 
-  // Selected table validation
+  const availableSuggestions = allSuggestions.filter(s => !s.blockReason);
+  const availableCombos = allComboSuggestions.filter(s => !s.blockReason);
+
+  // Merge & sort by score; take top 3 for recommended list
+  const mergedRecommended = useMemo(() => {
+    const singles = availableSuggestions.map((s) => ({
+      kind: "table" as const, score: s.score, single: s, combo: null as ComboSuggestion | null,
+    }));
+    const combos = availableCombos.map((s) => ({
+      kind: "combo" as const, score: s.score, single: null, combo: s,
+    }));
+    return [...singles, ...combos].sort((a, b) => b.score - a.score).slice(0, 3);
+  }, [availableSuggestions, availableCombos]);
+
+  const noTablesAvailable = !resLoading && availableSuggestions.length === 0 && availableCombos.length === 0;
+
+  // Selected validation
   const selectedSuggestion = tableId ? allSuggestions.find(s => s.table.id === tableId) : null;
-  const selectedHasConflict = !!selectedSuggestion?.blockReason;
+  const selectedCombo = comboId ? allComboSuggestions.find(s => s.combinationId === comboId) : null;
+  const selectedHasConflict = !!selectedSuggestion?.blockReason || !!selectedCombo?.blockReason;
+  const hasSelection = !!tableId || !!comboId;
+
+  const pickTable = (id: string) => { setTableId(id); setComboId(null); };
+  const pickCombo = (id: string) => { setComboId(id); setTableId(null); };
 
   // Auto-pick top recommendation when none chosen yet
   useEffect(() => {
-    if (open && !tableId && recommended[0]) setTableId(recommended[0].table.id);
-  }, [open, tableId, recommended]);
+    if (!open || hasSelection) return;
+    const top = mergedRecommended[0];
+    if (!top) return;
+    if (top.kind === "table") setTableId(top.single!.table.id);
+    else setComboId(top.combo!.combinationId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, hasSelection, mergedRecommended]);
 
   const endTimeLabel = useMemo(() => {
     const end = new Date(Date.now() + duration * 60_000);
@@ -169,19 +199,21 @@ export function WalkInQuickSheet({ open, onOpenChange, prefill, onPlaced }: Prop
 
   const handlePlace = async () => {
     if (submitting) return;
-    if (!tableId) {
-      toast.error("Kies een tafel.");
+    if (!hasSelection) {
+      toast.error("Kies een tafel of combinatie.");
       return;
     }
     if (selectedHasConflict) {
-      toast.error("Deze tafel is niet beschikbaar.");
+      toast.error("Deze tafel/combinatie is niet beschikbaar.");
       return;
     }
     setSubmitting(true);
     const result = await createWalkIn({
       restaurantId,
       partySize: effectivePartySize,
-      tableId,
+      tableId: tableId ?? undefined,
+      tableIds: selectedCombo ? selectedCombo.tableIds : undefined,
+      combinationId: selectedCombo ? selectedCombo.combinationId : undefined,
       durationMinutes: duration,
       guest: {
         firstName: firstName.trim() || undefined,
@@ -194,14 +226,17 @@ export function WalkInQuickSheet({ open, onOpenChange, prefill, onPlaced }: Prop
       toast.error(result.error ?? "Walk-in plaatsen mislukt.");
       return;
     }
-    const placedTable = tables.find(t => t.id === (result.reservation?.table_id ?? tableId));
+    const placedLabel = selectedCombo
+      ? selectedCombo.name || selectedCombo.tables.map((t) => t.label).join(" + ")
+      : tables.find(t => t.id === (result.reservation?.table_id ?? tableId))?.label;
     toast.success(
-      `Walk-in geplaatst${placedTable ? ` aan tafel ${placedTable.label}` : ""}.`,
+      `Walk-in geplaatst${placedLabel ? ` aan ${selectedCombo ? "combinatie " : "tafel "}${placedLabel}` : ""}.`,
     );
     qc.invalidateQueries();
     onPlaced?.(result.reservation!.id, result.reservation?.table_id ?? null);
     onOpenChange(false);
   };
+
 
   const handleWaitlist = async () => {
     if (submitting) return;
