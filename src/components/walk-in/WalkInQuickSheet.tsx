@@ -628,7 +628,7 @@ export function WalkInQuickSheet({ open, onOpenChange, prefill, onPlaced }: Prop
           <Button
             size="lg"
             className="flex-1 h-14 text-base"
-            disabled={submitting || !tableId || selectedHasConflict || noTablesAvailable}
+            disabled={submitting || !hasSelection || selectedHasConflict || noTablesAvailable}
             onClick={handlePlace}
           >
             {submitting ? (
