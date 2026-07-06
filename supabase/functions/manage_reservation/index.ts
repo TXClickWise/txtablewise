@@ -329,27 +329,33 @@ async function doUpdate(
     end_iso = addMinutesIso(start_iso, duration);
   }
 
-  // Determine candidate table
-  const currentTableId = current.reservation_tables?.[0]?.table_id ?? null;
-  const targetTableId = body.table_id !== undefined ? body.table_id : currentTableId;
+  // Determine currently assigned tables (may be meerdere bij een combinatie)
+  const currentTableIds: string[] = ((current.reservation_tables ?? []) as Array<{ table_id: string }>)
+    .map((rt) => rt.table_id)
+    .filter((v): v is string => !!v);
+
+  // Operator override: enkele of meerdere tafels (combinatie) meegegeven
+  const overrideTableIds: string[] | null = (() => {
+    if (Array.isArray(body.table_ids) && body.table_ids.length > 0) {
+      return Array.from(new Set(body.table_ids));
+    }
+    if (body.table_id !== undefined) {
+      return body.table_id ? [body.table_id] : [];
+    }
+    return null; // geen override, engine kiest / behoudt
+  })();
 
   // Re-check conflicts if anything time/party/table-related changed
-  if (timeOrPartyOrDateChanged || body.table_id !== undefined) {
-    // fetch tables fitting party size
-    const { data: tables } = await admin
-      .from("tables").select("id, capacity_min, capacity_max")
-      .eq("restaurant_id", current.restaurant_id).eq("is_active", true)
-      .lte("capacity_min", newPartySize).gte("capacity_max", newPartySize)
-      .order("capacity_max", { ascending: true });
+  const tableSelectionChanged = overrideTableIds !== null;
+  if (timeOrPartyOrDateChanged || tableSelectionChanged) {
+    // Bepaal welke set tafels we willen gebruiken:
+    // 1) override → valideer die exact
+    // 2) huidige tafels passen nog qua party & vrij → behoud
+    // 3) engine picker (single of combinatie, met fill-strategie)
+    let chosenTableIds: string[] = [];
+    let chosenCombinationId: string | null = body.combination_id ?? null;
 
-    if (!tables || tables.length === 0) {
-      return json({
-        error: "Er is geen passende tafel vrij voor dit gezelschap.",
-        reason_code: "no_table_available",
-      }, 409);
-    }
-
-    // overlapping reservations
+    // Bereken bezette tafels in het (nieuwe) tijdvenster (excl. deze reservering)
     const { data: existing } = await admin
       .from("reservations")
       .select("id, start_time, end_time, party_size, status, hold_expires_at, reservation_tables(table_id)")
@@ -371,28 +377,67 @@ async function doUpdate(
       }
     }
 
-    // Choose table
-    let chosenTableId = targetTableId;
-    if (chosenTableId) {
-      // Validate chosen table fits & is free
+    if (overrideTableIds !== null && overrideTableIds.length > 0) {
+      // Valideer: bestaan, actief, van dit restaurant, niet bezet
+      const { data: pts } = await admin
+        .from("tables")
+        .select("id, is_active, restaurant_id, capacity_min, capacity_max")
+        .in("id", overrideTableIds);
       // deno-lint-ignore no-explicit-any
-      const ok = tables.find((t: any) => t.id === chosenTableId);
-      if (!ok) {
-        return json({ error: "Deze tafel past niet bij het gezelschap.", reason_code: "no_table_available" }, 409);
+      const rows = (pts ?? []) as any[];
+      if (rows.length !== overrideTableIds.length ||
+          rows.some((t) => t.restaurant_id !== current.restaurant_id || !t.is_active)) {
+        return json({ error: "Gekozen tafel(s) niet beschikbaar.", reason_code: "no_table_available" }, 409);
       }
-      if (occupied.has(chosenTableId)) {
-        return json({ error: "Deze tafel is al bezet in dit tijdslot.", reason_code: "no_table_available" }, 409);
+      const blocked = overrideTableIds.find((id) => occupied.has(id));
+      if (blocked) {
+        return json({ error: "Een van de gekozen tafels is al bezet in dit tijdslot.", reason_code: "no_table_available" }, 409);
       }
+      chosenTableIds = overrideTableIds;
     } else {
-      // deno-lint-ignore no-explicit-any
-      const candidate = (tables as any[]).find((t) => !occupied.has(t.id));
-      if (!candidate) {
-        return json({
-          error: "Er is geen passende tafel vrij voor dit moment.",
-          reason_code: "no_table_available",
-        }, 409);
+      // Geen override → probeer huidige tafels te behouden als ze nog passen & vrij zijn
+      let keepCurrent = false;
+      if (currentTableIds.length > 0) {
+        const { data: currTables } = await admin
+          .from("tables")
+          .select("id, capacity_min, capacity_max, is_active")
+          .in("id", currentTableIds);
+        // deno-lint-ignore no-explicit-any
+        const rows = (currTables ?? []) as any[];
+        const allActive = rows.length === currentTableIds.length && rows.every((t) => t.is_active);
+        const noneBlocked = currentTableIds.every((id) => !occupied.has(id));
+        // Combinatie: som van capacity_max moet ≥ party, en som van capacity_min ≤ party
+        const sumMax = rows.reduce((n, t) => n + (t.capacity_max ?? 0), 0);
+        const sumMin = rows.reduce((n, t) => n + (t.capacity_min ?? 0), 0);
+        const fits = currentTableIds.length === 1
+          ? (rows[0]?.capacity_min <= newPartySize && rows[0]?.capacity_max >= newPartySize)
+          : (sumMin <= newPartySize && sumMax >= newPartySize);
+        if (allActive && noneBlocked && fits) {
+          chosenTableIds = currentTableIds;
+          keepCurrent = true;
+        }
       }
-      chosenTableId = candidate.id;
+
+      if (!keepCurrent) {
+        // Engine: probeer eerst losse tafel, dan combinatie (fill-strategie-bewust)
+        const picked = await pickSeatingWithStrategy(admin, {
+          restaurantId: current.restaurant_id,
+          partySize: newPartySize,
+          startIso: start_iso,
+          endIso: end_iso,
+          timezone: tz,
+          date: newDate,
+          excludeReservationId: current.id,
+        });
+        if (!picked) {
+          return json({
+            error: "Er is geen passende tafel of combinatie vrij voor dit moment.",
+            reason_code: "no_table_available",
+          }, 409);
+        }
+        chosenTableIds = picked.tableIds;
+        chosenCombinationId = picked.combinationId ?? null;
+      }
     }
 
     // Pacing check (skip for walk_in / manager)
@@ -439,21 +484,30 @@ async function doUpdate(
       .from("reservations").update(patch).eq("id", current.id).select("*").single();
     if (uErr) return json({ error: uErr.message }, 500);
 
-    // Re-link table if changed
-    if (chosenTableId !== currentTableId) {
+    // Re-link tables als de set verschilt (delete + insert alle geselecteerde tafels)
+    const sameSet = chosenTableIds.length === currentTableIds.length &&
+      chosenTableIds.every((id) => currentTableIds.includes(id));
+    if (!sameSet) {
       await admin.from("reservation_tables").delete().eq("reservation_id", current.id);
-      if (chosenTableId) {
-        const { error: rtErr } = await admin.from("reservation_tables")
-          .insert({ reservation_id: current.id, table_id: chosenTableId });
-        if (rtErr) return json({ error: "Tafel niet gekoppeld: " + rtErr.message }, 500);
+      if (chosenTableIds.length > 0) {
+        const inserts = chosenTableIds.map((table_id) => ({ reservation_id: current.id, table_id }));
+        const { error: rtErr } = await admin.from("reservation_tables").insert(inserts);
+        if (rtErr) return json({ error: "Tafel(s) niet gekoppeld: " + rtErr.message }, 500);
       }
     }
+
+    void chosenCombinationId; // reserved voor toekomstige logging
 
     await logAudit(admin, current.restaurant_id, userId, "reservation.updated", current.id, current, updated);
     await emitEvent(admin, current.restaurant_id, "reservation.updated", {
       reservation_id: current.id, party_size: newPartySize, start_time: start_iso,
     });
-    return json({ ok: true, reservation: updated, table_id: chosenTableId });
+    return json({
+      ok: true,
+      reservation: updated,
+      table_id: chosenTableIds[0] ?? null,
+      table_ids: chosenTableIds,
+    });
   }
 
   // Plain field-only update (notes etc.)
