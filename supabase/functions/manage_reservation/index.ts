@@ -5,6 +5,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { corsHeaders } from "../_shared/cors.ts";
 import {
   zonedDateTimeToUtcIso, addMinutesIso, intervalsOverlap, ACTIVE_STATUSES,
+  pickSeatingWithStrategy,
 } from "../_shared/reservation-utils.ts";
 import { evaluatePacing, durationFor, type PacingReservation } from "../_shared/pacing.ts";
 import { notifyWaitlistOnCancel } from "../_shared/waitlist-notify.ts";
@@ -32,7 +33,9 @@ type ManageRequest = {
   reservation_date?: string;       // YYYY-MM-DD
   start_time_local?: string;       // HH:MM
   party_size?: number;
-  table_id?: string | null;        // assign / reassign / clear
+  table_id?: string | null;        // assign / reassign / clear (single tafel)
+  table_ids?: string[];            // meerdere tafels (combinatie) — vervangt table_id
+  combination_id?: string | null;  // optionele expliciete combinatie-referentie
   internal_notes?: string | null;
   special_requests?: string | null;
   // Status change
