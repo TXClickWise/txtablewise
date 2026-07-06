@@ -513,7 +513,7 @@ export function WalkInQuickSheet({ open, onOpenChange, prefill, onPlaced }: Prop
                           type="button"
                           disabled={blocked}
                           title={s.blockReason ?? ""}
-                          onClick={() => setTableId(s.table.id)}
+                          onClick={() => pickTable(s.table.id)}
                           className={cn(
                             "h-16 rounded-lg border-2 px-2 py-1 text-left transition-all",
                             blocked
