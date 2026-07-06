@@ -32,6 +32,32 @@ export type Suggestion = {
   blockReason?: string;
 };
 
+export type RecCombination = {
+  id: string;
+  name: string;
+  table_ids: string[];
+  capacity_min: number;
+  capacity_max: number;
+};
+
+export type ComboSuggestion = {
+  kind: "combination";
+  combinationId: string;
+  name: string;
+  tableIds: string[];
+  tables: RecTable[];
+  capacity_min: number;
+  capacity_max: number;
+  /** Primary zone id when alle tafels in dezelfde zone zitten, anders null. */
+  zone_id: string | null;
+  score: number;
+  reasons: string[];
+  freeUntilMinutes: number | null;
+  freeUntilLabel: string | null;
+  conflict: boolean;
+  blockReason?: string;
+};
+
 export type RecommendOptions = {
   partySize: number;
   zoneId?: string | null;       // null/undefined = geen voorkeur
