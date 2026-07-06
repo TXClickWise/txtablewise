@@ -36,6 +36,9 @@ type BookRequest = {
   prefers_terrace?: boolean; // soft hint — used by fill strategy when enabled
   /** Operator-only (walk_in / manager): force a specific table instead of engine pick. */
   preselected_table_id?: string;
+  /** Operator-only: force a multi-table combination (walk-in of grote groep). */
+  preselected_table_ids?: string[];
+  preselected_combination_id?: string;
 };
 
 Deno.serve(async (req) => {
@@ -183,10 +186,30 @@ Deno.serve(async (req) => {
 
     let pickedZoneId: string | null = null;
 
-    // Operator override: honor preselected table for walk_in / manager.
+    // Operator override: honor preselected table(s) / combination for walk_in / manager.
     const preselectedTableId = body.preselected_table_id;
+    const preselectedTableIds = body.preselected_table_ids;
+    const preselectedCombinationId = body.preselected_combination_id;
     const isOperatorChannel = channel === "walk_in" || channel === "manager";
-    if (preselectedTableId && isOperatorChannel) {
+
+    // Multi-table (combination) override
+    if (isOperatorChannel && Array.isArray(preselectedTableIds) && preselectedTableIds.length > 0) {
+      const uniqueIds = Array.from(new Set(preselectedTableIds));
+      const { data: pts } = await supabase.from("tables")
+        .select("id, is_active, restaurant_id")
+        .in("id", uniqueIds);
+      const rows = (pts ?? []) as Array<{ id: string; is_active: boolean; restaurant_id: string }>;
+      if (rows.length !== uniqueIds.length || rows.some((t) => t.restaurant_id !== restaurant.id || !t.is_active)) {
+        return json({ error: "Gekozen tafels niet beschikbaar", error_code: "preselected_table_unavailable", field: "table_id" }, 409);
+      }
+      const blocked = uniqueIds.find((id) => occupied.has(id));
+      if (blocked) {
+        return json({ error: "Een van de gekozen tafels is net bezet — kies een andere combinatie.", error_code: "preselected_table_unavailable", field: "table_id" }, 409);
+      }
+      chosenTableIds = uniqueIds;
+      chosenCombinationId = preselectedCombinationId ?? null;
+      terracePreferenceUnmet = !!body.prefers_terrace;
+    } else if (preselectedTableId && isOperatorChannel) {
       const { data: pt } = await supabase.from("tables")
         .select("id, is_active, restaurant_id")
         .eq("id", preselectedTableId).maybeSingle();

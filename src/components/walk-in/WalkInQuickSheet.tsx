@@ -27,7 +27,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import { recommendTables, type RecTable, type RecReservation } from "@/lib/tableRecommendation";
+import { recommendTables, recommendCombinations, type RecTable, type RecReservation, type RecCombination, type ComboSuggestion } from "@/lib/tableRecommendation";
 import { createWalkIn, addToWaitlistNow } from "@/services/walkIn";
 
 type Zone = { id: string; name: string };
@@ -66,6 +66,7 @@ export function WalkInQuickSheet({ open, onOpenChange, prefill, onPlaced }: Prop
   const [zoneId, setZoneId] = useState<string | "any">("any");
   const [duration, setDuration] = useState<number>(defaultDuration);
   const [tableId, setTableId] = useState<string | null>(null);
+  const [comboId, setComboId] = useState<string | null>(null);
   const [firstName, setFirstName] = useState("");
   const [phone, setPhone] = useState("");
   const [notes, setNotes] = useState("");
@@ -80,6 +81,7 @@ export function WalkInQuickSheet({ open, onOpenChange, prefill, onPlaced }: Prop
     setZoneId(prefill?.zoneId ?? "any");
     setDuration(prefill?.durationMinutes ?? defaultDuration);
     setTableId(prefill?.tableId ?? null);
+    setComboId(null);
     setFirstName(prefill?.firstName ?? "");
     setPhone("");
     setNotes(prefill?.notes ?? "");
@@ -108,6 +110,19 @@ export function WalkInQuickSheet({ open, onOpenChange, prefill, onPlaced }: Prop
     },
   });
 
+  const { data: combinations = [] } = useQuery({
+    queryKey: ["table-combinations", restaurantId],
+    enabled: !!restaurantId && open,
+    queryFn: async () => {
+      const { data } = await supabase.from("table_combinations")
+        .select("id, name, table_ids, capacity_min, capacity_max")
+        .eq("restaurant_id", restaurantId!).eq("is_active", true)
+        .order("capacity_max", { ascending: true });
+      return (data ?? []) as RecCombination[];
+    },
+  });
+
+
   const today = format(new Date(), "yyyy-MM-dd");
   const { data: reservations = [], isLoading: resLoading } = useQuery({
     queryKey: ["walkin-quick-reservations", restaurantId, today],
@@ -132,18 +147,48 @@ export function WalkInQuickSheet({ open, onOpenChange, prefill, onPlaced }: Prop
     largeGroupThreshold,
   }), [tables, reservations, effectivePartySize, effectiveZoneId, duration, largeGroupThreshold]);
 
-  const availableSuggestions = allSuggestions.filter(s => !s.blockReason);
-  const recommended = availableSuggestions.slice(0, 3);
-  const noTablesAvailable = !resLoading && availableSuggestions.length === 0;
+  const allComboSuggestions = useMemo(() => recommendCombinations(combinations, tables, reservations, {
+    partySize: effectivePartySize,
+    zoneId: effectiveZoneId,
+    durationMinutes: duration,
+    includeBlocked: true,
+    largeGroupThreshold,
+  }), [combinations, tables, reservations, effectivePartySize, effectiveZoneId, duration, largeGroupThreshold]);
 
-  // Selected table validation
+  const availableSuggestions = allSuggestions.filter(s => !s.blockReason);
+  const availableCombos = allComboSuggestions.filter(s => !s.blockReason);
+
+  // Merge & sort by score; take top 3 for recommended list
+  const mergedRecommended = useMemo(() => {
+    const singles = availableSuggestions.map((s) => ({
+      kind: "table" as const, score: s.score, single: s, combo: null as ComboSuggestion | null,
+    }));
+    const combos = availableCombos.map((s) => ({
+      kind: "combo" as const, score: s.score, single: null, combo: s,
+    }));
+    return [...singles, ...combos].sort((a, b) => b.score - a.score).slice(0, 3);
+  }, [availableSuggestions, availableCombos]);
+
+  const noTablesAvailable = !resLoading && availableSuggestions.length === 0 && availableCombos.length === 0;
+
+  // Selected validation
   const selectedSuggestion = tableId ? allSuggestions.find(s => s.table.id === tableId) : null;
-  const selectedHasConflict = !!selectedSuggestion?.blockReason;
+  const selectedCombo = comboId ? allComboSuggestions.find(s => s.combinationId === comboId) : null;
+  const selectedHasConflict = !!selectedSuggestion?.blockReason || !!selectedCombo?.blockReason;
+  const hasSelection = !!tableId || !!comboId;
+
+  const pickTable = (id: string) => { setTableId(id); setComboId(null); };
+  const pickCombo = (id: string) => { setComboId(id); setTableId(null); };
 
   // Auto-pick top recommendation when none chosen yet
   useEffect(() => {
-    if (open && !tableId && recommended[0]) setTableId(recommended[0].table.id);
-  }, [open, tableId, recommended]);
+    if (!open || hasSelection) return;
+    const top = mergedRecommended[0];
+    if (!top) return;
+    if (top.kind === "table") setTableId(top.single!.table.id);
+    else setComboId(top.combo!.combinationId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, hasSelection, mergedRecommended]);
 
   const endTimeLabel = useMemo(() => {
     const end = new Date(Date.now() + duration * 60_000);
@@ -154,19 +199,21 @@ export function WalkInQuickSheet({ open, onOpenChange, prefill, onPlaced }: Prop
 
   const handlePlace = async () => {
     if (submitting) return;
-    if (!tableId) {
-      toast.error("Kies een tafel.");
+    if (!hasSelection) {
+      toast.error("Kies een tafel of combinatie.");
       return;
     }
     if (selectedHasConflict) {
-      toast.error("Deze tafel is niet beschikbaar.");
+      toast.error("Deze tafel/combinatie is niet beschikbaar.");
       return;
     }
     setSubmitting(true);
     const result = await createWalkIn({
       restaurantId,
       partySize: effectivePartySize,
-      tableId,
+      tableId: tableId ?? undefined,
+      tableIds: selectedCombo ? selectedCombo.tableIds : undefined,
+      combinationId: selectedCombo ? selectedCombo.combinationId : undefined,
       durationMinutes: duration,
       guest: {
         firstName: firstName.trim() || undefined,
@@ -179,14 +226,17 @@ export function WalkInQuickSheet({ open, onOpenChange, prefill, onPlaced }: Prop
       toast.error(result.error ?? "Walk-in plaatsen mislukt.");
       return;
     }
-    const placedTable = tables.find(t => t.id === (result.reservation?.table_id ?? tableId));
+    const placedLabel = selectedCombo
+      ? selectedCombo.name || selectedCombo.tables.map((t) => t.label).join(" + ")
+      : tables.find(t => t.id === (result.reservation?.table_id ?? tableId))?.label;
     toast.success(
-      `Walk-in geplaatst${placedTable ? ` aan tafel ${placedTable.label}` : ""}.`,
+      `Walk-in geplaatst${placedLabel ? ` aan ${selectedCombo ? "combinatie " : "tafel "}${placedLabel}` : ""}.`,
     );
     qc.invalidateQueries();
     onPlaced?.(result.reservation!.id, result.reservation?.table_id ?? null);
     onOpenChange(false);
   };
+
 
   const handleWaitlist = async () => {
     if (submitting) return;
@@ -347,51 +397,101 @@ export function WalkInQuickSheet({ open, onOpenChange, prefill, onPlaced }: Prop
               </div>
             ) : (
               <div className="space-y-2">
-                {recommended.map((s, idx) => (
-                  <button
-                    key={s.table.id}
-                    type="button"
-                    onClick={() => setTableId(s.table.id)}
-                    className={cn(
-                      "w-full text-left rounded-xl border-2 p-3 transition-all active:scale-[0.99]",
-                      tableId === s.table.id
-                        ? "border-primary bg-primary/5"
-                        : "border-border bg-card hover:border-primary/40",
-                    )}
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className={cn(
-                        "h-12 w-12 flex items-center justify-center font-display text-lg border-2 shrink-0",
-                        s.table.shape === "round" ? "rounded-full" : "rounded-md",
-                        tableId === s.table.id
-                          ? "border-primary bg-primary text-primary-foreground"
-                          : "border-border bg-muted",
-                      )}>
-                        {s.table.label}
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <div className="font-medium flex items-center gap-2 flex-wrap">
-                          Tafel {s.table.label}
-                          {idx === 0 && (
-                            <span className="text-[10px] uppercase tracking-wide bg-primary text-primary-foreground rounded-full px-2 py-0.5">
-                              Aanbevolen
-                            </span>
-                          )}
+                {mergedRecommended.map((row, idx) => {
+                  if (row.kind === "table") {
+                    const s = row.single!;
+                    const isSel = tableId === s.table.id;
+                    return (
+                      <button
+                        key={`t-${s.table.id}`}
+                        type="button"
+                        onClick={() => pickTable(s.table.id)}
+                        className={cn(
+                          "w-full text-left rounded-xl border-2 p-3 transition-all active:scale-[0.99]",
+                          isSel
+                            ? "border-primary bg-primary/5"
+                            : "border-border bg-card hover:border-primary/40",
+                        )}
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className={cn(
+                            "h-12 w-12 flex items-center justify-center font-display text-lg border-2 shrink-0",
+                            s.table.shape === "round" ? "rounded-full" : "rounded-md",
+                            isSel
+                              ? "border-primary bg-primary text-primary-foreground"
+                              : "border-border bg-muted",
+                          )}>
+                            {s.table.label}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <div className="font-medium flex items-center gap-2 flex-wrap">
+                              Tafel {s.table.label}
+                              {idx === 0 && (
+                                <span className="text-[10px] uppercase tracking-wide bg-primary text-primary-foreground rounded-full px-2 py-0.5">
+                                  Aanbevolen
+                                </span>
+                              )}
+                            </div>
+                            <div className="text-xs text-muted-foreground">
+                              {s.table.capacity_min}-{s.table.capacity_max}p ·
+                              {" "}{zones.find(z => z.id === s.table.zone_id)?.name ?? "Geen zone"}
+                              {s.freeUntilLabel && <> · vrij tot {s.freeUntilLabel}</>}
+                            </div>
+                          </div>
+                          {isSel && <Check className="h-5 w-5 text-primary shrink-0" />}
                         </div>
-                        <div className="text-xs text-muted-foreground">
-                          {s.table.capacity_min}-{s.table.capacity_max}p ·
-                          {" "}{zones.find(z => z.id === s.table.zone_id)?.name ?? "Geen zone"}
-                          {s.freeUntilLabel && <> · vrij tot {s.freeUntilLabel}</>}
-                        </div>
-                      </div>
-                      {tableId === s.table.id && (
-                        <Check className="h-5 w-5 text-primary shrink-0" />
+                      </button>
+                    );
+                  }
+                  const c = row.combo!;
+                  const isSel = comboId === c.combinationId;
+                  const labels = c.tables.map((t) => t.label).join(" + ");
+                  return (
+                    <button
+                      key={`c-${c.combinationId}`}
+                      type="button"
+                      onClick={() => pickCombo(c.combinationId)}
+                      className={cn(
+                        "w-full text-left rounded-xl border-2 p-3 transition-all active:scale-[0.99]",
+                        isSel
+                          ? "border-primary bg-primary/5"
+                          : "border-border bg-card hover:border-primary/40",
                       )}
-                    </div>
-                  </button>
-                ))}
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className={cn(
+                          "h-12 min-w-12 px-2 flex items-center justify-center font-display text-sm border-2 rounded-md shrink-0",
+                          isSel
+                            ? "border-primary bg-primary text-primary-foreground"
+                            : "border-border bg-muted",
+                        )}>
+                          {labels}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="font-medium flex items-center gap-2 flex-wrap">
+                            {c.name || `Combinatie ${labels}`}
+                            <span className="text-[10px] uppercase tracking-wide bg-secondary text-secondary-foreground rounded-full px-2 py-0.5">
+                              Combinatie
+                            </span>
+                            {idx === 0 && (
+                              <span className="text-[10px] uppercase tracking-wide bg-primary text-primary-foreground rounded-full px-2 py-0.5">
+                                Aanbevolen
+                              </span>
+                            )}
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            {c.capacity_min}-{c.capacity_max}p · {c.tables.length} tafels
+                            {c.freeUntilLabel && <> · vrij tot {c.freeUntilLabel}</>}
+                          </div>
+                        </div>
+                        {isSel && <Check className="h-5 w-5 text-primary shrink-0" />}
+                      </div>
+                    </button>
+                  );
+                })}
               </div>
             )}
+
 
             {/* Manual table picker */}
             {!noTablesAvailable && (
@@ -413,7 +513,7 @@ export function WalkInQuickSheet({ open, onOpenChange, prefill, onPlaced }: Prop
                           type="button"
                           disabled={blocked}
                           title={s.blockReason ?? ""}
-                          onClick={() => setTableId(s.table.id)}
+                          onClick={() => pickTable(s.table.id)}
                           className={cn(
                             "h-16 rounded-lg border-2 px-2 py-1 text-left transition-all",
                             blocked
@@ -528,7 +628,7 @@ export function WalkInQuickSheet({ open, onOpenChange, prefill, onPlaced }: Prop
           <Button
             size="lg"
             className="flex-1 h-14 text-base"
-            disabled={submitting || !tableId || selectedHasConflict || noTablesAvailable}
+            disabled={submitting || !hasSelection || selectedHasConflict || noTablesAvailable}
             onClick={handlePlace}
           >
             {submitting ? (
