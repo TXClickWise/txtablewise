@@ -14,8 +14,11 @@ import { supabase } from "@/integrations/supabase/client";
 export const walkInSchema = z.object({
   restaurantId: z.string().uuid(),
   partySize: z.number().int().min(1).max(50),
-  /** Optional pre-selected table — server still re-checks conflicts. */
+  /** Optional pre-selected single table — server still re-checks conflicts. */
   tableId: z.string().uuid().optional(),
+  /** Optional pre-selected multi-table combination (walk-in of grote groep). */
+  tableIds: z.array(z.string().uuid()).min(1).max(20).optional(),
+  combinationId: z.string().uuid().optional(),
   /** Override walkin_default_minutes (45/60/75/90/120 typical). */
   durationMinutes: z.number().int().min(15).max(300).optional(),
   guest: z
