@@ -66,6 +66,7 @@ export function WalkInQuickSheet({ open, onOpenChange, prefill, onPlaced }: Prop
   const [zoneId, setZoneId] = useState<string | "any">("any");
   const [duration, setDuration] = useState<number>(defaultDuration);
   const [tableId, setTableId] = useState<string | null>(null);
+  const [comboId, setComboId] = useState<string | null>(null);
   const [firstName, setFirstName] = useState("");
   const [phone, setPhone] = useState("");
   const [notes, setNotes] = useState("");
