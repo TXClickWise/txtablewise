@@ -81,6 +81,7 @@ export function WalkInQuickSheet({ open, onOpenChange, prefill, onPlaced }: Prop
     setZoneId(prefill?.zoneId ?? "any");
     setDuration(prefill?.durationMinutes ?? defaultDuration);
     setTableId(prefill?.tableId ?? null);
+    setComboId(null);
     setFirstName(prefill?.firstName ?? "");
     setPhone("");
     setNotes(prefill?.notes ?? "");
