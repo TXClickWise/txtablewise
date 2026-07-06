@@ -6,6 +6,10 @@ import {
   WEEKDAY_KEYS, getWeekdayKey, zonedDateTimeToUtcIso, addMinutesIso,
   intervalsOverlap, ACTIVE_STATUSES, findAvailableCombination,
 } from "../_shared/reservation-utils.ts";
+import {
+  resolveActiveZones, pickCombinationWithFillStrategy,
+  type ZoneRow, type TableRow as FillTableRow, type WeatherRow, type CombinationRow,
+} from "../_shared/zone-fill.ts";
 import { evaluatePacing, durationFor, type PacingReservation } from "../_shared/pacing.ts";
 
 type AvailabilityRequest = {
@@ -217,6 +221,43 @@ Deno.serve(async (req) => {
       hold_expires_at: r.hold_expires_at,
     }));
 
+    // Pre-fetch combinatie-metadata en weer voor fill-strategie combinatie-pick.
+    // Zo blijft availability consistent met book_reservation wanneer fill_strategy_enabled aanstaat.
+    const fillStrategyOn = restaurant.fill_strategy_enabled === true;
+    let comboFillCtx:
+      | {
+          combinations: CombinationRow[];
+          tablesById: Map<string, FillTableRow>;
+          zones: ZoneRow[];
+          weather: WeatherRow | null;
+        }
+      | null = null;
+    if (fillStrategyOn) {
+      const [{ data: combosRaw }, { data: zonesRaw }, { data: weatherRow }] = await Promise.all([
+        supabase.from("table_combinations")
+          .select("id, name, table_ids, capacity_min, capacity_max, fill_priority, is_active")
+          .eq("restaurant_id", restaurant.id).eq("is_active", true),
+        supabase.from("zones").select("*").eq("restaurant_id", restaurant.id),
+        supabase.from("weather_forecasts").select("min_temp_c, max_temp_c, precipitation_mm")
+          .eq("restaurant_id", restaurant.id).eq("date", body.date).maybeSingle(),
+      ]);
+      const combinations = (combosRaw ?? []) as CombinationRow[];
+      const allComboTableIds = Array.from(new Set(combinations.flatMap((c) => c.table_ids ?? [])));
+      const tablesById = new Map<string, FillTableRow>();
+      if (allComboTableIds.length > 0) {
+        const { data: comboTables } = await supabase
+          .from("tables").select("id, zone_id, capacity_min, capacity_max, fill_priority, label")
+          .in("id", allComboTableIds);
+        for (const t of (comboTables ?? []) as FillTableRow[]) tablesById.set(t.id, t);
+      }
+      comboFillCtx = {
+        combinations,
+        tablesById,
+        zones: (zonesRaw ?? []) as ZoneRow[],
+        weather: (weatherRow ?? null) as WeatherRow | null,
+      };
+    }
+
     // For each slot determine free fitting tables AND pacing.
     // If no individual table fits, try a table combination (best-fit fallback).
     const slots: Slot[] = await Promise.all(slotCandidates.map(async (slot) => {
@@ -235,10 +276,33 @@ Deno.serve(async (req) => {
       let tableAvailable = free.length > 0;
       let isCombination = false;
       if (!tableAvailable) {
-        const combo = await findAvailableCombination(
-          supabase, restaurant.id, body.party_size, slot.start_iso, slot.end_iso, undefined, excludedTableIds,
-        );
-        if (combo) { tableAvailable = true; isCombination = true; }
+        if (comboFillCtx) {
+          // Fill-strategie-bewuste combinatie-pick, gelijk aan book_reservation
+          const zoneActivity = resolveActiveZones({
+            zones: comboFillCtx.zones,
+            partySize: body.party_size,
+            startIso: slot.start_iso,
+            timezone: tz,
+            weather: comboFillCtx.weather,
+          });
+          const filteredCombos = excludedTableIds
+            ? comboFillCtx.combinations.filter((c) => !(c.table_ids ?? []).some((id) => excludedTableIds!.has(id)))
+            : comboFillCtx.combinations;
+          const picked = pickCombinationWithFillStrategy({
+            combinations: filteredCombos,
+            tablesById: comboFillCtx.tablesById,
+            occupiedTableIds: conflicting,
+            zoneActivity,
+            prefersTerrace: false,
+            partySize: body.party_size,
+          });
+          if (picked) { tableAvailable = true; isCombination = true; }
+        } else {
+          const combo = await findAvailableCombination(
+            supabase, restaurant.id, body.party_size, slot.start_iso, slot.end_iso, undefined, excludedTableIds,
+          );
+          if (combo) { tableAvailable = true; isCombination = true; }
+        }
       }
       const available = tableAvailable && pacing.ok;
       return {

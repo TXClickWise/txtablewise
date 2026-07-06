@@ -480,7 +480,12 @@ async function evaluate(sb: any, reservation: any, restaurant: any, desiredDate:
     return { outcome: "rejected", reasonCode: "too_late_min_notice" };
   }
 
-  // 2. Threshold for staff review
+  // 2. Hard cap: onredelijke groepsgroottes direct afwijzen (gastwijziging)
+  const hardCap = restaurant.large_group_max_online_request ?? 20;
+  if (desiredParty > hardCap) {
+    return { outcome: "rejected", reasonCode: "party_size_over_cap" };
+  }
+  // 3. Threshold for staff review
   const threshold = restaurant.guest_changes_auto_reject_party_size ?? restaurant.large_group_threshold ?? 9;
   if (desiredParty >= threshold) {
     return { outcome: "pending_review", reasonCode: "large_party_needs_staff" };

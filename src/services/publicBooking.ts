@@ -217,6 +217,10 @@ export type WaitlistPayload = {
 };
 
 export async function submitWaitlist(payload: WaitlistPayload): Promise<{ ok: boolean; error?: string }> {
+  // Hard cap tegen absurd grote wachtlijst-inschrijvingen — voorkomt spam / mis-clicks.
+  if (!Number.isFinite(payload.party_size) || payload.party_size < 1 || payload.party_size > 50) {
+    return { ok: false, error: "Ongeldige groepsgrootte." };
+  }
   const { error } = await supabase.from("waitlist_entries").insert({
     restaurant_id: payload.restaurant_id,
     first_name: payload.first_name,

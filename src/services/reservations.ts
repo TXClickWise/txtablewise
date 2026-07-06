@@ -37,6 +37,10 @@ export type ManagePayload = {
   start_time_local?: string;
   party_size?: number;
   table_id?: string | null;
+  /** Meerdere tafels (combinatie). Vervangt table_id wanneer aanwezig. */
+  table_ids?: string[];
+  /** Optionele expliciete combinatie-ID voor logging. */
+  combination_id?: string | null;
   internal_notes?: string | null;
   special_requests?: string | null;
   new_status?: ReservationStatus;
@@ -58,6 +62,7 @@ export type ManageResult = {
     | "unknown_error";
   reservation?: Record<string, unknown>;
   table_id?: string | null;
+  table_ids?: string[];
 };
 
 /**
@@ -78,7 +83,12 @@ export async function manageReservation(payload: ManagePayload): Promise<ManageR
   if (data?.error) {
     return { ok: false, error: data.error, reason_code: data.reason_code };
   }
-  return { ok: true, reservation: data?.reservation, table_id: data?.table_id };
+  return {
+    ok: true,
+    reservation: data?.reservation,
+    table_id: data?.table_id,
+    table_ids: data?.table_ids,
+  };
 }
 
 /** Convenience helpers that map directly to operator buttons. */
@@ -110,6 +120,7 @@ export const reservations = {
     id: string,
     fields: Partial<Pick<ManagePayload,
       "reservation_date" | "start_time_local" | "party_size" |
-      "table_id" | "internal_notes" | "special_requests">>,
+      "table_id" | "table_ids" | "combination_id" |
+      "internal_notes" | "special_requests">>,
   ) => manageReservation({ action: "update", reservation_id: id, ...fields }),
 };
