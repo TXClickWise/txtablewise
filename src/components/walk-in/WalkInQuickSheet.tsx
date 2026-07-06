@@ -110,6 +110,19 @@ export function WalkInQuickSheet({ open, onOpenChange, prefill, onPlaced }: Prop
     },
   });
 
+  const { data: combinations = [] } = useQuery({
+    queryKey: ["table-combinations", restaurantId],
+    enabled: !!restaurantId && open,
+    queryFn: async () => {
+      const { data } = await supabase.from("table_combinations")
+        .select("id, name, table_ids, capacity_min, capacity_max")
+        .eq("restaurant_id", restaurantId!).eq("is_active", true)
+        .order("capacity_max", { ascending: true });
+      return (data ?? []) as RecCombination[];
+    },
+  });
+
+
   const today = format(new Date(), "yyyy-MM-dd");
   const { data: reservations = [], isLoading: resLoading } = useQuery({
     queryKey: ["walkin-quick-reservations", restaurantId, today],
