@@ -633,7 +633,7 @@ const SECTIONS: Section[] = [
         <Callout tone="warn" title='Mapping Reference verplicht — stuur eerst een test-payload'>
           <p>
             ClickWise toont de melding <em>"A Mapping Reference is required for an Inbound Webhook Trigger"</em>
-            omdat HighLevel pas weet welke velden je payload heeft nadat er één keer een echte request is binnengekomen.
+            omdat ClickWise pas weet welke velden je payload heeft nadat er één keer een echte request is binnengekomen.
             Eénmalige setup per workflow:
           </p>
           <ol className="list-decimal list-inside space-y-1 mt-2">
@@ -748,7 +748,7 @@ const SECTIONS: Section[] = [
         </div>
 
         <div className="space-y-1">
-          <div className="font-medium">Stap 2 — Call Transfer action in ClickWise/Vapi</div>
+          <div className="font-medium">Stap 2 — Call Transfer action in ClickWise</div>
           <ol className="list-decimal list-inside space-y-1">
             <li>Voeg een action toe van het type <strong>Call Transfer</strong> (of <em>Live Transfer</em>).</li>
             <li>Naam: <code>Call Transfer</code> (exact zoals in de prompt).</li>

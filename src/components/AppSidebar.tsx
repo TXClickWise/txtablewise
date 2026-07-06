@@ -218,7 +218,7 @@ export function AppSidebar() {
         </Button>
         {!collapsed && (
           <div className="px-2 pt-2 pb-1 text-xs leading-snug text-sidebar-foreground/85 text-center whitespace-nowrap">
-            Created with <span className="text-destructive">❤</span> on Texel by{" "}
+            Created with <span className="text-destructive">❤</span> on Texel by Jeroen for{" "}
             <a
               href="https://clickwise.app"
               target="_blank"
