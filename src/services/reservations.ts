@@ -120,6 +120,7 @@ export const reservations = {
     id: string,
     fields: Partial<Pick<ManagePayload,
       "reservation_date" | "start_time_local" | "party_size" |
-      "table_id" | "internal_notes" | "special_requests">>,
+      "table_id" | "table_ids" | "combination_id" |
+      "internal_notes" | "special_requests">>,
   ) => manageReservation({ action: "update", reservation_id: id, ...fields }),
 };
