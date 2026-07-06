@@ -27,7 +27,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import { recommendTables, type RecTable, type RecReservation } from "@/lib/tableRecommendation";
+import { recommendTables, recommendCombinations, type RecTable, type RecReservation, type RecCombination, type ComboSuggestion } from "@/lib/tableRecommendation";
 import { createWalkIn, addToWaitlistNow } from "@/services/walkIn";
 
 type Zone = { id: string; name: string };
