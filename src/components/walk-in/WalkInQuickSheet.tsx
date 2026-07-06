@@ -397,51 +397,101 @@ export function WalkInQuickSheet({ open, onOpenChange, prefill, onPlaced }: Prop
               </div>
             ) : (
               <div className="space-y-2">
-                {recommended.map((s, idx) => (
-                  <button
-                    key={s.table.id}
-                    type="button"
-                    onClick={() => setTableId(s.table.id)}
-                    className={cn(
-                      "w-full text-left rounded-xl border-2 p-3 transition-all active:scale-[0.99]",
-                      tableId === s.table.id
-                        ? "border-primary bg-primary/5"
-                        : "border-border bg-card hover:border-primary/40",
-                    )}
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className={cn(
-                        "h-12 w-12 flex items-center justify-center font-display text-lg border-2 shrink-0",
-                        s.table.shape === "round" ? "rounded-full" : "rounded-md",
-                        tableId === s.table.id
-                          ? "border-primary bg-primary text-primary-foreground"
-                          : "border-border bg-muted",
-                      )}>
-                        {s.table.label}
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <div className="font-medium flex items-center gap-2 flex-wrap">
-                          Tafel {s.table.label}
-                          {idx === 0 && (
-                            <span className="text-[10px] uppercase tracking-wide bg-primary text-primary-foreground rounded-full px-2 py-0.5">
-                              Aanbevolen
-                            </span>
-                          )}
+                {mergedRecommended.map((row, idx) => {
+                  if (row.kind === "table") {
+                    const s = row.single!;
+                    const isSel = tableId === s.table.id;
+                    return (
+                      <button
+                        key={`t-${s.table.id}`}
+                        type="button"
+                        onClick={() => pickTable(s.table.id)}
+                        className={cn(
+                          "w-full text-left rounded-xl border-2 p-3 transition-all active:scale-[0.99]",
+                          isSel
+                            ? "border-primary bg-primary/5"
+                            : "border-border bg-card hover:border-primary/40",
+                        )}
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className={cn(
+                            "h-12 w-12 flex items-center justify-center font-display text-lg border-2 shrink-0",
+                            s.table.shape === "round" ? "rounded-full" : "rounded-md",
+                            isSel
+                              ? "border-primary bg-primary text-primary-foreground"
+                              : "border-border bg-muted",
+                          )}>
+                            {s.table.label}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <div className="font-medium flex items-center gap-2 flex-wrap">
+                              Tafel {s.table.label}
+                              {idx === 0 && (
+                                <span className="text-[10px] uppercase tracking-wide bg-primary text-primary-foreground rounded-full px-2 py-0.5">
+                                  Aanbevolen
+                                </span>
+                              )}
+                            </div>
+                            <div className="text-xs text-muted-foreground">
+                              {s.table.capacity_min}-{s.table.capacity_max}p ·
+                              {" "}{zones.find(z => z.id === s.table.zone_id)?.name ?? "Geen zone"}
+                              {s.freeUntilLabel && <> · vrij tot {s.freeUntilLabel}</>}
+                            </div>
+                          </div>
+                          {isSel && <Check className="h-5 w-5 text-primary shrink-0" />}
                         </div>
-                        <div className="text-xs text-muted-foreground">
-                          {s.table.capacity_min}-{s.table.capacity_max}p ·
-                          {" "}{zones.find(z => z.id === s.table.zone_id)?.name ?? "Geen zone"}
-                          {s.freeUntilLabel && <> · vrij tot {s.freeUntilLabel}</>}
-                        </div>
-                      </div>
-                      {tableId === s.table.id && (
-                        <Check className="h-5 w-5 text-primary shrink-0" />
+                      </button>
+                    );
+                  }
+                  const c = row.combo!;
+                  const isSel = comboId === c.combinationId;
+                  const labels = c.tables.map((t) => t.label).join(" + ");
+                  return (
+                    <button
+                      key={`c-${c.combinationId}`}
+                      type="button"
+                      onClick={() => pickCombo(c.combinationId)}
+                      className={cn(
+                        "w-full text-left rounded-xl border-2 p-3 transition-all active:scale-[0.99]",
+                        isSel
+                          ? "border-primary bg-primary/5"
+                          : "border-border bg-card hover:border-primary/40",
                       )}
-                    </div>
-                  </button>
-                ))}
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className={cn(
+                          "h-12 min-w-12 px-2 flex items-center justify-center font-display text-sm border-2 rounded-md shrink-0",
+                          isSel
+                            ? "border-primary bg-primary text-primary-foreground"
+                            : "border-border bg-muted",
+                        )}>
+                          {labels}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="font-medium flex items-center gap-2 flex-wrap">
+                            {c.name || `Combinatie ${labels}`}
+                            <span className="text-[10px] uppercase tracking-wide bg-secondary text-secondary-foreground rounded-full px-2 py-0.5">
+                              Combinatie
+                            </span>
+                            {idx === 0 && (
+                              <span className="text-[10px] uppercase tracking-wide bg-primary text-primary-foreground rounded-full px-2 py-0.5">
+                                Aanbevolen
+                              </span>
+                            )}
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            {c.capacity_min}-{c.capacity_max}p · {c.tables.length} tafels
+                            {c.freeUntilLabel && <> · vrij tot {c.freeUntilLabel}</>}
+                          </div>
+                        </div>
+                        {isSel && <Check className="h-5 w-5 text-primary shrink-0" />}
+                      </div>
+                    </button>
+                  );
+                })}
               </div>
             )}
+
 
             {/* Manual table picker */}
             {!noTablesAvailable && (
