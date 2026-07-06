@@ -36,6 +36,9 @@ type BookRequest = {
   prefers_terrace?: boolean; // soft hint — used by fill strategy when enabled
   /** Operator-only (walk_in / manager): force a specific table instead of engine pick. */
   preselected_table_id?: string;
+  /** Operator-only: force a multi-table combination (walk-in of grote groep). */
+  preselected_table_ids?: string[];
+  preselected_combination_id?: string;
 };
 
 Deno.serve(async (req) => {
