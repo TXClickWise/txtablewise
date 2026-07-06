@@ -83,6 +83,8 @@ export async function createWalkIn(raw: WalkInInput): Promise<WalkInResult> {
     party_size: v.partySize,
     channel: "walk_in",
     preselected_table_id: v.tableId ?? undefined,
+    preselected_table_ids: v.tableIds ?? undefined,
+    preselected_combination_id: v.combinationId ?? undefined,
     guest: {
       first_name: guestFirstName,
       email: guestEmail,
@@ -94,6 +96,8 @@ export async function createWalkIn(raw: WalkInInput): Promise<WalkInResult> {
       origin: "operator_walk_in",
       is_walk_in_guest: true,
       preselected_table_id: v.tableId ?? null,
+      preselected_table_ids: v.tableIds ?? null,
+      preselected_combination_id: v.combinationId ?? null,
       duration_override: v.durationMinutes ?? null,
     },
   };
