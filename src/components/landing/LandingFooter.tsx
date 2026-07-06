@@ -37,7 +37,7 @@ export function LandingFooter() {
           © {new Date().getFullYear()} TX TableWise — Premium horeca reserveringen.
         </div>
         <div className="text-xs text-primary-foreground/85">
-          Created with <span className="text-accent">❤</span> on Texel by{" "}
+          Created with <span className="text-accent">❤</span> on Texel by Jeroen for{" "}
           <a
             href="https://clickwise.app"
             target="_blank"

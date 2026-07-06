@@ -215,7 +215,7 @@ export default function AdminClickWiseProvisioningPage() {
             </CardHeader>
             <CardContent className="space-y-3">
               <p className="text-sm text-muted-foreground">
-                Maakt een nieuw HighLevel sub-account via het SaaS-plan <code>TX TableWise</code>.
+                Maakt een nieuw ClickWise sub-account via het SaaS-plan <code>TX TableWise</code>.
                 Snapshot komt automatisch mee. Daarna worden Custom Values gepusht.
               </p>
               <div className="flex flex-wrap items-center gap-3">
@@ -305,7 +305,7 @@ export default function AdminClickWiseProvisioningPage() {
             </CardHeader>
             <CardContent>
               <ol className="list-decimal list-inside text-sm space-y-1 text-muted-foreground">
-                <li>Koop LC-Phone nummer in het HighLevel sub-account</li>
+                <li>Koop telefoonnummer in het ClickWise sub-account</li>
                 <li>Dien Twilio Regulatory Bundle in (NL geografische nummers)</li>
                 <li>Koppel nummer aan Voice AI assistant</li>
                 <li>Plak inbound webhook URLs in TableWise (per event)</li>
