@@ -74,7 +74,7 @@ export function ReservationFormSheet({ open, onOpenChange, prefill }: Props) {
       return data;
     },
   });
-  const isLargeGroup = !!lgConfig && partySize >= (lgConfig.large_group_threshold ?? 8);
+  const isLargeGroup = !!lgConfig && partySize >= (lgConfig.large_group_threshold ?? 9);
   const needsApproval = !!lgConfig && partySize >= (lgConfig.large_group_manual_approval_from ?? 10);
   const recommendDeposit = !!lgConfig && partySize >= (lgConfig.large_group_deposit_recommended_from ?? 8);
   const computedDuration = lgConfig
@@ -129,11 +129,18 @@ export function ReservationFormSheet({ open, onOpenChange, prefill }: Props) {
     if (error || payload.error) {
       return toast.error(payload.error || "De reservering is niet opgeslagen. Probeer het opnieuw.");
     }
-    // Tafel forceren als operator een specifieke tafel koos in het tafelgrid
+    // Tafel forceren alleen als operator een enkele tafel prefill koos EN de engine
+    // geen combinatie (≥2 tafels) heeft toegewezen. Zo verliezen we geen combinatie
+    // die de engine automatisch heeft gekozen voor een grote groep.
     const newId = payload.reservation?.id;
     if (newId && prefill?.tableId) {
-      await supabase.from("reservation_tables").delete().eq("reservation_id", newId);
-      await supabase.from("reservation_tables").insert([{ reservation_id: newId, table_id: prefill.tableId }]);
+      const { data: existingRt } = await supabase
+        .from("reservation_tables").select("table_id").eq("reservation_id", newId);
+      const engineTableCount = (existingRt ?? []).length;
+      if (engineTableCount < 2) {
+        await supabase.from("reservation_tables").delete().eq("reservation_id", newId);
+        await supabase.from("reservation_tables").insert([{ reservation_id: newId, table_id: prefill.tableId }]);
+      }
     }
     toast.success("Reservering aangemaakt.");
     qc.invalidateQueries();

@@ -388,6 +388,10 @@ async function handleCreateReservation(req: Request, keyRow: KeyRow): Promise<Re
   if (!partySize || typeof partySize !== "number" || partySize < 1) {
     return errResp("TW_400_MISSING_PARTY_SIZE", "partySize");
   }
+  if (partySize > 50) {
+    // Hard cap voor externe API-consumers: gelijk aan book_reservation limiet.
+    return errResp("TW_400_PARTY_SIZE_OVER_CAP", "partySize");
+  }
 
   // Datum in verleden?
   // We doen een ruwe check: combineer date+time as UTC schatting (de exacte tz-check gebeurt in book_reservation),

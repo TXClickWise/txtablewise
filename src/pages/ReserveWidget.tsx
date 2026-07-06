@@ -388,7 +388,9 @@ const ReserveWidget = () => {
   };
 
   const partyOptions = useMemo(() => {
-    const max = Math.max(1, restaurant?.max_party_size_online ?? 8);
+    // Chips gaan tot online-instant-book cap. Groepen boven deze cap gebruiken het
+    // "grotere groep" invoerveld (tot maxOnlineRequest) of het large_group aanvraagpad.
+    const max = Math.max(1, restaurant?.max_party_size_online ?? 12);
     return Array.from({ length: max }, (_, i) => i + 1);
   }, [restaurant]);
   const canRequestLargerOnline = !!restaurant && maxOnlineRequest > (restaurant.max_party_size_online ?? 0);
