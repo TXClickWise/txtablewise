@@ -90,7 +90,7 @@ Deno.serve(async (req) => {
     }
 
     const tz: string = restaurant.timezone;
-    const largeGroupThreshold: number = restaurant.large_group_threshold || 9;
+    const largeGroupThreshold: number = restaurant.large_group_threshold ?? 9;
     const channel = body.channel ?? "online";
     // Walk-ins use the operator-configured walk-in duration
     const isWalkIn = channel === "walk_in";
