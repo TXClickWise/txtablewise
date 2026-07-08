@@ -1,7 +1,7 @@
 // ReservationCard — scannable, touch-friendly card used across overview,
 // today, and search results. Quick actions go through the reservations service.
 import { format } from "date-fns";
-import { Eye } from "lucide-react";
+import { Eye, Star, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/StatusBadge";
 import { ChannelBadge } from "@/components/ChannelBadge";
@@ -78,10 +78,21 @@ export function ReservationCard({
 
   const status = r.status;
 
+  const STATUS_BORDER: Record<string, string> = {
+    confirmed: "border-l-[hsl(var(--status-confirmed))]",
+    pending: "border-l-[hsl(var(--status-pending))]",
+    seated: "border-l-[hsl(var(--status-seated))]",
+    completed: "border-l-[hsl(var(--status-completed))]",
+    cancelled: "border-l-[hsl(var(--status-cancelled))]",
+    no_show: "border-l-[hsl(var(--destructive))]",
+  };
+  const leftBorder = STATUS_BORDER[status] ?? "border-l-border";
+
   return (
     <div
       className={cn(
-        "group rounded-lg border border-border bg-card transition-colors",
+        "group rounded-lg border border-border bg-card border-l-[4px] transition-all duration-150 hover:bg-muted/50 hover:shadow-soft hover:-translate-y-px",
+        leftBorder,
         status === "cancelled" || status === "no_show" ? "opacity-70" : "",
       )}
     >
@@ -105,9 +116,15 @@ export function ReservationCard({
           className="flex-1 min-w-0 text-left"
         >
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="font-medium truncate">
+            <span className="font-medium truncate inline-flex items-center gap-1">
               {display.first_name ?? (isWalkIn ? "Walk-in" : "Gast")}{" "}
               {display.last_name ?? ""}
+              {guest?.is_vip && (
+                <Star className="h-3.5 w-3.5 fill-accent text-accent" aria-label="VIP" />
+              )}
+              {(guest?.allergies || r.dietary_notes) && (
+                <AlertTriangle className="h-3.5 w-3.5 text-destructive" aria-label="Allergie" />
+              )}
             </span>
             <StatusBadge status={status as never} />
             <ChannelBadge channel={r.channel as never} />

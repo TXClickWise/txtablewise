@@ -145,23 +145,27 @@ const TodayPage = () => {
           value={kpis.guestsTotal}
           icon={<Users className="h-5 w-5" />}
           tone="premium"
+          statusAccent="success"
         />
         <KpiCard
           label="Reserveringen"
           value={reservations.length}
           icon={<CalendarDays className="h-5 w-5" />}
+          statusAccent="info"
         />
         <KpiCard
           label="Aan tafel"
           value={kpis.seated}
           icon={<Clock className="h-5 w-5" />}
           accent="primary"
+          statusAccent="info"
         />
         <KpiCard
           label="No-shows"
           value={kpis.noShows}
           icon={<AlertTriangle className="h-5 w-5" />}
           accent={kpis.noShows > 0 ? "destructive" : "default"}
+          statusAccent="destructive"
         />
       </div>
 
