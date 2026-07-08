@@ -6,6 +6,7 @@ import {
   PhoneCall,
   ListChecks,
 } from "lucide-react";
+import { RevealOnScroll } from "./RevealOnScroll";
 
 const features = [
   {
