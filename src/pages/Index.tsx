@@ -9,6 +9,7 @@ import { TrustSection } from "@/components/landing/TrustSection";
 import { PricingSection } from "@/components/landing/PricingSection";
 import { DemoRequestForm } from "@/components/landing/DemoRequestForm";
 import { LandingFooter } from "@/components/landing/LandingFooter";
+import { RevealOnScroll } from "@/components/landing/RevealOnScroll";
 
 const SITE_URL = "https://txtablewise.nl";
 
@@ -52,14 +53,14 @@ const Index = () => {
       <LandingHeader />
       <main>
         <HeroSection />
-        <PainPointsSection />
-        <SolutionGrid />
-        <WhyTableWiseSection />
-        <TrustSection />
-        <PricingSection />
+        <RevealOnScroll><PainPointsSection /></RevealOnScroll>
+        <RevealOnScroll><SolutionGrid /></RevealOnScroll>
+        <RevealOnScroll><WhyTableWiseSection /></RevealOnScroll>
+        <RevealOnScroll><TrustSection /></RevealOnScroll>
+        <RevealOnScroll><PricingSection /></RevealOnScroll>
 
-        <section id="contact" className="bg-gradient-warm py-20 md:py-28">
-          <div className="container">
+        <RevealOnScroll as="section" className="bg-gradient-warm py-20 md:py-28">
+          <div id="contact" className="container">
             <div className="mx-auto max-w-2xl text-center">
               <span className="text-xs font-semibold uppercase tracking-[0.22em] text-accent">
                 Plan een demo
@@ -76,7 +77,7 @@ const Index = () => {
               <DemoRequestForm />
             </div>
           </div>
-        </section>
+        </RevealOnScroll>
       </main>
       <LandingFooter />
     </div>

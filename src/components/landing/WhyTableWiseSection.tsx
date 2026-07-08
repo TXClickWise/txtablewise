@@ -7,6 +7,7 @@ import {
   Lock,
   Users,
 } from "lucide-react";
+import { RevealOnScroll } from "./RevealOnScroll";
 
 const usps = [
   {
@@ -63,17 +64,19 @@ export function WhyTableWiseSection() {
         </div>
 
         <div className="mt-14 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-          {usps.map((u) => (
-            <article key={u.title} className="usp-card relative overflow-hidden pl-8">
-              <span className="absolute inset-y-5 left-0 w-1 rounded-r-full bg-gradient-to-b from-accent to-primary" />
-              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-accent/10 text-accent">
-                <u.icon className="h-5 w-5" />
-              </div>
-              <h3 className="mt-5 font-display text-xl font-bold text-foreground">
-                {u.title}
-              </h3>
-              <p className="mt-3 leading-relaxed text-muted-foreground">{u.body}</p>
-            </article>
+          {usps.map((u, i) => (
+            <RevealOnScroll key={u.title} delayMs={(i % 3) * 100}>
+              <article className="usp-card relative h-full overflow-hidden pl-8">
+                <span className="absolute inset-y-5 left-0 w-1 rounded-r-full bg-gradient-to-b from-accent to-primary" />
+                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-accent/10 text-accent">
+                  <u.icon className="h-5 w-5" />
+                </div>
+                <h3 className="mt-5 font-display text-xl font-bold text-foreground">
+                  {u.title}
+                </h3>
+                <p className="mt-3 leading-relaxed text-muted-foreground">{u.body}</p>
+              </article>
+            </RevealOnScroll>
           ))}
         </div>
       </div>

@@ -6,6 +6,7 @@ import {
   PhoneCall,
   ListChecks,
 } from "lucide-react";
+import { RevealOnScroll } from "./RevealOnScroll";
 
 const features = [
   {
@@ -57,14 +58,16 @@ export function SolutionGrid() {
         </div>
 
         <div className="mt-14 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-          {features.map((f) => (
-            <div key={f.title} className="usp-card group">
-              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-accent/10 text-accent transition-all duration-300 group-hover:bg-accent group-hover:text-accent-foreground group-hover:scale-110">
-                <f.icon className="h-5 w-5" />
+          {features.map((f, i) => (
+            <RevealOnScroll key={f.title} delayMs={(i % 3) * 100}>
+              <div className="usp-card group h-full transition-all duration-200 hover:-translate-y-1 hover:shadow-elevated">
+                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-accent/10 text-accent transition-all duration-300 group-hover:bg-accent group-hover:text-accent-foreground group-hover:scale-110">
+                  <f.icon className="h-5 w-5" />
+                </div>
+                <h3 className="mt-5 font-display text-lg font-bold">{f.title}</h3>
+                <p className="mt-2 leading-relaxed text-muted-foreground">{f.body}</p>
               </div>
-              <h3 className="mt-5 font-display text-lg font-bold">{f.title}</h3>
-              <p className="mt-2 leading-relaxed text-muted-foreground">{f.body}</p>
-            </div>
+            </RevealOnScroll>
           ))}
         </div>
       </div>
