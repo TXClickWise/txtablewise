@@ -97,18 +97,18 @@ export function PricingSection() {
           </p>
         </div>
 
-        <div className="mt-14 grid gap-6 lg:grid-cols-3">
-          {tiers.map((t) => {
+        <div className="mt-14 grid gap-6 lg:grid-cols-3 lg:items-stretch">
+          {tiers.map((t, i) => {
             const isPro = t.highlight;
             return (
+              <RevealOnScroll key={t.name} delayMs={i * 120} className="h-full">
               <div
-                key={t.name}
                 className={cn(
-                  "relative flex flex-col rounded-2xl p-7 transition-all duration-300",
+                  "relative flex h-full flex-col rounded-2xl p-7 transition-all duration-300",
                   isPro
-                    ? "bg-gradient-hero text-primary-foreground shadow-glow-gold lg:scale-[1.03] border border-accent/30"
+                    ? "bg-gradient-hero text-primary-foreground shadow-prominent shadow-glow-gold lg:scale-[1.05] border border-accent/40 z-10"
                     : t.name === "Trial"
-                      ? "bg-card border border-border"
+                      ? "bg-card border border-border hover:-translate-y-1 hover:shadow-soft"
                       : "bg-card border border-border shadow-soft hover:-translate-y-1 hover:shadow-elevated",
                 )}
               >
