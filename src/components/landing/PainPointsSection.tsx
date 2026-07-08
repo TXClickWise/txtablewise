@@ -28,18 +28,19 @@ export function PainPointsSection() {
 
         <div className="mt-12 grid gap-5 md:grid-cols-3 md:gap-6">
           {pains.map((p, i) => (
-            <article
-              key={p.title}
-              className="rounded-2xl border bg-card p-7 shadow-soft transition-smooth hover:-translate-y-0.5 hover:shadow-elegant"
-            >
-              <div className="font-display text-5xl font-semibold text-primary/20">
-                {String(i + 1).padStart(2, "0")}
-              </div>
-              <h3 className="mt-4 font-display text-xl font-semibold text-foreground">
-                {p.title}
-              </h3>
-              <p className="mt-3 leading-relaxed text-muted-foreground">{p.body}</p>
-            </article>
+            <RevealOnScroll key={p.title} delayMs={i * 120}>
+              <article
+                className="h-full rounded-2xl border bg-card p-7 shadow-soft transition-all duration-200 hover:-translate-y-1 hover:shadow-elevated"
+              >
+                <div className="font-display text-5xl font-semibold text-primary/20">
+                  {String(i + 1).padStart(2, "0")}
+                </div>
+                <h3 className="mt-4 font-display text-xl font-semibold text-foreground">
+                  {p.title}
+                </h3>
+                <p className="mt-3 leading-relaxed text-muted-foreground">{p.body}</p>
+              </article>
+            </RevealOnScroll>
           ))}
         </div>
       </div>
