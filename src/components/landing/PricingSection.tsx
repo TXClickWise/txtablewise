@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Check, Phone, MessageSquare, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { RevealOnScroll } from "./RevealOnScroll";
 
 const tiers = [
   {
