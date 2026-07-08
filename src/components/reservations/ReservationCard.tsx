@@ -78,10 +78,21 @@ export function ReservationCard({
 
   const status = r.status;
 
+  const STATUS_BORDER: Record<string, string> = {
+    confirmed: "border-l-[hsl(var(--status-confirmed))]",
+    pending: "border-l-[hsl(var(--status-pending))]",
+    seated: "border-l-[hsl(var(--status-seated))]",
+    completed: "border-l-[hsl(var(--status-completed))]",
+    cancelled: "border-l-[hsl(var(--status-cancelled))]",
+    no_show: "border-l-[hsl(var(--destructive))]",
+  };
+  const leftBorder = STATUS_BORDER[status] ?? "border-l-border";
+
   return (
     <div
       className={cn(
-        "group rounded-lg border border-border bg-card transition-colors",
+        "group rounded-lg border border-border bg-card border-l-[4px] transition-all duration-150 hover:bg-muted/50 hover:shadow-soft hover:-translate-y-px",
+        leftBorder,
         status === "cancelled" || status === "no_show" ? "opacity-70" : "",
       )}
     >
