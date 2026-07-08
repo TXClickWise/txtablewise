@@ -116,9 +116,15 @@ export function ReservationCard({
           className="flex-1 min-w-0 text-left"
         >
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="font-medium truncate">
+            <span className="font-medium truncate inline-flex items-center gap-1">
               {display.first_name ?? (isWalkIn ? "Walk-in" : "Gast")}{" "}
               {display.last_name ?? ""}
+              {guest?.is_vip && (
+                <Star className="h-3.5 w-3.5 fill-accent text-accent" aria-label="VIP" />
+              )}
+              {(guest?.allergies || r.dietary_notes) && (
+                <AlertTriangle className="h-3.5 w-3.5 text-destructive" aria-label="Allergie" />
+              )}
             </span>
             <StatusBadge status={status as never} />
             <ChannelBadge channel={r.channel as never} />
