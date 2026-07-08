@@ -9,6 +9,7 @@ import { TrustSection } from "@/components/landing/TrustSection";
 import { PricingSection } from "@/components/landing/PricingSection";
 import { DemoRequestForm } from "@/components/landing/DemoRequestForm";
 import { LandingFooter } from "@/components/landing/LandingFooter";
+import { RevealOnScroll } from "@/components/landing/RevealOnScroll";
 
 const SITE_URL = "https://txtablewise.nl";
 
