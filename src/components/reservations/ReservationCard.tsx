@@ -1,7 +1,7 @@
 // ReservationCard — scannable, touch-friendly card used across overview,
 // today, and search results. Quick actions go through the reservations service.
 import { format } from "date-fns";
-import { Eye } from "lucide-react";
+import { Eye, Star, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/StatusBadge";
 import { ChannelBadge } from "@/components/ChannelBadge";
