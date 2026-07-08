@@ -7,6 +7,7 @@ import {
   Lock,
   Users,
 } from "lucide-react";
+import { RevealOnScroll } from "./RevealOnScroll";
 
 const usps = [
   {
