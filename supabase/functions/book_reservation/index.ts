@@ -506,9 +506,12 @@ Deno.serve(async (req) => {
     }
 
     // Emit integration event (fire-and-forget)
+    // Bij confirmed → reservation.confirmed zodat de e-mailtrigger een bevestiging stuurt.
+    // Bij pending/hold → reservation.created (geen mail; volgt bij goedkeuring).
+    const bookingEventType = status === "confirmed" ? "reservation.confirmed" : "reservation.created";
     await supabase.from("integration_events").insert({
       restaurant_id: restaurant.id,
-      event_type: "reservation.created",
+      event_type: bookingEventType,
       target: "clickwise",
       payload: {
         reservation_id: reservation.id,
