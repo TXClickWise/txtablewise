@@ -1,3 +1,5 @@
+import { RevealOnScroll } from "./RevealOnScroll";
+
 const pains = [
   {
     title: "Gasten die niet komen opdagen",
