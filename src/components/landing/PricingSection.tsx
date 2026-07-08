@@ -172,6 +172,7 @@ export function PricingSection() {
                   )}
                 </div>
               </div>
+              </RevealOnScroll>
             );
           })}
         </div>
