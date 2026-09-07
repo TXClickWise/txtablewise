@@ -22,7 +22,9 @@ const Auth = () => {
   const planParam = searchParams.get("plan");
   const emailParam = searchParams.get("email") || "";
   const inviteToken = searchParams.get("invite") || "";
-  const postAuthPath = inviteToken ? `/invite?token=${inviteToken}` : "/app";
+  const rawNext = searchParams.get("next") || "";
+  const nextPath = /^\/(?!\/)/.test(rawNext) ? rawNext : "";
+  const postAuthPath = nextPath || (inviteToken ? `/invite?token=${inviteToken}` : "/app");
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState(emailParam);
@@ -118,7 +120,7 @@ const Auth = () => {
       return;
     }
     if (result.redirected) return;
-    navigate("/app", { replace: true });
+    navigate(postAuthPath, { replace: true });
   };
 
   return (
