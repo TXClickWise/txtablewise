@@ -1,0 +1,199 @@
+{
+  "version": 1,
+  "sdk_version": "2.0.3",
+  "path": "/mcp",
+  "auth": {
+    "type": "oauth",
+    "issuer": "https://lbhtztbpxmqlzhyephew.supabase.co/auth/v1",
+    "accepted_audiences": [
+      "authenticated"
+    ]
+  },
+  "mcp": {
+    "server": {
+      "name": "tx-tablewise",
+      "version": "0.1.0",
+      "title": "TX TableWise"
+    },
+    "tools": [
+      {
+        "name": "list_restaurants",
+        "title": "List restaurants",
+        "description": "List the restaurants the signed-in user has access to, with their id, name and slug.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "properties": {}
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "list_reservations",
+        "title": "List reservations",
+        "description": "List reservations for a date (or date range) for a restaurant, ordered by start time. Cancelled reservations are excluded unless include_cancelled is true.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "date": {
+              "type": "string",
+              "description": "Date in YYYY-MM-DD. Defaults to today."
+            },
+            "end_date": {
+              "type": "string",
+              "description": "Optional end date (YYYY-MM-DD) for a range."
+            },
+            "restaurant_id": {
+              "type": "string",
+              "description": "Restaurant id; optional when the user has one restaurant."
+            },
+            "include_cancelled": {
+              "type": "boolean"
+            },
+            "limit": {
+              "type": "number",
+              "description": "Max rows to return, default 100."
+            }
+          },
+          "required": [
+            "date"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "get_reservation",
+        "title": "Get reservation",
+        "description": "Get the full details of one reservation by its id.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "reservation_id": {
+              "type": "string",
+              "description": "Reservation id (uuid)."
+            }
+          },
+          "required": [
+            "reservation_id"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "search_guests",
+        "title": "Search guests",
+        "description": "Search the guest book by name, email or phone. Returns visit history, VIP flag and allergies.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "query": {
+              "type": "string",
+              "description": "Name, email or phone fragment to search for."
+            },
+            "restaurant_id": {
+              "type": "string",
+              "description": "Restaurant id; optional when the user has one restaurant."
+            },
+            "limit": {
+              "type": "number",
+              "description": "Max rows, default 20."
+            }
+          },
+          "required": [
+            "query"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "list_waitlist",
+        "title": "List waitlist",
+        "description": "List waitlist entries for a date, with party size, desired time window and status.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "date": {
+              "type": "string",
+              "description": "Desired date in YYYY-MM-DD. Defaults to today."
+            },
+            "restaurant_id": {
+              "type": "string",
+              "description": "Restaurant id; optional when the user has one restaurant."
+            },
+            "status": {
+              "type": "string",
+              "description": "Optional status filter, e.g. waiting, notified, converted."
+            }
+          },
+          "required": [
+            "date"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "add_reservation_note",
+        "title": "Add internal note to reservation",
+        "description": "Append an internal note to a reservation. Internal notes are only visible to staff, never to the guest.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": false,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "reservation_id": {
+              "type": "string",
+              "description": "Reservation id (uuid)."
+            },
+            "note": {
+              "type": "string",
+              "description": "The note to append."
+            }
+          },
+          "required": [
+            "reservation_id",
+            "note"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      }
+    ]
+  }
+}
