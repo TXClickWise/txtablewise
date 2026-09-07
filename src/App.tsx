@@ -14,6 +14,7 @@ import Index from "./pages/Index.tsx";
 import Auth from "./pages/Auth.tsx";
 import ForgotPassword from "./pages/ForgotPassword.tsx";
 import ResetPassword from "./pages/ResetPassword.tsx";
+import OAuthConsent from "./pages/OAuthConsent.tsx";
 import Onboarding from "./pages/Onboarding.tsx";
 import ReserveWidget from "./pages/ReserveWidget.tsx";
 import GuestManageReservation from "./pages/GuestManageReservation.tsx";
@@ -82,6 +83,7 @@ const App = () => (
             <Route path="/app/login" element={<Auth />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/reset-password" element={<ResetPassword />} />
+            <Route path="/.lovable/oauth/consent" element={<OAuthConsent />} />
             <Route path="/r/:slug" element={<ErrorBoundary label="ReserveWidget"><ReserveWidget /></ErrorBoundary>} />
             <Route path="/reserveer/:slug" element={<ErrorBoundary label="ReserveWidget"><ReserveWidget /></ErrorBoundary>} />
             <Route path="/book/:slug" element={<ErrorBoundary label="ReserveWidget"><ReserveWidget /></ErrorBoundary>} />
