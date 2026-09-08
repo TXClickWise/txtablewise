@@ -477,7 +477,44 @@ Deno.serve(async (req) => {
       terrace_preference_unmet: terracePreferenceUnmet,
     }).select("*").single();
 
-    if (resErr) return json({ error: resErr.message }, 500);
+    if (resErr) {
+      // Race on the idempotency key: another attempt won — return that reservation.
+      if (idemKey && (resErr as { code?: string }).code === "23505") {
+        const { data: raced } = await supabase
+          .from("reservations")
+          .select("id, confirmation_code, status, start_time, end_time, party_size, requires_manual_approval, large_group_status, table_combination_id, reservation_tables(table_id)")
+          .eq("restaurant_id", restaurant.id)
+          .eq("idempotency_key", idemKey)
+          .maybeSingle();
+        if (raced) {
+          const tableIds = ((raced.reservation_tables ?? []) as Array<{ table_id: string }>)
+            .map((rt) => rt.table_id);
+          return json({
+            ok: true,
+            duplicate: true,
+            requires_manual_approval: raced.requires_manual_approval,
+            large_group_status: raced.large_group_status,
+            message_for_guest: null,
+            reservation: {
+              id: raced.id,
+              confirmation_code: raced.confirmation_code,
+              status: raced.status,
+              start_time: raced.start_time,
+              end_time: raced.end_time,
+              party_size: raced.party_size,
+              table_id: tableIds[0] ?? null,
+              table_ids: tableIds,
+              table_combination_id: raced.table_combination_id ?? null,
+              hold_expires_at: null,
+              requires_manual_approval: raced.requires_manual_approval,
+              large_group_status: raced.large_group_status,
+            },
+          });
+        }
+      }
+      return json({ error: resErr.message }, 500);
+    }
+
 
     // Link table(s) — single table or all tables of the chosen combination
     const { error: rtErr } = await supabase.from("reservation_tables").insert(
