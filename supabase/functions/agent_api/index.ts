@@ -19,6 +19,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { corsHeaders as baseCors } from "../_shared/cors.ts";
 import { logIntegration } from "../_shared/integration-log.ts";
 import { SUPABASE_GATEWAY_JWT_ANON_KEY } from "../_shared/gateway-key.ts";
+import { evaluateLargeGroup } from "../_shared/large-group.ts";
 
 const corsHeaders = {
   ...baseCors,
@@ -409,7 +410,17 @@ async function handle(
         // Compact response — geen volledige slotlijst meer, voorkomt dat de LLM
         // in de ruis verdwaalt en stopt vóór book_reservation.
         const closed = body?.closed === true;
-        const largeGroup = body?.large_group === true;
+        // Grote-groepoordeel uit dezelfde centrale evaluatie als het boekpad,
+        // zodat check_availability en create_reservation nooit meer tegenstrijdig zijn.
+        const { data: restaurantRow } = await admin()
+          .from("restaurants")
+          .select("large_group_threshold, large_group_manual_approval_from, manual_approval_from_party_size, extra_large_group_threshold, auto_confirm")
+          .eq("id", keyRow.restaurant_id)
+          .maybeSingle();
+        const lg = restaurantRow
+          ? evaluateLargeGroup(party_size, restaurantRow)
+          : { isLargeGroup: body?.large_group === true, requiresManualApproval: false, largeGroupStatus: null };
+        const largeGroup = body?.large_group === true || lg.isLargeGroup;
         const canBookExact = !!exact;
         const nextAction = closed
           ? "say_closed"
@@ -428,6 +439,8 @@ async function handle(
           alternatives,
           closed,
           large_group: largeGroup,
+          requires_manual_approval: lg.requiresManualApproval,
+          large_group_status: lg.requiresManualApproval ? "awaiting_approval" : null,
           message: preferred_time ? (body?.message ?? null) : "Welke tijd heeft uw voorkeur?",
           next_action: preferred_time ? nextAction : "ask_preferred_time",
         }, r.status);
