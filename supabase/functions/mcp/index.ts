@@ -56,14 +56,24 @@ function supabaseForUser(ctx) {
     auth: { persistSession: false, autoRefreshToken: false }
   });
 }
-async function resolveRestaurantId(sb, explicit) {
-  if (explicit) return explicit;
-  const { data, error } = await sb.from("restaurant_members").select("restaurant_id").limit(5);
-  if (error) throw new Error(error.message);
-  const ids = Array.from(new Set((data ?? []).map((r) => r.restaurant_id)));
-  if (ids.length === 0) throw new Error("Geen restaurant gevonden voor dit account.");
-  if (ids.length > 1) throw new Error("Meerdere restaurants gevonden \u2014 geef restaurant_id mee (zie list_restaurants).");
-  return ids[0];
+async function callEngine(fnName, body, token) {
+  const url = `${supabaseProjectUrl().replace(/\/$/, "")}/functions/v1/${fnName}`;
+  const res = await fetch(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      apikey: supabasePublishableKey(),
+      Authorization: `Bearer ${token}`
+    },
+    body: JSON.stringify(body)
+  });
+  let parsed = {};
+  try {
+    parsed = await res.json();
+  } catch {
+    parsed = { error: "Onleesbaar antwoord van de reserveringsmotor." };
+  }
+  return { status: res.status, body: parsed };
 }
 
 // src/lib/mcp/tools/list-restaurants.ts
@@ -88,6 +98,198 @@ var list_restaurants_default = defineTool({
 // src/lib/mcp/tools/list-reservations.ts
 import { defineTool as defineTool2 } from "npm:@lovable.dev/mcp-js@2.0.3";
 import { z } from "npm:zod@^3.25.76";
+
+// src/lib/mcp/identity.ts
+var PROFILE_CEILING = {
+  guest_voice: [
+    "availability.read",
+    "reservation.read",
+    "reservation.create",
+    "reservation.update",
+    "reservation.cancel",
+    "waitlist.create"
+  ],
+  guest_conversation: [
+    "availability.read",
+    "reservation.read",
+    "reservation.create",
+    "reservation.update",
+    "reservation.cancel",
+    "waitlist.create"
+  ],
+  workflow_agent: [
+    "availability.read",
+    "reservation.read",
+    "reservation.create",
+    "reservation.update",
+    "reservation.cancel",
+    "reservation.status.write",
+    "waitlist.read",
+    "waitlist.create",
+    "guest.search",
+    "reservation.note.write"
+  ],
+  operations_agent: [
+    "availability.read",
+    "reservation.read",
+    "reservation.update",
+    "reservation.status.write",
+    "waitlist.read",
+    "waitlist.create",
+    "guest.search",
+    "reservation.note.write",
+    "deposit.read"
+  ],
+  manager_agent: [
+    "availability.read",
+    "reservation.read",
+    "reservation.create",
+    "reservation.update",
+    "reservation.cancel",
+    "reservation.status.write",
+    "waitlist.read",
+    "waitlist.create",
+    "guest.search",
+    "reservation.note.write",
+    "large_group.approve",
+    "large_group.decline",
+    "table.override",
+    "deposit.read"
+  ],
+  revenue_agent: ["availability.read", "reservation.read", "waitlist.read", "deposit.read"],
+  system_automation: [
+    "availability.read",
+    "reservation.read",
+    "reservation.status.write",
+    "waitlist.read",
+    "reservation.note.write"
+  ]
+};
+var MANAGER_CAPABILITIES = [
+  "availability.read",
+  "reservation.read",
+  "reservation.create",
+  "reservation.update",
+  "reservation.cancel",
+  "reservation.status.write",
+  "waitlist.read",
+  "waitlist.create",
+  "guest.search",
+  "reservation.note.write",
+  "large_group.approve",
+  "large_group.decline",
+  "table.override",
+  "deposit.read"
+];
+var STAFF_CAPABILITIES = [
+  "availability.read",
+  "reservation.read",
+  "reservation.create",
+  "reservation.update",
+  "reservation.cancel",
+  "reservation.status.write",
+  "waitlist.read",
+  "waitlist.create",
+  "guest.search",
+  "reservation.note.write",
+  "deposit.read"
+];
+var McpError = class extends Error {
+  code;
+  constructor(code, message) {
+    super(message);
+    this.code = code;
+  }
+};
+async function resolveIdentity(ctx) {
+  if (!ctx.isAuthenticated()) throw new McpError("unauthenticated", "Niet geauthenticeerd.");
+  const token = ctx.getToken();
+  if (!token) throw new McpError("unauthenticated", "Geen geldig token.");
+  const userId = ctx.getUserId() ?? "";
+  const sb = supabaseForUser(ctx);
+  const { data: svc } = await sb.from("mcp_service_identities").select("restaurant_id, profile, capabilities, revoked_at").eq("user_id", userId).is("revoked_at", null).maybeSingle();
+  if (svc) {
+    const profile = svc.profile;
+    const ceiling = PROFILE_CEILING[profile] ?? [];
+    const granted = (svc.capabilities ?? []).filter((c) => ceiling.includes(c));
+    return {
+      kind: "service",
+      userId,
+      profile,
+      boundRestaurantId: svc.restaurant_id,
+      capabilities: granted,
+      sb,
+      token
+    };
+  }
+  return { kind: "human", userId, profile: null, boundRestaurantId: null, capabilities: [], sb, token };
+}
+async function humanCapabilities(identity, restaurantId) {
+  const { data } = await identity.sb.from("restaurant_members").select("role").eq("restaurant_id", restaurantId).eq("user_id", identity.userId).maybeSingle();
+  if (!data) return [];
+  return ["owner", "manager"].includes(data.role) ? MANAGER_CAPABILITIES : STAFF_CAPABILITIES;
+}
+async function authorize(ctx, capability, explicitRestaurantId) {
+  const identity = await resolveIdentity(ctx);
+  let restaurantId;
+  if (identity.kind === "service") {
+    const bound = identity.boundRestaurantId;
+    if (explicitRestaurantId && explicitRestaurantId !== bound) {
+      throw new McpError("tenant_mismatch", "Deze koppeling heeft geen toegang tot dit restaurant.");
+    }
+    restaurantId = bound;
+    if (!identity.capabilities.includes(capability)) {
+      throw new McpError("capability_denied", `Deze koppeling mag '${capability}' niet uitvoeren.`);
+    }
+  } else {
+    restaurantId = explicitRestaurantId ?? await onlyMembership(identity);
+    const caps = await humanCapabilities(identity, restaurantId);
+    if (caps.length === 0) {
+      throw new McpError("tenant_mismatch", "Geen toegang tot dit restaurant.");
+    }
+    if (!caps.includes(capability)) {
+      throw new McpError("capability_denied", `Je rol mag '${capability}' niet uitvoeren.`);
+    }
+    identity.capabilities = caps;
+  }
+  return { identity, restaurantId, sb: identity.sb };
+}
+async function onlyMembership(identity) {
+  const { data, error } = await identity.sb.from("restaurant_members").select("restaurant_id").eq("user_id", identity.userId).limit(5);
+  if (error) throw new McpError("internal", error.message);
+  const ids = Array.from(new Set((data ?? []).map((r) => r.restaurant_id)));
+  if (ids.length === 0) throw new McpError("tenant_mismatch", "Geen restaurant gevonden voor dit account.");
+  if (ids.length > 1) {
+    throw new McpError("restaurant_required", "Meerdere restaurants \u2014 geef restaurant_id mee (zie list_restaurants).");
+  }
+  return ids[0];
+}
+async function assertReservationTenant(sb, reservationId, restaurantId) {
+  const { data, error } = await sb.from("reservations").select("id, restaurant_id, status, party_size, reservation_date, start_time, requires_manual_approval, large_group_status").eq("id", reservationId).maybeSingle();
+  if (error) throw new McpError("internal", error.message);
+  if (!data || data.restaurant_id !== restaurantId) {
+    throw new McpError("not_found", "Reservering niet gevonden.");
+  }
+  return data;
+}
+function toolError(e) {
+  const code = e instanceof McpError ? e.code : "internal";
+  const message = e instanceof Error ? e.message : String(e);
+  return {
+    content: [{ type: "text", text: JSON.stringify({ ok: false, error_code: code, error: message }) }],
+    structuredContent: { ok: false, error_code: code, error: message },
+    isError: true
+  };
+}
+function toolResult(payload) {
+  return {
+    content: [{ type: "text", text: JSON.stringify(payload) }],
+    // The SDK types structuredContent as a JSON value; the payload is JSON-safe.
+    structuredContent: JSON.parse(JSON.stringify(payload))
+  };
+}
+
+// src/lib/mcp/tools/list-reservations.ts
 var list_reservations_default = defineTool2({
   name: "list_reservations",
   title: "List reservations",
@@ -101,10 +303,8 @@ var list_reservations_default = defineTool2({
   },
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
   handler: async ({ date, end_date, restaurant_id, include_cancelled, limit }, ctx) => {
-    if (!ctx.isAuthenticated()) return { content: [{ type: "text", text: "Not authenticated" }], isError: true };
-    const sb = supabaseForUser(ctx);
     try {
-      const rid = await resolveRestaurantId(sb, restaurant_id);
+      const { restaurantId: rid, sb } = await authorize(ctx, "reservation.read", restaurant_id);
       const from = date || (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
       const to = end_date || from;
       const cap = Math.min(Math.max(limit ?? 100, 1), 200);
@@ -119,7 +319,7 @@ var list_reservations_default = defineTool2({
         structuredContent: { restaurant_id: rid, reservations: data ?? [] }
       };
     } catch (e) {
-      return { content: [{ type: "text", text: e instanceof Error ? e.message : String(e) }], isError: true };
+      return toolError(e);
     }
   }
 });
@@ -131,41 +331,102 @@ var get_reservation_default = defineTool3({
   name: "get_reservation",
   title: "Get reservation",
   description: "Get the full details of one reservation by its id.",
-  inputSchema: { reservation_id: z2.string().describe("Reservation id (uuid).") },
+  inputSchema: {
+    reservation_id: z2.string().describe("Reservation id (uuid)."),
+    restaurant_id: z2.string().optional()
+  },
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
-  handler: async ({ reservation_id }, ctx) => {
-    if (!ctx.isAuthenticated()) return { content: [{ type: "text", text: "Not authenticated" }], isError: true };
-    const sb = supabaseForUser(ctx);
-    const { data, error } = await sb.from("reservations").select(
-      "id, restaurant_id, reservation_date, start_time, end_time, party_size, status, channel, source_label, confirmation_code, guest_id, guest_first_name, guest_last_name, guest_email, guest_phone, guest_language, special_requests, dietary_notes, internal_notes, occasion, prefers_terrace, requires_manual_approval, large_group_status, deposit_required, deposit_status, no_show_risk, created_at, updated_at"
-    ).eq("id", reservation_id).maybeSingle();
-    if (error) return { content: [{ type: "text", text: error.message }], isError: true };
-    if (!data) return { content: [{ type: "text", text: "Reservering niet gevonden." }], isError: true };
-    return {
-      content: [{ type: "text", text: JSON.stringify(data) }],
-      structuredContent: { reservation: data }
-    };
+  handler: async ({ reservation_id, restaurant_id }, ctx) => {
+    try {
+      const { restaurantId, sb } = await authorize(ctx, "reservation.read", restaurant_id);
+      await assertReservationTenant(sb, reservation_id, restaurantId);
+      const { data, error } = await sb.from("reservations").select(
+        "id, restaurant_id, reservation_date, start_time, end_time, party_size, status, channel, source_label, confirmation_code, guest_id, guest_first_name, guest_last_name, guest_email, guest_phone, guest_language, special_requests, dietary_notes, internal_notes, occasion, prefers_terrace, requires_manual_approval, large_group_status, deposit_required, deposit_status, no_show_risk, created_at, updated_at"
+      ).eq("id", reservation_id).maybeSingle();
+      if (error) throw new Error(error.message);
+      return toolResult({ ok: true, reservation: data });
+    } catch (e) {
+      return toolError(e);
+    }
+  }
+});
+
+// src/lib/mcp/tools/find-reservation.ts
+import { defineTool as defineTool4 } from "npm:@lovable.dev/mcp-js@2.0.3";
+import { z as z3 } from "npm:zod@^3.25.76";
+var find_reservation_default = defineTool4({
+  name: "find_reservation",
+  title: "Find reservation",
+  description: "Find an active reservation by confirmation code, phone, email, or name plus date. Returns at most 5 minimal matches. Use this before update_reservation or cancel_reservation when you do not have a reservation id.",
+  inputSchema: {
+    confirmation_code: z3.string().optional().describe("Confirmation code given to the guest."),
+    phone: z3.string().optional(),
+    email: z3.string().optional(),
+    first_name: z3.string().optional(),
+    last_name: z3.string().optional(),
+    date: z3.string().optional().describe("Reservation date in YYYY-MM-DD."),
+    restaurant_id: z3.string().optional()
+  },
+  annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
+  handler: async (input, ctx) => {
+    try {
+      const { restaurantId, sb } = await authorize(ctx, "reservation.read", input.restaurant_id);
+      const code = (input.confirmation_code ?? "").trim().toUpperCase();
+      const phone = (input.phone ?? "").replace(/\s+/g, "");
+      const email = (input.email ?? "").trim();
+      const first = (input.first_name ?? "").trim();
+      const last = (input.last_name ?? "").trim();
+      const date = (input.date ?? "").trim();
+      const hasIdentifier = !!code || phone.length >= 6 || !!email || !!last || !!first && !!date;
+      if (!hasIdentifier) {
+        throw new McpError(
+          "missing_field",
+          "Geef een bevestigingscode, telefoonnummer, e-mailadres, achternaam of voornaam met datum."
+        );
+      }
+      const cols = "id, reservation_date, start_time, party_size, status, guest_first_name, guest_last_name, requires_manual_approval, large_group_status";
+      const active = ["pending", "confirmed", "seated", "hold"];
+      if (code) {
+        const { data: data2, error: error2 } = await sb.from("reservations").select(cols).eq("restaurant_id", restaurantId).eq("confirmation_code", code).in("status", active).limit(1);
+        if (error2) throw new McpError("internal", error2.message);
+        if (data2 && data2.length > 0) {
+          return toolResult({ ok: true, restaurant_id: restaurantId, matches: data2 });
+        }
+      }
+      let q = sb.from("reservations").select(cols).eq("restaurant_id", restaurantId).in("status", active).order("start_time", { ascending: true }).limit(5);
+      if (date) q = q.eq("reservation_date", date);
+      else q = q.gte("start_time", (/* @__PURE__ */ new Date()).toISOString());
+      if (phone.length >= 6) q = q.ilike("guest_phone", `%${phone.slice(-8)}%`);
+      else if (email) q = q.ilike("guest_email", `%${email}%`);
+      else {
+        if (last) q = q.ilike("guest_last_name", `%${last}%`);
+        if (first) q = q.ilike("guest_first_name", `%${first}%`);
+      }
+      const { data, error } = await q;
+      if (error) throw new McpError("internal", error.message);
+      return toolResult({ ok: true, restaurant_id: restaurantId, matches: data ?? [] });
+    } catch (e) {
+      return toolError(e);
+    }
   }
 });
 
 // src/lib/mcp/tools/search-guests.ts
-import { defineTool as defineTool4 } from "npm:@lovable.dev/mcp-js@2.0.3";
-import { z as z3 } from "npm:zod@^3.25.76";
-var search_guests_default = defineTool4({
+import { defineTool as defineTool5 } from "npm:@lovable.dev/mcp-js@2.0.3";
+import { z as z4 } from "npm:zod@^3.25.76";
+var search_guests_default = defineTool5({
   name: "search_guests",
   title: "Search guests",
   description: "Search the guest book by name, email or phone. Returns visit history, VIP flag and allergies.",
   inputSchema: {
-    query: z3.string().describe("Name, email or phone fragment to search for."),
-    restaurant_id: z3.string().optional().describe("Restaurant id; optional when the user has one restaurant."),
-    limit: z3.number().optional().describe("Max rows, default 20.")
+    query: z4.string().describe("Name, email or phone fragment to search for."),
+    restaurant_id: z4.string().optional().describe("Restaurant id; optional when the user has one restaurant."),
+    limit: z4.number().optional().describe("Max rows, default 20.")
   },
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
   handler: async ({ query, restaurant_id, limit }, ctx) => {
-    if (!ctx.isAuthenticated()) return { content: [{ type: "text", text: "Not authenticated" }], isError: true };
-    const sb = supabaseForUser(ctx);
     try {
-      const rid = await resolveRestaurantId(sb, restaurant_id);
+      const { restaurantId: rid, sb } = await authorize(ctx, "guest.search", restaurant_id);
       const cap = Math.min(Math.max(limit ?? 20, 1), 50);
       const term = query.trim().replace(/[%,]/g, " ");
       const { data, error } = await sb.from("guests").select(
@@ -179,29 +440,27 @@ var search_guests_default = defineTool4({
         structuredContent: { restaurant_id: rid, guests: data ?? [] }
       };
     } catch (e) {
-      return { content: [{ type: "text", text: e instanceof Error ? e.message : String(e) }], isError: true };
+      return toolError(e);
     }
   }
 });
 
 // src/lib/mcp/tools/list-waitlist.ts
-import { defineTool as defineTool5 } from "npm:@lovable.dev/mcp-js@2.0.3";
-import { z as z4 } from "npm:zod@^3.25.76";
-var list_waitlist_default = defineTool5({
+import { defineTool as defineTool6 } from "npm:@lovable.dev/mcp-js@2.0.3";
+import { z as z5 } from "npm:zod@^3.25.76";
+var list_waitlist_default = defineTool6({
   name: "list_waitlist",
   title: "List waitlist",
   description: "List waitlist entries for a date, with party size, desired time window and status.",
   inputSchema: {
-    date: z4.string().describe("Desired date in YYYY-MM-DD. Defaults to today."),
-    restaurant_id: z4.string().optional().describe("Restaurant id; optional when the user has one restaurant."),
-    status: z4.string().optional().describe("Optional status filter, e.g. waiting, notified, converted.")
+    date: z5.string().describe("Desired date in YYYY-MM-DD. Defaults to today."),
+    restaurant_id: z5.string().optional().describe("Restaurant id; optional when the user has one restaurant."),
+    status: z5.string().optional().describe("Optional status filter, e.g. waiting, notified, converted.")
   },
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
   handler: async ({ date, restaurant_id, status }, ctx) => {
-    if (!ctx.isAuthenticated()) return { content: [{ type: "text", text: "Not authenticated" }], isError: true };
-    const sb = supabaseForUser(ctx);
     try {
-      const rid = await resolveRestaurantId(sb, restaurant_id);
+      const { restaurantId: rid, sb } = await authorize(ctx, "waitlist.read", restaurant_id);
       const day = date || (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
       let q = sb.from("waitlist_entries").select(
         "id, desired_date, desired_time_from, desired_time_to, party_size, first_name, last_name, phone, email, status, notes, notified_at, matched_at, created_at"
@@ -214,39 +473,394 @@ var list_waitlist_default = defineTool5({
         structuredContent: { restaurant_id: rid, entries: data ?? [] }
       };
     } catch (e) {
-      return { content: [{ type: "text", text: e instanceof Error ? e.message : String(e) }], isError: true };
+      return toolError(e);
     }
   }
 });
 
 // src/lib/mcp/tools/add-reservation-note.ts
-import { defineTool as defineTool6 } from "npm:@lovable.dev/mcp-js@2.0.3";
-import { z as z5 } from "npm:zod@^3.25.76";
-var add_reservation_note_default = defineTool6({
+import { defineTool as defineTool7 } from "npm:@lovable.dev/mcp-js@2.0.3";
+import { z as z6 } from "npm:zod@^3.25.76";
+var add_reservation_note_default = defineTool7({
   name: "add_reservation_note",
   title: "Add internal note to reservation",
-  description: "Append an internal note to a reservation. Internal notes are only visible to staff, never to the guest.",
+  description: "Append an internal note to a reservation. Internal notes are only visible to staff, never to the guest. Staff action \u2014 not available to guest-facing agents.",
   inputSchema: {
-    reservation_id: z5.string().describe("Reservation id (uuid)."),
-    note: z5.string().describe("The note to append.")
+    reservation_id: z6.string().describe("Reservation id (uuid)."),
+    note: z6.string().describe("The note to append."),
+    restaurant_id: z6.string().optional()
   },
   annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
-  handler: async ({ reservation_id, note }, ctx) => {
-    if (!ctx.isAuthenticated()) return { content: [{ type: "text", text: "Not authenticated" }], isError: true };
-    const text = note.trim();
-    if (!text) return { content: [{ type: "text", text: "Notitie mag niet leeg zijn." }], isError: true };
-    const sb = supabaseForUser(ctx);
-    const { data: current, error: readErr } = await sb.from("reservations").select("id, internal_notes").eq("id", reservation_id).maybeSingle();
-    if (readErr) return { content: [{ type: "text", text: readErr.message }], isError: true };
-    if (!current) return { content: [{ type: "text", text: "Reservering niet gevonden." }], isError: true };
-    const stamp = (/* @__PURE__ */ new Date()).toISOString().slice(0, 16).replace("T", " ");
-    const merged = [current.internal_notes?.trim(), `[${stamp}] ${text}`].filter(Boolean).join("\n");
-    const { data, error } = await sb.from("reservations").update({ internal_notes: merged }).eq("id", reservation_id).select("id, internal_notes").maybeSingle();
-    if (error) return { content: [{ type: "text", text: error.message }], isError: true };
-    return {
-      content: [{ type: "text", text: JSON.stringify(data) }],
-      structuredContent: { reservation: data }
-    };
+  handler: async ({ reservation_id, note, restaurant_id }, ctx) => {
+    try {
+      const { restaurantId, sb } = await authorize(ctx, "reservation.note.write", restaurant_id);
+      const text = note.trim();
+      if (!text) throw new McpError("missing_field", "Notitie mag niet leeg zijn.");
+      await assertReservationTenant(sb, reservation_id, restaurantId);
+      const { data: current, error: readErr } = await sb.from("reservations").select("id, internal_notes").eq("id", reservation_id).maybeSingle();
+      if (readErr) throw new Error(readErr.message);
+      if (!current) throw new McpError("not_found", "Reservering niet gevonden.");
+      const stamp = (/* @__PURE__ */ new Date()).toISOString().slice(0, 16).replace("T", " ");
+      const merged = [current.internal_notes?.trim(), `[${stamp}] ${text}`].filter(Boolean).join("\n");
+      const { data, error } = await sb.from("reservations").update({ internal_notes: merged }).eq("id", reservation_id).select("id, internal_notes").maybeSingle();
+      if (error) throw new Error(error.message);
+      return toolResult({ ok: true, reservation: data });
+    } catch (e) {
+      return toolError(e);
+    }
+  }
+});
+
+// src/lib/mcp/tools/check-availability.ts
+import { defineTool as defineTool8 } from "npm:@lovable.dev/mcp-js@2.0.3";
+import { z as z7 } from "npm:zod@^3.25.76";
+var check_availability_default = defineTool8({
+  name: "check_availability",
+  title: "Check availability",
+  description: "Check which times are still available for a date and party size. Uses the restaurant's own opening hours, closures, pacing, zones and table combinations. Always call this before creating a reservation.",
+  inputSchema: {
+    date: z7.string().describe("Date in YYYY-MM-DD."),
+    party_size: z7.number().describe("Number of guests."),
+    restaurant_id: z7.string().optional().describe("Only for users with more than one restaurant.")
+  },
+  annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
+  handler: async ({ date, party_size, restaurant_id }, ctx) => {
+    try {
+      const { restaurantId, identity } = await authorize(ctx, "availability.read", restaurant_id);
+      const r = await callEngine("availability", { restaurant_id: restaurantId, date, party_size }, identity.token);
+      if (r.status >= 400) {
+        return toolError(new Error(String(r.body.error ?? "Beschikbaarheid kon niet worden opgehaald.")));
+      }
+      return toolResult({ ok: true, restaurant_id: restaurantId, ...r.body });
+    } catch (e) {
+      return toolError(e);
+    }
+  }
+});
+
+// src/lib/mcp/tools/create-reservation.ts
+import { defineTool as defineTool9 } from "npm:@lovable.dev/mcp-js@2.0.3";
+import { z as z8 } from "npm:zod@^3.25.76";
+var create_reservation_default = defineTool9({
+  name: "create_reservation",
+  title: "Create reservation",
+  description: "Create a reservation. TableWise picks the table itself. Large groups may come back as pending approval instead of confirmed \u2014 always tell the guest exactly what status you got back, never say 'confirmed' when requires_manual_approval is true. Pass a stable idempotency_key so a retry never creates a second booking.",
+  inputSchema: {
+    date: z8.string().describe("Date in YYYY-MM-DD."),
+    time: z8.string().describe("Local time HH:MM."),
+    party_size: z8.number(),
+    first_name: z8.string().describe("Ask the guest for their real first name; never invent one."),
+    last_name: z8.string().optional(),
+    phone: z8.string().optional(),
+    email: z8.string().optional(),
+    language: z8.string().optional().describe("nl, en, de or fr."),
+    special_requests: z8.string().optional(),
+    dietary_notes: z8.string().optional(),
+    occasion: z8.string().optional(),
+    prefers_terrace: z8.boolean().optional(),
+    idempotency_key: z8.string().optional().describe("Same key on a retry returns the original reservation."),
+    restaurant_id: z8.string().optional(),
+    table_ids: z8.array(z8.string()).optional().describe("Staff override only; requires the table.override capability."),
+    combination_id: z8.string().optional().describe("Staff override only; requires the table.override capability.")
+  },
+  annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
+  handler: async (input, ctx) => {
+    try {
+      const { restaurantId, identity } = await authorize(ctx, "reservation.create", input.restaurant_id);
+      const wantsOverride = (input.table_ids?.length ?? 0) > 0 || !!input.combination_id;
+      if (wantsOverride && !identity.capabilities.includes("table.override")) {
+        throw new McpError("capability_denied", "Tafels kiezen mag alleen door bevoegd personeel; TableWise kiest zelf een tafel.");
+      }
+      if (!input.phone && !input.email) {
+        throw new McpError("missing_field", "Geef een telefoonnummer of e-mailadres van de gast.");
+      }
+      const engineBody = {
+        restaurant_id: restaurantId,
+        date: input.date,
+        time: input.time,
+        party_size: input.party_size,
+        guest: {
+          first_name: input.first_name,
+          last_name: input.last_name,
+          phone: input.phone,
+          email: input.email,
+          language: input.language
+        },
+        special_requests: input.special_requests,
+        dietary_notes: input.dietary_notes,
+        occasion: input.occasion,
+        prefers_terrace: input.prefers_terrace,
+        idempotency_key: input.idempotency_key,
+        channel: identity.profile === "guest_voice" ? "ai_host" : "manager",
+        source_metadata: { via: "mcp", profile: identity.profile ?? "human" }
+      };
+      if (wantsOverride) {
+        if (input.table_ids?.length) engineBody.preselected_table_ids = input.table_ids;
+        if (input.combination_id) engineBody.preselected_combination_id = input.combination_id;
+      }
+      const r = await callEngine("book_reservation", engineBody, identity.token);
+      if (r.status >= 400 || r.body.error) {
+        return toolResult({
+          ok: false,
+          error_code: r.body.error_code ?? "booking_failed",
+          error: r.body.error ?? "De reservering kon niet worden gemaakt.",
+          large_group: r.body.large_group ?? false,
+          field: r.body.field ?? null
+        });
+      }
+      return toolResult({ ok: true, restaurant_id: restaurantId, ...r.body });
+    } catch (e) {
+      return toolError(e);
+    }
+  }
+});
+
+// src/lib/mcp/tools/update-reservation.ts
+import { defineTool as defineTool10 } from "npm:@lovable.dev/mcp-js@2.0.3";
+import { z as z9 } from "npm:zod@^3.25.76";
+var update_reservation_default = defineTool10({
+  name: "update_reservation",
+  title: "Update reservation",
+  description: "Change the date, time, party size or notes of an existing reservation through the TableWise engine. Read the new date, time and party size back to the guest and get an explicit yes before calling this (confirmed must be true). If the group becomes large, the reservation can go back to pending approval \u2014 report the returned status truthfully.",
+  inputSchema: {
+    reservation_id: z9.string(),
+    confirmed: z9.boolean().describe("Must be true: the guest explicitly confirmed the change."),
+    date: z9.string().optional().describe("New date YYYY-MM-DD."),
+    time: z9.string().optional().describe("New local time HH:MM."),
+    party_size: z9.number().optional(),
+    special_requests: z9.string().optional(),
+    restaurant_id: z9.string().optional(),
+    table_ids: z9.array(z9.string()).optional().describe("Staff override only; requires table.override."),
+    combination_id: z9.string().optional().describe("Staff override only; requires table.override.")
+  },
+  annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
+  handler: async (input, ctx) => {
+    try {
+      const { restaurantId, identity, sb } = await authorize(ctx, "reservation.update", input.restaurant_id);
+      if (input.confirmed !== true) {
+        throw new McpError("confirmation_required", "Bevestig de wijziging eerst expliciet met de gast.");
+      }
+      await assertReservationTenant(sb, input.reservation_id, restaurantId);
+      const wantsOverride = (input.table_ids?.length ?? 0) > 0 || !!input.combination_id;
+      if (wantsOverride && !identity.capabilities.includes("table.override")) {
+        throw new McpError("capability_denied", "Tafels kiezen mag alleen door bevoegd personeel.");
+      }
+      const payload = {
+        action: "update",
+        reservation_id: input.reservation_id
+      };
+      if (input.date) payload.reservation_date = input.date;
+      if (input.time) payload.start_time_local = input.time;
+      if (input.party_size !== void 0) payload.party_size = input.party_size;
+      if (input.special_requests !== void 0) payload.special_requests = input.special_requests;
+      if (wantsOverride) {
+        if (input.table_ids?.length) payload.table_ids = input.table_ids;
+        if (input.combination_id) payload.combination_id = input.combination_id;
+      }
+      const r = await callEngine("manage_reservation", payload, identity.token);
+      if (r.status >= 400 || r.body.error) {
+        return toolResult({
+          ok: false,
+          error_code: r.body.reason_code ?? "update_failed",
+          error: r.body.error ?? "De wijziging is niet doorgevoerd."
+        });
+      }
+      const reservation = r.body.reservation ?? {};
+      return toolResult({
+        ok: true,
+        restaurant_id: restaurantId,
+        reservation,
+        status: reservation.status ?? null,
+        requires_manual_approval: reservation.requires_manual_approval ?? false,
+        large_group_status: reservation.large_group_status ?? null
+      });
+    } catch (e) {
+      return toolError(e);
+    }
+  }
+});
+
+// src/lib/mcp/tools/cancel-reservation.ts
+import { defineTool as defineTool11 } from "npm:@lovable.dev/mcp-js@2.0.3";
+import { z as z10 } from "npm:zod@^3.25.76";
+var cancel_reservation_default = defineTool11({
+  name: "cancel_reservation",
+  title: "Cancel reservation",
+  description: "Cancel a reservation. Irreversible. Read the guest name, date, time and party size back and get an explicit spoken yes first: confirmed must be true and a reason is required.",
+  inputSchema: {
+    reservation_id: z10.string(),
+    reason: z10.string().describe("Reason for the cancellation."),
+    confirmed: z10.boolean().describe("Must be true: the guest explicitly confirmed the cancellation."),
+    restaurant_id: z10.string().optional()
+  },
+  annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: false, openWorldHint: false },
+  handler: async ({ reservation_id, reason, confirmed, restaurant_id }, ctx) => {
+    try {
+      const { restaurantId, identity, sb } = await authorize(ctx, "reservation.cancel", restaurant_id);
+      if (confirmed !== true) {
+        throw new McpError("confirmation_required", "Bevestig de annulering eerst expliciet met de gast.");
+      }
+      if (!reason || !reason.trim()) {
+        throw new McpError("missing_field", "Geef een reden voor de annulering.");
+      }
+      await assertReservationTenant(sb, reservation_id, restaurantId);
+      const r = await callEngine(
+        "manage_reservation",
+        { action: "cancel", reservation_id, cancellation_reason: reason.trim() },
+        identity.token
+      );
+      if (r.status >= 400 || r.body.error) {
+        return toolResult({
+          ok: false,
+          error_code: r.body.reason_code ?? "cancel_failed",
+          error: r.body.error ?? "De annulering is niet doorgevoerd."
+        });
+      }
+      return toolResult({ ok: true, restaurant_id: restaurantId, reservation: r.body.reservation ?? null, status: "cancelled" });
+    } catch (e) {
+      return toolError(e);
+    }
+  }
+});
+
+// src/lib/mcp/tools/set-reservation-status.ts
+import { defineTool as defineTool12 } from "npm:@lovable.dev/mcp-js@2.0.3";
+import { z as z11 } from "npm:zod@^3.25.76";
+var ALLOWED = ["confirmed", "seated", "completed", "no_show"];
+var set_reservation_status_default = defineTool12({
+  name: "set_reservation_status",
+  title: "Set reservation status",
+  description: "Set the operational status of a reservation: confirmed, seated, completed or no_show. Staff action \u2014 not available to guest-facing agents. Use cancel_reservation to cancel.",
+  inputSchema: {
+    reservation_id: z11.string(),
+    status: z11.string().describe("One of: confirmed, seated, completed, no_show."),
+    restaurant_id: z11.string().optional()
+  },
+  annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: false, openWorldHint: false },
+  handler: async ({ reservation_id, status, restaurant_id }, ctx) => {
+    try {
+      const { restaurantId, identity, sb } = await authorize(ctx, "reservation.status.write", restaurant_id);
+      if (!ALLOWED.includes(status)) {
+        throw new McpError("invalid_input", `Onbekende status. Kies uit: ${ALLOWED.join(", ")}.`);
+      }
+      await assertReservationTenant(sb, reservation_id, restaurantId);
+      const r = await callEngine(
+        "manage_reservation",
+        { action: "change_status", reservation_id, new_status: status },
+        identity.token
+      );
+      if (r.status >= 400 || r.body.error) {
+        return toolResult({
+          ok: false,
+          error_code: r.body.reason_code ?? "status_change_failed",
+          error: r.body.error ?? "De status is niet gewijzigd."
+        });
+      }
+      return toolResult({ ok: true, restaurant_id: restaurantId, reservation: r.body.reservation ?? null });
+    } catch (e) {
+      return toolError(e);
+    }
+  }
+});
+
+// src/lib/mcp/tools/resolve-large-group.ts
+import { defineTool as defineTool13 } from "npm:@lovable.dev/mcp-js@2.0.3";
+import { z as z12 } from "npm:zod@^3.25.76";
+var resolve_large_group_default = defineTool13({
+  name: "resolve_large_group",
+  title: "Approve or decline a large group request",
+  description: "Approve or decline a large group reservation that is waiting for manual approval. Management action \u2014 never available to guest-facing agents. Requires explicit confirmation.",
+  inputSchema: {
+    reservation_id: z12.string(),
+    decision: z12.string().describe("approve or decline."),
+    confirmed: z12.boolean().describe("Must be true: the decision was explicitly confirmed."),
+    reason: z12.string().optional().describe("Reason, required when declining."),
+    restaurant_id: z12.string().optional()
+  },
+  annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: false, openWorldHint: false },
+  handler: async ({ reservation_id, decision, confirmed, reason, restaurant_id }, ctx) => {
+    try {
+      const approve = decision === "approve";
+      if (!approve && decision !== "decline") {
+        throw new McpError("invalid_input", "Kies 'approve' of 'decline'.");
+      }
+      const { restaurantId, identity, sb } = await authorize(
+        ctx,
+        approve ? "large_group.approve" : "large_group.decline",
+        restaurant_id
+      );
+      if (confirmed !== true) throw new McpError("confirmation_required", "Bevestig dit besluit expliciet.");
+      if (!approve && !(reason ?? "").trim()) {
+        throw new McpError("missing_field", "Geef een reden bij het afwijzen.");
+      }
+      await assertReservationTenant(sb, reservation_id, restaurantId);
+      const r = await callEngine(
+        "manage_reservation",
+        {
+          action: approve ? "approve_large_group" : "decline_large_group",
+          reservation_id,
+          cancellation_reason: reason
+        },
+        identity.token
+      );
+      if (r.status >= 400 || r.body.error) {
+        return toolResult({
+          ok: false,
+          error_code: r.body.reason_code ?? "large_group_decision_failed",
+          error: r.body.error ?? "Het besluit is niet verwerkt."
+        });
+      }
+      return toolResult({ ok: true, restaurant_id: restaurantId, decision, reservation: r.body.reservation ?? null });
+    } catch (e) {
+      return toolError(e);
+    }
+  }
+});
+
+// src/lib/mcp/tools/add-waitlist-entry.ts
+import { defineTool as defineTool14 } from "npm:@lovable.dev/mcp-js@2.0.3";
+import { z as z13 } from "npm:zod@^3.25.76";
+var add_waitlist_entry_default = defineTool14({
+  name: "add_waitlist_entry",
+  title: "Add guest to the waitlist",
+  description: "Put a guest on the waitlist when nothing is available at the requested time. The restaurant contacts the guest when a table frees up.",
+  inputSchema: {
+    date: z13.string().describe("Desired date YYYY-MM-DD."),
+    time_from: z13.string().describe("Earliest acceptable local time HH:MM."),
+    time_to: z13.string().optional().describe("Latest acceptable local time HH:MM."),
+    party_size: z13.number(),
+    first_name: z13.string(),
+    last_name: z13.string().optional(),
+    phone: z13.string().optional(),
+    email: z13.string().optional(),
+    notes: z13.string().optional(),
+    restaurant_id: z13.string().optional()
+  },
+  annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
+  handler: async (input, ctx) => {
+    try {
+      const { restaurantId, sb } = await authorize(ctx, "waitlist.create", input.restaurant_id);
+      if (!input.phone && !input.email) {
+        throw new McpError("missing_field", "Geef een telefoonnummer of e-mailadres zodat we de gast kunnen bereiken.");
+      }
+      const { data, error } = await sb.from("waitlist_entries").insert({
+        restaurant_id: restaurantId,
+        desired_date: input.date,
+        desired_time_from: input.time_from,
+        desired_time_to: input.time_to ?? input.time_from,
+        party_size: input.party_size,
+        first_name: input.first_name,
+        last_name: input.last_name ?? null,
+        phone: input.phone ?? null,
+        email: input.email ?? null,
+        notes: input.notes ?? null,
+        status: "waiting"
+      }).select("id, desired_date, desired_time_from, desired_time_to, party_size, status").single();
+      if (error) throw new McpError("waitlist_failed", error.message);
+      return toolResult({ ok: true, restaurant_id: restaurantId, entry: data });
+    } catch (e) {
+      return toolError(e);
+    }
   }
 });
 
@@ -255,13 +869,34 @@ var projectRef = "lbhtztbpxmqlzhyephew";
 var mcp_default = defineMcp({
   name: "tx-tablewise",
   title: "TX TableWise",
-  version: "0.1.0",
-  instructions: "Tools for TX TableWise, a reservation and floor management system for restaurants. Use list_restaurants first when the user manages more than one venue. list_reservations and get_reservation read the booking agenda, search_guests reads the guest book, list_waitlist reads the waitlist, and add_reservation_note appends a staff-only note. All data is scoped to the signed-in user's restaurants.",
+  version: "0.2.0",
+  instructions: [
+    "Tools for TX TableWise, a reservation and floor management system for restaurants.",
+    "Every call runs as the connected account, inside one restaurant, and is checked against that connection's permissions before anything happens. A tool may answer that the connection is not allowed to do something; accept that and explain it, do not retry with different wording.",
+    "Booking flow: call check_availability first, then create_reservation with a stable idempotency_key. TableWise decides the table, applies opening hours, closures, pacing and large-group rules. When the answer says requires_manual_approval is true, the reservation is NOT confirmed yet \u2014 tell the guest the request goes to the restaurant for approval.",
+    "Changing or cancelling: use find_reservation to identify the booking (confirmation code, phone, email, or name plus date), read the details back to the guest, and only then call update_reservation or cancel_reservation with confirmed set to true.",
+    "Never invent guest details, times, tables or confirmations. Report the status you actually got back."
+  ].join(" "),
   auth: auth.oauth.issuer({
     issuer: `https://${projectRef}.supabase.co/auth/v1`,
     acceptedAudiences: "authenticated"
   }),
-  tools: [list_restaurants_default, list_reservations_default, get_reservation_default, search_guests_default, list_waitlist_default, add_reservation_note_default]
+  tools: [
+    list_restaurants_default,
+    check_availability_default,
+    list_reservations_default,
+    get_reservation_default,
+    find_reservation_default,
+    create_reservation_default,
+    update_reservation_default,
+    cancel_reservation_default,
+    set_reservation_status_default,
+    resolve_large_group_default,
+    search_guests_default,
+    list_waitlist_default,
+    add_waitlist_entry_default,
+    add_reservation_note_default
+  ]
 });
 
 // lovable-mcp-supabase-entry.ts

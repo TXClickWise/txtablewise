@@ -7,6 +7,8 @@ import {
   findAvailableCombination,
 } from "../_shared/reservation-utils.ts";
 import { evaluatePacing, type PacingReservation } from "../_shared/pacing.ts";
+import { evaluateLargeGroup } from "../_shared/large-group.ts";
+
 import { durationMinutesFor } from "../_shared/duration.ts";
 import {
   resolveActiveZones, pickTableWithFillStrategy, pickCombinationWithFillStrategy,
@@ -39,6 +41,9 @@ type BookRequest = {
   /** Operator-only: force a multi-table combination (walk-in of grote groep). */
   preselected_table_ids?: string[];
   preselected_combination_id?: string;
+  /** Optional retry-safety key: same key + same restaurant returns the original reservation. */
+  idempotency_key?: string;
+
 };
 
 Deno.serve(async (req) => {
@@ -69,6 +74,44 @@ Deno.serve(async (req) => {
     const { data: restaurant, error: rErr } = await restQuery;
     if (rErr) return json({ error: rErr.message, error_code: "internal" }, 500);
     if (!restaurant) return json({ error: "Restaurant not found", error_code: "not_found", field: "restaurant_id" }, 404);
+
+    // Idempotency: a retry with the same key returns the original reservation instead of
+    // creating a second one. Only enforced when the caller supplies a key (widget does not).
+    const idemKey = (body.idempotency_key ?? "").toString().trim() || null;
+    if (idemKey) {
+      const { data: existing } = await supabase
+        .from("reservations")
+        .select("id, confirmation_code, status, start_time, end_time, party_size, requires_manual_approval, large_group_status, table_combination_id, reservation_tables(table_id)")
+        .eq("restaurant_id", restaurant.id)
+        .eq("idempotency_key", idemKey)
+        .maybeSingle();
+      if (existing) {
+        const tableIds = ((existing.reservation_tables ?? []) as Array<{ table_id: string }>)
+          .map((rt) => rt.table_id);
+        return json({
+          ok: true,
+          duplicate: true,
+          requires_manual_approval: existing.requires_manual_approval,
+          large_group_status: existing.large_group_status,
+          message_for_guest: null,
+          reservation: {
+            id: existing.id,
+            confirmation_code: existing.confirmation_code,
+            status: existing.status,
+            start_time: existing.start_time,
+            end_time: existing.end_time,
+            party_size: existing.party_size,
+            table_id: tableIds[0] ?? null,
+            table_ids: tableIds,
+            table_combination_id: existing.table_combination_id ?? null,
+            hold_expires_at: null,
+            requires_manual_approval: existing.requires_manual_approval,
+            large_group_status: existing.large_group_status,
+          },
+        });
+      }
+    }
+
 
     const onlineHardCap: number = restaurant.large_group_max_online_request ?? restaurant.max_party_size_online;
     if (body.party_size > onlineHardCap && body.channel !== "manager" && body.channel !== "walk_in") {
@@ -385,30 +428,10 @@ Deno.serve(async (req) => {
     //   party < largeFrom        → normal
     //   party >= largeFrom       → large group  (manual only if ≥ manualFrom)
     //   party >= xlFrom          → extra-large  (ALWAYS manual)
-    const manualApprovalSize: number | null = restaurant.manual_approval_from_party_size ?? null;
-    const largeFrom: number = restaurant.large_group_threshold ?? 9;
-    const xlFrom: number | null = restaurant.extra_large_group_threshold ?? null;
-    const largeGroupManualFrom: number = restaurant.large_group_manual_approval_from ?? largeFrom;
+    const lgEval = evaluateLargeGroup(body.party_size, restaurant, { channel });
+    const requiresManualApproval = lgEval.requiresManualApproval;
+    const largeGroupStatus: string | null = lgEval.largeGroupStatus;
 
-    let requiresManualApproval = false;
-    let largeGroupStatus: string | null = null;
-
-    if (xlFrom !== null && body.party_size >= xlFrom) {
-      requiresManualApproval = true;
-      largeGroupStatus = "awaiting_approval";
-    } else if (isLargeGroup) {
-      if (body.party_size >= largeGroupManualFrom) {
-        requiresManualApproval = true;
-        largeGroupStatus = "awaiting_approval";
-      }
-      // Geen 'approved' meer voor groepen die geen interne goedkeuring nodig hebben — gewoon null laten.
-    }
-    if (manualApprovalSize !== null && body.party_size >= manualApprovalSize) {
-      requiresManualApproval = true;
-    }
-    if (channel === "online" && restaurant.auto_confirm === false) {
-      requiresManualApproval = true;
-    }
 
     let status: string;
     if (body.hold_only) status = "hold";
@@ -425,6 +448,8 @@ Deno.serve(async (req) => {
     // Insert reservation
     const { data: reservation, error: resErr } = await supabase.from("reservations").insert({
       restaurant_id: restaurant.id,
+      idempotency_key: idemKey,
+
       guest_id: guestId,
       reservation_date: body.date,
       start_time: start_iso,
@@ -452,7 +477,44 @@ Deno.serve(async (req) => {
       terrace_preference_unmet: terracePreferenceUnmet,
     }).select("*").single();
 
-    if (resErr) return json({ error: resErr.message }, 500);
+    if (resErr) {
+      // Race on the idempotency key: another attempt won — return that reservation.
+      if (idemKey && (resErr as { code?: string }).code === "23505") {
+        const { data: raced } = await supabase
+          .from("reservations")
+          .select("id, confirmation_code, status, start_time, end_time, party_size, requires_manual_approval, large_group_status, table_combination_id, reservation_tables(table_id)")
+          .eq("restaurant_id", restaurant.id)
+          .eq("idempotency_key", idemKey)
+          .maybeSingle();
+        if (raced) {
+          const tableIds = ((raced.reservation_tables ?? []) as Array<{ table_id: string }>)
+            .map((rt) => rt.table_id);
+          return json({
+            ok: true,
+            duplicate: true,
+            requires_manual_approval: raced.requires_manual_approval,
+            large_group_status: raced.large_group_status,
+            message_for_guest: null,
+            reservation: {
+              id: raced.id,
+              confirmation_code: raced.confirmation_code,
+              status: raced.status,
+              start_time: raced.start_time,
+              end_time: raced.end_time,
+              party_size: raced.party_size,
+              table_id: tableIds[0] ?? null,
+              table_ids: tableIds,
+              table_combination_id: raced.table_combination_id ?? null,
+              hold_expires_at: null,
+              requires_manual_approval: raced.requires_manual_approval,
+              large_group_status: raced.large_group_status,
+            },
+          });
+        }
+      }
+      return json({ error: resErr.message }, 500);
+    }
+
 
     // Link table(s) — single table or all tables of the chosen combination
     const { error: rtErr } = await supabase.from("reservation_tables").insert(

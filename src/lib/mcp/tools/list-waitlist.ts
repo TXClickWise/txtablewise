@@ -1,6 +1,6 @@
 import { defineTool } from "@lovable.dev/mcp-js";
 import { z } from "zod";
-import { resolveRestaurantId, supabaseForUser } from "../supabase";
+import { authorize, toolError } from "../identity";
 
 export default defineTool({
   name: "list_waitlist",
@@ -13,10 +13,8 @@ export default defineTool({
   },
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
   handler: async ({ date, restaurant_id, status }, ctx) => {
-    if (!ctx.isAuthenticated()) return { content: [{ type: "text", text: "Not authenticated" }], isError: true };
-    const sb = supabaseForUser(ctx);
     try {
-      const rid = await resolveRestaurantId(sb, restaurant_id);
+      const { restaurantId: rid, sb } = await authorize(ctx, "waitlist.read", restaurant_id);
       const day = date || new Date().toISOString().slice(0, 10);
       let q = sb
         .from("waitlist_entries")
@@ -35,7 +33,7 @@ export default defineTool({
         structuredContent: { restaurant_id: rid, entries: data ?? [] },
       };
     } catch (e) {
-      return { content: [{ type: "text", text: e instanceof Error ? e.message : String(e) }], isError: true };
+      return toolError(e);
     }
   },
 });

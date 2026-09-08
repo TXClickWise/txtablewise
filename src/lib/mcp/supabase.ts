@@ -73,3 +73,32 @@ export async function resolveRestaurantId(sb: Sb, explicit?: string): Promise<st
   if (ids.length > 1) throw new Error("Meerdere restaurants gevonden — geef restaurant_id mee (zie list_restaurants).");
   return ids[0];
 }
+
+/**
+ * Calls an existing TableWise edge function (the business-logic engines) with the
+ * caller's verified token. No reservation logic is duplicated in the MCP layer.
+ */
+export async function callEngine(
+  fnName: "availability" | "book_reservation" | "manage_reservation",
+  body: Record<string, unknown>,
+  token: string,
+): Promise<{ status: number; body: Record<string, unknown> }> {
+  const url = `${supabaseProjectUrl().replace(/\/$/, "")}/functions/v1/${fnName}`;
+  const res = await fetch(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      apikey: supabasePublishableKey(),
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(body),
+  });
+  let parsed: Record<string, unknown> = {};
+  try {
+    parsed = (await res.json()) as Record<string, unknown>;
+  } catch {
+    parsed = { error: "Onleesbaar antwoord van de reserveringsmotor." };
+  }
+  return { status: res.status, body: parsed };
+}
+

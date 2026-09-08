@@ -1,6 +1,6 @@
 import { defineTool } from "@lovable.dev/mcp-js";
 import { z } from "zod";
-import { resolveRestaurantId, supabaseForUser } from "../supabase";
+import { authorize, toolError } from "../identity";
 
 export default defineTool({
   name: "search_guests",
@@ -13,10 +13,8 @@ export default defineTool({
   },
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
   handler: async ({ query, restaurant_id, limit }, ctx) => {
-    if (!ctx.isAuthenticated()) return { content: [{ type: "text", text: "Not authenticated" }], isError: true };
-    const sb = supabaseForUser(ctx);
     try {
-      const rid = await resolveRestaurantId(sb, restaurant_id);
+      const { restaurantId: rid, sb } = await authorize(ctx, "guest.search", restaurant_id);
       const cap = Math.min(Math.max(limit ?? 20, 1), 50);
       const term = query.trim().replace(/[%,]/g, " ");
       const { data, error } = await sb
@@ -37,7 +35,7 @@ export default defineTool({
         structuredContent: { restaurant_id: rid, guests: data ?? [] },
       };
     } catch (e) {
-      return { content: [{ type: "text", text: e instanceof Error ? e.message : String(e) }], isError: true };
+      return toolError(e);
     }
   },
 });
