@@ -62,7 +62,6 @@ import GastenTabsPage from "./pages/app/GastenTabsPage.tsx";
 import GastcommunicatiePage from "./pages/app/GastcommunicatiePage.tsx";
 import AIHostVoicePage from "./pages/app/AIHostVoicePage.tsx";
 import KoppelingenTabsPage from "./pages/app/KoppelingenTabsPage.tsx";
-import Unsubscribe from "./pages/Unsubscribe.tsx";
 import AcceptInvite from "./pages/AcceptInvite.tsx";
 import NotFound from "./pages/NotFound.tsx";
 
@@ -89,7 +88,6 @@ const App = () => (
             <Route path="/book/:slug" element={<ErrorBoundary label="ReserveWidget"><ReserveWidget /></ErrorBoundary>} />
             <Route path="/r/manage/:token" element={<GuestManageReservation />} />
             <Route path="/r/:slug/manage/:token" element={<GuestManageReservation />} />
-            <Route path="/unsubscribe" element={<Unsubscribe />} />
             <Route path="/invite" element={<AcceptInvite />} />
             <Route path="/onboarding" element={<RequireAuth><Onboarding /></RequireAuth>} />
             <Route path="/app" element={<RequireAuth><AppShell /></RequireAuth>}>

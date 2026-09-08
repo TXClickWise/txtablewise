@@ -19,6 +19,7 @@ import {
   zonedDateTimeToUtcIso,
 } from "../_shared/reservation-utils.ts";
 import { notifyWaitlistOnCancel } from "../_shared/waitlist-notify.ts";
+import { sendRestaurantEmail } from "../_shared/transactional-email-templates/send-restaurant-email.ts";
 
 type Action = "view" | "confirm_attendance" | "cancel" | "request_change";
 
@@ -433,14 +434,12 @@ async function handleRequestChange(sb: any, reservation: any, restaurant: any, b
       };
     }
     try {
-      await sb.functions.invoke("send-transactional-email", {
-        body: {
-          templateName, recipientEmail,
-          idempotencyKey: `${eventType}:${reservation.id}:${Date.now()}`,
-          restaurantId: reservation.restaurant_id, locale, templateData,
-          fromName: restaurant.name,
-          replyTo: restaurant.guest_reply_to_email || undefined,
-        },
+      await sendRestaurantEmail({
+        templateName, recipientEmail,
+        idempotencyKey: `${eventType}:${reservation.id}:${Date.now()}`,
+        restaurantId: reservation.restaurant_id, locale, templateData,
+        fromName: restaurant.name,
+        replyTo: restaurant.guest_reply_to_email || undefined,
       });
     } catch (e) {
       console.error("send change email failed (non-fatal)", e);

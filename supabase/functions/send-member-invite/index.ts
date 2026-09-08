@@ -1,4 +1,5 @@
 import { createClient } from 'npm:@supabase/supabase-js@2'
+import { sendRestaurantEmail } from '../_shared/transactional-email-templates/send-restaurant-email.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -99,8 +100,9 @@ Deno.serve(async (req) => {
   const base = appBaseUrl(req)
   const inviteUrl = `${base}/invite?token=${inv.token}`
 
-  const { error: sendErr } = await admin.functions.invoke('send-transactional-email', {
-    body: {
+  let sendResult
+  try {
+    sendResult = await sendRestaurantEmail({
       templateName: 'member-invitation',
       recipientEmail: inv.email,
       idempotencyKey: `member-invite-${inv.id}-${inv.token}`,
@@ -112,13 +114,19 @@ Deno.serve(async (req) => {
         inviteUrl,
         expiresAtLabel: formatDate(inv.expires_at),
       },
-    },
-  })
-
-  if (sendErr) {
-    console.error('send-member-invite: email send failed', sendErr)
+    })
+  } catch (e) {
+    console.error('send-member-invite: email send failed', e)
     return new Response(JSON.stringify({ error: 'Failed to send email' }), {
       status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    })
+  }
+
+  if (!sendResult.success) {
+    console.error('send-member-invite: email not sent', sendResult.reason)
+    return new Response(JSON.stringify({ error: 'Failed to send email', reason: sendResult.reason }), {
+      status: sendResult.reason === 'email_suppressed' ? 200 : 500,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     })
   }
 

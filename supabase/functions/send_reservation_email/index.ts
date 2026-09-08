@@ -4,11 +4,12 @@
 // - Skips when restaurant has ClickWise live mode enabled (avoids duplicate messages).
 // - Skips when guest has no real email address.
 // - Skips when the per-restaurant notification setting for this event is off.
-// - Maps event_type → transactional template name and forwards to send-transactional-email.
+// - Maps event_type → transactional template name and sends through Lovable's managed email delivery.
 //
 // Logs every decision to integration_logs.
 
 import { createClient } from 'npm:@supabase/supabase-js@2'
+import { sendRestaurantEmail } from '../_shared/transactional-email-templates/send-restaurant-email.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -166,9 +167,10 @@ Deno.serve(async (req) => {
     reviewUrl,
   }
 
-  // Forward to generic transactional sender (handles rendering, suppression, queue, retries)
-  const { data: sendRes, error: sendErr } = await sb.functions.invoke('send-transactional-email', {
-    body: {
+  // Send through Lovable's managed email delivery.
+  let sendRes
+  try {
+    sendRes = await sendRestaurantEmail({
       templateName: mapping.template,
       recipientEmail: guest.email,
       idempotencyKey: `${event_type}:${reservation.id}:${event_id || crypto.randomUUID()}`,
@@ -177,15 +179,24 @@ Deno.serve(async (req) => {
       fromName: restaurant.name,
       replyTo: restaurant.guest_reply_to_email || undefined,
       templateData,
-    },
-  })
-
-  if (sendErr) {
-    await logResult(sb, restaurant_id, event_id, 'send_failed', {
-      event_type, template: mapping.template, error: String(sendErr?.message || sendErr),
     })
-    return new Response(JSON.stringify({ status: 'error', error: sendErr.message }), {
+  } catch (e) {
+    const message = e instanceof Error ? e.message : String(e)
+    await logResult(sb, restaurant_id, event_id, 'send_failed', {
+      event_type, template: mapping.template, error: message,
+    })
+    return new Response(JSON.stringify({ status: 'error', error: message }), {
       status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    })
+  }
+
+  if (!sendRes.success) {
+    await logResult(sb, restaurant_id, event_id, 'send_failed', {
+      event_type, template: mapping.template, error: sendRes.reason,
+    })
+    return new Response(JSON.stringify({ status: 'error', error: sendRes.reason }), {
+      status: sendRes.reason === 'email_suppressed' ? 200 : 500,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     })
   }
 

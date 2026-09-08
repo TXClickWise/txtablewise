@@ -11,11 +11,7 @@ project_id = "lbhtztbpxmqlzhyephew"
     verify_jwt = false
   [functions.book_reservation]
     verify_jwt = false
-  [functions.handle-email-suppression]
-    verify_jwt = false
   [functions.manage_reservation]
-    verify_jwt = false
-  [functions.handle-email-unsubscribe]
     verify_jwt = false
   [functions.loyverse_oauth]
     verify_jwt = false
@@ -23,11 +19,7 @@ project_id = "lbhtztbpxmqlzhyephew"
     verify_jwt = false
   [functions.preview-transactional-email]
     verify_jwt = false
-  [functions.process-email-queue]
-    verify_jwt = true
   [functions.reminder_scheduler]
-    verify_jwt = false
-  [functions.send-transactional-email]
     verify_jwt = false
   [functions.translate-email-templates]
     verify_jwt = true

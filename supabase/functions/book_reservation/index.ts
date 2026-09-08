@@ -14,6 +14,7 @@ import {
   resolveActiveZones, pickTableWithFillStrategy, pickCombinationWithFillStrategy,
   type ZoneRow, type TableRow as FillTableRow, type WeatherRow, type CombinationRow,
 } from "../_shared/zone-fill.ts";
+import { sendRestaurantEmail } from "../_shared/transactional-email-templates/send-restaurant-email.ts";
 
 type BookRequest = {
   restaurant_id?: string;
@@ -626,48 +627,25 @@ Deno.serve(async (req) => {
         const slugPart = restaurant.slug ? `/${restaurant.slug}` : "";
         const manageUrl = reservation.manage_token ? `${baseUrl}/r${slugPart}/manage/${reservation.manage_token}` : undefined;
         const cancelUrl = reservation.cancel_token ? `${baseUrl}/r${slugPart}/manage/${reservation.cancel_token}?action=cancel` : undefined;
-        // Direct fetch met expliciete anon-key auth — supabase.functions.invoke()
-        // van binnenuit een edge function stuurt de Authorization header soms niet
-        // mee, en SUPABASE_SERVICE_ROLE_KEY is in de nieuwe key-formaat geen geldige
-        // JWT meer voor de gateway. We gebruiken de publieke anon/publishable key
-        // (klassieke JWT) via environment-variabelen — geen hardcoded token.
-        const anonKey =
-          Deno.env.get("SUPABASE_GATEWAY_JWT_ANON_KEY") ??
-          Deno.env.get("SUPABASE_ANON_KEY") ??
-          Deno.env.get("SUPABASE_PUBLISHABLE_KEY");
-        const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-        if (!anonKey) {
-          console.error("guest confirmation email skipped: missing anon gateway key");
-        } else {
-          const mailRes = await fetch(`${supabaseUrl}/functions/v1/send-transactional-email`, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${anonKey}`,
-              apikey: anonKey,
-            },
-            body: JSON.stringify({
-              templateName: "reservation-confirmation",
-              recipientEmail: body.guest.email,
-              idempotencyKey: `reservation-confirmation-${reservation.id}`,
-              fromName: restaurant.name,
-              replyTo: restaurant.guest_reply_to_email || undefined,
-              restaurantId: restaurant.id,
-              locale: guestLocale,
-              templateData: {
-                guestName: body.guest.first_name || undefined,
-                dateLabel,
-                timeLabel,
-                partySize: body.party_size,
-                manageUrl,
-                cancelUrl,
-              },
-            }),
-          });
-          if (!mailRes.ok) {
-            const errText = await mailRes.text().catch(() => "");
-            console.error("guest confirmation email failed (non-fatal)", mailRes.status, errText);
-          }
+        const mailResult = await sendRestaurantEmail({
+          templateName: "reservation-confirmation",
+          recipientEmail: body.guest.email,
+          idempotencyKey: `reservation-confirmation-${reservation.id}`,
+          fromName: restaurant.name,
+          replyTo: restaurant.guest_reply_to_email || undefined,
+          restaurantId: restaurant.id,
+          locale: guestLocale,
+          templateData: {
+            guestName: body.guest.first_name || undefined,
+            dateLabel,
+            timeLabel,
+            partySize: body.party_size,
+            manageUrl,
+            cancelUrl,
+          },
+        });
+        if (!mailResult.success) {
+          console.error("guest confirmation email not sent (non-fatal)", mailResult.reason);
         }
       } catch (mailErr) {
         console.error("guest confirmation email failed (non-fatal)", mailErr);
