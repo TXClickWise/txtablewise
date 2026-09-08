@@ -911,6 +911,53 @@ export type Database = {
           },
         ]
       }
+      mcp_service_identities: {
+        Row: {
+          capabilities: string[]
+          created_at: string
+          created_by: string | null
+          id: string
+          label: string | null
+          profile: string
+          restaurant_id: string
+          revoked_at: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          capabilities?: string[]
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          label?: string | null
+          profile: string
+          restaurant_id: string
+          revoked_at?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          capabilities?: string[]
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          label?: string | null
+          profile?: string
+          restaurant_id?: string
+          revoked_at?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mcp_service_identities_restaurant_id_fkey"
+            columns: ["restaurant_id"]
+            isOneToOne: false
+            referencedRelation: "restaurants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       member_invitations: {
         Row: {
           accepted_at: string | null
@@ -1478,6 +1525,7 @@ export type Database = {
           guest_phone: string | null
           hold_expires_at: string | null
           id: string
+          idempotency_key: string | null
           internal_notes: string | null
           large_group_status: string | null
           magic_token_expires_at: string | null
@@ -1541,6 +1589,7 @@ export type Database = {
           guest_phone?: string | null
           hold_expires_at?: string | null
           id?: string
+          idempotency_key?: string | null
           internal_notes?: string | null
           large_group_status?: string | null
           magic_token_expires_at?: string | null
@@ -1604,6 +1653,7 @@ export type Database = {
           guest_phone?: string | null
           hold_expires_at?: string | null
           id?: string
+          idempotency_key?: string | null
           internal_notes?: string | null
           large_group_status?: string | null
           magic_token_expires_at?: string | null
