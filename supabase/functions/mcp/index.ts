@@ -48,22 +48,13 @@ function supabasePublishableKey() {
   if (legacy) return legacy;
   throw new Error("SUPABASE_PUBLISHABLE_KEY, SUPABASE_PUBLISHABLE_KEYS, or SUPABASE_ANON_KEY is required");
 }
-function supabaseForUser(ctx) {
+function supabaseForUser2(ctx) {
   const token = ctx.getToken();
   if (!token) throw new Error("supabaseForUser requires a verified OAuth token");
   return createClient(supabaseProjectUrl(), supabasePublishableKey(), {
     global: { headers: { Authorization: `Bearer ${token}` } },
     auth: { persistSession: false, autoRefreshToken: false }
   });
-}
-async function resolveRestaurantId(sb, explicit) {
-  if (explicit) return explicit;
-  const { data, error } = await sb.from("restaurant_members").select("restaurant_id").limit(5);
-  if (error) throw new Error(error.message);
-  const ids = Array.from(new Set((data ?? []).map((r) => r.restaurant_id)));
-  if (ids.length === 0) throw new Error("Geen restaurant gevonden voor dit account.");
-  if (ids.length > 1) throw new Error("Meerdere restaurants gevonden \u2014 geef restaurant_id mee (zie list_restaurants).");
-  return ids[0];
 }
 
 // src/lib/mcp/tools/list-restaurants.ts
@@ -75,7 +66,7 @@ var list_restaurants_default = defineTool({
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
   handler: async (_input, ctx) => {
     if (!ctx.isAuthenticated()) return { content: [{ type: "text", text: "Not authenticated" }], isError: true };
-    const sb = supabaseForUser(ctx);
+    const sb = supabaseForUser2(ctx);
     const { data, error } = await sb.from("restaurants").select("id, name, slug, timezone, is_active").is("deleted_at", null);
     if (error) return { content: [{ type: "text", text: error.message }], isError: true };
     return {
@@ -88,6 +79,174 @@ var list_restaurants_default = defineTool({
 // src/lib/mcp/tools/list-reservations.ts
 import { defineTool as defineTool2 } from "npm:@lovable.dev/mcp-js@2.0.3";
 import { z } from "npm:zod@^3.25.76";
+
+// src/lib/mcp/identity.ts
+var PROFILE_CEILING = {
+  guest_voice: [
+    "availability.read",
+    "reservation.read",
+    "reservation.create",
+    "reservation.update",
+    "reservation.cancel",
+    "waitlist.create"
+  ],
+  guest_conversation: [
+    "availability.read",
+    "reservation.read",
+    "reservation.create",
+    "reservation.update",
+    "reservation.cancel",
+    "waitlist.create"
+  ],
+  workflow_agent: [
+    "availability.read",
+    "reservation.read",
+    "reservation.create",
+    "reservation.update",
+    "reservation.cancel",
+    "reservation.status.write",
+    "waitlist.read",
+    "waitlist.create",
+    "guest.search",
+    "reservation.note.write"
+  ],
+  operations_agent: [
+    "availability.read",
+    "reservation.read",
+    "reservation.update",
+    "reservation.status.write",
+    "waitlist.read",
+    "waitlist.create",
+    "guest.search",
+    "reservation.note.write",
+    "deposit.read"
+  ],
+  manager_agent: [
+    "availability.read",
+    "reservation.read",
+    "reservation.create",
+    "reservation.update",
+    "reservation.cancel",
+    "reservation.status.write",
+    "waitlist.read",
+    "waitlist.create",
+    "guest.search",
+    "reservation.note.write",
+    "large_group.approve",
+    "large_group.decline",
+    "table.override",
+    "deposit.read"
+  ],
+  revenue_agent: ["availability.read", "reservation.read", "waitlist.read", "deposit.read"],
+  system_automation: [
+    "availability.read",
+    "reservation.read",
+    "reservation.status.write",
+    "waitlist.read",
+    "reservation.note.write"
+  ]
+};
+var MANAGER_CAPABILITIES = [
+  "availability.read",
+  "reservation.read",
+  "reservation.create",
+  "reservation.update",
+  "reservation.cancel",
+  "reservation.status.write",
+  "waitlist.read",
+  "waitlist.create",
+  "guest.search",
+  "reservation.note.write",
+  "large_group.approve",
+  "large_group.decline",
+  "table.override",
+  "deposit.read"
+];
+var STAFF_CAPABILITIES = [
+  "availability.read",
+  "reservation.read",
+  "reservation.create",
+  "reservation.update",
+  "reservation.cancel",
+  "reservation.status.write",
+  "waitlist.read",
+  "waitlist.create",
+  "guest.search",
+  "reservation.note.write",
+  "deposit.read"
+];
+var McpError = class extends Error {
+  code;
+  constructor(code, message) {
+    super(message);
+    this.code = code;
+  }
+};
+async function resolveIdentity(ctx) {
+  if (!ctx.isAuthenticated()) throw new McpError("unauthenticated", "Niet geauthenticeerd.");
+  const token = ctx.getToken();
+  if (!token) throw new McpError("unauthenticated", "Geen geldig token.");
+  const userId = ctx.getUserId() ?? "";
+  const sb = supabaseForUser2(ctx);
+  const { data: svc } = await sb.from("mcp_service_identities").select("restaurant_id, profile, capabilities, revoked_at").eq("user_id", userId).is("revoked_at", null).maybeSingle();
+  if (svc) {
+    const profile = svc.profile;
+    const ceiling = PROFILE_CEILING[profile] ?? [];
+    const granted = (svc.capabilities ?? []).filter((c) => ceiling.includes(c));
+    return {
+      kind: "service",
+      userId,
+      profile,
+      boundRestaurantId: svc.restaurant_id,
+      capabilities: granted,
+      sb,
+      token
+    };
+  }
+  return { kind: "human", userId, profile: null, boundRestaurantId: null, capabilities: [], sb, token };
+}
+async function humanCapabilities(identity, restaurantId) {
+  const { data } = await identity.sb.from("restaurant_members").select("role").eq("restaurant_id", restaurantId).eq("user_id", identity.userId).maybeSingle();
+  if (!data) return [];
+  return ["owner", "manager"].includes(data.role) ? MANAGER_CAPABILITIES : STAFF_CAPABILITIES;
+}
+async function authorize(ctx, capability, explicitRestaurantId) {
+  const identity = await resolveIdentity(ctx);
+  let restaurantId;
+  if (identity.kind === "service") {
+    const bound = identity.boundRestaurantId;
+    if (explicitRestaurantId && explicitRestaurantId !== bound) {
+      throw new McpError("tenant_mismatch", "Deze koppeling heeft geen toegang tot dit restaurant.");
+    }
+    restaurantId = bound;
+    if (!identity.capabilities.includes(capability)) {
+      throw new McpError("capability_denied", `Deze koppeling mag '${capability}' niet uitvoeren.`);
+    }
+  } else {
+    restaurantId = explicitRestaurantId ?? await onlyMembership(identity);
+    const caps = await humanCapabilities(identity, restaurantId);
+    if (caps.length === 0) {
+      throw new McpError("tenant_mismatch", "Geen toegang tot dit restaurant.");
+    }
+    if (!caps.includes(capability)) {
+      throw new McpError("capability_denied", `Je rol mag '${capability}' niet uitvoeren.`);
+    }
+    identity.capabilities = caps;
+  }
+  return { identity, restaurantId, sb: identity.sb };
+}
+async function onlyMembership(identity) {
+  const { data, error } = await identity.sb.from("restaurant_members").select("restaurant_id").eq("user_id", identity.userId).limit(5);
+  if (error) throw new McpError("internal", error.message);
+  const ids = Array.from(new Set((data ?? []).map((r) => r.restaurant_id)));
+  if (ids.length === 0) throw new McpError("tenant_mismatch", "Geen restaurant gevonden voor dit account.");
+  if (ids.length > 1) {
+    throw new McpError("restaurant_required", "Meerdere restaurants \u2014 geef restaurant_id mee (zie list_restaurants).");
+  }
+  return ids[0];
+}
+
+// src/lib/mcp/tools/list-reservations.ts
 var list_reservations_default = defineTool2({
   name: "list_reservations",
   title: "List reservations",
@@ -101,10 +260,8 @@ var list_reservations_default = defineTool2({
   },
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
   handler: async ({ date, end_date, restaurant_id, include_cancelled, limit }, ctx) => {
-    if (!ctx.isAuthenticated()) return { content: [{ type: "text", text: "Not authenticated" }], isError: true };
-    const sb = supabaseForUser(ctx);
     try {
-      const rid = await resolveRestaurantId(sb, restaurant_id);
+      const { restaurantId: rid, sb } = await authorize(ctx, "reservation.read", restaurant_id);
       const from = date || (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
       const to = end_date || from;
       const cap = Math.min(Math.max(limit ?? 100, 1), 200);
@@ -162,10 +319,8 @@ var search_guests_default = defineTool4({
   },
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
   handler: async ({ query, restaurant_id, limit }, ctx) => {
-    if (!ctx.isAuthenticated()) return { content: [{ type: "text", text: "Not authenticated" }], isError: true };
-    const sb = supabaseForUser(ctx);
     try {
-      const rid = await resolveRestaurantId(sb, restaurant_id);
+      const { restaurantId: rid, sb } = await authorize(ctx, "guest.search", restaurant_id);
       const cap = Math.min(Math.max(limit ?? 20, 1), 50);
       const term = query.trim().replace(/[%,]/g, " ");
       const { data, error } = await sb.from("guests").select(
@@ -198,10 +353,8 @@ var list_waitlist_default = defineTool5({
   },
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
   handler: async ({ date, restaurant_id, status }, ctx) => {
-    if (!ctx.isAuthenticated()) return { content: [{ type: "text", text: "Not authenticated" }], isError: true };
-    const sb = supabaseForUser(ctx);
     try {
-      const rid = await resolveRestaurantId(sb, restaurant_id);
+      const { restaurantId: rid, sb } = await authorize(ctx, "waitlist.read", restaurant_id);
       const day = date || (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
       let q = sb.from("waitlist_entries").select(
         "id, desired_date, desired_time_from, desired_time_to, party_size, first_name, last_name, phone, email, status, notes, notified_at, matched_at, created_at"
@@ -235,7 +388,7 @@ var add_reservation_note_default = defineTool6({
     if (!ctx.isAuthenticated()) return { content: [{ type: "text", text: "Not authenticated" }], isError: true };
     const text = note.trim();
     if (!text) return { content: [{ type: "text", text: "Notitie mag niet leeg zijn." }], isError: true };
-    const sb = supabaseForUser(ctx);
+    const sb = supabaseForUser2(ctx);
     const { data: current, error: readErr } = await sb.from("reservations").select("id, internal_notes").eq("id", reservation_id).maybeSingle();
     if (readErr) return { content: [{ type: "text", text: readErr.message }], isError: true };
     if (!current) return { content: [{ type: "text", text: "Reservering niet gevonden." }], isError: true };

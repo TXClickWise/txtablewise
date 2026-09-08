@@ -1,6 +1,6 @@
 import { defineTool } from "@lovable.dev/mcp-js";
 import { z } from "zod";
-import { supabaseForUser } from "../supabase";
+import { authorize, assertReservationTenant, toolError } from "../identity";
 
 export default defineTool({
   name: "get_reservation",
