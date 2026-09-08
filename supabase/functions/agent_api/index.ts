@@ -18,6 +18,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { corsHeaders as baseCors } from "../_shared/cors.ts";
 import { logIntegration } from "../_shared/integration-log.ts";
+import { SUPABASE_GATEWAY_JWT_ANON_KEY } from "../_shared/gateway-key.ts";
 
 const corsHeaders = {
   ...baseCors,
@@ -290,12 +291,18 @@ async function authenticate(req: Request) {
 
 async function callInternalFn(name: string, body: unknown, extraHeaders: Record<string, string> = {}) {
   const url = `${SUPABASE_URL}/functions/v1/${name}`;
+  // Authorization en apikey moeten dezelfde sleutel bevatten, anders weigert de
+  // edge-gateway het verzoek met "Conflicting API keys". Systeemaanroepen
+  // (x-system-actor) vereisen de service role in Authorization; overige calls
+  // gebruiken de publieke gateway-key.
+  const isSystemCall = Object.keys(extraHeaders).some((h) => h.toLowerCase() === "x-system-actor");
+  const authKey = isSystemCall ? SERVICE_ROLE : SUPABASE_GATEWAY_JWT_ANON_KEY;
   const res = await fetch(url, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${SERVICE_ROLE}`,
-      apikey: GATEWAY_API_KEY,
+      Authorization: `Bearer ${authKey}`,
+      apikey: authKey,
       ...extraHeaders,
     },
     body: JSON.stringify(body),
