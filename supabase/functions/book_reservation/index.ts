@@ -41,6 +41,9 @@ type BookRequest = {
   /** Operator-only: force a multi-table combination (walk-in of grote groep). */
   preselected_table_ids?: string[];
   preselected_combination_id?: string;
+  /** Optional retry-safety key: same key + same restaurant returns the original reservation. */
+  idempotency_key?: string;
+
 };
 
 Deno.serve(async (req) => {
@@ -407,6 +410,8 @@ Deno.serve(async (req) => {
     // Insert reservation
     const { data: reservation, error: resErr } = await supabase.from("reservations").insert({
       restaurant_id: restaurant.id,
+      idempotency_key: idemKey,
+
       guest_id: guestId,
       reservation_date: body.date,
       start_time: start_iso,
