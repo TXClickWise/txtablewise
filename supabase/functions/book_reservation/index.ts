@@ -75,6 +75,44 @@ Deno.serve(async (req) => {
     if (rErr) return json({ error: rErr.message, error_code: "internal" }, 500);
     if (!restaurant) return json({ error: "Restaurant not found", error_code: "not_found", field: "restaurant_id" }, 404);
 
+    // Idempotency: a retry with the same key returns the original reservation instead of
+    // creating a second one. Only enforced when the caller supplies a key (widget does not).
+    const idemKey = (body.idempotency_key ?? "").toString().trim() || null;
+    if (idemKey) {
+      const { data: existing } = await supabase
+        .from("reservations")
+        .select("id, confirmation_code, status, start_time, end_time, party_size, requires_manual_approval, large_group_status, table_combination_id, reservation_tables(table_id)")
+        .eq("restaurant_id", restaurant.id)
+        .eq("idempotency_key", idemKey)
+        .maybeSingle();
+      if (existing) {
+        const tableIds = ((existing.reservation_tables ?? []) as Array<{ table_id: string }>)
+          .map((rt) => rt.table_id);
+        return json({
+          ok: true,
+          duplicate: true,
+          requires_manual_approval: existing.requires_manual_approval,
+          large_group_status: existing.large_group_status,
+          message_for_guest: null,
+          reservation: {
+            id: existing.id,
+            confirmation_code: existing.confirmation_code,
+            status: existing.status,
+            start_time: existing.start_time,
+            end_time: existing.end_time,
+            party_size: existing.party_size,
+            table_id: tableIds[0] ?? null,
+            table_ids: tableIds,
+            table_combination_id: existing.table_combination_id ?? null,
+            hold_expires_at: null,
+            requires_manual_approval: existing.requires_manual_approval,
+            large_group_status: existing.large_group_status,
+          },
+        });
+      }
+    }
+
+
     const onlineHardCap: number = restaurant.large_group_max_online_request ?? restaurant.max_party_size_online;
     if (body.party_size > onlineHardCap && body.channel !== "manager" && body.channel !== "walk_in") {
       const transferInfo = await computeTransferAvailability(supabase, restaurant);
