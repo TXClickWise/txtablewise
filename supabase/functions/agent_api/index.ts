@@ -291,14 +291,18 @@ async function authenticate(req: Request) {
 
 async function callInternalFn(name: string, body: unknown, extraHeaders: Record<string, string> = {}) {
   const url = `${SUPABASE_URL}/functions/v1/${name}`;
+  // Authorization en apikey moeten dezelfde sleutel bevatten, anders weigert de
+  // edge-gateway het verzoek met "Conflicting API keys". Systeemaanroepen
+  // (x-system-actor) vereisen de service role in Authorization; overige calls
+  // gebruiken de publieke gateway-key.
+  const isSystemCall = Object.keys(extraHeaders).some((h) => h.toLowerCase() === "x-system-actor");
+  const authKey = isSystemCall ? SERVICE_ROLE : SUPABASE_GATEWAY_JWT_ANON_KEY;
   const res = await fetch(url, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      // Authorization en apikey moeten dezelfde sleutel bevatten, anders
-      // weigert de edge-gateway het verzoek met "Conflicting API keys".
-      Authorization: `Bearer ${SUPABASE_GATEWAY_JWT_ANON_KEY}`,
-      apikey: SUPABASE_GATEWAY_JWT_ANON_KEY,
+      Authorization: `Bearer ${authKey}`,
+      apikey: authKey,
       ...extraHeaders,
     },
     body: JSON.stringify(body),
