@@ -8,6 +8,8 @@ import {
   pickSeatingWithStrategy,
 } from "../_shared/reservation-utils.ts";
 import { evaluatePacing, durationFor, type PacingReservation } from "../_shared/pacing.ts";
+import { reevaluateLargeGroupOnUpdate } from "../_shared/large-group.ts";
+
 import { notifyWaitlistOnCancel } from "../_shared/waitlist-notify.ts";
 
 type Action =
@@ -479,6 +481,12 @@ async function doUpdate(
     };
     if (body.internal_notes !== undefined) patch.internal_notes = body.internal_notes;
     if (body.special_requests !== undefined) patch.special_requests = body.special_requests;
+
+    // Grote-groepregels opnieuw toepassen wanneer het aantal personen wijzigt.
+    // Zelfde centrale regels als bij het aanmaken (book_reservation).
+    const lgPatch = reevaluateLargeGroupOnUpdate(current, newPartySize, restaurant);
+    if (lgPatch) Object.assign(patch, lgPatch);
+
 
     const { data: updated, error: uErr } = await admin
       .from("reservations").update(patch).eq("id", current.id).select("*").single();
