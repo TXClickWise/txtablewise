@@ -225,7 +225,7 @@ export function toolError(e: unknown) {
   const message = e instanceof Error ? e.message : String(e);
   return {
     content: [{ type: "text" as const, text: JSON.stringify({ ok: false, error_code: code, error: message }) }],
-    structuredContent: { ok: false, error_code: code, error: message },
+    structuredContent: { ok: false, error_code: code, error: message } as Record<string, never>,
     isError: true,
   };
 }
@@ -233,6 +233,7 @@ export function toolError(e: unknown) {
 export function toolResult(payload: Record<string, unknown>) {
   return {
     content: [{ type: "text" as const, text: JSON.stringify(payload) }],
-    structuredContent: payload,
+    // The SDK types structuredContent as a JSON value; the payload is JSON-safe.
+    structuredContent: JSON.parse(JSON.stringify(payload)) as Record<string, never>,
   };
 }

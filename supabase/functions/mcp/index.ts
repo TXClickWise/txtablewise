@@ -284,7 +284,8 @@ function toolError(e) {
 function toolResult(payload) {
   return {
     content: [{ type: "text", text: JSON.stringify(payload) }],
-    structuredContent: payload
+    // The SDK types structuredContent as a JSON value; the payload is JSON-safe.
+    structuredContent: JSON.parse(JSON.stringify(payload))
   };
 }
 
