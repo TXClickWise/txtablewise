@@ -225,7 +225,7 @@ export function toolError(e: unknown) {
   const message = e instanceof Error ? e.message : String(e);
   return {
     content: [{ type: "text" as const, text: JSON.stringify({ ok: false, error_code: code, error: message }) }],
-    structuredContent: { ok: false, error_code: code, error: message } as Record<string, never>,
+    structuredContent: { ok: false, error_code: code, error: message } as unknown as Record<string, never>,
     isError: true,
   };
 }
