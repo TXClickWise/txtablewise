@@ -182,7 +182,17 @@ function rpcResult(id: unknown, result: unknown) {
 function rpcError(id: unknown, code: number, message: string, data?: unknown) {
   return { jsonrpc: "2.0", id, error: { code, message, ...(data ? { data } : {}) } };
 }
-function respond(body: unknown, status = 200) {
+function respond(body: unknown, status = 200, asEventStream = false) {
+  if (asEventStream) {
+    return new Response(`event: message\ndata: ${JSON.stringify(body)}\n\n`, {
+      status,
+      headers: {
+        ...corsHeaders,
+        "Content-Type": "text/event-stream",
+        "Cache-Control": "no-cache",
+      },
+    });
+  }
   return new Response(JSON.stringify(body), {
     status,
     headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -211,6 +221,15 @@ async function callAgentApi(action: string, args: Record<string, unknown>, apiKe
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
+  const accept = req.headers.get("accept") ?? "";
+  const asEventStream = accept.includes("text/event-stream");
+  console.log("MCP request", {
+    method: req.method,
+    acceptsEventStream: asEventStream,
+    hasApiKey: req.headers.has("x-agent-api-key"),
+    protocolVersion: req.headers.get("mcp-protocol-version"),
+  });
+
   // Health/discovery voor clients die eerst een GET doen.
   if (req.method === "GET") {
     return respond({
@@ -223,7 +242,7 @@ Deno.serve(async (req) => {
   }
 
   if (req.method !== "POST") {
-    return respond(rpcError(null, -32600, "Method not allowed"), 405);
+    return respond(rpcError(null, -32600, "Method not allowed"), 405, asEventStream);
   }
 
   const apiKey =
@@ -235,7 +254,7 @@ Deno.serve(async (req) => {
   try {
     payload = await req.json();
   } catch {
-    return respond(rpcError(null, -32700, "Parse error"), 400);
+    return respond(rpcError(null, -32700, "Parse error"), 400, asEventStream);
   }
 
   const messages = Array.isArray(payload) ? payload : [payload];
@@ -339,5 +358,5 @@ Deno.serve(async (req) => {
   }
 
   if (responses.length === 0) return new Response(null, { status: 202, headers: corsHeaders });
-  return respond(Array.isArray(payload) ? responses : responses[0]);
+  return respond(Array.isArray(payload) ? responses : responses[0], 200, asEventStream);
 });
