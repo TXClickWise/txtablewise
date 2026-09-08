@@ -37,9 +37,9 @@ const EMAIL_TEMPLATES: Record<string, React.ComponentType<any>> = {
 
 // Configuration
 const SITE_NAME = "txtablewise"
-const SENDER_DOMAIN = "notify.reservations.txtablewise.nl"
+const SENDER_DOMAIN = "notify.txtablewise.nl"
 const ROOT_DOMAIN = "reservations.txtablewise.nl"
-const FROM_DOMAIN = "notify.reservations.txtablewise.nl" // Domain shown in From address (may be root or sender subdomain)
+const FROM_DOMAIN = "notify.txtablewise.nl" // Domain shown in From address (may be root or sender subdomain)
 
 // Sample data for preview mode ONLY (not used in actual email sending).
 // URLs are baked in at scaffold time from the project's real data.

@@ -382,7 +382,7 @@ export default function MessagesSettings() {
         <p className="text-xs text-muted-foreground mt-4">
           {clickwiseLive
             ? "Je hebt ClickWise actief. Berichten worden verstuurd via ClickWise workflows (SMS, WhatsApp). E-mails hierboven zijn uitgeschakeld om dubbele berichten te voorkomen."
-            : "E-mails worden verstuurd vanaf noreply@notify.reservations.txtablewise.nl. Op het Pro-plan kun je je eigen e-maildomein instellen."}
+            : "E-mails worden verstuurd vanaf noreply@notify.txtablewise.nl. Op het Pro-plan kun je je eigen e-maildomein instellen."}
         </p>
       </Card>
 
