@@ -12,7 +12,7 @@
   "mcp": {
     "server": {
       "name": "tx-tablewise",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "title": "TX TableWise"
     },
     "tools": [
@@ -29,6 +29,40 @@
           "$schema": "https://json-schema.org/draft/2020-12/schema",
           "type": "object",
           "properties": {}
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "check_availability",
+        "title": "Check availability",
+        "description": "Check which times are still available for a date and party size. Uses the restaurant's own opening hours, closures, pacing, zones and table combinations. Always call this before creating a reservation.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "date": {
+              "type": "string",
+              "description": "Date in YYYY-MM-DD."
+            },
+            "party_size": {
+              "type": "number",
+              "description": "Number of guests."
+            },
+            "restaurant_id": {
+              "type": "string",
+              "description": "Only for users with more than one restaurant."
+            }
+          },
+          "required": [
+            "date",
+            "party_size"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
         },
         "outputSchema": null
       },
@@ -87,10 +121,308 @@
             "reservation_id": {
               "type": "string",
               "description": "Reservation id (uuid)."
+            },
+            "restaurant_id": {
+              "type": "string"
             }
           },
           "required": [
             "reservation_id"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "find_reservation",
+        "title": "Find reservation",
+        "description": "Find an active reservation by confirmation code, phone, email, or name plus date. Returns at most 5 minimal matches. Use this before update_reservation or cancel_reservation when you do not have a reservation id.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "confirmation_code": {
+              "type": "string",
+              "description": "Confirmation code given to the guest."
+            },
+            "phone": {
+              "type": "string"
+            },
+            "email": {
+              "type": "string"
+            },
+            "first_name": {
+              "type": "string"
+            },
+            "last_name": {
+              "type": "string"
+            },
+            "date": {
+              "type": "string",
+              "description": "Reservation date in YYYY-MM-DD."
+            },
+            "restaurant_id": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "create_reservation",
+        "title": "Create reservation",
+        "description": "Create a reservation. TableWise picks the table itself. Large groups may come back as pending approval instead of confirmed — always tell the guest exactly what status you got back, never say 'confirmed' when requires_manual_approval is true. Pass a stable idempotency_key so a retry never creates a second booking.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": false,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "date": {
+              "type": "string",
+              "description": "Date in YYYY-MM-DD."
+            },
+            "time": {
+              "type": "string",
+              "description": "Local time HH:MM."
+            },
+            "party_size": {
+              "type": "number"
+            },
+            "first_name": {
+              "type": "string",
+              "description": "Ask the guest for their real first name; never invent one."
+            },
+            "last_name": {
+              "type": "string"
+            },
+            "phone": {
+              "type": "string"
+            },
+            "email": {
+              "type": "string"
+            },
+            "language": {
+              "type": "string",
+              "description": "nl, en, de or fr."
+            },
+            "special_requests": {
+              "type": "string"
+            },
+            "dietary_notes": {
+              "type": "string"
+            },
+            "occasion": {
+              "type": "string"
+            },
+            "prefers_terrace": {
+              "type": "boolean"
+            },
+            "idempotency_key": {
+              "type": "string",
+              "description": "Same key on a retry returns the original reservation."
+            },
+            "restaurant_id": {
+              "type": "string"
+            },
+            "table_ids": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Staff override only; requires the table.override capability."
+            },
+            "combination_id": {
+              "type": "string",
+              "description": "Staff override only; requires the table.override capability."
+            }
+          },
+          "required": [
+            "date",
+            "time",
+            "party_size",
+            "first_name"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "update_reservation",
+        "title": "Update reservation",
+        "description": "Change the date, time, party size or notes of an existing reservation through the TableWise engine. Read the new date, time and party size back to the guest and get an explicit yes before calling this (confirmed must be true). If the group becomes large, the reservation can go back to pending approval — report the returned status truthfully.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": false,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "reservation_id": {
+              "type": "string"
+            },
+            "confirmed": {
+              "type": "boolean",
+              "description": "Must be true: the guest explicitly confirmed the change."
+            },
+            "date": {
+              "type": "string",
+              "description": "New date YYYY-MM-DD."
+            },
+            "time": {
+              "type": "string",
+              "description": "New local time HH:MM."
+            },
+            "party_size": {
+              "type": "number"
+            },
+            "special_requests": {
+              "type": "string"
+            },
+            "restaurant_id": {
+              "type": "string"
+            },
+            "table_ids": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Staff override only; requires table.override."
+            },
+            "combination_id": {
+              "type": "string",
+              "description": "Staff override only; requires table.override."
+            }
+          },
+          "required": [
+            "reservation_id",
+            "confirmed"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "cancel_reservation",
+        "title": "Cancel reservation",
+        "description": "Cancel a reservation. Irreversible. Read the guest name, date, time and party size back and get an explicit spoken yes first: confirmed must be true and a reason is required.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": true,
+          "idempotentHint": false,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "reservation_id": {
+              "type": "string"
+            },
+            "reason": {
+              "type": "string",
+              "description": "Reason for the cancellation."
+            },
+            "confirmed": {
+              "type": "boolean",
+              "description": "Must be true: the guest explicitly confirmed the cancellation."
+            },
+            "restaurant_id": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "reservation_id",
+            "reason",
+            "confirmed"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "set_reservation_status",
+        "title": "Set reservation status",
+        "description": "Set the operational status of a reservation: confirmed, seated, completed or no_show. Staff action — not available to guest-facing agents. Use cancel_reservation to cancel.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": true,
+          "idempotentHint": false,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "reservation_id": {
+              "type": "string"
+            },
+            "status": {
+              "type": "string",
+              "description": "One of: confirmed, seated, completed, no_show."
+            },
+            "restaurant_id": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "reservation_id",
+            "status"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "resolve_large_group",
+        "title": "Approve or decline a large group request",
+        "description": "Approve or decline a large group reservation that is waiting for manual approval. Management action — never available to guest-facing agents. Requires explicit confirmation.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": true,
+          "idempotentHint": false,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "reservation_id": {
+              "type": "string"
+            },
+            "decision": {
+              "type": "string",
+              "description": "approve or decline."
+            },
+            "confirmed": {
+              "type": "boolean",
+              "description": "Must be true: the decision was explicitly confirmed."
+            },
+            "reason": {
+              "type": "string",
+              "description": "Reason, required when declining."
+            },
+            "restaurant_id": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "reservation_id",
+            "decision",
+            "confirmed"
           ],
           "additionalProperties": false,
           "$schema": "http://json-schema.org/draft-07/schema#"
@@ -164,9 +496,67 @@
         "outputSchema": null
       },
       {
+        "name": "add_waitlist_entry",
+        "title": "Add guest to the waitlist",
+        "description": "Put a guest on the waitlist when nothing is available at the requested time. The restaurant contacts the guest when a table frees up.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": false,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "date": {
+              "type": "string",
+              "description": "Desired date YYYY-MM-DD."
+            },
+            "time_from": {
+              "type": "string",
+              "description": "Earliest acceptable local time HH:MM."
+            },
+            "time_to": {
+              "type": "string",
+              "description": "Latest acceptable local time HH:MM."
+            },
+            "party_size": {
+              "type": "number"
+            },
+            "first_name": {
+              "type": "string"
+            },
+            "last_name": {
+              "type": "string"
+            },
+            "phone": {
+              "type": "string"
+            },
+            "email": {
+              "type": "string"
+            },
+            "notes": {
+              "type": "string"
+            },
+            "restaurant_id": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "date",
+            "time_from",
+            "party_size",
+            "first_name"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
         "name": "add_reservation_note",
         "title": "Add internal note to reservation",
-        "description": "Append an internal note to a reservation. Internal notes are only visible to staff, never to the guest.",
+        "description": "Append an internal note to a reservation. Internal notes are only visible to staff, never to the guest. Staff action — not available to guest-facing agents.",
         "annotations": {
           "readOnlyHint": false,
           "destructiveHint": false,
@@ -183,6 +573,9 @@
             "note": {
               "type": "string",
               "description": "The note to append."
+            },
+            "restaurant_id": {
+              "type": "string"
             }
           },
           "required": [

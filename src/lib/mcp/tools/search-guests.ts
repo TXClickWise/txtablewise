@@ -35,7 +35,7 @@ export default defineTool({
         structuredContent: { restaurant_id: rid, guests: data ?? [] },
       };
     } catch (e) {
-      return { content: [{ type: "text", text: e instanceof Error ? e.message : String(e) }], isError: true };
+      return toolError(e);
     }
   },
 });
