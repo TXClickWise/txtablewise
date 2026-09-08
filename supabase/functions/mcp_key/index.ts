@@ -69,14 +69,13 @@ const TOOLS: ToolDef[] = [
     name: "find_reservation",
     title: "Find reservation",
     description:
-      "Zoek een bestaande reservering op bevestigingscode, telefoonnummer, achternaam, of voornaam + datum.",
+      "Zoek een bestaande reservering. Probeer in deze volgorde: 1) telefoonnummer uit de callcontext, 2) datum + tijd, 3) voor- en/of achternaam. Vraag de gast nooit om een reserverings- of bevestigingscode.",
     action: "find_reservation",
     readOnly: true,
     inputSchema: {
       type: "object",
       properties: {
-        confirmation_code: str("Bevestigingscode"),
-        phone: str("Telefoonnummer van de gast"),
+        phone: str("Telefoonnummer van de gast, uit de callcontext (caller ID) — niet uitvragen"),
         first_name: str("Voornaam"),
         last_name: str("Achternaam"),
         date: str("Datum in YYYY-MM-DD"),
@@ -89,7 +88,7 @@ const TOOLS: ToolDef[] = [
     name: "create_reservation",
     title: "Create reservation",
     description:
-      "Maak een reservering. Vraag altijd expliciet naar de voornaam; vul nooit zelf een placeholder in. Lees het veld message_for_guest letterlijk voor en volg next_action.",
+      "Maak een reservering. Vraag altijd expliciet naar de voornaam; vul nooit zelf een placeholder in. Vraag nooit om een e-mailadres. Lees het veld message_for_guest letterlijk voor en volg next_action. Als requires_manual_approval true is of large_group_status awaiting_approval, is dit een AANVRAAG in behandeling — presenteer die nooit als bevestigd.",
     action: "reservation_request",
     readOnly: false,
     inputSchema: {
@@ -100,8 +99,7 @@ const TOOLS: ToolDef[] = [
         party_size: num("Aantal personen"),
         first_name: str("Voornaam van de gast"),
         last_name: str("Achternaam van de gast"),
-        phone: str("Telefoonnummer van de gast"),
-        email: str("E-mailadres van de gast"),
+        phone: str("Telefoonnummer van de gast, uit de callcontext (caller ID) — niet uitvragen of laten dicteren"),
         notes: str("Bijzonderheden, allergieën of wensen"),
         language: str("Taal van het gesprek: nl, de of en"),
       },
@@ -158,8 +156,7 @@ const TOOLS: ToolDef[] = [
       properties: {
         first_name: str("Voornaam van de gast"),
         last_name: str("Achternaam van de gast"),
-        phone: str("Telefoonnummer van de gast"),
-        email: str("E-mailadres van de gast"),
+        phone: str("Telefoonnummer van de gast, uit de callcontext (caller ID) — niet uitvragen"),
         desired_date: str("Gewenste datum in YYYY-MM-DD"),
         party_size: num("Aantal personen"),
         desired_time_from: str("Vroegste tijd in HH:mm"),
@@ -197,6 +194,21 @@ function respond(body: unknown, status = 200, asEventStream = false) {
     status,
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
+}
+
+// Guest-facing route: de agent mag nooit een reserveringscode noemen of gebruiken.
+// De code blijft intern bestaan (app, e-mails, widget); alleen deze gateway strip hem.
+function stripConfirmationCode(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(stripConfirmationCode);
+  if (value && typeof value === "object") {
+    const out: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
+      if (k === "confirmation_code") continue;
+      out[k] = stripConfirmationCode(v);
+    }
+    return out;
+  }
+  return value;
 }
 
 async function callAgentApi(action: string, args: Record<string, unknown>, apiKey: string) {
@@ -333,7 +345,8 @@ Deno.serve(async (req) => {
       }
       const args = (msg?.params?.arguments ?? {}) as Record<string, unknown>;
       try {
-        const { status, body } = await callAgentApi(tool.action, args, apiKey);
+        const { status, body: rawBody } = await callAgentApi(tool.action, args, apiKey);
+        const body = stripConfirmationCode(rawBody) as Record<string, unknown>;
         const isError = status >= 400 || (body as any)?.success === false;
         responses.push(
           rpcResult(id, {
