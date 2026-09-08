@@ -294,8 +294,10 @@ async function callInternalFn(name: string, body: unknown, extraHeaders: Record<
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${SERVICE_ROLE}`,
-      apikey: GATEWAY_API_KEY,
+      // Authorization en apikey moeten dezelfde sleutel bevatten, anders
+      // weigert de edge-gateway het verzoek met "Conflicting API keys".
+      Authorization: `Bearer ${SUPABASE_GATEWAY_JWT_ANON_KEY}`,
+      apikey: SUPABASE_GATEWAY_JWT_ANON_KEY,
       ...extraHeaders,
     },
     body: JSON.stringify(body),
