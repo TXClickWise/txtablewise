@@ -3,6 +3,8 @@ project_id = "lbhtztbpxmqlzhyephew"
 [functions]
   [functions.agent_api]
     verify_jwt = false
+  [functions.mcp_key]
+    verify_jwt = false
   [functions.auth-email-hook]
     verify_jwt = false
   [functions.availability]
