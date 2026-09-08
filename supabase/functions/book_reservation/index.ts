@@ -7,6 +7,8 @@ import {
   findAvailableCombination,
 } from "../_shared/reservation-utils.ts";
 import { evaluatePacing, type PacingReservation } from "../_shared/pacing.ts";
+import { evaluateLargeGroup } from "../_shared/large-group.ts";
+
 import { durationMinutesFor } from "../_shared/duration.ts";
 import {
   resolveActiveZones, pickTableWithFillStrategy, pickCombinationWithFillStrategy,
@@ -385,30 +387,10 @@ Deno.serve(async (req) => {
     //   party < largeFrom        → normal
     //   party >= largeFrom       → large group  (manual only if ≥ manualFrom)
     //   party >= xlFrom          → extra-large  (ALWAYS manual)
-    const manualApprovalSize: number | null = restaurant.manual_approval_from_party_size ?? null;
-    const largeFrom: number = restaurant.large_group_threshold ?? 9;
-    const xlFrom: number | null = restaurant.extra_large_group_threshold ?? null;
-    const largeGroupManualFrom: number = restaurant.large_group_manual_approval_from ?? largeFrom;
+    const lgEval = evaluateLargeGroup(body.party_size, restaurant, { channel });
+    const requiresManualApproval = lgEval.requiresManualApproval;
+    const largeGroupStatus: string | null = lgEval.largeGroupStatus;
 
-    let requiresManualApproval = false;
-    let largeGroupStatus: string | null = null;
-
-    if (xlFrom !== null && body.party_size >= xlFrom) {
-      requiresManualApproval = true;
-      largeGroupStatus = "awaiting_approval";
-    } else if (isLargeGroup) {
-      if (body.party_size >= largeGroupManualFrom) {
-        requiresManualApproval = true;
-        largeGroupStatus = "awaiting_approval";
-      }
-      // Geen 'approved' meer voor groepen die geen interne goedkeuring nodig hebben — gewoon null laten.
-    }
-    if (manualApprovalSize !== null && body.party_size >= manualApprovalSize) {
-      requiresManualApproval = true;
-    }
-    if (channel === "online" && restaurant.auto_confirm === false) {
-      requiresManualApproval = true;
-    }
 
     let status: string;
     if (body.hold_only) status = "hold";
