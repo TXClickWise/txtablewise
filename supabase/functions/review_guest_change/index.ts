@@ -13,6 +13,7 @@ import {
   pickSeatingWithStrategy,
   zonedDateTimeToUtcIso,
 } from "../_shared/reservation-utils.ts";
+import { sendRestaurantEmail } from "../_shared/transactional-email-templates/send-restaurant-email.ts";
 
 type Body = {
   request_id: string;
@@ -133,8 +134,7 @@ Deno.serve(async (req) => {
       const startIso = newStartIso ?? reservation.start_time;
       if (gcr.guest_email && !/@tablewise\.local$/i.test(gcr.guest_email)) {
         try {
-          await service.functions.invoke("send-transactional-email", {
-            body: {
+          await sendRestaurantEmail({
               templateName: "reservation-change-approved",
               recipientEmail: gcr.guest_email,
               idempotencyKey: `gcr_approved:${gcr.id}`,
@@ -149,7 +149,6 @@ Deno.serve(async (req) => {
                 partySize: gcr.desired_party_size,
                 manageUrl, cancelUrl,
               },
-            },
           });
         } catch (e) { console.error("approved email failed", e); }
       }
@@ -171,8 +170,7 @@ Deno.serve(async (req) => {
 
     if (gcr.guest_email && !/@tablewise\.local$/i.test(gcr.guest_email)) {
       try {
-        await service.functions.invoke("send-transactional-email", {
-          body: {
+        await sendRestaurantEmail({
             templateName: "reservation-change-rejected",
             recipientEmail: gcr.guest_email,
             idempotencyKey: `gcr_rejected:${gcr.id}`,
@@ -187,7 +185,6 @@ Deno.serve(async (req) => {
               partySize: reservation.party_size,
               reasonLabel: body.reviewer_note || "",
             },
-          },
         });
       } catch (e) { console.error("rejected email failed", e); }
     }
