@@ -172,7 +172,9 @@ const TOOLS: ToolDef[] = [
   },
 ];
 
-const PROTOCOL_VERSION = "2024-11-05";
+// Streamable HTTP was introduced in MCP 2025-03-26. Advertising the older
+// 2024-11-05 version makes strict clients expect the legacy HTTP+SSE transport.
+const PROTOCOL_VERSION = "2025-03-26";
 
 function rpcResult(id: unknown, result: unknown) {
   return { jsonrpc: "2.0", id, result };
